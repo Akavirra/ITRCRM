@@ -2,7 +2,6 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { run, get, all } from '@/db';
-import { RowDataPacket } from 'mysql2';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'school-admin-secret-key-change-in-production';
 const SESSION_EXPIRY_HOURS = 24;

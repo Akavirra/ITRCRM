@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "prod": "npm run build && node scripts/start-prod.js",
     "lint": "next lint",
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",

@@ -13,6 +13,11 @@ const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), 'data', DEFAULT_
 
 // Dev/Prod mode flag (safer than NODE_ENV for your case)
 const IS_DEV = APP_ENV !== 'prod';
+export { DB_PATH, IS_DEV, APP_ENV };
+
+// Debug logs to trace which database is being used (after IS_DEV is defined)
+console.log(`[DB] APP_ENV=${APP_ENV} IS_DEV=${IS_DEV}`);
+console.log(`[DB] DB_PATH=${DB_PATH}`);
 
 // Schema version for tracking DB compatibility
 const SCHEMA_VERSION = 2;
@@ -547,8 +552,3 @@ export function logError(
 
 // Auto-initialize on module import
 ensureInitialized();
-
-// Export database path for external use (e.g., deleting DB file)
-export { DB_PATH, IS_DEV };
-
-export default getDb;

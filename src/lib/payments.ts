@@ -122,7 +122,7 @@ export function createPayment(
     ]
   );
   
-  return result.lastInsertRowid;
+  return Number(result.lastInsertRowid);
 }
 
 // Update payment

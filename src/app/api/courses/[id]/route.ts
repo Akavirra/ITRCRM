@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden, notFound } from '@/lib/api-utils';
 import { getCourseById, updateCourse, archiveCourse, restoreCourse, deleteCourse } from '@/lib/courses';
+import { verifyPassword } from '@/lib/auth';
+import { get } from '@/db';
 
 // Ukrainian error messages
 const ERROR_MESSAGES = {
@@ -13,8 +15,10 @@ const ERROR_MESSAGES = {
   durationRequired: "Тривалість обов'язкова",
   durationInvalid: 'Тривалість повинна бути цілим числом від 1 до 36 місяців',
   updateFailed: 'Не вдалося оновити курс',
-  cannotDeleteWithGroups: 'Неможливо видалити курс з існуючими групами',
+  cannotDeleteWithGroups: 'Неможливо видалити курс: є пов\'язані групи/дані.',
   deleteFailed: 'Не вдалося видалити курс',
+  passwordRequired: 'Пароль обов\'язковий для підтвердження видалення',
+  invalidPassword: 'Неправильний пароль',
 };
 
 // Validation helpers
@@ -148,50 +152,92 @@ export async function PUT(
   }
 }
 
-// DELETE /api/courses/[id] - Delete or archive course
+// DELETE /api/courses/[id] - Delete course with password confirmation (admin only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const user = await getAuthUser(request);
-  
-  if (!user) {
-    return unauthorized();
-  }
-  
-  if (!isAdmin(user)) {
-    return forbidden();
-  }
-  
-  const courseId = parseInt(params.id, 10);
-  
-  if (isNaN(courseId)) {
-    return NextResponse.json({ error: ERROR_MESSAGES.invalidCourseId }, { status: 400 });
-  }
-  
-  const existingCourse = getCourseById(courseId);
-  
-  if (!existingCourse) {
-    return notFound(ERROR_MESSAGES.courseNotFound);
-  }
-  
-  const { searchParams } = new URL(request.url);
-  const permanent = searchParams.get('permanent') === 'true';
-  
-  if (permanent) {
+  try {
+    const user = await getAuthUser(request);
+    
+    if (!user) {
+      return unauthorized();
+    }
+    
+    if (!isAdmin(user)) {
+      return forbidden();
+    }
+    
+    const courseId = parseInt(params.id, 10);
+    
+    if (isNaN(courseId)) {
+      return NextResponse.json({ error: ERROR_MESSAGES.invalidCourseId }, { status: 400 });
+    }
+    
+    const existingCourse = getCourseById(courseId);
+    
+    if (!existingCourse) {
+      return notFound(ERROR_MESSAGES.courseNotFound);
+    }
+    
+    // Parse request body for password confirmation
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: ERROR_MESSAGES.passwordRequired },
+        { status: 400 }
+      );
+    }
+    
+    const { password } = body;
+    
+    // Validate password is provided
+    if (!password) {
+      return NextResponse.json(
+        { error: ERROR_MESSAGES.passwordRequired },
+        { status: 400 }
+      );
+    }
+    
+    // Get user's password hash from database
+    const userWithPassword = get<{ password_hash: string }>(
+      `SELECT password_hash FROM users WHERE id = ?`,
+      [user.id]
+    );
+    
+    if (!userWithPassword) {
+      return unauthorized();
+    }
+    
+    // Verify password
+    const isValidPassword = await verifyPassword(password, userWithPassword.password_hash);
+    
+    if (!isValidPassword) {
+      return NextResponse.json(
+        { error: ERROR_MESSAGES.invalidPassword },
+        { status: 401 }
+      );
+    }
+    
+    // Attempt to delete the course
     const deleted = deleteCourse(courseId);
     
     if (!deleted) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.cannotDeleteWithGroups },
-        { status: 400 }
+        { status: 409 }
       );
     }
     
-    return NextResponse.json({ message: 'Курс остаточно видалено' });
-  } else {
-    archiveCourse(courseId);
-    return NextResponse.json({ message: 'Курс успішно архівовано' });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('Delete course error:', error);
+    return NextResponse.json(
+      { error: ERROR_MESSAGES.deleteFailed },
+      { status: 500 }
+    );
   }
 }
 

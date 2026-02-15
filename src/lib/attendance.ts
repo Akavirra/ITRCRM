@@ -103,7 +103,7 @@ export function setAttendance(
       `INSERT INTO attendance (lesson_id, student_id, status, comment, makeup_lesson_id, updated_by) VALUES (?, ?, ?, ?, ?, ?)`,
       [lessonId, studentId, status, comment || null, makeupLessonId || null, updatedBy]
     );
-    return result.lastInsertRowid;
+    return Number(result.lastInsertRowid);
   }
 }
 

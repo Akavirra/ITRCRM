@@ -386,6 +386,7 @@ export const uk = {
     archiveCourse: 'Архівувати курс "{title}"?',
     restoreCourse: 'Відновити курс "{title}"?',
     removeStudent: 'Видалити учня "{name}" з групи?',
+    deleteCourse: 'Ви впевнені, що хочете видалити курс "{title}"? Цю дію неможливо скасувати.',
   },
 
   // Course groups section

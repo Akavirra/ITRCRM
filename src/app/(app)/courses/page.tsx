@@ -47,6 +47,11 @@ export default function CoursesPage() {
   const [uploadingFlyer, setUploadingFlyer] = useState(false);
   const [deletingFlyer, setDeletingFlyer] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -175,6 +180,62 @@ export default function CoursesPage() {
     } catch (error) {
       console.error('Failed to archive/restore course:', error);
     }
+  };
+
+  const handleDeleteClick = (course: Course) => {
+    setCourseToDelete(course);
+    setDeletePassword('');
+    setDeleteError('');
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!courseToDelete) return;
+    
+    setDeleting(true);
+    setDeleteError('');
+    
+    try {
+      const response = await fetch(`/api/courses/${courseToDelete.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: deletePassword })
+      });
+      
+      if (response.ok) {
+        setShowDeleteModal(false);
+        setCourseToDelete(null);
+        setDeletePassword('');
+        // Refresh courses list
+        const res = await fetch('/api/courses?withStats=true&includeInactive=true');
+        const data = await res.json();
+        setCourses(data.courses || []);
+      } else {
+        const errorData = await response.json();
+        // Handle specific error codes with UA messages
+        if (response.status === 401) {
+          setDeleteError('Невірний пароль');
+        } else if (response.status === 403) {
+          setDeleteError('Недостатньо прав');
+        } else if (response.status === 409) {
+          setDeleteError("Неможливо видалити курс: є пов'язані дані");
+        } else {
+          setDeleteError(errorData.error || 'Сталася помилка. Спробуйте ще раз.');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete course:', error);
+      setDeleteError('Сталася помилка. Спробуйте ще раз.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setCourseToDelete(null);
+    setDeletePassword('');
+    setDeleteError('');
   };
 
   const handleFlyerUpload = async () => {
@@ -347,8 +408,15 @@ export default function CoursesPage() {
                         <button
                           className={`btn btn-sm ${course.is_active ? 'btn-secondary' : 'btn-success'}`}
                           onClick={() => handleArchive(course)}
+                          style={{ marginRight: '0.5rem' }}
                         >
                           {course.is_active ? t('actions.archive') : t('actions.restore')}
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleDeleteClick(course)}
+                        >
+                          {t('actions.delete')}
                         </button>
                       </td>
                     )}
@@ -542,6 +610,61 @@ export default function CoursesPage() {
                 disabled={saving || !formData.title.trim()}
               >
                 {saving ? t('common.saving') : t('actions.save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && courseToDelete && (
+        <div className="modal-overlay" onClick={handleDeleteCancel}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Підтвердження видалення</h3>
+              <button className="modal-close" onClick={handleDeleteCancel} disabled={deleting}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: '0 0 1rem 0' }}>
+                Щоб видалити курс, введіть пароль адміністратора.
+              </p>
+              <p style={{ margin: '0 0 1rem 0', fontWeight: 500 }}>
+                Курс: {courseToDelete.title}
+              </p>
+              <div className="form-group">
+                <label className="form-label">Пароль</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Введіть пароль"
+                  disabled={deleting}
+                  autoFocus
+                />
+              </div>
+              {deleteError && (
+                <div style={{ 
+                  color: '#dc2626', 
+                  backgroundColor: '#fef2f2', 
+                  padding: '0.75rem', 
+                  borderRadius: '0.375rem',
+                  fontSize: '0.875rem'
+                }}>
+                  {deleteError}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={handleDeleteCancel} disabled={deleting}>
+                Скасувати
+              </button>
+              <button 
+                className="btn btn-danger" 
+                onClick={handleDeleteConfirm} 
+                disabled={deleting || !deletePassword.trim()}
+              >
+                {deleting ? 'Видалення...' : 'Видалити'}
               </button>
             </div>
           </div>
