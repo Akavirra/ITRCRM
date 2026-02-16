@@ -126,8 +126,8 @@ export const uk = {
     courseTitlePlaceholder: 'Введіть назву курсу',
     courseDescriptionPlaceholder: 'Короткий опис курсу',
     courseAgeLabel: 'Вік дітей',
-    courseAgeLabelPlaceholder: '6+',
-    courseAgeLabelHint: 'Формат: число зі знаком + (наприклад: 6+, 8+, 10+)',
+    courseAgeLabelPlaceholder: '6',
+    courseAgeLabelHint: 'Введіть число (наприклад: 6). Знак "+" додасться автоматично.',
     courseDurationMonths: 'Тривалість (місяців)',
     courseDurationMonthsPlaceholder: 'Оберіть тривалість',
     courseProgram: 'Програма курсу',
@@ -219,7 +219,7 @@ export const uk = {
     selectTeacher: "Оберіть викладача",
     invalidTime: "Некоректний формат часу",
     invalidTitleFormat: "Назва групи має формат: 'Пн 16:30 Назва курсу'",
-    invalidAgeFormat: 'Некоректний формат віку. Використовуйте формат: число+ (наприклад: 6+)',
+    invalidAgeFormat: 'Вік повинен бути цілим числом від 0 до 99',
   },
 
   // Toast/notification messages
@@ -395,6 +395,29 @@ export const uk = {
     graduateGroups: 'Випущені групи',
     noGroups: 'Немає груп',
     dayTime: 'День/час',
+  },
+
+  // Flyer upload
+  flyer: {
+    title: 'Флаєр',
+    titleOptional: 'Флаєр (необов\'язково)',
+    formats: 'JPEG/PNG, макс. 5MB',
+    changeFlyer: 'Змінити флаєр',
+    uploadFlyer: 'Завантажити флаєр',
+    deleteFlyer: 'Видалити флаєр',
+    openFlyer: 'Відкрити',
+    downloadFlyer: 'Завантажити',
+    noFlyer: 'Флаєр відсутній',
+    uploading: 'Завантаження...',
+    deleting: 'Видалення...',
+    selectFile: 'Оберіть файл',
+    // Error messages
+    invalidType: 'Непідтримуваний тип файлу. Дозволяються лише JPEG та PNG',
+    tooLarge: 'Файл занадто великий. Максимальний розмір: 5MB',
+    noFile: 'Файл не обрано',
+    uploadFailed: 'Не вдалося завантажити флаєр',
+    deleteFailed: 'Не вдалося видалити флаєр',
+    deleteConfirm: 'Видалити флаєр курсу?',
   },
 } as const;
 

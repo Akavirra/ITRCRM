@@ -6,7 +6,7 @@ export interface Course {
   public_id: string;
   title: string;
   description: string | null;
-  age_label: string;
+  age_min: number;
   duration_months: number;
   program: string | null;
   flyer_path: string | null;
@@ -71,15 +71,15 @@ function isPublicIdUnique(publicId: string): boolean {
 export function createCourse(
   title: string,
   description?: string,
-  ageLabel?: string,
+  ageMin?: number,
   durationMonths?: number,
   program?: string
 ): { id: number; public_id: string } {
   const publicId = generateUniquePublicId('course', isPublicIdUnique);
   
   const result = run(
-    `INSERT INTO courses (public_id, title, description, age_label, duration_months, program) VALUES (?, ?, ?, ?, ?, ?)`,
-    [publicId, title, description || null, ageLabel || '6+', durationMonths || 1, program || null]
+    `INSERT INTO courses (public_id, title, description, age_min, duration_months, program) VALUES (?, ?, ?, ?, ?, ?)`,
+    [publicId, title, description || null, ageMin || 6, durationMonths || 1, program || null]
   );
   
   return { id: Number(result.lastInsertRowid), public_id: publicId };
@@ -90,13 +90,13 @@ export function updateCourse(
   id: number,
   title: string,
   description?: string,
-  ageLabel?: string,
+  ageMin?: number,
   durationMonths?: number,
   program?: string
 ): void {
   run(
-    `UPDATE courses SET title = ?, description = ?, age_label = ?, duration_months = ?, program = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-    [title, description || null, ageLabel || '6+', durationMonths || 1, program || null, id]
+    `UPDATE courses SET title = ?, description = ?, age_min = ?, duration_months = ?, program = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [title, description || null, ageMin || 6, durationMonths || 1, program || null, id]
   );
 }
 

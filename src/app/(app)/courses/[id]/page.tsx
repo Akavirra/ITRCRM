@@ -18,7 +18,7 @@ interface Course {
   public_id: string;
   title: string;
   description: string | null;
-  age_label: string;
+  age_min: number;
   duration_months: number;
   program: string | null;
   flyer_path: string | null;
@@ -80,6 +80,7 @@ export default function CourseDetailsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [programValue, setProgramValue] = useState('');
   const [savingProgram, setSavingProgram] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const MAX_PROGRAM_LENGTH = 10000;
 
   useEffect(() => {
@@ -139,18 +140,20 @@ export default function CourseDetailsPage() {
 
   const handleOpenModal = () => {
     setProgramValue(course?.program || '');
+    setIsEditMode(false);
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setProgramValue('');
+    setIsEditMode(false);
   };
 
   const handleDownloadPdf = () => {
     if (!course) return;
-    // Use direct navigation so browser sends cookies automatically
-    window.location.href = `/api/courses/${course.id}/program-pdf`;
+    // Use window.open with '_blank' so browser sends cookies automatically
+    window.open(`/api/courses/${course.id}/program-pdf`, '_blank');
   };
 
   const handleSaveProgram = async () => {
@@ -173,7 +176,7 @@ export default function CourseDetailsPage() {
         body: JSON.stringify({
           title: course.title,
           description: course.description,
-          age_label: course.age_label,
+          age_min: course.age_min,
           duration_months: course.duration_months,
           program: programValue,
         }),
@@ -191,7 +194,7 @@ export default function CourseDetailsPage() {
 
       // Update local state
       setCourse({ ...course, program: programValue || null });
-      setIsModalOpen(false);
+      setIsEditMode(false);
       setToast({
         message: 'Програму успішно збережено',
         type: 'success',
@@ -281,288 +284,373 @@ export default function CourseDetailsPage() {
         </button>
       </div>
 
-      {/* Course Header */}
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ flex: 1, minWidth: '300px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: '#6b7280' }}>
-                {course.public_id}
-              </span>
-              <span className={`badge ${course.is_active ? 'badge-success' : 'badge-gray'}`}>
-                {course.is_active ? t('status.active') : t('status.archived')}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-              <h1 style={{ fontSize: '1.75rem', fontWeight: '600', margin: 0, marginBottom: '0.5rem' }}>
-                {course.title}
-              </h1>
-              {course.program && (
-                <button
-                  onClick={handleDownloadPdf}
-                  className="btn btn-secondary"
-                  style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '0.5rem' }}>
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
+      {/* Course Header with Program Button */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'flex-start', 
+        flexWrap: 'wrap', 
+        gap: '1rem',
+        marginBottom: '1.5rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: '#6b7280' }}>
+            {course.public_id}
+          </span>
+          <span className={`badge ${course.is_active ? 'badge-success' : 'badge-gray'}`}>
+            {course.is_active ? t('status.active') : t('status.archived')}
+          </span>
+        </div>
+        
+        {/* Program Button in Header - Opens Modal */}
+        {(course.program || isAdmin) && (
+          <button
+            onClick={handleOpenModal}
+            className="btn btn-primary"
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '0.5rem' }}>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            Програма курсу
+          </button>
+        )}
+      </div>
+
+      {/* Main Layout: Flyer Left, Content Right */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: '1fr',
+        gap: '1.5rem',
+        marginBottom: '1.5rem'
+      }}>
+        {/* Mobile: Stack vertically, Desktop: Side by side */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: '320px 1fr', 
+          gap: '1.5rem',
+          alignItems: 'start'
+        }}>
+          {/* Left Column: Flyer */}
+          <div style={{ position: 'sticky', top: '1rem' }}>
+            <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+              {course.flyer_path ? (
+                <img
+                  src={course.flyer_path}
+                  alt={course.title}
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    aspectRatio: '9/16',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '100%',
+                  aspectRatio: '9/16',
+                  backgroundColor: '#f3f4f6',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#9ca3af',
+                  padding: '2rem',
+                }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: '1rem' }}>
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
                   </svg>
-                  Відкрити програму
-                </button>
+                  <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>
+                    Немає флаєра
+                  </span>
+                </div>
               )}
             </div>
+          </div>
+
+          {/* Right Column: Content */}
+          <div>
+            {/* Course Title */}
+            <h1 style={{ fontSize: '1.75rem', fontWeight: '600', margin: '0 0 1.5rem 0' }}>
+              {course.title}
+            </h1>
+
+            {/* Опис програми */}
             {course.description && (
-              <p style={{ color: '#6b7280', margin: 0, fontSize: '1rem' }}>
-                {course.description}
-              </p>
+              <div className="card" style={{ marginBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: '0 0 0.75rem 0' }}>
+                  Опис програми
+                </h2>
+                <p style={{ color: '#6b7280', margin: 0, fontSize: '0.9375rem', lineHeight: '1.6' }}>
+                  {course.description}
+                </p>
+              </div>
             )}
-          </div>
-          
-          {course.flyer_path && (
-            <div style={{ flexShrink: 0 }}>
-              <img
-                src={course.flyer_path}
-                alt={course.title}
-                style={{
-                  maxWidth: '200px',
-                  maxHeight: '200px',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #e5e7eb',
-                  objectFit: 'cover',
-                }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* Course Info Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        {/* Age Card */}
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '0.5rem',
-              background: '#dbeafe',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </div>
-            <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>{t('table.age')}</span>
-          </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '600' }}>
-            {course.age_label || '---'}
-          </div>
-        </div>
-
-        {/* Duration Card */}
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '0.5rem',
-              background: '#fef3c7',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </div>
-            <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>{t('table.duration')}</span>
-          </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '600' }}>
-            {course.duration_months ? `${course.duration_months} міс.` : '---'}
-          </div>
-        </div>
-      </div>
-
-      {/* Active Groups Section */}
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div className="card-header">
-          <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0 }}>
-            Активні групи
-          </h2>
-        </div>
-        <div className="table-container">
-          {activeGroups.length > 0 ? (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Назва</th>
-                  <th>День/час</th>
-                  <th>Викладач</th>
-                  <th>Статус</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activeGroups.map((group) => (
-                  <tr key={group.id}>
-                    <td>
-                      <a href={`/groups/${group.id}`} style={{ fontWeight: '500' }}>
-                        {group.title}
-                      </a>
-                    </td>
-                    <td>
-                      {group.weekly_day && group.start_time
-                        ? `${getDayName(group.weekly_day)} ${group.start_time}`
-                        : '—'}
-                    </td>
-                    <td>{group.teacher_name || '—'}</td>
-                    <td>
-                      <span className={`badge ${getStatusBadgeClass(group.status)}`}>
-                        {STATUS_LABELS[group.status] || group.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="empty-state" style={{ padding: '2rem' }}>
-              <div style={{ color: '#9ca3af', fontSize: '0.9375rem' }}>
-                Немає груп
+            {/* Характеристики */}
+            <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem' }}>
+              <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: '0 0 1rem 0' }}>
+                Характеристики
+              </h2>
+              <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+                    Вік
+                  </div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '600' }}>
+                    {course.age_min ? `${course.age_min}+` : '---'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+                    Тривалість
+                  </div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '600' }}>
+                    {course.duration_months ? `${course.duration_months} міс.` : '---'}
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Graduate Groups Section */}
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div className="card-header">
-          <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0 }}>
-            Випущені групи
-          </h2>
-        </div>
-        <div className="table-container">
-          {graduateGroups.length > 0 ? (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Назва</th>
-                  <th>День/час</th>
-                  <th>Викладач</th>
-                  <th>Статус</th>
-                </tr>
-              </thead>
-              <tbody>
-                {graduateGroups.map((group) => (
-                  <tr key={group.id}>
-                    <td>
-                      <a href={`/groups/${group.id}`} style={{ fontWeight: '500' }}>
-                        {group.title}
-                      </a>
-                    </td>
-                    <td>
-                      {group.weekly_day && group.start_time
-                        ? `${getDayName(group.weekly_day)} ${group.start_time}`
-                        : '—'}
-                    </td>
-                    <td>{group.teacher_name || '—'}</td>
-                    <td>
-                      <span className={`badge ${getStatusBadgeClass(group.status)}`}>
-                        {STATUS_LABELS[group.status] || group.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="empty-state" style={{ padding: '2rem' }}>
-              <div style={{ color: '#9ca3af', fontSize: '0.9375rem' }}>
-                Немає груп
+            {/* Групи курсу - Two Columns */}
+            <div className="card" style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0 }}>
+                  Групи курсу
+                </h2>
+                {/* Small add button - always visible for admins */}
+                {isAdmin && (
+                  <a
+                    href={`/groups/new?course_id=${course.id}`}
+                    className="btn btn-secondary"
+                    style={{ 
+                      padding: '0.375rem 0.75rem', 
+                      fontSize: '0.875rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem'
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Додати
+                  </a>
+                )}
+              </div>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr 1fr', 
+                gap: '1.5rem' 
+              }}>
+                {/* Active Groups */}
+                <div>
+                  <h3 style={{ 
+                    fontSize: '0.9375rem', 
+                    fontWeight: '600', 
+                    margin: '0 0 0.75rem 0',
+                    color: '#059669'
+                  }}>
+                    Активні
+                  </h3>
+                  {activeGroups.length > 0 ? (
+                    <div className="table-container" style={{ padding: 0 }}>
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Назва</th>
+                            <th>День/час</th>
+                            <th>Викладач</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {activeGroups.map((group) => (
+                            <tr key={group.id}>
+                              <td>
+                                <a href={`/groups/${group.id}`} style={{ fontWeight: '500' }}>
+                                  {group.title}
+                                </a>
+                              </td>
+                              <td>
+                                {group.weekly_day && group.start_time
+                                  ? `${getDayName(group.weekly_day)} ${group.start_time}`
+                                  : '—'}
+                              </td>
+                              <td>{group.teacher_name || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      padding: '1.5rem', 
+                      textAlign: 'center', 
+                      color: '#9ca3af',
+                      backgroundColor: '#f9fafb',
+                      borderRadius: '0.375rem',
+                      fontSize: '0.875rem'
+                    }}>
+                      <p style={{ margin: '0 0 1rem 0' }}>Немає активних груп</p>
+                      {isAdmin && (
+                        <a
+                          href={`/groups/new?course_id=${course.id}`}
+                          className="btn btn-primary"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                          Створити групу
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Graduate Groups */}
+                <div>
+                  <h3 style={{ 
+                    fontSize: '0.9375rem', 
+                    fontWeight: '600', 
+                    margin: '0 0 0.75rem 0',
+                    color: '#6366f1'
+                  }}>
+                    Випущені
+                  </h3>
+                  {graduateGroups.length > 0 ? (
+                    <div className="table-container" style={{ padding: 0 }}>
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Назва</th>
+                            <th>День/час</th>
+                            <th>Викладач</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {graduateGroups.map((group) => (
+                            <tr key={group.id}>
+                              <td>
+                                <a href={`/groups/${group.id}`} style={{ fontWeight: '500' }}>
+                                  {group.title}
+                                </a>
+                              </td>
+                              <td>
+                                {group.weekly_day && group.start_time
+                                  ? `${getDayName(group.weekly_day)} ${group.start_time}`
+                                  : '—'}
+                              </td>
+                              <td>{group.teacher_name || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      padding: '1rem', 
+                      textAlign: 'center', 
+                      color: '#9ca3af',
+                      backgroundColor: '#f9fafb',
+                      borderRadius: '0.375rem',
+                      fontSize: '0.875rem'
+                    }}>
+                      Немає випущених груп
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Course Students Section */}
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div className="card-header">
-          <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0 }}>
-            Учні курсу
-          </h2>
-          {students.length > 0 && (
-            <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-              Всього: {students.length}
-            </span>
-          )}
-        </div>
-        <div className="table-container">
-          {students.length > 0 ? (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>ПІБ</th>
-                  <th>Група(и)</th>
-                  <th>Статус групи</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((student) => (
-                  <tr key={student.id}>
-                    <td>
-                      <span style={{ 
-                        fontFamily: 'monospace', 
-                        fontSize: '0.875rem',
-                        color: '#6b7280' 
-                      }}>
-                        {student.public_id || '—'}
-                      </span>
-                    </td>
-                    <td>
-                      <a href={`/students/${student.id}`} style={{ fontWeight: '500' }}>
-                        {student.full_name}
-                      </a>
-                    </td>
-                    <td>
-                      {student.groups.map((g, idx) => (
-                        <span key={g.id}>
-                          <a href={`/groups/${g.id}`}>{g.title}</a>
-                          {idx < student.groups.length - 1 && ', '}
-                        </span>
+            {/* Учні на цьому курсі */}
+            <div className="card">
+              <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: '0 0 1rem 0' }}>
+                Учні на цьому курсі
+              </h2>
+              {students.length > 0 ? (
+                <div className="table-container" style={{ padding: 0 }}>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>ПІБ</th>
+                        <th>Група(и)</th>
+                        <th>Статус групи</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {students.map((student) => (
+                        <tr key={student.id}>
+                          <td>
+                            <span style={{ 
+                              fontFamily: 'monospace', 
+                              fontSize: '0.875rem',
+                              color: '#6b7280' 
+                            }}>
+                              {student.public_id || '—'}
+                            </span>
+                          </td>
+                          <td>
+                            <a href={`/students/${student.id}`} style={{ fontWeight: '500' }}>
+                              {student.full_name}
+                            </a>
+                          </td>
+                          <td>
+                            {student.groups.map((g, idx) => (
+                              <span key={g.id}>
+                                <a href={`/groups/${g.id}`}>{g.title}</a>
+                                {idx < student.groups.length - 1 && ', '}
+                              </span>
+                            ))}
+                          </td>
+                          <td>
+                            {student.groups.map((g, idx) => (
+                              <span key={g.id}>
+                                <span className={`badge ${getStatusBadgeClass(g.status)}`}>
+                                  {STATUS_LABELS[g.status] || g.status}
+                                </span>
+                                {idx < student.groups.length - 1 && ' '}
+                              </span>
+                            ))}
+                          </td>
+                        </tr>
                       ))}
-                    </td>
-                    <td>
-                      {student.groups.map((g, idx) => (
-                        <span key={g.id}>
-                          <span className={`badge ${getStatusBadgeClass(g.status)}`}>
-                            {STATUS_LABELS[g.status] || g.status}
-                          </span>
-                          {idx < student.groups.length - 1 && ' '}
-                        </span>
-                      ))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="empty-state" style={{ padding: '2rem' }}>
-              <div style={{ color: '#9ca3af', fontSize: '0.9375rem' }}>
-                Немає учнів
-              </div>
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ 
+                  padding: '2rem', 
+                  textAlign: 'center', 
+                  color: '#9ca3af',
+                  fontSize: '0.9375rem'
+                }}>
+                  Немає учнів
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
+
+      {/* Responsive Styles */}
+      <style jsx>{`
+        @media (max-width: 768px) {
+          div[style*="grid-template-columns: 320px"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
 
       {/* Toast Notification */}
       {toast && (
@@ -586,6 +674,196 @@ export default function CourseDetailsPage() {
         </div>
       )}
 
+      {/* Program Modal */}
+      {isModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseModal();
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '0.75rem',
+              width: '100%',
+              maxWidth: '800px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '1.25rem 1.5rem',
+                borderBottom: '1px solid #e5e7eb',
+              }}
+            >
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0 }}>
+                Програма курсу: {course?.title}
+              </h2>
+              <button
+                onClick={handleCloseModal}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0.25rem',
+                  color: '#6b7280',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div style={{ padding: '1.5rem', flex: 1, overflow: 'auto' }}>
+              {isEditMode ? (
+                <textarea
+                  value={programValue}
+                  onChange={(e) => setProgramValue(e.target.value)}
+                  placeholder="Введіть програму курсу..."
+                  style={{
+                    width: '100%',
+                    minHeight: '400px',
+                    padding: '1rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.9375rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    lineHeight: '1.6',
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    lineHeight: '1.7',
+                    fontSize: '0.9375rem',
+                    color: programValue ? '#374151' : '#9ca3af',
+                    minHeight: '200px',
+                    padding: programValue ? '0.5rem' : '2rem',
+                    textAlign: programValue ? 'left' : 'center',
+                  }}
+                >
+                  {programValue || 'Програма курсу відсутня'}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '1rem 1.5rem',
+                borderTop: '1px solid #e5e7eb',
+                backgroundColor: '#f9fafb',
+                borderBottomLeftRadius: '0.75rem',
+                borderBottomRightRadius: '0.75rem',
+              }}
+            >
+              {/* Left side - Download PDF */}
+              <button
+                onClick={handleDownloadPdf}
+                className="btn btn-secondary"
+                disabled={!programValue}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                Завантажити PDF
+              </button>
+
+              {/* Right side - Edit/Save/Cancel buttons */}
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                {isEditMode ? (
+                  <>
+                    <button
+                      onClick={handleSaveProgram}
+                      disabled={savingProgram}
+                      className="btn btn-primary"
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                      {savingProgram ? (
+                        <>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="spin">
+                            <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="32" />
+                          </svg>
+                          Збереження...
+                        </>
+                      ) : (
+                        <>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          Зберегти
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setProgramValue(course?.program || '');
+                        setIsEditMode(false);
+                      }}
+                      className="btn btn-secondary"
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                      Скасувати
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setIsEditMode(true)}
+                    className="btn btn-secondary"
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    Редагувати
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
         @keyframes slideIn {
           from {
@@ -596,6 +874,17 @@ export default function CourseDetailsPage() {
             transform: translateX(0);
             opacity: 1;
           }
+        }
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        .spin {
+          animation: spin 1s linear infinite;
         }
       `}</style>
     </Layout>

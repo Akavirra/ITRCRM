@@ -7,14 +7,14 @@ import path from 'path';
 
 // Ukrainian error messages
 const ERROR_MESSAGES = {
-  invalidCourseId: 'H Nevirnyy ID kursu',
-  courseNotFound: 'Kurs ne znaydeno',
-  noFile: 'Fayl ne obrano',
-  invalidFileType: 'Nepidtryuvanyy typ faylu. Dozvolyayutsya tilky JPEG ta PNG',
-  fileTooLarge: 'Fayl nadto velykyi. Maksymalnyy rozmir: 5MB',
-  uploadFailed: 'Ne vdalosya zavantazhyty flyer',
-  deleteFailed: 'Ne vdalosya vydalyty flyer',
-  noFlyer: 'Flyer ne znaydeno',
+  invalidCourseId: 'Невірний ID курсу',
+  courseNotFound: 'Курс не знайдено',
+  noFile: 'Файл не обрано',
+  invalidFileType: 'Непідтримуваний тип файлу. Дозволяються лише JPEG та PNG',
+  fileTooLarge: 'Файл занадто великий. Максимальний розмір: 5MB',
+  uploadFailed: 'Не вдалося завантажити флаєр',
+  deleteFailed: 'Не вдалося видалити флаєр',
+  noFlyer: 'Флаєр не знайдено',
 };
 
 // Allowed MIME types
@@ -111,7 +111,7 @@ export async function POST(
     updateCourseFlyerPath(courseId, relativePath);
     
     return NextResponse.json({
-      message: 'Flyer uspishno zavantazheno',
+      message: 'Флаєр успішно завантажено',
       flyer_path: relativePath,
     });
   } catch (error) {
@@ -168,7 +168,7 @@ export async function DELETE(
     // Clear path in database
     updateCourseFlyerPath(courseId, null);
     
-    return NextResponse.json({ message: 'Flyer uspishno vydaleno' });
+    return NextResponse.json({ message: 'Флаєр успішно видалено' });
   } catch (error) {
     console.error('Delete flyer error:', error);
     return NextResponse.json(

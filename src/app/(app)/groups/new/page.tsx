@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { uk } from '@/i18n/uk';
 
@@ -24,6 +24,7 @@ interface Teacher {
 
 export default function NewGroupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -63,7 +64,17 @@ export default function NewGroupPage() {
         // Fetch courses
         const coursesRes = await fetch('/api/courses');
         const coursesData = await coursesRes.json();
-        setCourses(coursesData.courses || []);
+        const coursesList = coursesData.courses || [];
+        setCourses(coursesList);
+
+        // Pre-select course from query param if provided
+        const courseIdParam = searchParams.get('course_id');
+        if (courseIdParam) {
+          const courseExists = coursesList.some((c: Course) => c.id === parseInt(courseIdParam));
+          if (courseExists) {
+            setCourseId(courseIdParam);
+          }
+        }
 
         // Fetch teachers
         const usersRes = await fetch('/api/users');
@@ -77,7 +88,7 @@ export default function NewGroupPage() {
     };
 
     fetchData();
-  }, [router]);
+  }, [router, searchParams]);
 
   // Update title preview when form changes
   useEffect(() => {

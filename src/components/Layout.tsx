@@ -14,6 +14,7 @@ interface User {
 interface LayoutProps {
   children: React.ReactNode;
   user: User;
+  headerActions?: React.ReactNode;
 }
 
 const menuItems = [
@@ -29,7 +30,7 @@ const adminMenuItems = [
   { href: '/users', labelKey: 'nav.users', icon: 'settings' },
 ];
 
-export default function Layout({ children, user }: LayoutProps) {
+export default function Layout({ children, user, headerActions }: LayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -237,6 +238,12 @@ export default function Layout({ children, user }: LayoutProps) {
           <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>
             {getPageTitle()}
           </h2>
+
+          {headerActions && (
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {headerActions}
+            </div>
+          )}
         </header>
 
         {/* Page content */}

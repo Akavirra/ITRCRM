@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS courses (
   public_id TEXT UNIQUE,
   title TEXT NOT NULL,
   description TEXT,
-  age_label TEXT NOT NULL DEFAULT '6+',
+  age_min INTEGER NOT NULL DEFAULT 6,
   duration_months INTEGER NOT NULL DEFAULT 1,
   program TEXT,
   flyer_path TEXT NULL,

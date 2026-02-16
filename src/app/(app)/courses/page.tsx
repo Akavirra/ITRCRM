@@ -17,7 +17,7 @@ interface Course {
   public_id: string;
   title: string;
   description: string | null;
-  age_label: string;
+  age_min: number;
   duration_months: number;
   program: string | null;
   flyer_path: string | null;
@@ -37,15 +37,16 @@ export default function CoursesPage() {
   const [formData, setFormData] = useState({ 
     title: '', 
     description: '', 
-    age_label: '6+', 
+    age_min: 6, 
     duration_months: 1, 
     program: '' 
   });
-  const [formErrors, setFormErrors] = useState<{ age_label?: string }>({});
+  const [formErrors, setFormErrors] = useState<{ age_min?: string }>({});
   const [saving, setSaving] = useState(false);
   const [flyerFile, setFlyerFile] = useState<File | null>(null);
   const [uploadingFlyer, setUploadingFlyer] = useState(false);
   const [deletingFlyer, setDeletingFlyer] = useState(false);
+  const [flyerError, setFlyerError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
@@ -95,11 +96,16 @@ export default function CoursesPage() {
     setFormData({ 
       title: '', 
       description: '', 
-      age_label: '6+', 
+      age_min: 6, 
       duration_months: 1, 
       program: '' 
     });
     setFormErrors({});
+    setFlyerFile(null);
+    setFlyerError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setShowModal(true);
   };
 
@@ -108,17 +114,21 @@ export default function CoursesPage() {
     setFormData({ 
       title: course.title, 
       description: course.description || '', 
-      age_label: course.age_label || '6+', 
+      age_min: course.age_min || 6, 
       duration_months: course.duration_months || 1, 
       program: course.program || '' 
     });
     setFormErrors({});
+    setFlyerFile(null);
+    setFlyerError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setShowModal(true);
   };
 
-  const validateAgeLabel = (value: string): string | null => {
-    const ageRegex = /^\d+\+$/;
-    if (!ageRegex.test(value)) {
+  const validateAgeMin = (value: number): string | null => {
+    if (!Number.isInteger(value) || value < 0 || value > 99) {
       return t('validation.invalidAgeFormat');
     }
     return null;
@@ -127,10 +137,10 @@ export default function CoursesPage() {
   const handleSave = async () => {
     if (!formData.title.trim()) return;
     
-    // Validate age label
-    const ageError = validateAgeLabel(formData.age_label);
+    // Validate age_min
+    const ageError = validateAgeMin(formData.age_min);
     if (ageError) {
-      setFormErrors({ age_label: ageError });
+      setFormErrors({ age_min: ageError });
       return;
     }
     
@@ -242,6 +252,7 @@ export default function CoursesPage() {
     if (!editingCourse || !flyerFile) return;
     
     setUploadingFlyer(true);
+    setFlyerError(null);
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('flyer', flyerFile);
@@ -265,11 +276,11 @@ export default function CoursesPage() {
         }
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to upload flyer');
+        setFlyerError(error.error || t('flyer.uploadFailed'));
       }
     } catch (error) {
       console.error('Failed to upload flyer:', error);
-      alert('Failed to upload flyer');
+      setFlyerError(t('flyer.uploadFailed'));
     } finally {
       setUploadingFlyer(false);
     }
@@ -278,9 +289,10 @@ export default function CoursesPage() {
   const handleFlyerDelete = async () => {
     if (!editingCourse || !editingCourse.flyer_path) return;
     
-    if (!confirm('Delete the course flyer?')) return;
+    if (!confirm(t('flyer.deleteConfirm'))) return;
     
     setDeletingFlyer(true);
+    setFlyerError(null);
     try {
       const response = await fetch(`/api/courses/${editingCourse.id}/flyer`, {
         method: 'DELETE',
@@ -295,11 +307,11 @@ export default function CoursesPage() {
         setEditingCourse({ ...editingCourse, flyer_path: null });
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to delete flyer');
+        setFlyerError(error.error || t('flyer.deleteFailed'));
       }
     } catch (error) {
       console.error('Failed to delete flyer:', error);
-      alert('Failed to delete flyer');
+      setFlyerError(t('flyer.deleteFailed'));
     } finally {
       setDeletingFlyer(false);
     }
@@ -307,15 +319,16 @@ export default function CoursesPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    setFlyerError(null);
     if (file) {
       // Validate file type
       if (!['image/jpeg', 'image/png'].includes(file.type)) {
-        alert('Only JPEG and PNG files are allowed');
+        setFlyerError(t('flyer.invalidType'));
         return;
       }
       // Validate file size (5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
+        setFlyerError(t('flyer.tooLarge'));
         return;
       }
       setFlyerFile(file);
@@ -381,8 +394,8 @@ export default function CoursesPage() {
                       </a>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <span style={{ fontWeight: '500' }}>{course.age_label || '---'}</span>
-                    </td>
+                       <span style={{ fontWeight: '500' }}>{course.age_min ? `${course.age_min}+` : '---'}</span>
+                     </td>
                     <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                       {course.duration_months ? `${course.duration_months} міс.` : '---'}
                     </td>
@@ -478,19 +491,22 @@ export default function CoursesPage() {
               <div className="form-group">
                 <label className="form-label">{t('forms.courseAgeLabel')} *</label>
                 <input
-                  type="text"
-                  className={`form-input ${formErrors.age_label ? 'form-input-error' : ''}`}
-                  value={formData.age_label}
+                  type="number"
+                  min="0"
+                  max="99"
+                  step="1"
+                  className={`form-input ${formErrors.age_min ? 'form-input-error' : ''}`}
+                  value={formData.age_min}
                   onChange={(e) => {
-                    setFormData({ ...formData, age_label: e.target.value });
-                    if (formErrors.age_label) {
-                      setFormErrors({ ...formErrors, age_label: undefined });
+                    setFormData({ ...formData, age_min: parseInt(e.target.value, 10) || 0 });
+                    if (formErrors.age_min) {
+                      setFormErrors({ ...formErrors, age_min: undefined });
                     }
                   }}
                   placeholder={t('forms.courseAgeLabelPlaceholder')}
                 />
-                {formErrors.age_label && (
-                  <span className="form-error">{formErrors.age_label}</span>
+                {formErrors.age_min && (
+                  <span className="form-error">{formErrors.age_min}</span>
                 )}
                 <span className="form-hint">{t('forms.courseAgeLabelHint')}</span>
               </div>
@@ -522,7 +538,21 @@ export default function CoursesPage() {
               {/* Flyer upload section - only for editing existing courses */}
               {editingCourse && (
                 <div className="form-group">
-                  <label className="form-label">Flyer (JPEG/PNG, max 5MB)</label>
+                  <label className="form-label">{t('flyer.title')} ({t('flyer.formats')})</label>
+                  
+                  {/* Error message */}
+                  {flyerError && (
+                    <div style={{ 
+                      color: '#dc2626', 
+                      backgroundColor: '#fef2f2', 
+                      padding: '0.75rem', 
+                      borderRadius: '0.375rem',
+                      fontSize: '0.875rem',
+                      marginBottom: '0.75rem'
+                    }}>
+                      {flyerError}
+                    </div>
+                  )}
                   
                   {/* Existing flyer preview */}
                   {editingCourse.flyer_path ? (
@@ -544,21 +574,21 @@ export default function CoursesPage() {
                           }} 
                         />
                       </div>
-                      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <a 
                           href={editingCourse.flyer_path} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="btn btn-secondary btn-sm"
                         >
-                          Open
+                          {t('flyer.openFlyer')}
                         </a>
                         <a 
                           href={editingCourse.flyer_path} 
                           download
                           className="btn btn-secondary btn-sm"
                         >
-                          Download
+                          {t('flyer.downloadFlyer')}
                         </a>
                         <button 
                           type="button"
@@ -566,8 +596,36 @@ export default function CoursesPage() {
                           onClick={handleFlyerDelete}
                           disabled={deletingFlyer}
                         >
-                          {deletingFlyer ? 'Deleting...' : 'Delete'}
+                          {deletingFlyer ? t('flyer.deleting') : t('flyer.deleteFlyer')}
                         </button>
+                      </div>
+                      {/* Change flyer option */}
+                      <div style={{ marginTop: '1rem' }}>
+                        <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                          {t('flyer.changeFlyer')}:
+                        </label>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png"
+                          onChange={handleFileChange}
+                          style={{ marginTop: '0.25rem' }}
+                        />
+                        {flyerFile && (
+                          <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.875rem' }}>
+                              {flyerFile.name} ({(flyerFile.size / 1024).toFixed(1)} KB)
+                            </span>
+                            <button 
+                              type="button"
+                              className="btn btn-primary btn-sm"
+                              onClick={handleFlyerUpload}
+                              disabled={uploadingFlyer}
+                            >
+                              {uploadingFlyer ? t('flyer.uploading') : t('flyer.uploadFlyer')}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -581,8 +639,8 @@ export default function CoursesPage() {
                         style={{ marginBottom: '0.5rem' }}
                       />
                       {flyerFile && (
-                        <div style={{ marginTop: '0.5rem' }}>
-                          <span style={{ marginRight: '0.5rem' }}>
+                        <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.875rem' }}>
                             {flyerFile.name} ({(flyerFile.size / 1024).toFixed(1)} KB)
                           </span>
                           <button 
@@ -591,7 +649,7 @@ export default function CoursesPage() {
                             onClick={handleFlyerUpload}
                             disabled={uploadingFlyer}
                           >
-                            {uploadingFlyer ? 'Uploading...' : 'Upload'}
+                            {uploadingFlyer ? t('flyer.uploading') : t('flyer.uploadFlyer')}
                           </button>
                         </div>
                       )}

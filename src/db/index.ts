@@ -104,9 +104,10 @@ function createAllTables(): void {
       public_id TEXT NOT NULL UNIQUE,
       title TEXT NOT NULL,
       description TEXT,
-      age_label TEXT NOT NULL DEFAULT '6+',
+      age_min INTEGER NOT NULL DEFAULT 6,
       duration_months INTEGER NOT NULL DEFAULT 1,
       program TEXT,
+      flyer_path TEXT NULL,
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -388,11 +389,31 @@ function runMigrations(): void {
         console.log('Migration: public_id column added to courses');
       }
       
-      // Add age_label column to courses table if it doesn't exist
-      if (!coursesColumns.includes('age_label')) {
-        console.log('Adding age_label column to courses table...');
-        database.exec(`ALTER TABLE courses ADD COLUMN age_label TEXT NOT NULL DEFAULT '6+'`);
-        console.log('Migration: age_label column added to courses');
+      // Migrate from age_label (TEXT) to age_min (INTEGER)
+      // Check if age_min column exists
+      if (!coursesColumns.includes('age_min')) {
+        console.log('Migrating age_label to age_min...');
+        // Check if age_label exists and has data
+        if (coursesColumns.includes('age_label')) {
+          // Extract numeric value from age_label (e.g., "6+" -> 6)
+          database.exec(`
+            UPDATE courses SET age_label = '6' WHERE age_label IS NULL OR age_label = ''
+          `);
+          // Add age_min column
+          database.exec(`ALTER TABLE courses ADD COLUMN age_min INTEGER NOT NULL DEFAULT 6`);
+          // Migrate data: extract number from age_label
+          const courses = database.prepare('SELECT id, age_label FROM courses').all() as { id: number; age_label: string }[];
+          for (const course of courses) {
+            const match = course.age_label.match(/^(\d+)/);
+            const ageValue = match ? parseInt(match[1], 10) : 6;
+            database.prepare('UPDATE courses SET age_min = ? WHERE id = ?').run(ageValue, course.id);
+          }
+          console.log('Migration: age_label migrated to age_min');
+        } else {
+          // No age_label column, just add age_min
+          database.exec(`ALTER TABLE courses ADD COLUMN age_min INTEGER NOT NULL DEFAULT 6`);
+          console.log('Migration: age_min column added to courses');
+        }
       }
       
       // Add duration_months column to courses table if it doesn't exist

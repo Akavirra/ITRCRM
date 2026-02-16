@@ -6,16 +6,16 @@ import { getCoursesWithStats, getCourses, createCourse, searchCourses } from '@/
 const ERROR_MESSAGES = {
   titleRequired: "Назва обов'язкова",
   titleMinLength: 'Назва повинна містити мінімум 2 символи',
-  ageLabelRequired: "Вікова мітка обов'язкова",
-  ageLabelInvalid: 'Вікова мітка повинна мати формат: число+ (наприклад: 6+, 18+)',
+  ageMinRequired: "Вік дітей обов'язковий",
+  ageMinInvalid: 'Вік дітей повинен бути цілим числом від 0 до 99',
   durationRequired: "Тривалість обов'язкова",
   durationInvalid: 'Тривалість повинна бути цілим числом від 1 до 36 місяців',
   createFailed: 'Не вдалося створити курс',
 };
 
 // Validation helpers
-function validateAgeLabel(ageLabel: string): boolean {
-  return /^\d{1,2}\+$/.test(ageLabel);
+function validateAgeMin(ageMin: number): boolean {
+  return Number.isInteger(ageMin) && ageMin >= 0 && ageMin <= 99;
 }
 
 function validateDurationMonths(duration: number): boolean {
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     // SECURITY: Explicitly ignore any client-provided public_id
     // The createCourse function always generates a unique server-side public_id
-    const { title, description, age_label, duration_months, program } = body;
+    const { title, description, age_min, duration_months, program } = body;
     
     // Validate title
     if (!title || title.trim().length === 0) {
@@ -87,17 +87,18 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Validate age_label
-    if (!age_label || age_label.trim().length === 0) {
+    // Validate age_min
+    if (age_min === undefined || age_min === null) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.ageLabelRequired },
+        { error: ERROR_MESSAGES.ageMinRequired },
         { status: 400 }
       );
     }
     
-    if (!validateAgeLabel(age_label.trim())) {
+    const ageMinValue = Number(age_min);
+    if (!validateAgeMin(ageMinValue)) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.ageLabelInvalid },
+        { error: ERROR_MESSAGES.ageMinInvalid },
         { status: 400 }
       );
     }
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
     const result = createCourse(
       title.trim(),
       description?.trim(),
-      age_label.trim(),
+      ageMinValue,
       duration,
       program?.trim()
     );
