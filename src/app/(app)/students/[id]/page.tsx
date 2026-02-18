@@ -669,16 +669,16 @@ export default function StudentProfilePage() {
               </div>
             </div>
 
-            {/* Contact Info Card */}
+            {/* Основний контакт */}
             <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: '600', margin: '0 0 1.25rem 0', color: 'var(--gray-700)' }}>
-                Контактна інформація
+                Основний контакт
               </h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
-                    Телефон учня *
+                    Телефон *
                   </label>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <span style={{ 
@@ -710,19 +710,10 @@ export default function StudentProfilePage() {
                     <div style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: '0.25rem' }}>{errors.phone}</div>
                   )}
                 </div>
-              </div>
-            </div>
-
-            {/* Parent Info Card */}
-            <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: '600', margin: '0 0 1.25rem 0', color: 'var(--gray-700)' }}>
-                Інформація про батьків
-              </h3>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
-                    Ім'я батька/матері *
+                    Ім'я контактної особи *
                   </label>
                   <input
                     type="text"
@@ -770,10 +761,19 @@ export default function StudentProfilePage() {
                     />
                   </div>
                 )}
-                
+              </div>
+            </div>
+
+            {/* Додатковий контакт */}
+            <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: '600', margin: '0 0 1.25rem 0', color: 'var(--gray-700)' }}>
+                Додатковий контакт
+              </h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
-                    Телефон батька/матері
+                    Телефон
                   </label>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <span style={{ 
@@ -802,60 +802,51 @@ export default function StudentProfilePage() {
                     />
                   </div>
                 </div>
-              </div>
-
-              {/* Second Parent */}
-              <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--gray-200)' }}>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: '600', margin: '0 0 1rem 0', color: 'var(--gray-700)' }}>
-                  Другий батько/мати
-                </h4>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
+                    Ім'я контактної особи
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.parent2_name}
+                    onChange={(e) => setFormData({ ...formData, parent2_name: e.target.value })}
+                    className="form-input"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
+                    Стосунок
+                  </label>
+                  <select
+                    value={formData.parent2_relation}
+                    onChange={(e) => setFormData({ ...formData, parent2_relation: e.target.value })}
+                    className="form-input"
+                    style={{ width: '100%' }}
+                  >
+                    <option value="">Оберіть...</option>
+                    {RELATION_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {formData.parent2_relation === 'other' && (
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
-                      Ім'я
+                      Вкажіть стосунок
                     </label>
                     <input
                       type="text"
-                      value={formData.parent2_name}
-                      onChange={(e) => setFormData({ ...formData, parent2_name: e.target.value })}
+                      value={formData.parent2_relation_other}
+                      onChange={(e) => setFormData({ ...formData, parent2_relation_other: e.target.value })}
                       className="form-input"
                       style={{ width: '100%' }}
                     />
                   </div>
-                  
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
-                      Стосунок
-                    </label>
-                    <select
-                      value={formData.parent2_relation}
-                      onChange={(e) => setFormData({ ...formData, parent2_relation: e.target.value })}
-                      className="form-input"
-                      style={{ width: '100%' }}
-                    >
-                      <option value="">Оберіть...</option>
-                      {RELATION_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  {formData.parent2_relation === 'other' && (
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
-                        Вкажіть стосунок
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.parent2_relation_other}
-                        onChange={(e) => setFormData({ ...formData, parent2_relation_other: e.target.value })}
-                        className="form-input"
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
 
@@ -1129,95 +1120,159 @@ export default function StudentProfilePage() {
           {/* Left Column: Photo and Quick Info */}
           <div style={{ position: 'sticky', top: '1rem' }}>
             <div className="card" style={{ padding: '0', overflow: 'hidden', borderRadius: '0.75rem' }}>
-              {/* Photo */}
-              <div style={{
-                width: '100%',
-                aspectRatio: '1',
-                backgroundColor: '#e0e7ff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                {student.photo ? (
-                  <img
-                    src={student.photo}
-                    alt={student.full_name}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                    }}
-                  />
-                ) : (
-                  <span style={{
-                    fontSize: '5rem',
-                    fontWeight: 600,
-                    color: '#4f46e5',
+              {/* Photo with Discount Badge */}
+              <div style={{ position: 'relative', margin: '1.5rem' }}>
+                <div style={{
+                  aspectRatio: '1',
+                  backgroundColor: '#e0e7ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  width: '100%',
+                }}>
+                  {student.photo ? (
+                    <img
+                      src={student.photo}
+                      alt={student.full_name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  ) : (
+                    <span style={{
+                      fontSize: '5rem',
+                      fontWeight: 600,
+                      color: '#4f46e5',
+                    }}>
+                      {firstLetter}
+                    </span>
+                  )}
+                </div>
+                
+                {/* Discount Badge on Avatar Corner */}
+                {student.discount && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-4px',
+                    backgroundColor: '#f59e0b',
+                    color: 'white',
+                    padding: '0.375rem 0.625rem',
+                    borderRadius: '1rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '700',
+                    boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.125rem',
+                    zIndex: 1,
                   }}>
-                    {firstLetter}
-                  </span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                      <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    </svg>
+                    {student.discount}{!student.discount.includes('%') && '%'}
+                  </div>
                 )}
               </div>
               
               {/* Quick Info */}
-              <div style={{ padding: '1.25rem' }}>
+              <div style={{ padding: '0 1.5rem 1.5rem 1.5rem' }}>
                 <h1 style={{ fontSize: '1.5rem', fontWeight: '700', margin: '0 0 0.5rem 0', letterSpacing: '-0.025em', color: 'var(--gray-900)' }}>
                   {student.full_name}
                 </h1>
                 
                 {age !== null && (
-                  <div style={{ color: 'var(--gray-600)', fontSize: '0.9375rem', marginBottom: '1rem' }}>
+                  <div style={{ 
+                    color: 'var(--primary)', 
+                    fontSize: '1.75rem', 
+                    fontWeight: '700',
+                    marginBottom: '1.25rem',
+                    letterSpacing: '-0.025em',
+                  }}>
                     {age} {age === 1 ? 'рік' : age >= 2 && age <= 4 ? 'роки' : 'років'}
                   </div>
                 )}
 
-                {/* Contact Quick Links */}
+                {/* Contacts */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {/* Основний контакт */}
                   {student.phone && (
-                    <a
-                      href={`tel:${student.phone}`}
+                    <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
                         padding: '0.625rem 0.75rem',
-                        backgroundColor: 'var(--gray-50)',
+                        backgroundColor: '#ecfdf5',
                         borderRadius: '0.5rem',
-                        color: 'var(--gray-700)',
-                        textDecoration: 'none',
-                        fontSize: '0.875rem',
-                        transition: 'all 0.15s',
+                        border: '1px solid #a7f3d0',
                       }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2">
                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                       </svg>
-                      {formatPhone(student.phone)}
-                    </a>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.6875rem', color: '#059669', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Основний контакт</div>
+                        {student.parent_name && (
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--gray-600)', marginBottom: '0.125rem' }}>
+                            {student.parent_name} {student.parent_relation && `(${getRelationLabel(student.parent_relation)})`}
+                          </div>
+                        )}
+                        <a
+                          href={`tel:${student.phone}`}
+                          style={{
+                            color: 'var(--gray-900)',
+                            textDecoration: 'none',
+                            fontSize: '0.9375rem',
+                            fontWeight: '500',
+                          }}
+                        >
+                          {formatPhone(student.phone)}
+                        </a>
+                      </div>
+                    </div>
                   )}
                   
+                  {/* Додатковий контакт */}
                   {student.parent_phone && (
-                    <a
-                      href={`tel:${student.parent_phone}`}
+                    <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
                         padding: '0.625rem 0.75rem',
-                        backgroundColor: 'var(--gray-50)',
+                        backgroundColor: '#eff6ff',
                         borderRadius: '0.5rem',
-                        color: 'var(--gray-700)',
-                        textDecoration: 'none',
-                        fontSize: '0.875rem',
-                        transition: 'all 0.15s',
+                        border: '1px solid #bfdbfe',
                       }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                         <circle cx="12" cy="7" r="4" />
                       </svg>
-                      {student.parent_name || 'Батьки'}: {formatPhone(student.parent_phone)}
-                    </a>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.6875rem', color: '#2563eb', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Додатковий контакт</div>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--gray-600)', marginBottom: '0.125rem' }}>
+                          {student.parent2_name || 'Батьки'} {student.parent2_relation && `(${getRelationLabel(student.parent2_relation)})`}
+                        </div>
+                        <a
+                          href={`tel:${student.parent_phone}`}
+                          style={{
+                            color: 'var(--gray-900)',
+                            textDecoration: 'none',
+                            fontSize: '0.9375rem',
+                            fontWeight: '500',
+                          }}
+                        >
+                          {formatPhone(student.parent_phone)}
+                        </a>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1234,121 +1289,98 @@ export default function StudentProfilePage() {
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.25rem' }}>
                 {student.birth_date && (
-                  <div>
-                    <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
-                      Дата народження
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <div style={{ padding: '0.5rem', backgroundColor: '#fef3c7', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                      </svg>
                     </div>
-                    <div style={{ fontSize: '0.9375rem', color: 'var(--gray-900)' }}>
-                      {new Date(student.birth_date).toLocaleDateString('uk-UA')}
+                    <div>
+                      <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
+                        Дата народження
+                      </div>
+                      <div style={{ fontSize: '0.9375rem', color: 'var(--gray-900)' }}>
+                        {new Date(student.birth_date).toLocaleDateString('uk-UA')}
+                      </div>
                     </div>
                   </div>
                 )}
                 
                 {student.school && (
-                  <div>
-                    <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
-                      Школа
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <div style={{ padding: '0.5rem', backgroundColor: '#dbeafe', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                      </svg>
                     </div>
-                    <div style={{ fontSize: '0.9375rem', color: 'var(--gray-900)' }}>
-                      {student.school}
-                    </div>
-                  </div>
-                )}
-                
-                {student.discount && (
-                  <div>
-                    <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
-                      Знижка
-                    </div>
-                    <div style={{ fontSize: '0.9375rem', color: 'var(--gray-900)' }}>
-                      {student.discount}
+                    <div>
+                      <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
+                        Школа
+                      </div>
+                      <div style={{ fontSize: '0.9375rem', color: 'var(--gray-900)' }}>
+                        {student.school}
+                      </div>
                     </div>
                   </div>
                 )}
                 
                 {student.interested_courses && (
-                  <div>
-                    <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
-                      Цікаві курси
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <div style={{ padding: '0.5rem', backgroundColor: '#fce7f3', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#db2777" strokeWidth="2">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                      </svg>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-                      {student.interested_courses.split(',').map((course, idx) => (
-                        <span
-                          key={idx}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '0.25rem 0.5rem',
-                            backgroundColor: 'var(--primary-light)',
-                            color: 'var(--primary)',
-                            borderRadius: '0.25rem',
-                            fontSize: '0.75rem',
-                            fontWeight: '500',
-                          }}
-                        >
-                          {course.trim()}
-                        </span>
-                      ))}
+                    <div>
+                      <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
+                        Цікаві курси
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                        {student.interested_courses.split(',').map((course, idx) => (
+                          <span
+                            key={idx}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: 'var(--primary-light)',
+                              color: 'var(--primary)',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                            }}
+                          >
+                            {course.trim()}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
                 
                 {student.source && (
-                  <div>
-                    <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
-                      Джерело
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <div style={{ padding: '0.5rem', backgroundColor: '#e0e7ff', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                      </svg>
                     </div>
-                    <div style={{ fontSize: '0.9375rem', color: 'var(--gray-900)' }}>
-                      {getSourceLabel(student.source)}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Parent Info Card */}
-            <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
-              <h2 style={{ fontSize: '1rem', fontWeight: '600', margin: '0 0 1rem 0', color: 'var(--gray-700)' }}>
-                Інформація про батьків
-              </h2>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.25rem' }}>
-                {student.parent_name && (
-                  <div>
-                    <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
-                      {getRelationLabel(student.parent_relation) || 'Батько/мати'}
-                    </div>
-                    <div style={{ fontSize: '0.9375rem', color: 'var(--gray-900)' }}>
-                      {student.parent_name}
-                    </div>
-                  </div>
-                )}
-                
-                {student.parent_phone && (
-                  <div>
-                    <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
-                      Телефон
-                    </div>
-                    <a
-                      href={`tel:${student.parent_phone}`}
-                      style={{ fontSize: '0.9375rem', color: 'var(--primary)', textDecoration: 'none' }}
-                    >
-                      {formatPhone(student.parent_phone)}
-                    </a>
-                  </div>
-                )}
-                
-                {student.parent2_name && (
-                  <>
                     <div>
                       <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
-                        {getRelationLabel(student.parent2_relation) || 'Другий батько/мати'}
+                        Джерело
                       </div>
                       <div style={{ fontSize: '0.9375rem', color: 'var(--gray-900)' }}>
-                        {student.parent2_name}
+                        {getSourceLabel(student.source)}
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             </div>
