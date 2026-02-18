@@ -1,6 +1,7 @@
 import { run, get, all, transaction } from '@/db';
 
 export type AttendanceStatus = 'present' | 'absent' | 'makeup_planned' | 'makeup_done';
+export type StudyStatus = 'studying' | 'not_studying';
 
 export interface AttendanceRecord {
   id: number;

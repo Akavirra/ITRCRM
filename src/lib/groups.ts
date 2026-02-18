@@ -33,6 +33,8 @@ export const STATUS_LABELS_UA: Record<GroupStatus, string> = {
   inactive: 'Неактивна',
 };
 
+export type StudyStatus = 'studying' | 'not_studying';
+
 export interface Group {
   id: number;
   public_id: string;

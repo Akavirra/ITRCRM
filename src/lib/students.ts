@@ -1,5 +1,7 @@
-import { run, get, all } from '@/db';
+import { run, get, all, transaction } from '@/db';
 import { generateUniquePublicId } from './public-id';
+
+export type StudyStatus = 'studying' | 'not_studying';
 
 export interface Student {
   id: number;
@@ -19,6 +21,7 @@ export interface Student {
   interested_courses: string | null;
   source: string | null;
   is_active: number;
+  study_status: StudyStatus;
   created_at: string;
   updated_at: string;
 }
@@ -41,11 +44,28 @@ export interface StudentWithDebt extends Student {
   debt: number;
 }
 
-// Get all students
+// Study status constants
+export const STUDY_STATUS = {
+  STUDYING: 'studying' as StudyStatus,
+  NOT_STUDYING: 'not_studying' as StudyStatus,
+};
+
+// Helper function to compute study status based on groups count
+export function computeStudyStatus(groupsCount: number): StudyStatus {
+  return groupsCount > 0 ? STUDY_STATUS.STUDYING : STUDY_STATUS.NOT_STUDYING;
+}
+
+// Get all students with computed study_status
 export function getStudents(includeInactive: boolean = false): Student[] {
   const sql = includeInactive
-    ? `SELECT * FROM students ORDER BY full_name`
-    : `SELECT * FROM students WHERE is_active = 1 ORDER BY full_name`;
+    ? `SELECT students.*, 
+        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = 1) > 0 
+             THEN 'studying' ELSE 'not_studying' END as study_status
+       FROM students ORDER BY full_name`
+    : `SELECT students.*, 
+        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = 1) > 0 
+             THEN 'studying' ELSE 'not_studying' END as study_status
+       FROM students WHERE is_active = 1 ORDER BY full_name`;
   
   return all<Student>(sql);
 }
@@ -53,12 +73,14 @@ export function getStudents(includeInactive: boolean = false): Student[] {
 // Get students with group count
 export function getStudentsWithGroupCount(includeInactive: boolean = false): Array<Student & { groups_count: number }> {
   const sql = includeInactive
-    ? `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count
+    ? `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count,
+        CASE WHEN COUNT(DISTINCT sg.id) > 0 THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students s
        LEFT JOIN student_groups sg ON s.id = sg.student_id AND sg.is_active = 1
        GROUP BY s.id
        ORDER BY s.full_name`
-    : `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count
+    : `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count,
+        CASE WHEN COUNT(DISTINCT sg.id) > 0 THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students s
        LEFT JOIN student_groups sg ON s.id = sg.student_id AND sg.is_active = 1
        WHERE s.is_active = 1
@@ -70,7 +92,13 @@ export function getStudentsWithGroupCount(includeInactive: boolean = false): Arr
 
 // Get student by ID
 export function getStudentById(id: number): Student | null {
-  const student = get<Student>(`SELECT * FROM students WHERE id = ?`, [id]);
+  const student = get<Student>(
+    `SELECT students.*, 
+      CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = 1) > 0 
+           THEN 'studying' ELSE 'not_studying' END as study_status
+     FROM students WHERE students.id = ?`, 
+    [id]
+  );
   return student || null;
 }
 
@@ -174,18 +202,166 @@ export function deleteStudent(id: number): void {
   run(`DELETE FROM students WHERE id = ?`, [id]);
 }
 
+// Get student's active groups (for warning before deletion)
+export interface StudentGroupWarning {
+  id: number;
+  title: string;
+  course_title: string;
+  join_date: string;
+}
+
+export function getStudentActiveGroups(studentId: number): StudentGroupWarning[] {
+  return all<StudentGroupWarning>(
+    `SELECT g.id, g.title, c.title as course_title, sg.join_date
+     FROM student_groups sg
+     JOIN groups g ON sg.group_id = g.id
+     JOIN courses c ON g.course_id = c.id
+     WHERE sg.student_id = ? AND sg.is_active = 1 AND g.is_active = 1
+     ORDER BY g.title`,
+    [studentId]
+  );
+}
+
+// Safe delete student with cascade - checks groups first
+export interface SafeDeleteResult {
+  success: boolean;
+  error?: string;
+  groups?: StudentGroupWarning[];
+  deletedStudentId?: number;
+}
+
+export function safeDeleteStudent(studentId: number, adminUserId: number): SafeDeleteResult {
+  // First, check if student exists
+  const student = getStudentById(studentId);
+  if (!student) {
+    return { success: false, error: 'Учня не знайдено' };
+  }
+  
+  // Get active groups for warning
+  const activeGroups = getStudentActiveGroups(studentId);
+  
+  // If student is in groups, return warning info (caller should show confirmation)
+  if (activeGroups.length > 0) {
+    return {
+      success: false,
+      error: 'Учень бере участь у групах',
+      groups: activeGroups
+    };
+  }
+  
+  // Perform cascade delete using transaction
+  try {
+    transaction(() => {
+      // Delete from student_groups (cascade will handle this, but we do it explicitly for logging)
+      run(`DELETE FROM student_groups WHERE student_id = ?`, [studentId]);
+      
+      // Delete attendance records (cascade will handle this, but explicit for safety)
+      run(`DELETE FROM attendance WHERE student_id = ?`, [studentId]);
+      
+      // Delete payment records (cascade will handle this, but explicit for safety)
+      run(`DELETE FROM payments WHERE student_id = ?`, [studentId]);
+      
+      // Delete the student
+      run(`DELETE FROM students WHERE id = ?`, [studentId]);
+    });
+    
+    // Log the deletion
+    console.log(`[STUDENT_DELETE] Student ID ${studentId} (${student.full_name}) deleted by admin user ID ${adminUserId} at ${new Date().toISOString()}`);
+    
+    return {
+      success: true,
+      deletedStudentId: studentId
+    };
+  } catch (error) {
+    console.error(`[STUDENT_DELETE_ERROR] Failed to delete student ID ${studentId}:`, error);
+    return { success: false, error: 'Помилка при видаленні учня' };
+  }
+}
+
+// Force delete student with cascade - bypasses group check (for confirmed deletions)
+export function forceDeleteStudent(studentId: number, adminUserId: number): SafeDeleteResult {
+  // First, check if student exists
+  const student = getStudentById(studentId);
+  if (!student) {
+    return { success: false, error: 'Учня не знайдено' };
+  }
+  
+  // Get active groups for logging
+  const activeGroups = getStudentActiveGroups(studentId);
+  const groupsCount = activeGroups.length;
+  
+  // Perform cascade delete using transaction
+  try {
+    transaction(() => {
+      // Delete from student_groups
+      run(`DELETE FROM student_groups WHERE student_id = ?`, [studentId]);
+      
+      // Delete attendance records
+      run(`DELETE FROM attendance WHERE student_id = ?`, [studentId]);
+      
+      // Delete payment records
+      run(`DELETE FROM payments WHERE student_id = ?`, [studentId]);
+      
+      // Delete the student
+      run(`DELETE FROM students WHERE id = ?`, [studentId]);
+    });
+    
+    // Log the deletion with group info
+    console.log(`[STUDENT_DELETE] Student ID ${studentId} (${student.full_name}, public_id: ${student.public_id}) deleted by admin user ID ${adminUserId}. Removed from ${groupsCount} group(s) at ${new Date().toISOString()}`);
+    
+    return {
+      success: true,
+      deletedStudentId: studentId,
+      groups: activeGroups
+    };
+  } catch (error) {
+    console.error(`[STUDENT_DELETE_ERROR] Failed to force delete student ID ${studentId}:`, error);
+    return { success: false, error: 'Помилка при видаленні учня' };
+  }
+}
+
+// Verify no orphan records after student deletion
+export function verifyNoOrphanRecords(studentId: number): { hasOrphans: boolean; orphanTables: string[] } {
+  const orphanTables: string[] = [];
+  
+  // Check student_groups
+  const sgCount = get<{ count: number }>(`SELECT COUNT(*) as count FROM student_groups WHERE student_id = ?`, [studentId]);
+  if (sgCount && sgCount.count > 0) {
+    orphanTables.push('student_groups');
+  }
+  
+  // Check attendance
+  const attCount = get<{ count: number }>(`SELECT COUNT(*) as count FROM attendance WHERE student_id = ?`, [studentId]);
+  if (attCount && attCount.count > 0) {
+    orphanTables.push('attendance');
+  }
+  
+  // Check payments
+  const payCount = get<{ count: number }>(`SELECT COUNT(*) as count FROM payments WHERE student_id = ?`, [studentId]);
+  if (payCount && payCount.count > 0) {
+    orphanTables.push('payments');
+  }
+  
+  return {
+    hasOrphans: orphanTables.length > 0,
+    orphanTables
+  };
+}
+
 // Search students
 export function searchStudents(query: string, includeInactive: boolean = false, limit?: number): Array<Student & { groups_count: number }> {
   const searchTerm = `%${query}%`;
   const limitClause = limit ? `LIMIT ${limit}` : '';
   const sql = includeInactive
-    ? `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count
+    ? `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count,
+        CASE WHEN COUNT(DISTINCT sg.id) > 0 THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students s
        LEFT JOIN student_groups sg ON s.id = sg.student_id AND sg.is_active = 1
        WHERE s.full_name LIKE ? OR s.phone LIKE ? OR s.parent_name LIKE ? OR s.parent_phone LIKE ?
        GROUP BY s.id
        ORDER BY s.full_name ${limitClause}`
-    : `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count
+    : `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count,
+        CASE WHEN COUNT(DISTINCT sg.id) > 0 THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students s
        LEFT JOIN student_groups sg ON s.id = sg.student_id AND sg.is_active = 1
        WHERE s.is_active = 1 AND (s.full_name LIKE ? OR s.phone LIKE ? OR s.parent_name LIKE ? OR s.parent_phone LIKE ?)
@@ -198,7 +374,9 @@ export function searchStudents(query: string, includeInactive: boolean = false, 
 // Quick search for autocomplete - returns basic student info
 export function quickSearchStudents(query: string, limit: number = 10): Student[] {
   const searchTerm = `%${query}%`;
-  const sql = `SELECT id, public_id, full_name, phone, parent_name, parent_phone, photo 
+  const sql = `SELECT students.*, 
+                CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = 1) > 0 
+                     THEN 'studying' ELSE 'not_studying' END as study_status
                FROM students 
                WHERE is_active = 1 AND (full_name LIKE ? OR phone LIKE ?)
                ORDER BY full_name
@@ -286,6 +464,8 @@ export function getStudentsWithDebt(month: string): StudentWithDebt[] {
   // and subtract payments made for that month
   const sql = `SELECT 
     s.id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
+    CASE WHEN (SELECT COUNT(*) FROM student_groups sg WHERE sg.student_id = s.id AND sg.is_active = 1) > 0 
+         THEN 'studying' ELSE 'not_studying' END as study_status,
     g.id as group_id, g.title as group_title, g.monthly_price,
     ? as month,
     COALESCE(SUM(p.amount), 0) as paid_amount,
@@ -324,4 +504,77 @@ export function getTotalDebtForMonth(month: string): { total_debt: number; stude
   );
   
   return result || { total_debt: 0, students_count: 0 };
+}
+
+// Get students with their groups for cards display
+export interface StudentGroupInfo {
+  id: number;
+  public_id: string;
+  title: string;
+  course_title: string;
+}
+
+export function getStudentsWithGroups(includeInactive: boolean = false): Array<Student & { groups: StudentGroupInfo[] }> {
+  // First get all students with study_status computed
+  const studentsSql = includeInactive
+    ? `SELECT students.*, 
+        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = 1) > 0 
+             THEN 'studying' ELSE 'not_studying' END as study_status
+       FROM students ORDER BY full_name`
+    : `SELECT students.*, 
+        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = 1) > 0 
+             THEN 'studying' ELSE 'not_studying' END as study_status
+       FROM students WHERE is_active = 1 ORDER BY full_name`;
+  
+  const students = all<Student>(studentsSql);
+  
+  // Then get groups for each student
+  const groupsSql = `
+    SELECT g.id, g.public_id, g.title, c.title as course_title
+    FROM student_groups sg
+    JOIN groups g ON sg.group_id = g.id
+    JOIN courses c ON g.course_id = c.id
+    WHERE sg.student_id = ? AND sg.is_active = 1 AND g.is_active = 1
+    ORDER BY g.title
+  `;
+  
+  return students.map(student => ({
+    ...student,
+    groups: all<StudentGroupInfo>(groupsSql, [student.id])
+  }));
+}
+
+// Search students with their groups
+export function searchStudentsWithGroups(query: string, includeInactive: boolean = false): Array<Student & { groups: StudentGroupInfo[] }> {
+  const searchTerm = `%${query}%`;
+  const studentsSql = includeInactive
+    ? `SELECT students.*, 
+        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = 1) > 0 
+             THEN 'studying' ELSE 'not_studying' END as study_status
+       FROM students
+       WHERE full_name LIKE ? OR phone LIKE ? OR parent_name LIKE ? OR parent_phone LIKE ?
+       ORDER BY full_name`
+    : `SELECT students.*, 
+        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = 1) > 0 
+             THEN 'studying' ELSE 'not_studying' END as study_status
+       FROM students
+       WHERE is_active = 1 AND (full_name LIKE ? OR phone LIKE ? OR parent_name LIKE ? OR parent_phone LIKE ?)
+       ORDER BY full_name`;
+  
+  const students = all<Student>(studentsSql, [searchTerm, searchTerm, searchTerm, searchTerm]);
+  
+  // Then get groups for each student
+  const groupsSql = `
+    SELECT g.id, g.public_id, g.title, c.title as course_title
+    FROM student_groups sg
+    JOIN groups g ON sg.group_id = g.id
+    JOIN courses c ON g.course_id = c.id
+    WHERE sg.student_id = ? AND sg.is_active = 1 AND g.is_active = 1
+    ORDER BY g.title
+  `;
+  
+  return students.map(student => ({
+    ...student,
+    groups: all<StudentGroupInfo>(groupsSql, [student.id])
+  }));
 }

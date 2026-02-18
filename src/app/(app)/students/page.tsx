@@ -13,6 +13,13 @@ interface User {
   role: 'admin' | 'teacher';
 }
 
+interface StudentGroup {
+  id: number;
+  public_id: string;
+  title: string;
+  course_title: string;
+}
+
 interface Student {
   id: number;
   public_id: string;
@@ -32,6 +39,8 @@ interface Student {
   source: string | null;
   groups_count: number;
   is_active: number;
+  study_status: 'studying' | 'not_studying';
+  groups?: StudentGroup[];
 }
 
 interface StudentFormData {
@@ -70,6 +79,19 @@ const RELATION_OPTIONS = [
   { value: 'grandfather', label: t('forms.relationGrandfather') },
   { value: 'other', label: t('forms.relationOther') },
 ];
+
+// Function to translate relation from English to Ukrainian
+function translateRelation(relation: string | null): string {
+  if (!relation) return '';
+  const relationMap: Record<string, string> = {
+    'mother': 'Мама',
+    'father': 'Тато',
+    'grandmother': 'Бабуся',
+    'grandfather': 'Дідусь',
+    'other': 'Інше',
+  };
+  return relationMap[relation.toLowerCase()] || relation;
+}
 
 const SOURCE_OPTIONS = [
   { value: 'social', label: t('forms.sourceSocial') },
@@ -163,6 +185,14 @@ export default function StudentsPage() {
   const dropdownButtonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [studentGroupsWarning, setStudentGroupsWarning] = useState<{id: number; title: string; course_title: string}[]>([]);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  
   // Autocomplete state
   const [nameSuggestions, setNameSuggestions] = useState<AutocompleteStudent[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -183,6 +213,26 @@ export default function StudentsPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [coursesDropdownOpen, setCoursesDropdownOpen] = useState(false);
 
+  // Note editing state
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  
+  // Note expansion state - track which notes are expanded
+  const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
+  
+  const toggleNoteExpand = (studentId: number) => {
+    setExpandedNotes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(studentId)) {
+        newSet.delete(studentId);
+      } else {
+        newSet.add(studentId);
+      }
+      return newSet;
+    });
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -194,7 +244,7 @@ export default function StudentsPage() {
         const authData = await authRes.json();
         setUser(authData.user);
 
-        const studentsRes = await fetch('/api/students?withGroupCount=true');
+        const studentsRes = await fetch('/api/students?withGroups=true');
         const studentsData = await studentsRes.json();
         setStudents(studentsData.students || []);
       } catch (error) {
@@ -210,11 +260,11 @@ export default function StudentsPage() {
   const handleSearch = async (query: string) => {
     setSearch(query);
     if (query.trim()) {
-      const res = await fetch(`/api/students?search=${encodeURIComponent(query)}&withGroupCount=true`);
+      const res = await fetch(`/api/students?search=${encodeURIComponent(query)}&withGroups=true`);
       const data = await res.json();
       setStudents(data.students || []);
     } else {
-      const res = await fetch('/api/students?withGroupCount=true');
+      const res = await fetch('/api/students?withGroups=true');
       const data = await res.json();
       setStudents(data.students || []);
     }
@@ -559,7 +609,7 @@ export default function StudentsPage() {
       }
       
       setShowModal(false);
-      const studentsRes = await fetch('/api/students?withGroupCount=true');
+      const studentsRes = await fetch('/api/students?withGroups=true');
       const data = await studentsRes.json();
       setStudents(data.students || []);
     } catch (error) {
@@ -568,6 +618,80 @@ export default function StudentsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Delete handlers
+  const handleDeleteClick = async (student: Student) => {
+    setStudentToDelete(student);
+    setDeletePassword('');
+    setDeleteError('');
+    setStudentGroupsWarning([]);
+    setOpenDropdownId(null);
+    
+    // First, check if student has active groups
+    try {
+      const res = await fetch(`/api/students/${student.id}?permanent=true`, {
+        method: 'DELETE',
+      });
+      
+      const data = await res.json();
+      
+      if (res.status === 409 && data.warning) {
+        // Student has groups - show warning
+        setStudentGroupsWarning(data.groups || []);
+      } else if (data.canDelete) {
+        // Student has no groups - clear warning
+        setStudentGroupsWarning([]);
+      }
+      
+      setShowDeleteModal(true);
+    } catch (error) {
+      console.error('Failed to check student groups:', error);
+      setShowDeleteModal(true);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!studentToDelete) return;
+    
+    setDeleting(true);
+    setDeleteError('');
+    
+    try {
+      const res = await fetch(`/api/students/${studentToDelete.id}?permanent=true&force=true`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: deletePassword })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        setShowDeleteModal(false);
+        setStudentToDelete(null);
+        // Refresh students list
+        const studentsRes = await fetch('/api/students?withGroups=true');
+        const studentsData = await studentsRes.json();
+        setStudents(studentsData.students || []);
+      } else if (res.status === 401) {
+        setDeleteError('Невірний пароль');
+      } else {
+        setDeleteError(data.error || 'Сталася помилка. Спробуйте ще раз.');
+      }
+    } catch (error) {
+      console.error('Failed to delete student:', error);
+      setDeleteError('Сталася помилка. Спробуйте ще раз.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setStudentToDelete(null);
+    setStudentGroupsWarning([]);
+    setDeletePassword('');
+    setDeleteError('');
   };
 
   const handlePhoneChange = (field: 'phone' | 'parent_phone', value: string) => {
@@ -598,6 +722,81 @@ export default function StudentsPage() {
     });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  // Note editing functions
+  const startEditingNote = (student: Student) => {
+    setEditingNoteId(student.id);
+    setNoteText(student.notes || '');
+  };
+
+  const cancelEditingNote = () => {
+    setEditingNoteId(null);
+    setNoteText('');
+  };
+
+  const saveNote = async (studentId: number) => {
+    setSavingNote(true);
+    try {
+      const res = await fetch(`/api/students/${studentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: noteText }),
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+        alert(`Помилка збереження нотатки: ${errorData.error || res.statusText}`);
+        setSavingNote(false);
+        return;
+      }
+      
+      // Update local state
+      setStudents(students.map(s => 
+        s.id === studentId ? { ...s, notes: noteText || null } : s
+      ));
+      
+      setEditingNoteId(null);
+      setNoteText('');
+    } catch (error) {
+      console.error('Failed to save note:', error);
+      alert('Помилка мережі. Спробуйте ще раз.');
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const clearNote = async (studentId: number) => {
+    if (!confirm('Очистити нотатку?')) return;
+    
+    setSavingNote(true);
+    try {
+      const res = await fetch(`/api/students/${studentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: '' }),
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+        alert(`Помилка очищення нотатки: ${errorData.error || res.statusText}`);
+        setSavingNote(false);
+        return;
+      }
+      
+      // Update local state
+      setStudents(students.map(s => 
+        s.id === studentId ? { ...s, notes: null } : s
+      ));
+      
+      setEditingNoteId(null);
+      setNoteText('');
+    } catch (error) {
+      console.error('Failed to clear note:', error);
+      alert('Помилка мережі. Спробуйте ще раз.');
+    } finally {
+      setSavingNote(false);
     }
   };
 
@@ -674,12 +873,20 @@ export default function StudentsPage() {
           {students.length > 0 ? (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-              gap: '1rem',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+              gap: '16px',
+              alignItems: 'start',
             }}>
               {students.map((student) => {
                 const age = calculateAge(student.birth_date);
                 const firstLetter = getFirstLetter(student.full_name);
+                
+                // Truncate notes for display
+                const MAX_NOTE_LENGTH = 80;
+                const isNoteTruncated = student.notes && student.notes.length > MAX_NOTE_LENGTH;
+                const displayNote = (isNoteTruncated && !expandedNotes.has(student.id)) 
+                  ? student.notes!.substring(0, MAX_NOTE_LENGTH) + '...' 
+                  : student.notes;
                 
                 return (
                   <div
@@ -691,276 +898,428 @@ export default function StudentsPage() {
                       padding: '1rem',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '0.75rem',
                       transition: 'all 0.2s ease',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                      width: '360px',
+                      minWidth: '360px',
+                      height: '260px',
+                      overflow: 'hidden',
+                      position: 'relative',
                     }}
                   >
-                    {/* Header: Avatar, Name, Age */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.875rem' }}>
-                      {/* Round Avatar */}
-                      <div
-                        style={{
-                          width: '56px',
-                          height: '56px',
-                          borderRadius: '50%',
-                          overflow: 'hidden',
-                          flexShrink: 0,
-                          backgroundColor: student.photo ? 'transparent' : '#e0e7ff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: '2px solid #e0e7ff',
-                        }}
-                      >
-                        {student.photo ? (
-                          <img
-                            src={student.photo.startsWith('data:') ? student.photo : student.photo}
-                            alt={student.full_name}
+                    {/* Status Badge - fixed top left */}
+                    <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', zIndex: 1 }}>
+                      <span className={`badge ${student.study_status === 'studying' ? 'badge-success' : 'badge-gray'}`}>
+                        {student.study_status === 'studying' ? t('status.studying') : t('status.notStudying')}
+                      </span>
+                    </div>
+                    <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', zIndex: 1 }}>
+                      {student.groups_count > 0 && (
+                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                          {student.groups_count} {student.groups_count === 1 ? 'grupa' : student.groups_count >= 2 && student.groups_count <= 4 ? 'grupi' : 'grup'}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Menu - Three dots button at top right */}
+                    {user.role === 'admin' && (
+                      <div style={{ position: 'absolute', top: '2.25rem', right: '0.75rem', zIndex: 1 }}>
+                        <button
+                          ref={openDropdownId === student.id ? dropdownButtonRef : undefined}
+                          className="btn btn-secondary btn-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(openDropdownId === student.id ? null : student.id);
+                          }}
+                          style={{
+                            padding: '0.5rem',
+                            borderRadius: '0.5rem',
+                            backgroundColor: openDropdownId === student.id ? '#f3f4f6' : 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="5" r="2" />
+                            <circle cx="12" cy="12" r="2" />
+                            <circle cx="12" cy="19" r="2" />
+                          </svg>
+                        </button>
+                        {openDropdownId === student.id && (
+                          <Portal anchorRef={dropdownButtonRef} menuRef={dropdownMenuRef} offsetY={6}>
+                            <div
+                              style={{
+                                backgroundColor: 'white',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '0.75rem',
+                                boxShadow: '0 10px 40px -10px rgba(0,0,0,0.15), 0 0 2px rgba(0,0,0,0.1)',
+                                minWidth: '180px',
+                                padding: '0.5rem',
+                                zIndex: 50,
+                                overflow: 'hidden',
+                                animation: 'dropdownFadeIn 0.15s ease-out',
+                              }}
+                            >
+                              <style>{`
+                                @keyframes dropdownFadeIn {
+                                  from { opacity: 0; transform: translateY(-8px); }
+                                  to { opacity: 1; transform: translateY(0); }
+                                }
+                              `}</style>
+                              <a
+                                href={`/students/${student.id}`}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.75rem',
+                                  padding: '0.625rem 0.75rem',
+                                  color: '#374151',
+                                  textDecoration: 'none',
+                                  fontSize: '0.875rem',
+                                  fontWeight: '500',
+                                  borderRadius: '0.5rem',
+                                  transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.color = '#1f2937'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151'; }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#6b7280' }}>
+                                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                                </svg>
+                                Переглянути
+                              </a>
+                              <button
+                                className="btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownId(null);
+                                  handleEdit(student);
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.75rem',
+                                  width: '100%',
+                                  padding: '0.625rem 0.75rem',
+                                  backgroundColor: 'transparent',
+                                  border: 'none',
+                                  borderRadius: '0.5rem',
+                                  color: '#374151',
+                                  fontSize: '0.875rem',
+                                  fontWeight: '500',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s',
+                                  textAlign: 'left',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.color = '#1f2937'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151'; }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#6b7280' }}>
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                                Редагувати
+                              </button>
+                              <button
+                                className="btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownId(null);
+                                  handleDeleteClick(student);
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.75rem',
+                                  width: '100%',
+                                  padding: '0.625rem 0.75rem',
+                                  backgroundColor: 'transparent',
+                                  border: 'none',
+                                  borderRadius: '0.5rem',
+                                  color: '#dc2626',
+                                  fontSize: '0.875rem',
+                                  fontWeight: '500',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s',
+                                  textAlign: 'left',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#dc2626' }}>
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                </svg>
+                                Видалити
+                              </button>
+                            </div>
+                          </Portal>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Main content - Two columns for balance - fixed position */}
+                    <div style={{ display: 'flex', gap: '1rem', position: 'absolute', top: '3.5rem', left: '1rem', right: '1rem', bottom: '3.5rem' }}>
+                      {/* Left Column - Avatar & Personal Info */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '80px', flexShrink: 0 }}>
+                        {/* Round Avatar with Discount Badge */}
+                        <div style={{ position: 'relative' }}>
+                          <div
                             style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
+                              width: '56px',
+                              height: '56px',
+                              borderRadius: '50%',
+                              overflow: 'hidden',
+                              flexShrink: 0,
+                              backgroundColor: student.photo ? 'transparent' : '#e0e7ff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              border: '2px solid #e0e7ff',
                             }}
-                          />
-                        ) : (
-                          <span style={{
-                            fontSize: '1.25rem',
-                            fontWeight: 600,
-                            color: '#4f46e5',
+                          >
+                            {student.photo ? (
+                              <img
+                                src={student.photo.startsWith('data:') ? student.photo : student.photo}
+                                alt={student.full_name}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                }}
+                              />
+                            ) : (
+                              <span style={{
+                                fontSize: '1.25rem',
+                                fontWeight: 600,
+                                color: '#4f46e5',
+                              }}>
+                                {firstLetter}
+                              </span>
+                            )}
+                          </div>
+                          {/* Discount Badge on Avatar Corner */}
+                          {student.discount && (
+                            <div 
+                              title={`Знижка на навчання: ${student.discount.replace(/[^0-9]/g, '')}%`}
+                              style={{
+                                position: 'absolute',
+                                top: '-8px',
+                                right: '-8px',
+                                backgroundColor: 'var(--warning)',
+                                color: 'white',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '9999px',
+                                fontSize: '0.6875rem',
+                                fontWeight: '700',
+                                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.125rem',
+                                zIndex: 1,
+                                border: '2px solid white',
+                                cursor: 'pointer',
+                              }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                              </svg>
+                              {student.discount.replace(/[^0-9]/g, '')}%
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Age */}
+                        {age !== null && (
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: '0.25rem 0.5rem',
+                            backgroundColor: '#dbeafe',
+                            borderRadius: '1rem',
+                            fontSize: '0.75rem',
                           }}>
-                            {firstLetter}
-                          </span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                              <line x1="16" y1="2" x2="16" y2="6"></line>
+                              <line x1="8" y1="2" x2="8" y2="6"></line>
+                              <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            <span style={{ fontWeight: 600, color: '#1d4ed8' }}>
+                              {age}
+                            </span>
+                          </div>
                         )}
                       </div>
                       
-                      {/* Name and Age */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                          <a
-                            href={`/students/${student.id}`}
-                            style={{
-                              fontWeight: 600,
-                              fontSize: '1rem',
-                              color: '#111827',
-                              textDecoration: 'none',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {student.full_name}
-                          </a>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#6b7280', backgroundColor: '#f3f4f6', padding: '0.125rem 0.375rem', borderRadius: '0.25rem' }}>
-                            {student.public_id}
-                          </span>
-                          {age !== null && (
-                            <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                              {age} {age === 1 ? 'рік' : age >= 2 && age <= 4 ? 'роки' : 'років'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Three dots menu */}
-                      {user.role === 'admin' && (
-                        <div style={{ position: 'relative' }}>
-                          <button
-                            ref={openDropdownId === student.id ? dropdownButtonRef : undefined}
-                            className="btn btn-secondary btn-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenDropdownId(openDropdownId === student.id ? null : student.id);
-                            }}
-                            style={{
-                              padding: '0.5rem',
-                              borderRadius: '0.5rem',
-                              backgroundColor: openDropdownId === student.id ? '#f3f4f6' : 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s',
-                            }}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                              <circle cx="12" cy="5" r="2" />
-                              <circle cx="12" cy="12" r="2" />
-                              <circle cx="12" cy="19" r="2" />
-                            </svg>
-                          </button>
-                          {openDropdownId === student.id && (
-                            <Portal anchorRef={dropdownButtonRef} menuRef={dropdownMenuRef} offsetY={6}>
-                              <div
-                                style={{
-                                  backgroundColor: 'white',
-                                  border: '1px solid #e5e7eb',
-                                  borderRadius: '0.75rem',
-                                  boxShadow: '0 10px 40px -10px rgba(0,0,0,0.15), 0 0 2px rgba(0,0,0,0.1)',
-                                  minWidth: '180px',
-                                  padding: '0.5rem',
-                                  zIndex: 50,
-                                  overflow: 'hidden',
-                                  animation: 'dropdownFadeIn 0.15s ease-out',
-                                }}
-                              >
-                                <style>{`
-                                  @keyframes dropdownFadeIn {
-                                    from { opacity: 0; transform: translateY(-8px); }
-                                    to { opacity: 1; transform: translateY(0); }
-                                  }
-                                `}</style>
-                                <a
-                                  href={`/students/${student.id}`}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    padding: '0.625rem 0.75rem',
-                                    color: '#374151',
-                                    textDecoration: 'none',
-                                    fontSize: '0.875rem',
-                                    fontWeight: '500',
-                                    borderRadius: '0.5rem',
-                                    transition: 'all 0.15s',
-                                  }}
-                                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.color = '#1f2937'; }}
-                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151'; }}
-                                >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#6b7280' }}>
-                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                                  </svg>
-                                  Переглянути
-                                </a>
-                                <button
-                                  className="btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenDropdownId(null);
-                                    handleEdit(student);
-                                  }}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    width: '100%',
-                                    padding: '0.625rem 0.75rem',
-                                    backgroundColor: 'transparent',
-                                    border: 'none',
-                                    borderRadius: '0.5rem',
-                                    color: '#374151',
-                                    fontSize: '0.875rem',
-                                    fontWeight: '500',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s',
-                                    textAlign: 'left',
-                                  }}
-                                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.color = '#1f2937'; }}
-                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151'; }}
-                                >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#6b7280' }}>
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                  </svg>
-                                  Редагувати
-                                </button>
-                              </div>
-                            </Portal>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Contact Info */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {/* Main Contact (phone) */}
-                      {student.phone && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                          </svg>
-                          <span
-                            onClick={() => copyPhone(student.phone, 'main')}
-                            style={{
-                              fontSize: '0.875rem',
-                              color: '#374151',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.375rem',
-                              transition: 'color 0.15s',
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = '#4f46e5'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = '#374151'; }}
-                          >
-                            {student.phone}
-                            {copiedPhone === `main-${student.phone}` ? (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            ) : (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                              </svg>
-                            )}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {/* Parent Contact */}
-                      {student.parent_phone && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      {/* Right Column - Details */}
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {/* Name and ID */}
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                            <a
+                              href={`/students/${student.id}`}
+                              style={{
+                                fontWeight: 600,
+                                fontSize: '1rem',
+                                color: '#111827',
+                                textDecoration: 'none',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {student.full_name}
+                            </a>
+                          </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                              <circle cx="12" cy="7" r="4" />
-                            </svg>
-                            <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                              {student.parent_name || 'Батьки'}
+                            <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#6b7280', backgroundColor: '#f3f4f6', padding: '0.125rem 0.375rem', borderRadius: '0.25rem' }}>
+                              {student.public_id}
                             </span>
                           </div>
-                          <span
-                            onClick={() => copyPhone(student.parent_phone, 'parent')}
-                            style={{
-                              fontSize: '0.875rem',
-                              color: '#374151',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.375rem',
-                              marginLeft: '1.375rem',
-                              transition: 'color 0.15s',
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = '#4f46e5'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = '#374151'; }}
-                          >
-                            {student.parent_phone}
-                            {copiedPhone === `parent-${student.parent_phone}` ? (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            ) : (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                              </svg>
-                            )}
-                          </span>
                         </div>
-                      )}
+                        
+                        {/* Contact Info */}
+                        {student.phone && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                              </svg>
+                              <span
+                                onClick={() => copyPhone(student.phone, 'main')}
+                                style={{
+                                  fontSize: '0.875rem',
+                                  color: '#374151',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.375rem',
+                                  transition: 'color 0.15s',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.color = '#4f46e5'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.color = '#374151'; }}
+                              >
+                                {student.phone}
+                                {copiedPhone === `main-${student.phone}` ? (
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                ) : (
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                  </svg>
+                                )}
+                              </span>
+                            </div>
+                            {(student.parent_name || student.parent_relation) && (
+                              <span style={{ fontSize: '0.75rem', color: '#6b7280', paddingLeft: '1.25rem' }}>
+                                {student.parent_name && student.parent_relation 
+                                  ? `${student.parent_name} (${translateRelation(student.parent_relation)})` 
+                                  : student.parent_name || translateRelation(student.parent_relation)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Groups list */}
+                        {student.groups && student.groups.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                              {student.groups.map((group) => (
+                                <a
+                                  key={group.id}
+                                  href={`/groups/${group.id}`}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem',
+                                    padding: '0.25rem 0.5rem',
+                                    backgroundColor: '#f0fdf4',
+                                    border: '1px solid #86efac',
+                                    borderRadius: '0.5rem',
+                                    textDecoration: 'none',
+                                    fontSize: '0.75rem',
+                                    color: '#166534',
+                                    fontWeight: 500,
+                                    transition: 'all 0.15s',
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#dcfce7'; e.currentTarget.style.borderColor = '#4ade80'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f0fdf4'; e.currentTarget.style.borderColor = '#86efac'; }}
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                    <circle cx="9" cy="7" r="4" />
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                  </svg>
+                                  {group.title}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                      </div>
                     </div>
                     
-                    {/* Note */}
-                    {student.notes && (
-                      <div style={{
-                        padding: '0.5rem 0.625rem',
-                        backgroundColor: '#fefce8',
-                        borderRadius: '0.375rem',
-                        border: '1px solid #fef08a',
-                        overflow: 'hidden',
-                      }}>
+                    {/* Note - fixed bottom */}
+                    <div style={{ position: 'absolute', bottom: '0.75rem', left: '0.75rem', right: '0.75rem' }}>
+                      {editingNoteId === student.id ? (
+                        <div
+                          style={{
+                            padding: '0.5rem 0.625rem',
+                            backgroundColor: '#fefce8',
+                            borderRadius: '0.375rem',
+                            border: '1px solid #fef08a',
+                          }}
+                        >
+                          <textarea
+                            value={noteText}
+                            onChange={(e) => setNoteText(e.target.value)}
+                            placeholder="Додати нотатку..."
+                            style={{
+                              width: '100%',
+                              minHeight: '60px',
+                              padding: '0.375rem',
+                              fontSize: '0.8125rem',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '0.25rem',
+                              resize: 'vertical',
+                              fontFamily: 'inherit',
+                            }}
+                            autoFocus
+                          />
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => saveNote(student.id)}
+                              disabled={savingNote}
+                              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                            >
+                              {savingNote ? '...' : 'Зберегти'}
+                            </button>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={cancelEditingNote}
+                              disabled={savingNote}
+                              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                            >
+                              Скасувати
+                            </button>
+                          </div>
+                        </div>
+                      ) : student.notes ? (
+                        <div style={{
+                          padding: '0.5rem 0.625rem',
+                          backgroundColor: '#fefce8',
+                          borderRadius: '0.375rem',
+                          border: '1px solid #fef08a',
+                        }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.375rem', wordBreak: 'break-word' }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a16207" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '0.125rem' }}>
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -969,23 +1328,93 @@ export default function StudentsPage() {
                             <line x1="16" y1="17" x2="8" y2="17" />
                             <polyline points="10 9 9 9 8 9" />
                           </svg>
-                          <span style={{ fontSize: '0.8125rem', color: '#a16207', lineHeight: 1.4, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                            {student.notes}
+                          <span 
+                            style={{ fontSize: '0.8125rem', color: '#a16207', lineHeight: 1.4, wordBreak: 'break-word', overflowWrap: 'break-word', flex: 1, display: expandedNotes.has(student.id) ? 'block' : '-webkit-box', WebkitLineClamp: expandedNotes.has(student.id) ? 999 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                            title={isNoteTruncated ? student.notes : undefined}
+                          >
+                            {displayNote}
+                            {isNoteTruncated && (
+                              <span 
+                                style={{ color: '#b45309', fontWeight: 500, cursor: 'pointer' }}
+                                onClick={() => toggleNoteExpand(student.id)}
+                              >
+                                {expandedNotes.has(student.id) ? ' Згорнути' : ' Читати далі'}
+                              </span>
+                            )}
                           </span>
+                          {user.role === 'admin' && (
+                            <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
+                              <button
+                                onClick={() => startEditingNote(student)}
+                                style={{
+                                  padding: '0.125rem',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: '#a16207',
+                                  opacity: 0.6,
+                                }}
+                                title="Редагувати нотатку"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => clearNote(student.id)}
+                                style={{
+                                  padding: '0.125rem',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: '#a16207',
+                                  opacity: 0.6,
+                                }}
+                                title="Очистити нотатку"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18" />
+                                  <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    )}
-                    
-                    {/* Status Badge */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span className={`badge ${student.is_active ? 'badge-success' : 'badge-gray'}`}>
-                        {student.is_active ? t('status.active') : t('status.archived')}
-                      </span>
-                      {student.groups_count > 0 && (
-                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                          {student.groups_count} {student.groups_count === 1 ? 'група' : student.groups_count >= 2 && student.groups_count <= 4 ? 'групи' : 'груп'}
-                        </span>
-                      )}
+                    ) : user.role === 'admin' ? (
+                      <button
+                        onClick={() => startEditingNote(student)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.375rem',
+                          padding: '0.25rem 0.5rem',
+                          backgroundColor: '#f9fafb',
+                          border: '1px dashed #d1d5db',
+                          borderRadius: '0.375rem',
+                          color: '#6b7280',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          width: '100%',
+                          height: '32px',
+                          position: 'absolute',
+                          bottom: '0.75rem',
+                          left: '0.75rem',
+                          right: '0.75rem',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.borderColor = '#9ca3af'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb'; e.currentTarget.style.borderColor = '#d1d5db'; }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="5" x2="12" y2="19" />
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Додати нотатку
+                      </button>
+                    ) : null}
                     </div>
                   </div>
                 );
@@ -1593,6 +2022,98 @@ export default function StudentsPage() {
                 disabled={saving}
               >
                 {saving ? t('common.saving') : t('actions.save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && studentToDelete && (
+        <div className="modal-overlay" onClick={handleDeleteCancel}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Підтвердження видалення</h3>
+              <button className="modal-close" onClick={handleDeleteCancel} disabled={deleting}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: '0 0 1rem 0' }}>
+                Ви збираєтеся остаточно видалити учня <strong>{studentToDelete.full_name}</strong>.
+              </p>
+              
+              {/* Warning about groups */}
+              {studentGroupsWarning.length > 0 && (
+                <div style={{
+                  backgroundColor: '#fef3c7',
+                  border: '1px solid #f59e0b',
+                  borderRadius: '0.5rem',
+                  padding: '1rem',
+                  marginBottom: '1rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#92400e', fontWeight: 600 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    Учень бере участь у групах
+                  </div>
+                  <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#92400e' }}>
+                    При видаленні учень буде автоматично вилучений з наступних груп:
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem', color: '#92400e' }}>
+                    {studentGroupsWarning.map(group => (
+                      <li key={group.id}>
+                        <strong>{group.title}</strong> ({group.course_title})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+                Ця дія незворотня. Всі дані про учня, включаючи відвідування та платежі, будуть видалені.
+              </p>
+              
+              <p style={{ margin: '0 0 1rem 0' }}>
+                Щоб підтвердити видалення, введіть пароль адміністратора.
+              </p>
+              
+              <div className="form-group">
+                <input
+                  type="password"
+                  className="form-input"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Введіть пароль"
+                  disabled={deleting}
+                  autoFocus
+                />
+              </div>
+              
+              {deleteError && (
+                <div style={{
+                  backgroundColor: '#fee2e2',
+                  border: '1px solid #ef4444',
+                  borderRadius: '0.5rem',
+                  padding: '0.75rem',
+                  color: '#dc2626',
+                  fontSize: '0.875rem'
+                }}>
+                  {deleteError}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={handleDeleteCancel} disabled={deleting}>
+                Скасувати
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={handleDeleteConfirm}
+                disabled={deleting || !deletePassword.trim()}
+              >
+                {deleting ? 'Видалення...' : 'Видалити остаточно'}
               </button>
             </div>
           </div>

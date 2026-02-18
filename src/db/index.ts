@@ -36,7 +36,7 @@ let isInitialized = false;
 let initPromise: Promise<void> | null = null;
 
 // Get or create database connection
-function getDb(): Database.Database {
+export function getDb(): Database.Database {
   if (!db) {
     db = new Database(DB_PATH);
     db.pragma('foreign_keys = ON');

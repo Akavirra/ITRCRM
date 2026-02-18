@@ -1,4 +1,5 @@
 import { run, get, all } from '@/db';
+import { StudyStatus } from './students';
 
 export type PaymentMethod = 'cash' | 'account';
 

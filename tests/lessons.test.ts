@@ -35,7 +35,7 @@ describe('Lesson Generation', () => {
     mockAll.mockReturnValue([]);
 
     // Mock insert
-    mockRun.mockReturnValue({ lastInsertRowid: 1 });
+    mockRun.mockReturnValue({ lastInsertRowid: 1, changes: 1 });
 
     const result = generateLessonsForGroup(1, 8, 1);
 

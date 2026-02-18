@@ -31,6 +31,7 @@ interface Student {
   interested_courses: string | null;
   source: string | null;
   is_active: number;
+  study_status: 'studying' | 'not_studying';
   created_at: string;
   updated_at: string;
 }
@@ -184,6 +185,11 @@ export default function StudentProfilePage() {
   // Courses for autocomplete
   const [courses, setCourses] = useState<Course[]>([]);
   const [coursesDropdownOpen, setCoursesDropdownOpen] = useState(false);
+  
+  // Quick notes editing
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [editedNotes, setEditedNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -226,6 +232,16 @@ export default function StudentProfilePage() {
 
     fetchData();
   }, [studentId, router]);
+
+  // Auto-hide toast after 2 seconds
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const getRelationLabel = (relation: string | null): string => {
     if (!relation) return '';
@@ -401,6 +417,76 @@ export default function StudentProfilePage() {
   const handlePhoneChange = (field: 'phone' | 'parent_phone', value: string) => {
     const formatted = formatPhoneNumber(value);
     setFormData({ ...formData, [field]: formatted });
+  };
+
+  // Quick notes editing functions
+  const startEditNotes = () => {
+    if (!student) return;
+    setEditedNotes(student.notes || '');
+    setIsEditingNotes(true);
+  };
+
+  const cancelEditNotes = () => {
+    setIsEditingNotes(false);
+    setEditedNotes('');
+  };
+
+  const saveNotes = async () => {
+    if (!student) return;
+    
+    setSavingNotes(true);
+    try {
+      const response = await fetch(`/api/students/${student.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: editedNotes }),
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        setToast({ message: data.error || 'Не вдалося зберегти нотатки', type: 'error' });
+        return;
+      }
+      
+      // Update local state
+      setStudent({ ...student, notes: editedNotes || null });
+      setIsEditingNotes(false);
+      setToast({ message: 'Нотатки збережено', type: 'success' });
+    } catch (error) {
+      console.error('Failed to save notes:', error);
+      setToast({ message: 'Не вдалося зберегти нотатки', type: 'error' });
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const clearNotes = async () => {
+    if (!student) return;
+    
+    setSavingNotes(true);
+    try {
+      const response = await fetch(`/api/students/${student.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: '' }),
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        setToast({ message: data.error || 'Не вдалося очистити нотатки', type: 'error' });
+        return;
+      }
+      
+      // Update local state
+      setStudent({ ...student, notes: null });
+      setIsEditingNotes(false);
+      setToast({ message: 'Нотатки очищено', type: 'success' });
+    } catch (error) {
+      console.error('Failed to clear notes:', error);
+      setToast({ message: 'Не вдалося очистити нотатки', type: 'error' });
+    } finally {
+      setSavingNotes(false);
+    }
   };
 
   // Show loading state
@@ -657,14 +743,34 @@ export default function StudentProfilePage() {
                   <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
                     Знижка
                   </label>
-                  <input
-                    type="text"
-                    value={formData.discount}
-                    onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
-                    className="form-input"
-                    style={{ width: '100%' }}
-                    placeholder="Наприклад: 10%"
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type="number"
+                      value={formData.discount.replace(/[^0-9]/g, '')}
+                      onChange={(e) => setFormData({ ...formData, discount: e.target.value.replace(/[^0-9]/g, '') })}
+                      className="form-input"
+                      style={{ 
+                        width: '100%',
+                        borderRadius: '0.375rem 0 0 0.375rem',
+                        borderRight: 'none'
+                      }}
+                      placeholder="10"
+                      min="0"
+                      max="100"
+                    />
+                    <span style={{ 
+                      padding: '0.5rem 0.75rem', 
+                      backgroundColor: 'var(--gray-100)', 
+                      border: '1px solid var(--gray-300)',
+                      borderLeft: 'none',
+                      borderRadius: '0 0.375rem 0.375rem 0',
+                      color: 'var(--gray-700)',
+                      fontSize: '0.875rem',
+                      fontWeight: '500'
+                    }}>
+                      %
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1077,15 +1183,22 @@ export default function StudentProfilePage() {
         justifyContent: 'space-between', 
         alignItems: 'center', 
         flexWrap: 'wrap', 
-        gap: '1rem',
-        marginBottom: '2rem'
+        gap: '1.5rem',
+        marginBottom: '3rem'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem', color: 'var(--gray-500)', padding: '0.25rem 0.5rem', backgroundColor: 'var(--gray-100)', borderRadius: '0.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <span style={{ 
+            fontFamily: 'monospace', 
+            fontSize: '0.875rem', 
+            color: 'var(--gray-500)', 
+            padding: '0.375rem 0.75rem', 
+            backgroundColor: 'var(--gray-100)', 
+            borderRadius: '0.5rem' 
+          }}>
             {student.public_id}
           </span>
-          <span className={`badge ${student.is_active ? 'badge-success' : 'badge-gray'}`}>
-            {student.is_active ? 'Активний' : 'Неактивний'}
+          <span className={`badge ${student.study_status === 'studying' ? 'badge-success' : 'badge-gray'}`}>
+            {student.study_status === 'studying' ? 'Навчається' : 'Не навчається'}
           </span>
         </div>
         
@@ -1093,8 +1206,15 @@ export default function StudentProfilePage() {
           <button
             onClick={startEdit}
             className="btn btn-primary"
+            style={{
+              padding: '0.75rem 1.5rem',
+              fontSize: '1rem',
+              borderRadius: '0.5rem',
+              boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
+              transition: 'all 0.2s ease',
+            }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '0.5rem' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '0.5rem' }}>
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
             </svg>
@@ -1107,30 +1227,38 @@ export default function StudentProfilePage() {
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: '1fr',
-        gap: '2rem',
-        marginBottom: '2rem'
+        gap: '3rem',
+        marginBottom: '3rem'
       }}>
         {/* Desktop: Side by side */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: '320px 1fr', 
-          gap: '1.5rem',
+          gridTemplateColumns: '350px 1fr', 
+          gap: '2.5rem',
           alignItems: 'start'
         }}>
           {/* Left Column: Photo and Quick Info */}
           <div style={{ position: 'sticky', top: '1rem' }}>
-            <div className="card" style={{ padding: '0', overflow: 'hidden', borderRadius: '0.75rem' }}>
+            <div className="card" style={{ 
+              padding: '2rem', 
+              overflow: 'hidden', 
+              borderRadius: '1.25rem',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+            }}>
               {/* Photo with Discount Badge */}
-              <div style={{ position: 'relative', margin: '1.5rem' }}>
+              <div style={{ position: 'relative', marginBottom: '2rem' }}>
                 <div style={{
                   aspectRatio: '1',
-                  backgroundColor: '#e0e7ff',
+                  backgroundColor: '#f3f4f6',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: '50%',
                   overflow: 'hidden',
                   width: '100%',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                  border: '3px solid white',
                 }}>
                   {student.photo ? (
                     <img
@@ -1145,8 +1273,8 @@ export default function StudentProfilePage() {
                   ) : (
                     <span style={{
                       fontSize: '5rem',
-                      fontWeight: 600,
-                      color: '#4f46e5',
+                      fontWeight: 700,
+                      color: '#6b7280',
                     }}>
                       {firstLetter}
                     </span>
@@ -1155,85 +1283,158 @@ export default function StudentProfilePage() {
                 
                 {/* Discount Badge on Avatar Corner */}
                 {student.discount && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '-4px',
-                    right: '-4px',
-                    backgroundColor: '#f59e0b',
-                    color: 'white',
-                    padding: '0.375rem 0.625rem',
-                    borderRadius: '1rem',
-                    fontSize: '0.875rem',
-                    fontWeight: '700',
-                    boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.125rem',
-                    zIndex: 1,
-                  }}>
+                  <div 
+                    title={`Знижка на навчання: ${student.discount.replace(/[^0-9]/g, '')}%`}
+                    style={{
+                      position: 'absolute',
+                      top: '-12px',
+                      right: '-12px',
+                      backgroundColor: 'var(--warning)',
+                      color: 'white',
+                      padding: '0.625rem 0.875rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.875rem',
+                      fontWeight: '700',
+                      boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.375rem',
+                      zIndex: 1,
+                      border: '3px solid white',
+                      transform: 'scale(1)',
+                      transition: 'transform 0.2s ease',
+                      cursor: 'pointer',
+                    }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
                       <line x1="7" y1="7" x2="7.01" y2="7"></line>
                     </svg>
-                    {student.discount}{!student.discount.includes('%') && '%'}
+                    {student.discount.replace(/[^0-9]/g, '')}%
                   </div>
                 )}
               </div>
               
               {/* Quick Info */}
-              <div style={{ padding: '0 1.5rem 1.5rem 1.5rem' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: '700', margin: '0 0 0.5rem 0', letterSpacing: '-0.025em', color: 'var(--gray-900)' }}>
+              <div style={{ textAlign: 'center' }}>
+                <h1 style={{ 
+                  fontSize: '2.25rem', 
+                  fontWeight: '700', 
+                  margin: '0 0 0.75rem 0', 
+                  letterSpacing: '-0.025em', 
+                  color: 'var(--gray-900)' 
+                }}>
                   {student.full_name}
                 </h1>
                 
                 {age !== null && (
                   <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    gap: '0.75rem',
                     color: 'var(--primary)', 
-                    fontSize: '1.75rem', 
+                    fontSize: '2rem', 
                     fontWeight: '700',
-                    marginBottom: '1.25rem',
+                    marginBottom: '2rem',
                     letterSpacing: '-0.025em',
                   }}>
+                    <div style={{ 
+                      padding: '0.5rem', 
+                      backgroundColor: 'var(--primary-light)', 
+                      borderRadius: '0.5rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                    }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                        <circle cx="12" cy="15" r="2"></circle>
+                      </svg>
+                    </div>
                     {age} {age === 1 ? 'рік' : age >= 2 && age <= 4 ? 'роки' : 'років'}
                   </div>
                 )}
 
                 {/* Contacts */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                   {/* Основний контакт */}
                   {student.phone && (
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.625rem 0.75rem',
+                        gap: '0.75rem',
+                        padding: '0.75rem 1rem',
                         backgroundColor: '#ecfdf5',
-                        borderRadius: '0.5rem',
+                        borderRadius: '0.625rem',
                         border: '1px solid #a7f3d0',
+                        transition: 'background-color 0.2s ease',
                       }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ecfdf5'}
                     >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2">
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                      </svg>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.6875rem', color: '#059669', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Основний контакт</div>
+                      <div style={{ 
+                        padding: '0.375rem', 
+                        backgroundColor: '#d1fae5', 
+                        borderRadius: '0.375rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                        </svg>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.6875rem', color: '#059669', fontWeight: '600', marginBottom: '0.125rem' }}>Основний контакт</div>
                         {student.parent_name && (
-                          <div style={{ fontSize: '0.8125rem', color: 'var(--gray-600)', marginBottom: '0.125rem' }}>
-                            {student.parent_name} {student.parent_relation && `(${getRelationLabel(student.parent_relation)})`}
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--gray-700)', marginBottom: '0.25rem' }}>
+                            {student.parent_name} {student.parent_relation && <span style={{ color: 'var(--gray-500)' }}>({getRelationLabel(student.parent_relation)})</span>}
                           </div>
                         )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                         <a
                           href={`tel:${student.phone}`}
                           style={{
                             color: 'var(--gray-900)',
                             textDecoration: 'none',
                             fontSize: '0.9375rem',
-                            fontWeight: '500',
+                            fontWeight: '600',
                           }}
                         >
                           {formatPhone(student.phone)}
                         </a>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(student.phone || '');
+                            setToast({ message: 'Номер скопійовано', type: 'success' });
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '0.25rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: 0.4,
+                            transition: 'opacity 0.15s ease',
+                            borderRadius: '0.25rem',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.4'}
+                          title="Копіювати номер"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -1244,33 +1445,73 @@ export default function StudentProfilePage() {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.625rem 0.75rem',
+                        gap: '0.75rem',
+                        padding: '0.75rem 1rem',
                         backgroundColor: '#eff6ff',
-                        borderRadius: '0.5rem',
+                        borderRadius: '0.625rem',
                         border: '1px solid #bfdbfe',
+                        transition: 'background-color 0.2s ease',
                       }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
                     >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.6875rem', color: '#2563eb', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Додатковий контакт</div>
-                        <div style={{ fontSize: '0.8125rem', color: 'var(--gray-600)', marginBottom: '0.125rem' }}>
-                          {student.parent2_name || 'Батьки'} {student.parent2_relation && `(${getRelationLabel(student.parent2_relation)})`}
+                      <div style={{ 
+                        padding: '0.375rem', 
+                        backgroundColor: '#dbeafe', 
+                        borderRadius: '0.375rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                        </svg>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.6875rem', color: '#2563eb', fontWeight: '600', marginBottom: '0.125rem' }}>Додатковий контакт</div>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--gray-700)', marginBottom: '0.25rem' }}>
+                          {student.parent2_name || 'Батьки'} {student.parent2_relation && <span style={{ color: 'var(--gray-500)' }}>({getRelationLabel(student.parent2_relation)})</span>}
                         </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                         <a
                           href={`tel:${student.parent_phone}`}
                           style={{
                             color: 'var(--gray-900)',
                             textDecoration: 'none',
                             fontSize: '0.9375rem',
-                            fontWeight: '500',
+                            fontWeight: '600',
                           }}
                         >
                           {formatPhone(student.parent_phone)}
                         </a>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(student.parent_phone || '');
+                            setToast({ message: 'Номер скопійовано', type: 'success' });
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '0.25rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: 0.4,
+                            transition: 'opacity 0.15s ease',
+                            borderRadius: '0.25rem',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.4'}
+                          title="Копіювати номер"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -1282,27 +1523,63 @@ export default function StudentProfilePage() {
           {/* Right Column: Content */}
           <div>
             {/* Basic Info Card */}
-            <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
-              <h2 style={{ fontSize: '1rem', fontWeight: '600', margin: '0 0 1rem 0', color: 'var(--gray-700)' }}>
+            <div className="card" style={{ 
+              marginBottom: '2rem', 
+              padding: '2rem', 
+              borderRadius: '1rem',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+            }}>
+              <h2 style={{ 
+                fontSize: '1.125rem', 
+                fontWeight: '600', 
+                margin: '0 0 1.5rem 0', 
+                color: 'var(--gray-800)',
+                letterSpacing: '-0.025em'
+              }}>
                 Основна інформація
               </h2>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.25rem' }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
+                gap: '1.5rem' 
+              }}>
                 {student.birth_date && (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                    <div style={{ padding: '0.5rem', backgroundColor: '#fef3c7', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2">
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'flex-start', 
+                    gap: '1rem',
+                    padding: '1rem',
+                    backgroundColor: '#fafafa',
+                    borderRadius: '0.75rem',
+                    transition: 'background-color 0.2s ease',
+                  }}>
+                    <div style={{ 
+                      padding: '0.75rem', 
+                      backgroundColor: '#fef3c7', 
+                      borderRadius: '0.5rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                         <line x1="16" y1="2" x2="16" y2="6"></line>
                         <line x1="8" y1="2" x2="8" y2="6"></line>
                         <line x1="3" y1="10" x2="21" y2="10"></line>
                       </svg>
                     </div>
-                    <div>
-                      <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        color: 'var(--gray-500)', 
+                        fontSize: '0.875rem', 
+                        marginBottom: '0.375rem', 
+                        fontWeight: '500' 
+                      }}>
                         Дата народження
                       </div>
-                      <div style={{ fontSize: '0.9375rem', color: 'var(--gray-900)' }}>
+                      <div style={{ fontSize: '1rem', color: 'var(--gray-900)' }}>
                         {new Date(student.birth_date).toLocaleDateString('uk-UA')}
                       </div>
                     </div>
@@ -1310,18 +1587,39 @@ export default function StudentProfilePage() {
                 )}
                 
                 {student.school && (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                    <div style={{ padding: '0.5rem', backgroundColor: '#dbeafe', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'flex-start', 
+                    gap: '1rem',
+                    padding: '1rem',
+                    backgroundColor: '#fafafa',
+                    borderRadius: '0.75rem',
+                    transition: 'background-color 0.2s ease',
+                  }}>
+                    <div style={{ 
+                      padding: '0.75rem', 
+                      backgroundColor: '#dbeafe', 
+                      borderRadius: '0.5rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                         <polyline points="9 22 9 12 15 12 15 22"></polyline>
                       </svg>
                     </div>
-                    <div>
-                      <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        color: 'var(--gray-500)', 
+                        fontSize: '0.875rem', 
+                        marginBottom: '0.375rem', 
+                        fontWeight: '500' 
+                      }}>
                         Школа
                       </div>
-                      <div style={{ fontSize: '0.9375rem', color: 'var(--gray-900)' }}>
+                      <div style={{ fontSize: '1rem', color: 'var(--gray-900)' }}>
                         {student.school}
                       </div>
                     </div>
@@ -1329,30 +1627,60 @@ export default function StudentProfilePage() {
                 )}
                 
                 {student.interested_courses && (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                    <div style={{ padding: '0.5rem', backgroundColor: '#fce7f3', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#db2777" strokeWidth="2">
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'flex-start', 
+                    gap: '1rem',
+                    padding: '1rem',
+                    backgroundColor: '#fafafa',
+                    borderRadius: '0.75rem',
+                    transition: 'background-color 0.2s ease',
+                  }}>
+                    <div style={{ 
+                      padding: '0.75rem', 
+                      backgroundColor: '#fce7f3', 
+                      borderRadius: '0.5rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#db2777" strokeWidth="2">
                         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                       </svg>
                     </div>
-                    <div>
-                      <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        color: 'var(--gray-500)', 
+                        fontSize: '0.875rem', 
+                        marginBottom: '0.375rem', 
+                        fontWeight: '500' 
+                      }}>
                         Цікаві курси
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                         {student.interested_courses.split(',').map((course, idx) => (
                           <span
                             key={idx}
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              padding: '0.25rem 0.5rem',
+                              padding: '0.375rem 0.75rem',
                               backgroundColor: 'var(--primary-light)',
                               color: 'var(--primary)',
-                              borderRadius: '0.25rem',
-                              fontSize: '0.75rem',
+                              borderRadius: '0.5rem',
+                              fontSize: '0.8125rem',
                               fontWeight: '500',
+                              transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'var(--primary)';
+                              e.currentTarget.style.color = 'white';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'var(--primary-light)';
+                              e.currentTarget.style.color = 'var(--primary)';
                             }}
                           >
                             {course.trim()}
@@ -1364,20 +1692,123 @@ export default function StudentProfilePage() {
                 )}
                 
                 {student.source && (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                    <div style={{ padding: '0.5rem', backgroundColor: '#e0e7ff', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2">
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'flex-start', 
+                    gap: '1rem',
+                    padding: '1rem',
+                    backgroundColor: '#fafafa',
+                    borderRadius: '0.75rem',
+                    transition: 'background-color 0.2s ease',
+                  }}>
+                    <div style={{ 
+                      padding: '0.75rem', 
+                      backgroundColor: '#e0e7ff', 
+                      borderRadius: '0.5rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2">
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="2" y1="12" x2="22" y2="12"></line>
                         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
                       </svg>
                     </div>
-                    <div>
-                      <div style={{ color: 'var(--gray-500)', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: '500' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        color: 'var(--gray-500)', 
+                        fontSize: '0.875rem', 
+                        marginBottom: '0.375rem', 
+                        fontWeight: '500' 
+                      }}>
                         Джерело
                       </div>
-                      <div style={{ fontSize: '0.9375rem', color: 'var(--gray-900)' }}>
+                      <div style={{ fontSize: '1rem', color: 'var(--gray-900)' }}>
                         {getSourceLabel(student.source)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Created Date */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'flex-start', 
+                  gap: '1rem',
+                  padding: '1rem',
+                  backgroundColor: '#fafafa',
+                  borderRadius: '0.75rem',
+                  transition: 'background-color 0.2s ease',
+                }}>
+                  <div style={{ 
+                    padding: '0.75rem', 
+                    backgroundColor: '#d1fae5', 
+                    borderRadius: '0.5rem', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ 
+                      color: 'var(--gray-500)', 
+                      fontSize: '0.875rem', 
+                      marginBottom: '0.375rem', 
+                      fontWeight: '500' 
+                    }}>
+                      Створено
+                    </div>
+                    <div style={{ fontSize: '1rem', color: 'var(--gray-900)' }}>
+                      {new Date(student.created_at).toLocaleString('uk-UA')}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Updated Date (if different from created) */}
+                {student.updated_at && student.updated_at !== student.created_at && (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'flex-start', 
+                    gap: '1rem',
+                    padding: '1rem',
+                    backgroundColor: '#fafafa',
+                    borderRadius: '0.75rem',
+                    transition: 'background-color 0.2s ease',
+                  }}>
+                    <div style={{ 
+                      padding: '0.75rem', 
+                      backgroundColor: '#fef3c7', 
+                      borderRadius: '0.5rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        color: 'var(--gray-500)', 
+                        fontSize: '0.875rem', 
+                        marginBottom: '0.375rem', 
+                        fontWeight: '500' 
+                      }}>
+                        Оновлено
+                      </div>
+                      <div style={{ fontSize: '1rem', color: 'var(--gray-900)' }}>
+                        {new Date(student.updated_at).toLocaleString('uk-UA')}
                       </div>
                     </div>
                   </div>
@@ -1387,28 +1818,39 @@ export default function StudentProfilePage() {
 
             {/* Groups Card */}
             {groups.length > 0 && (
-              <div className="card" style={{ marginBottom: '1.5rem', overflow: 'hidden' }}>
+              <div className="card" style={{ 
+                marginBottom: '2rem', 
+                overflow: 'hidden',
+                borderRadius: '1rem',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+              }}>
                 <div style={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
                   alignItems: 'center',
-                  padding: '1rem 1.5rem',
+                  padding: '1.5rem 2rem',
                   borderBottom: '1px solid var(--gray-200)'
                 }}>
-                  <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0 }}>
+                  <h2 style={{ 
+                    fontSize: '1.125rem', 
+                    fontWeight: '600', 
+                    margin: 0,
+                    color: 'var(--gray-800)',
+                    letterSpacing: '-0.025em'
+                  }}>
                     Групи учня
                   </h2>
                   <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    minWidth: '24px',
-                    height: '24px',
-                    padding: '0 0.5rem',
+                    minWidth: '28px',
+                    height: '28px',
+                    padding: '0 0.625rem',
                     backgroundColor: 'var(--primary)',
                     color: 'white',
-                    borderRadius: '12px',
-                    fontSize: '0.75rem',
+                    borderRadius: '14px',
+                    fontSize: '0.8125rem',
                     fontWeight: '600',
                   }}>
                     {groups.length}
@@ -1424,28 +1866,33 @@ export default function StudentProfilePage() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '1rem 1.5rem',
+                        padding: '1.25rem 2rem',
                         borderBottom: '1px solid var(--gray-100)',
                         textDecoration: 'none',
-                        transition: 'background-color 0.15s',
+                        transition: 'all 0.2s ease',
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--gray-50)'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       <div>
-                        <div style={{ fontSize: '0.9375rem', fontWeight: '600', color: 'var(--gray-900)', marginBottom: '0.25rem' }}>
+                        <div style={{ 
+                          fontSize: '1rem', 
+                          fontWeight: '600', 
+                          color: 'var(--gray-900)', 
+                          marginBottom: '0.375rem' 
+                        }}>
                           {group.title}
                         </div>
-                        <div style={{ fontSize: '0.8125rem', color: 'var(--gray-500)' }}>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
                           {group.course_title}
                           {group.teacher_name && ` • ${group.teacher_name}`}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <span className={`badge ${group.status === 'active' ? 'badge-success' : group.status === 'graduate' ? 'badge-info' : 'badge-gray'}`}>
                           {STATUS_LABELS[group.status] || group.status}
                         </span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" strokeWidth="2">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" strokeWidth="2">
                           <polyline points="9 18 15 12 9 6" />
                         </svg>
                       </div>
@@ -1456,33 +1903,183 @@ export default function StudentProfilePage() {
             )}
 
             {/* Notes Card */}
-            {student.notes && (
-              <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
-                <h2 style={{ fontSize: '1rem', fontWeight: '600', margin: '0 0 1rem 0', color: 'var(--gray-700)' }}>
+            <div className="card" style={{ 
+              marginBottom: '2rem', 
+              padding: '2rem',
+              borderRadius: '1rem',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '1.5rem'
+              }}>
+                <h2 style={{ 
+                  fontSize: '1.125rem', 
+                  fontWeight: '600', 
+                  margin: 0, 
+                  color: 'var(--gray-800)',
+                  letterSpacing: '-0.025em'
+                }}>
                   Нотатки
                 </h2>
+                {!isEditingNotes && (
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      onClick={startEditNotes}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '36px',
+                        height: '36px',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        backgroundColor: '#f3f4f6',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#e5e7eb';
+                        e.currentTarget.style.color = '#374151';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f3f4f6';
+                        e.currentTarget.style.color = '#6b7280';
+                      }}
+                      title="Редагувати нотатки"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                    </button>
+                    {student.notes && (
+                      <button
+                        onClick={clearNotes}
+                        disabled={savingNotes}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '36px',
+                          height: '36px',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          backgroundColor: '#fef2f2',
+                          color: '#ef4444',
+                          cursor: savingNotes ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.2s',
+                          opacity: savingNotes ? 0.5 : 1
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!savingNotes) {
+                            e.currentTarget.style.backgroundColor = '#fee2e2';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#fef2f2';
+                        }}
+                        title="Очистити нотатки"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {isEditingNotes ? (
+                <div>
+                  <textarea
+                    value={editedNotes}
+                    onChange={(e) => setEditedNotes(e.target.value)}
+                    placeholder="Додайте нотатки про учня..."
+                    style={{
+                      width: '100%',
+                      minHeight: '150px',
+                      padding: '1rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.75rem',
+                      fontSize: '1rem',
+                      lineHeight: '1.7',
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                    <button
+                      onClick={saveNotes}
+                      disabled={savingNotes}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.625rem 1.25rem',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        cursor: savingNotes ? 'not-allowed' : 'pointer',
+                        opacity: savingNotes ? 0.7 : 1
+                      }}
+                    >
+                      {savingNotes ? 'Збереження...' : 'Зберегти'}
+                    </button>
+                    <button
+                      onClick={cancelEditNotes}
+                      disabled={savingNotes}
+                      style={{
+                        padding: '0.625rem 1.25rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        backgroundColor: 'white',
+                        color: '#6b7280',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        cursor: savingNotes ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      Скасувати
+                    </button>
+                  </div>
+                </div>
+              ) : student.notes ? (
                 <div style={{ 
-                  padding: '1rem', 
+                  padding: '1.5rem', 
                   backgroundColor: '#fefce8', 
-                  borderRadius: '0.5rem',
+                  borderRadius: '0.75rem',
                   border: '1px solid #fef08a',
                   color: 'var(--gray-700)',
-                  fontSize: '0.9375rem',
-                  lineHeight: '1.6',
+                  fontSize: '1rem',
+                  lineHeight: '1.7',
                   whiteSpace: 'pre-wrap',
                 }}>
                   {student.notes}
                 </div>
-              </div>
-            )}
-
-            {/* Meta Info */}
-            <div style={{ fontSize: '0.8125rem', color: 'var(--gray-500)' }}>
-              <div>Створено: {new Date(student.created_at).toLocaleString('uk-UA')}</div>
-              {student.updated_at && student.updated_at !== student.created_at && (
-                <div>Оновлено: {new Date(student.updated_at).toLocaleString('uk-UA')}</div>
+              ) : (
+                <div style={{ 
+                  padding: '1.5rem', 
+                  backgroundColor: '#f9fafb', 
+                  borderRadius: '0.75rem',
+                  border: '1px dashed #e5e7eb',
+                  color: '#9ca3af',
+                  fontSize: '1rem',
+                  textAlign: 'center'
+                }}>
+                  Нотаток немає. Натисніть кнопку редагування, щоб додати.
+                </div>
               )}
             </div>
+
+
           </div>
         </div>
       </div>

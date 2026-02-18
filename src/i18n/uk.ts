@@ -103,6 +103,9 @@ export const uk = {
     archived: 'Архів',
     inactive: 'Неактивний',
     graduate: 'Випуск',
+    // Student study status
+    studying: 'Навчається',
+    notStudying: 'Не навчається',
   },
 
   // Group status labels

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
-import { getStudentsWithGroupCount, getStudents, createStudent, searchStudents, quickSearchStudents } from '@/lib/students';
+import { getStudentsWithGroupCount, getStudents, createStudent, searchStudents, quickSearchStudents, getStudentsWithGroups, searchStudentsWithGroups } from '@/lib/students';
 
 // Ukrainian error messages
 const ERROR_MESSAGES = {
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
   const includeInactive = searchParams.get('includeInactive') === 'true';
   const search = searchParams.get('search') || '';
   const withGroupCount = searchParams.get('withGroupCount') === 'true';
+  const withGroups = searchParams.get('withGroups') === 'true';
   
   let students;
   const autocompleteLimit = 10;
@@ -38,9 +39,13 @@ export async function GET(request: NextRequest) {
     if (limitParam) {
       const limit = parseInt(limitParam, 10);
       students = quickSearchStudents(search, limit);
+    } else if (withGroups) {
+      students = searchStudentsWithGroups(search, includeInactive);
     } else {
       students = searchStudents(search, includeInactive);
     }
+  } else if (withGroups) {
+    students = getStudentsWithGroups(includeInactive);
   } else if (withGroupCount) {
     students = getStudentsWithGroupCount(includeInactive);
   } else {

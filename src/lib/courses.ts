@@ -1,4 +1,5 @@
 import { run, get, all } from '@/db';
+import { StudyStatus } from './students';
 import { generateUniquePublicId } from './public-id';
 
 export interface Course {
