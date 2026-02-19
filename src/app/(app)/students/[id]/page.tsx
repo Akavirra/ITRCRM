@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
 import { uk } from '@/i18n/uk';
+import { formatDateTimeKyiv, formatDateKyiv } from '@/lib/date-utils';
 
 interface User {
   id: number;
@@ -18,6 +19,7 @@ interface Student {
   public_id: string;
   full_name: string;
   phone: string | null;
+  email: string | null;
   parent_name: string | null;
   parent_phone: string | null;
   notes: string | null;
@@ -50,6 +52,7 @@ interface StudentFormData {
   first_name: string;
   last_name: string;
   birth_date: string;
+  email: string;
   school: string;
   discount: string;
   photo: string | null;
@@ -161,6 +164,7 @@ export default function StudentProfilePage() {
     first_name: '',
     last_name: '',
     birth_date: '',
+    email: '',
     school: '',
     discount: '',
     photo: null,
@@ -278,6 +282,7 @@ export default function StudentProfilePage() {
       first_name: firstName,
       last_name: lastName,
       birth_date: student.birth_date || '',
+      email: student.email || '',
       school: student.school || '',
       discount: student.discount || '',
       photo: student.photo,
@@ -337,6 +342,7 @@ export default function StudentProfilePage() {
       const apiData = {
         full_name: fullName,
         phone: formData.phone ? `+380${formData.phone}` : null,
+        email: formData.email || null,
         parent_name: formData.parent_name,
         parent_phone: formData.parent_phone ? `+380${formData.parent_phone}` : null,
         notes: formData.notes,
@@ -722,6 +728,20 @@ export default function StudentProfilePage() {
                     onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
                     className="form-input"
                     style={{ width: '100%' }}
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="form-input"
+                    style={{ width: '100%' }}
+                    placeholder="student@example.com"
                   />
                 </div>
                 
@@ -1515,6 +1535,82 @@ export default function StudentProfilePage() {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Email */}
+                  {student.email && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      backgroundColor: '#fdf2f8',
+                      borderRadius: '0.625rem',
+                      border: '1px solid #fbcfe8',
+                      transition: 'background-color 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fce7f3'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fdf2f8'}
+                    >
+                      <div style={{ 
+                        padding: '0.375rem', 
+                        backgroundColor: '#fce7f3', 
+                        borderRadius: '0.375rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#db2777" strokeWidth="2">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                          <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.6875rem', color: '#db2777', fontWeight: '600', marginBottom: '0.125rem' }}>Email</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                        <a
+                          href={`mailto:${student.email}`}
+                          style={{
+                            color: 'var(--gray-900)',
+                            textDecoration: 'none',
+                            fontSize: '0.9375rem',
+                            fontWeight: '600',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                          onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                        >
+                          {student.email}
+                        </a>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(student.email || '');
+                            setToast({ message: 'Email скопійовано', type: 'success' });
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '0.25rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: 0.4,
+                            transition: 'opacity 0.15s ease',
+                            borderRadius: '0.25rem',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.4'}
+                          title="Копіювати email"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1580,7 +1676,7 @@ export default function StudentProfilePage() {
                         Дата народження
                       </div>
                       <div style={{ fontSize: '1rem', color: 'var(--gray-900)' }}>
-                        {new Date(student.birth_date).toLocaleDateString('uk-UA')}
+                        {formatDateKyiv(student.birth_date)}
                       </div>
                     </div>
                   </div>
@@ -1768,7 +1864,7 @@ export default function StudentProfilePage() {
                       Створено
                     </div>
                     <div style={{ fontSize: '1rem', color: 'var(--gray-900)' }}>
-                      {new Date(student.created_at).toLocaleString('uk-UA')}
+                      {formatDateTimeKyiv(student.created_at)}
                     </div>
                   </div>
                 </div>
@@ -1808,7 +1904,7 @@ export default function StudentProfilePage() {
                         Оновлено
                       </div>
                       <div style={{ fontSize: '1rem', color: 'var(--gray-900)' }}>
-                        {new Date(student.updated_at).toLocaleString('uk-UA')}
+                        {formatDateTimeKyiv(student.updated_at)}
                       </div>
                     </div>
                   </div>
@@ -1886,6 +1982,7 @@ export default function StudentProfilePage() {
                         <div style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
                           {group.course_title}
                           {group.teacher_name && ` • ${group.teacher_name}`}
+                          {group.join_date && ` • Доданий: ${formatDateKyiv(group.join_date)}`}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

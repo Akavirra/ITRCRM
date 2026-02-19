@@ -25,6 +25,7 @@ interface Student {
   public_id: string;
   full_name: string;
   phone: string | null;
+  email: string | null;
   parent_name: string | null;
   parent_phone: string | null;
   notes: string | null;
@@ -47,6 +48,7 @@ interface StudentFormData {
   first_name: string;
   last_name: string;
   birth_date: string;
+  email: string;
   school: string;
   discount: string;
   photo: string | null;
@@ -142,6 +144,21 @@ function calculateAge(birthDate: string | null): number | null {
   return age >= 0 ? age : null;
 }
 
+// Format age with correct Ukrainian endings
+function formatAge(birthDate: string | null): string {
+  const age = calculateAge(birthDate);
+  if (age === null) return '-';
+  
+  // Правильні закінчення для української мови
+  if (age % 10 === 1 && age % 100 !== 11) {
+    return `${age} рік`;
+  } else if ([2, 3, 4].includes(age % 10) && ![12, 13, 14].includes(age % 100)) {
+    return `${age} роки`;
+  } else {
+    return `${age} років`;
+  }
+}
+
 // Get first letter of name for avatar
 function getFirstLetter(name: string): string {
   return name.trim().charAt(0).toUpperCase();
@@ -161,6 +178,7 @@ export default function StudentsPage() {
     first_name: '',
     last_name: '',
     birth_date: '',
+    email: '',
     school: '',
     discount: '',
     photo: null,
@@ -182,6 +200,7 @@ export default function StudentsPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const dropdownButtonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   
@@ -256,6 +275,16 @@ export default function StudentsPage() {
 
     fetchData();
   }, [router]);
+
+  // Auto-hide toast after 2 seconds
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const handleSearch = async (query: string) => {
     setSearch(query);
@@ -450,6 +479,7 @@ export default function StudentsPage() {
       first_name: '',
       last_name: '',
       birth_date: '',
+      email: '',
       school: '',
       discount: '',
       photo: null,
@@ -511,6 +541,7 @@ export default function StudentsPage() {
       first_name: firstName,
       last_name: lastName,
       birth_date: student.birth_date || '',
+      email: student.email || '',
       school: student.school || '',
       discount: student.discount || '',
       photo: student.photo,
@@ -570,6 +601,7 @@ export default function StudentsPage() {
       const apiData = {
         full_name: fullName,
         phone: formData.phone ? `+380${formData.phone}` : null,
+        email: formData.email || null,
         parent_name: formData.parent_name,
         parent_phone: formData.parent_phone ? `+380${formData.parent_phone}` : null,
         notes: formData.notes,
@@ -902,28 +934,27 @@ export default function StudentsPage() {
                       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                       width: '360px',
                       minWidth: '360px',
-                      height: '260px',
+                      height: '240px',
                       overflow: 'hidden',
                       position: 'relative',
                     }}
                   >
-                    {/* Status Badge - fixed top left */}
+                    {/* ID Badge - fixed top left */}
                     <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', zIndex: 1 }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#6b7280', backgroundColor: '#f3f4f6', padding: '0.125rem 0.375rem', borderRadius: '0.25rem' }}>
+                        {student.public_id}
+                      </span>
+                    </div>
+                    {/* Status Badge - fixed top right, moved left */}
+                    <div style={{ position: 'absolute', top: '0.75rem', right: '2.5rem', zIndex: 1 }}>
                       <span className={`badge ${student.study_status === 'studying' ? 'badge-success' : 'badge-gray'}`}>
                         {student.study_status === 'studying' ? t('status.studying') : t('status.notStudying')}
                       </span>
                     </div>
-                    <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', zIndex: 1 }}>
-                      {student.groups_count > 0 && (
-                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                          {student.groups_count} {student.groups_count === 1 ? 'grupa' : student.groups_count >= 2 && student.groups_count <= 4 ? 'grupi' : 'grup'}
-                        </span>
-                      )}
-                    </div>
                     
-                    {/* Menu - Three dots button at top right */}
+                    {/* Menu - Three dots button at top right, moved up */}
                     {user.role === 'admin' && (
-                      <div style={{ position: 'absolute', top: '2.25rem', right: '0.75rem', zIndex: 1 }}>
+                      <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', zIndex: 1 }}>
                         <button
                           ref={openDropdownId === student.id ? dropdownButtonRef : undefined}
                           className="btn btn-secondary btn-sm"
@@ -1149,15 +1180,15 @@ export default function StudentsPage() {
                               <line x1="3" y1="10" x2="21" y2="10"></line>
                             </svg>
                             <span style={{ fontWeight: 600, color: '#1d4ed8' }}>
-                              {age}
+                              {formatAge(student.birth_date)}
                             </span>
                           </div>
                         )}
                       </div>
                       
                       {/* Right Column - Details */}
-                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {/* Name and ID */}
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {/* Name */}
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                             <a
@@ -1175,48 +1206,90 @@ export default function StudentsPage() {
                               {student.full_name}
                             </a>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#6b7280', backgroundColor: '#f3f4f6', padding: '0.125rem 0.375rem', borderRadius: '0.25rem' }}>
-                              {student.public_id}
-                            </span>
-                          </div>
                         </div>
                         
-                        {/* Contact Info */}
-                        {student.phone && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                              </svg>
-                              <span
-                                onClick={() => copyPhone(student.phone, 'main')}
-                                style={{
-                                  fontSize: '0.875rem',
-                                  color: '#374151',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.375rem',
-                                  transition: 'color 0.15s',
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.color = '#4f46e5'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.color = '#374151'; }}
-                              >
-                                {student.phone}
-                                {copiedPhone === `main-${student.phone}` ? (
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="20 6 9 17 4 12" />
-                                  </svg>
-                                ) : (
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                        {/* Contact Info - Phone and Email on separate lines */}
+                        {(student.phone || student.email) && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {student.phone && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                                </svg>
+                                <span
+                                  onClick={() => copyPhone(student.phone, 'main')}
+                                  style={{
+                                    fontSize: '0.875rem',
+                                    color: '#374151',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.375rem',
+                                    transition: 'color 0.15s',
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.color = '#4f46e5'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.color = '#374151'; }}
+                                  title="Клікніть щоб скопіювати"
+                                >
+                                  {student.phone}
+                                  {copiedPhone === `main-${student.phone}` ? (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                  ) : (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                    </svg>
+                                  )}
+                                </span>
+                                {/* Parent info on same line as phone */}
+                                {(student.parent_name || student.parent_relation) && (
+                                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>
+                                    {student.parent_name && student.parent_relation 
+                                      ? `${student.parent_name} (${translateRelation(student.parent_relation)})` 
+                                      : student.parent_name || translateRelation(student.parent_relation)}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {student.email && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                  <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                                <span
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(student.email || '');
+                                    setToast({ message: 'Email скопійовано', type: 'success' });
+                                  }}
+                                  style={{
+                                    fontSize: '0.875rem',
+                                    color: '#374151',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.375rem',
+                                    transition: 'color 0.15s',
+                                    wordBreak: 'break-all',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.color = '#4f46e5'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.color = '#374151'; }}
+                                  title={`${student.email} (клікніть щоб скопіювати)`}
+                                >
+                                  {student.email}
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, flexShrink: 0 }}>
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                                   </svg>
-                                )}
-                              </span>
-                            </div>
-                            {(student.parent_name || student.parent_relation) && (
+                                </span>
+                              </div>
+                            )}
+                            {/* Show parent info on separate line only if no phone */}
+                            {!student.phone && (student.parent_name || student.parent_relation) && (
                               <span style={{ fontSize: '0.75rem', color: '#6b7280', paddingLeft: '1.25rem' }}>
                                 {student.parent_name && student.parent_relation 
                                   ? `${student.parent_name} (${translateRelation(student.parent_relation)})` 
@@ -1390,20 +1463,15 @@ export default function StudentsPage() {
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: '0.375rem',
-                          padding: '0.25rem 0.5rem',
+                          padding: '0.5rem 0.625rem',
                           backgroundColor: '#f9fafb',
                           border: '1px dashed #d1d5db',
                           borderRadius: '0.375rem',
                           color: '#6b7280',
-                          fontSize: '0.75rem',
+                          fontSize: '0.8125rem',
                           cursor: 'pointer',
                           transition: 'all 0.15s',
                           width: '100%',
-                          height: '32px',
-                          position: 'absolute',
-                          bottom: '0.75rem',
-                          left: '0.75rem',
-                          right: '0.75rem',
                         }}
                         onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.borderColor = '#9ca3af'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb'; e.currentTarget.style.borderColor = '#d1d5db'; }}
@@ -1599,6 +1667,19 @@ export default function StudentsPage() {
                     />
                   </div>
 
+                  <div className="form-group">
+                    <label className="form-label">Email</label>
+                    <input
+                      type="email"
+                      className="form-input"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="student@example.com"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   {/* Autocomplete for school */}
                   <div className="form-group autocomplete-container" style={{ position: 'relative' }}>
                     <label className="form-label">{t('forms.school')}</label>
@@ -2117,6 +2198,26 @@ export default function StudentsPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      
+      {/* Toast notification */}
+      {toast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '2rem',
+            right: '2rem',
+            backgroundColor: toast.type === 'success' ? '#059669' : '#dc2626',
+            color: 'white',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '0.5rem',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            zIndex: 1000,
+            animation: 'slideIn 0.3s ease-out',
+          }}
+        >
+          {toast.message}
         </div>
       )}
     </Layout>

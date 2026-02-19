@@ -153,6 +153,7 @@ function createAllTables(): void {
       public_id TEXT UNIQUE,
       full_name TEXT NOT NULL,
       phone TEXT,
+      email TEXT,
       parent_name TEXT,
       parent_phone TEXT,
       notes TEXT,
@@ -374,6 +375,13 @@ function runMigrations(): void {
         database.exec(`ALTER TABLE students ADD COLUMN public_id TEXT`);
         database.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_students_public_id ON students(public_id)`);
         console.log('Migration: public_id column added to students');
+      }
+      
+      // Add email column to students table if it doesn't exist
+      if (!studentsColumns.includes('email')) {
+        console.log('Adding email column to students table...');
+        database.exec(`ALTER TABLE students ADD COLUMN email TEXT`);
+        console.log('Migration: email column added to students');
       }
     }
     

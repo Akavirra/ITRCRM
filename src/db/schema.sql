@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS students (
   public_id TEXT UNIQUE,
   full_name TEXT NOT NULL,
   phone TEXT,
+  email TEXT,
   parent_name TEXT,
   parent_phone TEXT,
   notes TEXT,

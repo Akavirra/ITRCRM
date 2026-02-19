@@ -8,6 +8,7 @@ export interface Student {
   public_id: string;
   full_name: string;
   phone: string | null;
+  email: string | null;
   parent_name: string | null;
   parent_phone: string | null;
   notes: string | null;
@@ -141,6 +142,7 @@ function isPublicIdUnique(publicId: string): boolean {
 export function createStudent(
   fullName: string,
   phone?: string,
+  email?: string,
   parentName?: string,
   parentPhone?: string,
   notes?: string,
@@ -156,8 +158,8 @@ export function createStudent(
 ): { id: number; public_id: string } {
   const publicId = generateUniquePublicId('student', isPublicIdUnique);
   const result = run(
-    `INSERT INTO students (public_id, full_name, phone, parent_name, parent_phone, notes, birth_date, photo, school, discount, parent_relation, parent2_name, parent2_relation, interested_courses, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [publicId, fullName, phone || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount || null, parentRelation || null, parent2Name || null, parent2Relation || null, interestedCourses || null, source || null]
+    `INSERT INTO students (public_id, full_name, phone, email, parent_name, parent_phone, notes, birth_date, photo, school, discount, parent_relation, parent2_name, parent2_relation, interested_courses, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [publicId, fullName, phone || null, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount || null, parentRelation || null, parent2Name || null, parent2Relation || null, interestedCourses || null, source || null]
   );
   
   return { id: Number(result.lastInsertRowid), public_id: publicId };
@@ -168,6 +170,7 @@ export function updateStudent(
   id: number,
   fullName: string,
   phone?: string,
+  email?: string,
   parentName?: string,
   parentPhone?: string,
   notes?: string,
@@ -182,8 +185,8 @@ export function updateStudent(
   source?: string
 ): void {
   run(
-    `UPDATE students SET full_name = ?, phone = ?, parent_name = ?, parent_phone = ?, notes = ?, birth_date = ?, photo = ?, school = ?, discount = ?, parent_relation = ?, parent2_name = ?, parent2_relation = ?, interested_courses = ?, source = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-    [fullName, phone || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount || null, parentRelation || null, parent2Name || null, parent2Relation || null, interestedCourses || null, source || null, id]
+    `UPDATE students SET full_name = ?, phone = ?, email = ?, parent_name = ?, parent_phone = ?, notes = ?, birth_date = ?, photo = ?, school = ?, discount = ?, parent_relation = ?, parent2_name = ?, parent2_relation = ?, interested_courses = ?, source = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [fullName, phone || null, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount || null, parentRelation || null, parent2Name || null, parent2Relation || null, interestedCourses || null, source || null, id]
   );
 }
 

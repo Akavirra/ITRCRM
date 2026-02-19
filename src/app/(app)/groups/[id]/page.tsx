@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { uk } from '@/i18n/uk';
+import { formatShortDateKyiv, formatDateKyiv } from '@/lib/date-utils';
 
 interface User {
   id: number;
@@ -312,8 +313,7 @@ export default function GroupDetailsPage() {
   };
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    return formatShortDateKyiv(dateStr);
   };
 
   const getLessonStatusLabel = (status: string) => {
@@ -513,7 +513,7 @@ export default function GroupDetailsPage() {
                         <p style={{ margin: '0.125rem 0 0 0', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{student.phone || 'Телефон не вказано'}</p>
                         {student.join_date ? (
                           <>
-                            <p style={{ margin: '0.125rem 0 0 0', fontSize: '0.75rem', color: 'var(--gray-400)' }}>Доданий: {new Date(student.join_date).toLocaleDateString('uk-UA')}</p>
+                            <p style={{ margin: '0.125rem 0 0 0', fontSize: '0.75rem', color: 'var(--gray-400)' }}>Доданий: {formatDateKyiv(student.join_date)}</p>
                             {(() => {
                               const joinDate = new Date(student.join_date);
                               const now = new Date();

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
 import { uk } from '@/i18n/uk';
+import { formatDateShortMonthKyiv, formatTimeKyiv } from '@/lib/date-utils';
 
 interface User {
   id: number;
@@ -89,13 +90,11 @@ export default function DashboardPage() {
   if (!user) return null;
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' });
+    return formatDateShortMonthKyiv(dateStr);
   };
 
   const formatTime = (datetimeStr: string) => {
-    const date = new Date(datetimeStr);
-    return date.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+    return formatTimeKyiv(datetimeStr);
   };
 
   return (

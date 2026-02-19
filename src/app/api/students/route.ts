@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
     const { 
       full_name, 
       phone, 
+      email,
       parent_name, 
       parent_phone, 
       notes,
@@ -101,6 +102,7 @@ export async function POST(request: NextRequest) {
     const result = createStudent(
       full_name.trim(),
       phone?.trim(),
+      email?.trim(),
       parent_name?.trim(),
       parent_phone?.trim(),
       notes?.trim(),

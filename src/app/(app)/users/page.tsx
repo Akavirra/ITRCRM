@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
+import { formatDateKyiv } from '@/lib/date-utils';
 
 interface User {
   id: number;
@@ -130,7 +131,7 @@ export default function UsersPage() {
                       </span>
                     </td>
                     <td style={{ color: '#6b7280' }}>
-                      {new Date(u.created_at).toLocaleDateString('uk-UA')}
+                      {formatDateKyiv(u.created_at)}
                     </td>
                   </tr>
                 ))}

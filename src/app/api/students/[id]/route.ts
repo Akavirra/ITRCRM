@@ -85,6 +85,7 @@ export async function PUT(
     const { 
       full_name, 
       phone, 
+      email,
       parent_name, 
       parent_phone, 
       notes,
@@ -113,6 +114,7 @@ export async function PUT(
       studentId,
       finalFullName,
       phone !== undefined ? phone?.trim() : existingStudent.phone,
+      email !== undefined ? email?.trim() : existingStudent.email,
       parent_name !== undefined ? parent_name?.trim() : existingStudent.parent_name,
       parent_phone !== undefined ? parent_phone?.trim() : existingStudent.parent_phone,
       notes !== undefined ? notes?.trim() : existingStudent.notes,

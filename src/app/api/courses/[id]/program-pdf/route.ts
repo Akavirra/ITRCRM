@@ -7,6 +7,7 @@ import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import fs from 'fs';
 import path from 'path';
+import { KYIV_TIMEZONE, UKRAINIAN_LOCALE } from '@/lib/date-utils';
 
 // Helper to sanitize filename (replace forbidden characters)
 function sanitizeFilename(name: string): string {
@@ -142,8 +143,9 @@ function drawPageFooter(
     color: rgb(0.4, 0.4, 0.4),
   });
   
-  // Generation date on the left
-  const genDate = new Date().toLocaleDateString('uk-UA', {
+  // Generation date on the left (in Kyiv timezone)
+  const genDate = new Date().toLocaleDateString(UKRAINIAN_LOCALE, {
+    timeZone: KYIV_TIMEZONE,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
