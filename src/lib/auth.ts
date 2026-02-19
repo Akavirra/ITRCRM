@@ -11,6 +11,10 @@ export interface User {
   name: string;
   email: string;
   role: 'admin' | 'teacher';
+  phone?: string | null;
+  telegram_id?: string | null;
+  photo_url?: string | null;
+  notes?: string | null;
   is_active: number;
   created_at: string;
   updated_at: string;

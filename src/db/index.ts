@@ -446,6 +446,43 @@ function runMigrations(): void {
       }
     }
     
+    // Add new columns to users table for teacher management
+    if (tableExists('users')) {
+      const usersTableInfo = database.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+      const usersColumns = usersTableInfo.map(col => col.name);
+      
+      if (!usersColumns.includes('phone')) {
+        console.log('Adding phone column to users table...');
+        database.exec(`ALTER TABLE users ADD COLUMN phone TEXT`);
+        console.log('Migration: phone column added to users');
+      }
+      
+      if (!usersColumns.includes('telegram_id')) {
+        console.log('Adding telegram_id column to users table...');
+        database.exec(`ALTER TABLE users ADD COLUMN telegram_id TEXT`);
+        console.log('Migration: telegram_id column added to users');
+      }
+      
+      if (!usersColumns.includes('photo_url')) {
+        console.log('Adding photo_url column to users table...');
+        database.exec(`ALTER TABLE users ADD COLUMN photo_url TEXT`);
+        console.log('Migration: photo_url column added to users');
+      }
+      
+      if (!usersColumns.includes('notes')) {
+        console.log('Adding notes column to users table...');
+        database.exec(`ALTER TABLE users ADD COLUMN notes TEXT`);
+        console.log('Migration: notes column added to users');
+      }
+      
+      if (!usersColumns.includes('public_id')) {
+        console.log('Adding public_id column to users table...');
+        database.exec(`ALTER TABLE users ADD COLUMN public_id TEXT`);
+        database.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_public_id ON users(public_id)`);
+        console.log('Migration: public_id column added to users');
+      }
+    }
+    
     console.log('Migrations completed successfully');
   } catch (error) {
     console.error('Migration error:', error);

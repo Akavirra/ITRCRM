@@ -7,10 +7,15 @@ PRAGMA foreign_keys = ON;
 -- Users table (administrators and teachers)
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  public_id TEXT UNIQUE,
   name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL CHECK(role IN ('admin', 'teacher')),
+  phone TEXT,
+  telegram_id TEXT,
+  photo_url TEXT,
+  notes TEXT,
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -18,6 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role ON users(role);
+CREATE UNIQUE INDEX idx_users_public_id ON users(public_id);
 
 -- Courses table
 CREATE TABLE IF NOT EXISTS courses (
