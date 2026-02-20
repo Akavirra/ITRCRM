@@ -393,7 +393,6 @@ export const uk = {
   demo: {
     title: 'Демо дані:',
     admin: 'Адмін: admin@school.ua / admin123',
-    teacher: 'Викладач: teacher@school.ua / teacher123',
   },
 
   // Plural forms (used with pluralUk helper)

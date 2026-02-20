@@ -10,7 +10,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'teacher';
+  role: 'admin';
   phone?: string | null;
   telegram_id?: string | null;
   photo_url?: string | null;
@@ -90,11 +90,16 @@ export function getUserById(id: number): User | null {
   return user || null;
 }
 
-// Login
+// Login - Only admin role is allowed to login
 export async function login(email: string, password: string): Promise<{ user: User; sessionId: string } | null> {
   const user = getUserByEmail(email);
   
   if (!user || !user.is_active) {
+    return null;
+  }
+  
+  // Only allow admin role to login
+  if (user.role !== 'admin') {
     return null;
   }
   

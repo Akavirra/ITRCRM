@@ -5,7 +5,7 @@ export interface AuthUser {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'teacher';
+  role: 'admin';
 }
 
 // Ukrainian error messages
@@ -40,7 +40,7 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
     id: user.id,
     name: user.name,
     email: user.email,
-    role: user.role as 'admin' | 'teacher',
+    role: user.role,
   };
 }
 

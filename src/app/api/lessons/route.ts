@@ -23,11 +23,6 @@ export async function GET(request: NextRequest) {
   }
   
   // Get upcoming lessons
-  if (user.role === 'teacher') {
-    const lessons = getUpcomingLessonsForTeacher(user.id, limit);
-    return NextResponse.json({ lessons });
-  } else {
-    const lessons = getUpcomingLessons(limit);
-    return NextResponse.json({ lessons });
-  }
+  const lessons = getUpcomingLessons(limit);
+  return NextResponse.json({ lessons });
 }

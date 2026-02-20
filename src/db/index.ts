@@ -83,13 +83,13 @@ function createAllTables(): void {
   const database = getDb();
   
   const createTablesSQL = `
-    -- Users table (administrators and teachers)
+    -- Users table (administrators only - teachers cannot login)
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('admin', 'teacher')),
+      role TEXT NOT NULL CHECK(role IN ('admin')),
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

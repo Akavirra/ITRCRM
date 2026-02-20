@@ -73,10 +73,7 @@ export async function GET(request: NextRequest) {
     }
   }
   
-  if (user.role === 'teacher') {
-    // Teachers only see their own groups
-    groups = getGroupsForTeacher(user.id, includeInactive);
-  } else if (Object.keys(filters).length > 1 || search) {
+  if (Object.keys(filters).length > 1 || search) {
     // Apply filters for admin
     groups = getGroupsFiltered(filters);
   } else {

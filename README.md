@@ -1,6 +1,6 @@
-# ITRobotCRM
+# ITRCRM
 
-ITRobotCRM is a comprehensive admin panel for managing a robotics and technology school. The system handles students, groups, lessons, attendance tracking, and payment management with role-based access control.
+ITRCrobotCRM is a comprehensive admin panel for managing a robotics and technology course school. The system handles students, groups, lessons, attendance tracking, and payment management with role-based access control.
 
 ## Features
 
@@ -9,6 +9,7 @@ ITRobotCRM is a comprehensive admin panel for managing a robotics and technology
 - **Courses**: Create and manage course catalog with descriptions, age requirements, duration, and program materials
 - **Groups**: Manage student groups with scheduling (day of week, time, duration), assigned teachers, and pricing
 - **Students**: Comprehensive student records including contact information, parent details, birth dates, and notes
+- **Teachers**: Manage teacher profiles with photos, contact information, and group assignments
 - **Lessons**: Auto-generation of lessons based on group schedule parameters (8 weeks ahead)
 - **Attendance**: Track student attendance with multiple statuses (present, absent, makeup planned, makeup completed)
 - **Payments**: Monthly payment tracking with multiple payment methods (cash, account transfer)
@@ -26,7 +27,7 @@ ITRobotCRM is a comprehensive admin panel for managing a robotics and technology
 ### Prerequisites
 
 - Node.js 18+
-- npm or yarn
+- npm
 
 ### Windows
 
@@ -58,15 +59,13 @@ After starting the server, open your browser and navigate to `http://localhost:3
 
 ## Environment Variables
 
-Create a `.env` file in the project root with the following variables:
-
 | Variable | Description |
 |----------|-------------|
 | `JWT_SECRET` | Secret key used for session token signing. Must be a strong, unique string. |
 | `NODE_ENV` | Environment mode: `development` or `production` |
 | `DB_PATH` | (Optional) Custom path to SQLite database file |
 
-> ⚠️ **SECURITY WARNING**: Before deploying to production, you MUST replace all default and example credentials with strong, unique values. This includes all secret keys, passwords, and any other sensitive configuration.
+> ⚠️ **SECURITY WARNING**: Before deploying to production, you MUST replace all default credentials, secret keys, and sensitive configuration values with strong, unique values. This includes database credentials, JWT secrets, API keys, and any other sensitive parameters. Never use default or example values in production.
 
 ## Database Schema
 
@@ -120,6 +119,13 @@ Create a `.env` file in the project root with the following variables:
 - `PUT /api/students/[id]` - Update student (Admin only)
 - `DELETE /api/students/[id]` - Archive student (Admin only)
 
+### Teachers
+- `GET /api/teachers` - List all teachers
+- `POST /api/teachers` - Create new teacher (Admin only)
+- `GET /api/teachers/[id]` - Get teacher details
+- `PUT /api/teachers/[id]` - Update teacher (Admin only)
+- `DELETE /api/teachers/[id]` - Archive teacher (Admin only)
+
 ### Lessons
 - `GET /api/lessons` - List lessons (filtered by group access)
 - `GET /api/lessons/[id]` - Get lesson details
@@ -142,6 +148,7 @@ Create a `.env` file in the project root with the following variables:
 - Full access to all modules and features
 - Can manage users (create, update, deactivate)
 - Can manage courses, groups, and students
+- Can manage teachers
 - Can access and modify all payment records
 - Can view financial reports and export data
 - Can archive/restore any entity
@@ -153,59 +160,138 @@ Create a `.env` file in the project root with the following variables:
 - Can mark attendance and set lesson topics
 - Can view lessons for their groups
 - Cannot access payment or financial data
-- Cannot create or modify users, courses, or groups
+- Cannot create or modify users, courses, groups, or teachers
 - Cannot access admin-only settings
 
 ## Project Structure
 
 ```
-src/
-├── app/
-│   ├── (app)/                    # Authenticated pages
-│   │   ├── dashboard/           # Dashboard overview
-│   │   ├── courses/            # Course management
-│   │   ├── groups/             # Group management
-│   │   ├── students/           # Student management
-│   │   ├── reports/            # Reports with CSV export
-│   │   └── users/              # User management (Admin)
-│   ├── (auth)/                 # Authentication pages
-│   │   └── login/              # Login page
-│   ├── api/                    # API routes
-│   │   ├── auth/               # Authentication endpoints
-│   │   ├── courses/            # Course CRUD
-│   │   ├── groups/             # Group CRUD
-│   │   ├── students/           # Student CRUD
-│   │   ├── lessons/            # Lesson management
-│   │   ├── reports/            # Report generation
-│   │   └── users/              # User management
-│   ├── globals.css             # Global styles
-│   ├── layout.tsx              # Root layout
-│   └── page.tsx                # Landing page
-├── components/                  # Reusable components
-│   ├── Layout.tsx             # Main layout wrapper
-│   └── Portal.tsx             # Portal component
-├── db/                         # Database
-│   ├── index.ts               # Database operations
-│   └── schema.sql             # Schema definitions
-├── lib/                        # Business logic
-│   ├── auth.ts                # Authentication utilities
-│   ├── courses.ts             # Course operations
-│   ├── groups.ts              # Group operations
-│   ├── students.ts            # Student operations
-│   ├── lessons.ts             # Lesson operations
-│   ├── attendance.ts          # Attendance tracking
-│   ├── payments.ts            # Payment processing
-│   └── api-utils.ts           # API utilities
-└── i18n/                       # Internationalization
-    ├── uk.ts                  # Ukrainian translations
-    └── t.ts                    # Translation utilities
-scripts/
-├── seed.js                    # Database seeding
-├── reset.js                   # Database reset
-└── start-prod.js              # Production startup
-tests/
-├── lessons.test.ts            # Lesson tests
-└── student-status.test.ts     # Student status tests
+ITRobotCRM/
+├── public/
+│   └── uploads/
+│       ├── course-flyers/        # Uploaded course flyer images
+│       └── teacher-photos/      # Uploaded teacher photos
+├── scripts/
+│   ├── backfill-public-ids.js   # Script to generate public IDs
+│   ├── migrate-courses.js       # Course migration script
+│   ├── migrate-students.js      # Student migration script
+│   ├── reset.js                 # Database reset script
+│   ├── seed.js                  # Database seeding script
+│   ├── start-prod.js            # Production startup script
+│   └── verify-public-ids.js     # Public ID verification script
+├── src/
+│   ├── app/
+│   │   ├── (app)/               # Authenticated pages (dashboard, courses, groups, etc.)
+│   │   │   ├── courses/         # Course management pages
+│   │   │   │   └── [id]/        # Course detail page
+│   │   │   ├── dashboard/       # Dashboard overview
+│   │   │   ├── groups/          # Group management pages
+│   │   │   │   ├── new/         # Create new group
+│   │   │   │   └── [id]/        # Group detail page
+│   │   │   │       └── edit/    # Edit group page
+│   │   │   ├── reports/         # Reports with CSV export
+│   │   │   ├── settings/        # Application settings
+│   │   │   ├── students/        # Student management pages
+│   │   │   │   └── [id]/        # Student detail page
+│   │   │   ├── teachers/        # Teacher management pages
+│   │   │   │   └── [id]/        # Teacher detail page
+│   │   │   └── users/           # User management (Admin only)
+│   │   ├── (auth)/              # Authentication pages
+│   │   │   └── login/           # Login page
+│   │   ├── api/                 # API routes
+│   │   │   ├── auth/            # Authentication endpoints
+│   │   │   │   ├── login/
+│   │   │   │   ├── logout/
+│   │   │   │   └── me/
+│   │   │   ├── courses/         # Course CRUD endpoints
+│   │   │   │   └── [id]/
+│   │   │   │       ├── archive/
+│   │   │   │       ├── flyer/
+│   │   │   │       ├── groups/
+│   │   │   │       ├── program-pdf/
+│   │   │   │       └── students/
+│   │   │   ├── groups/          # Group CRUD endpoints
+│   │   │   │   └── [id]/
+│   │   │   │       ├── archive/
+│   │   │   │       ├── generate-lessons/
+│   │   │   │       ├── payments/
+│   │   │   │       └── students/
+│   │   │   ├── lessons/         # Lesson management endpoints
+│   │   │   │   └── [id]/
+│   │   │   │       └── attendance/
+│   │   │   ├── reports/         # Report generation endpoints
+│   │   │   │   ├── attendance/
+│   │   │   │   ├── debts/
+│   │   │   │   └── payments/
+│   │   │   ├── students/        # Student CRUD endpoints
+│   │   │   │   └── [id]/
+│   │   │   ├── teachers/        # Teacher CRUD endpoints
+│   │   │   │   └── [id]/
+│   │   │   └── users/           # User management endpoints
+│   │   ├── globals.css          # Global styles
+│   │   ├── layout.tsx           # Root layout
+│   │   └── page.tsx             # Landing page
+│   ├── components/              # Reusable React components
+│   │   ├── CourseModalsContext.tsx
+│   │   ├── CourseModalsManager.tsx
+│   │   ├── CourseModalsProvider.tsx
+│   │   ├── CourseModalsWrapper.tsx
+│   │   ├── DraggableModal.tsx
+│   │   ├── GroupModalsContext.tsx
+│   │   ├── GroupModalsManager.tsx
+│   │   ├── GroupModalsProvider.tsx
+│   │   ├── GroupModalsWrapper.tsx
+│   │   ├── Header.tsx
+│   │   ├── IconButton.tsx
+│   │   ├── Layout.tsx
+│   │   ├── Portal.tsx
+│   │   ├── SearchInput.tsx
+│   │   ├── StudentModalsContext.tsx
+│   │   ├── StudentModalsManager.tsx
+│   │   ├── StudentModalsProvider.tsx
+│   │   ├── StudentModalsWrapper.tsx
+│   │   ├── TeacherModalsContext.tsx
+│   │   ├── TeacherModalsManager.tsx
+│   │   ├── TeacherModalsProvider.tsx
+│   │   ├── TeacherModalsWrapper.tsx
+│   │   ├── Navbar/
+│   │   │   ├── index.ts
+│   │   │   ├── Navbar.module.css
+│   │   │   └── Navbar.tsx
+│   │   └── Sidebar/
+│   │       └── Sidebar.tsx
+│   ├── db/
+│   │   ├── index.ts             # Database operations
+│   │   └── schema.sql           # Schema definitions
+│   ├── i18n/                    # Internationalization
+│   │   ├── pluralUk.ts          # Ukrainian plural forms
+│   │   ├── t.ts                 # Translation utilities
+│   │   └── uk.ts                # Ukrainian translations
+│   └── lib/                     # Business logic utilities
+│       ├── api-utils.ts         # API utilities
+│       ├── attendance.ts        # Attendance operations
+│       ├── auth.ts              # Authentication utilities
+│       ├── courses.ts           # Course operations
+│       ├── date-utils.ts        # Date manipulation utilities
+│       ├── groups.ts            # Group operations
+│       ├── lessons.ts           # Lesson operations
+│       ├── payments.ts          # Payment processing
+│       ├── public-id.ts         # Public ID generation
+│       └── students.ts          # Student operations
+├── tests/                       # Test files
+│   ├── lessons.test.ts          # Lesson tests
+│   └── student-status.test.ts   # Student status tests
+├── assets/
+│   └── fonts/                   # Font files
+├── data/                        # Database storage (gitignored)
+├── .env.example                 # Environment variables template
+├── .gitignore                   # Git ignore rules
+├── jest.config.js               # Jest configuration
+├── next.config.js               # Next.js configuration
+├── package.json                 # Project dependencies
+├── package-lock.json            # Locked dependencies
+├── tsconfig.json                # TypeScript configuration
+└── README.md                    # This file
 ```
 
 ## Development
@@ -231,6 +317,9 @@ npm run db:migrate
 
 # Reset database (delete and reinitialize)
 npm run db:reset
+
+# Seed database with initial data
+npm run db:seed
 ```
 
 ## Database Troubleshooting

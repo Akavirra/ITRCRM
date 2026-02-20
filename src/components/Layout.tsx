@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { t } from '@/i18n/t';
 import Sidebar from './Sidebar/Sidebar';
+import Navbar from './Navbar/Navbar';
 
 interface User {
   id: number;
@@ -16,6 +17,7 @@ interface LayoutProps {
   children: React.ReactNode;
   user: User;
   headerActions?: React.ReactNode;
+  hideNavbar?: boolean;
 }
 
 const menuItems = [
@@ -32,14 +34,37 @@ const adminMenuItems = [
   { href: '/users', labelKey: 'nav.users', icon: 'settings' },
 ];
 
-export default function Layout({ children, user, headerActions }: LayoutProps) {
+export default function Layout({ children, user, headerActions, hideNavbar }: LayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Check if we're on desktop
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1025);
+    };
+    
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
+
+  // On desktop, sidebar starts open; on mobile, starts closed
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setSidebarOpen(window.innerWidth >= 1025);
+    }
+  }, []);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
+  };
+
+  const handleMenuClick = () => {
+    setSidebarOpen(!sidebarOpen);
   };
 
   const getPageTitle = () => {
@@ -50,79 +75,83 @@ export default function Layout({ children, user, headerActions }: LayoutProps) {
     return t('app.name');
   };
 
+  // Calculate margin based on sidebar state
+  const contentMarginLeft = sidebarOpen ? '272px' : '16px';
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex' }}>
-      <Sidebar
-        user={user}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onLogout={handleLogout}
-      />
-
-      {/* Main content */}
-      <div style={{
-        flex: 1,
-        marginLeft: sidebarOpen ? '256px' : 0,
-        transition: 'margin-left 0.3s ease',
-      }}>
-        {/* Top bar */}
-        <header style={{
-          position: 'sticky',
-          top: 0,
-          backgroundColor: 'white',
-          borderBottom: '1px solid #e5e7eb',
-          padding: '0.75rem 1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem',
-          zIndex: 20,
-        }}>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '0.5rem',
-              color: '#4b5563',
-            }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-
-          <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>
-            {getPageTitle()}
-          </h2>
-
-          {headerActions && (
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {headerActions}
-            </div>
-          )}
-        </header>
-
-        {/* Page content */}
-        <main style={{ padding: '1.5rem' }}>
-          {children}
-        </main>
-      </div>
-
-      {/* Overlay for mobile */}
-      {sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 20,
-          }}
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Navbar - fixed at top, full width */}
+      {!hideNavbar && (
+        <Navbar 
+          user={{ name: user.name, role: user.role }} 
+          withSidebar={true}
+          onMenuClick={handleMenuClick}
         />
       )}
+
+      <div style={{ display: 'flex', flex: 1, paddingTop: hideNavbar ? 0 : '64px' }}>
+        {/* Sidebar */}
+        <Sidebar
+          user={user}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onLogout={handleLogout}
+        />
+
+        {/* Main content */}
+        <div 
+          style={{
+            flex: 1,
+            minWidth: 0,
+            marginLeft: contentMarginLeft,
+            marginRight: '16px',
+            transition: 'margin-left 0.3s ease',
+          }}
+        >
+          {/* Page header (optional) */}
+          {headerActions && (
+            <header style={{
+              position: 'sticky',
+              top: '64px',
+              backgroundColor: 'white',
+              borderBottom: '1px solid #e5e7eb',
+              padding: '1rem 1.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              zIndex: 10,
+              borderRadius: '12px',
+              marginTop: '8px',
+            }}>
+              <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0 }}>
+                {getPageTitle()}
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {headerActions}
+              </div>
+            </header>
+          )}
+
+          {/* Page content */}
+          <main style={{ padding: '1.5rem' }}>
+            {children}
+          </main>
+        </div>
+
+        {/* Mobile overlay when sidebar is open on mobile */}
+        {!isDesktop && sidebarOpen && (
+          <div
+            onClick={() => setSidebarOpen(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 20,
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

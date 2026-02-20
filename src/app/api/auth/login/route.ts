@@ -9,6 +9,7 @@ let dbInitialized = false;
 const ERROR_MESSAGES = {
   emailPasswordRequired: "Email та пароль обов'язкові",
   invalidCredentials: 'Неправильний email або пароль',
+  adminOnlyAccess: 'Доступ до системи дозволено тільки для адміністраторів',
   internalError: 'Внутрішня помилка сервера',
 };
 

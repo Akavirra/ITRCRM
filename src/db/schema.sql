@@ -4,14 +4,14 @@
 -- Enable foreign keys
 PRAGMA foreign_keys = ON;
 
--- Users table (administrators and teachers)
+-- Users table (administrators only - teachers cannot login)
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   public_id TEXT UNIQUE,
   name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK(role IN ('admin', 'teacher')),
+  role TEXT NOT NULL CHECK(role IN ('admin')),
   phone TEXT,
   telegram_id TEXT,
   photo_url TEXT,
