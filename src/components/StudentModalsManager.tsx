@@ -713,7 +713,7 @@ export default function StudentModalsManager() {
                     </div>
                   ) : (
                     student.notes ? (
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.5, padding: '0.75rem', backgroundColor: '#fefce8', borderRadius: '0.5rem', border: '1px solid #fef08a' }}>{student.notes}</p>
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.5, padding: '0.75rem', backgroundColor: '#fefce8', borderRadius: '0.5rem', border: '1px solid #fef08a', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{student.notes}</p>
                     ) : (
                       <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af', fontStyle: 'italic', padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '0.5rem', border: '1px dashed #d1d5db' }}>Нотаток немає</p>
                     )

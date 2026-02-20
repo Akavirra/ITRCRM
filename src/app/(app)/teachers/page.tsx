@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import Portal from '@/components/Portal';
 import { useGroupModals } from '@/components/GroupModalsContext';
+import { useTeacherModals } from '@/components/TeacherModalsContext';
 import { t } from '@/i18n/t';
 import { formatDateKyiv } from '@/lib/date-utils';
 
@@ -108,6 +109,8 @@ export default function TeachersPage() {
 
   // Group modals from context
   const { openGroupModal, closeGroupModal } = useGroupModals();
+  // Teacher modals from context
+  const { openTeacherModal } = useTeacherModals();
 
   // Copy to clipboard state
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -500,15 +503,40 @@ export default function TeachersPage() {
                     </div>
                     
                     {/* Status Badge - fixed top right */}
-                    <div style={{ position: 'absolute', top: '0.75rem', right: '2.5rem', zIndex: 1 }}>
+                    <div style={{ position: 'absolute', top: '0.75rem', right: user.role === 'admin' ? '5.5rem' : '2.5rem', zIndex: 1 }}>
                       <span className={`badge ${teacher.is_active === 1 ? 'badge-success' : 'badge-gray'}`}>
                         {teacher.is_active === 1 ? (t('status.active') || 'Активний') : (t('status.inactive') || 'Неактивний')}
                       </span>
                     </div>
                     
-                    {/* Menu - Three dots button at top right */}
+                    {/* Open in modal button - for all users - now rightmost */}
+                    <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', zIndex: 1 }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openTeacherModal(teacher.id, teacher.name);
+                        }}
+                        style={{
+                          padding: '0.25rem',
+                          borderRadius: '0.25rem',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#6b7280',
+                        }}
+                        title="Відкрити в модальному вікні"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                          <polyline points="15 3 21 3 21 9" />
+                          <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    {/* Menu - Three dots button - to the left of modal button */}
                     {user.role === 'admin' && (
-                      <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', zIndex: 1 }}>
+                      <div style={{ position: 'absolute', top: '0.5rem', right: '2.5rem', zIndex: 1 }}>
                         <button
                           ref={openDropdownId === teacher.id ? dropdownButtonRef : undefined}
                           className="btn btn-secondary btn-sm"
@@ -917,22 +945,6 @@ export default function TeachersPage() {
                       </div>
                     </div>
 
-                    {/* Notes at bottom */}
-                    {teacher.notes && (
-                      <div style={{ 
-                        position: 'absolute', 
-                        bottom: '1rem', 
-                        left: '1rem', 
-                        right: '1rem',
-                        fontSize: '0.8125rem', 
-                        color: '#6b7280',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {teacher.notes}
-                      </div>
-                    )}
                   </div>
                 );
               })}

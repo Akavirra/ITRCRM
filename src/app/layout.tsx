@@ -4,6 +4,10 @@ import { GroupModalsProvider } from '@/components/GroupModalsProvider';
 import GroupModalsWrapper from '@/components/GroupModalsWrapper';
 import { StudentModalsProvider } from '@/components/StudentModalsProvider';
 import StudentModalsWrapper from '@/components/StudentModalsWrapper';
+import { CourseModalsProvider } from '@/components/CourseModalsProvider';
+import CourseModalsWrapper from '@/components/CourseModalsWrapper';
+import { TeacherModalsProvider } from '@/components/TeacherModalsProvider';
+import TeacherModalsWrapper from '@/components/TeacherModalsWrapper';
 
 export const metadata: Metadata = {
   title: 'Адміністрування школи',
@@ -20,9 +24,15 @@ export default function RootLayout({
       <body>
         <GroupModalsProvider>
           <StudentModalsProvider>
-            {children}
-            <GroupModalsWrapper />
-            <StudentModalsWrapper />
+            <CourseModalsProvider>
+              <TeacherModalsProvider>
+                {children}
+                <GroupModalsWrapper />
+                <StudentModalsWrapper />
+                <CourseModalsWrapper />
+                <TeacherModalsWrapper />
+              </TeacherModalsProvider>
+            </CourseModalsProvider>
           </StudentModalsProvider>
         </GroupModalsProvider>
       </body>

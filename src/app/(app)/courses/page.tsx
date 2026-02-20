@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import Portal from '@/components/Portal';
 import { t } from '@/i18n/t';
+import { useCourseModals } from '@/components/CourseModalsContext';
 
 interface User {
   id: number;
@@ -37,6 +38,7 @@ interface CourseGroup {
 
 export default function CoursesPage() {
   const router = useRouter();
+  const { openCourseModal } = useCourseModals();
   const [user, setUser] = useState<User | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -762,6 +764,28 @@ export default function CoursesPage() {
                         </div>
                       </td>
                     )}
+                    <td style={{ textAlign: 'right', width: '40px' }}>
+                      <button
+                        onClick={() => {
+                          openCourseModal(course.id, course.title);
+                        }}
+                        style={{
+                          padding: '0.25rem',
+                          borderRadius: '0.25rem',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#6b7280',
+                        }}
+                        title="Відкрити в модальному вікні"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                          <polyline points="15 3 21 3 21 9" />
+                          <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

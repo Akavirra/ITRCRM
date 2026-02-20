@@ -14,6 +14,7 @@ interface DraggableModalProps {
   minHeight?: number;
   initialPosition?: { x: number; y: number };
   groupUrl?: string;
+  courseUrl?: string;
   onPositionChange?: (position: { x: number; y: number }) => void;
   onSizeChange?: (size: { width: number; height: number }) => void;
 }
@@ -30,6 +31,7 @@ export default function DraggableModal({
   minHeight = 200,
   initialPosition,
   groupUrl,
+  courseUrl,
   onPositionChange,
   onSizeChange,
 }: DraggableModalProps) {
@@ -275,9 +277,9 @@ export default function DraggableModal({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {/* Go to page button */}
-            {groupUrl && (
+            {(groupUrl || courseUrl) && (
               <a
-                href={groupUrl}
+                href={groupUrl || courseUrl}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
