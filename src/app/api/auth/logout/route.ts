@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logout, getSession } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   internalError: 'Внутрішня помилка сервера',

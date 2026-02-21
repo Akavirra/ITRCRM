@@ -4,6 +4,8 @@ import { get, all } from '@/db';
 import { format, addDays, startOfWeek, parseISO, isWithinInterval } from 'date-fns';
 import { uk } from 'date-fns/locale';
 
+export const dynamic = 'force-dynamic';
+
 interface LessonRow {
   id: number;
   group_id: number;

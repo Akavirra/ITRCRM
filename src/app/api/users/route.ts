@@ -3,6 +3,8 @@ import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
 import { all, run } from '@/db';
 import { hashPassword } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   allFieldsRequired: "Усі поля обов'язкові",

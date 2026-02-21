@@ -4,6 +4,8 @@ import { get, all, run } from '@/db';
 import { hashPassword, verifyPassword } from '@/lib/auth';
 import { uploadImage, deleteImage, getPublicIdFromUrl } from '@/lib/cloudinary';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   teacherNotFound: 'Викладача не знайдено',

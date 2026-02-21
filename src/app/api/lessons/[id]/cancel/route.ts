@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, checkGroupAccess, forbidden } from '@/lib/api-utils';
 import { get, run } from '@/db';
 
+export const dynamic = 'force-dynamic';
+
 interface Lesson {
   id: number;
   group_id: number;

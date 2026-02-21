@@ -3,6 +3,8 @@ import { getAuthUser, unauthorized, checkGroupAccess, forbidden } from '@/lib/ap
 import { get, run } from '@/db';
 import { parseISO, setHours, setMinutes, format, addDays } from 'date-fns';
 
+export const dynamic = 'force-dynamic';
+
 interface Lesson {
   id: number;
   group_id: number;

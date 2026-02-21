@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden, notFound } from '@/lib/api-utils';
 import { getGroupById, archiveGroup, restoreGroup } from '@/lib/groups';
 
+export const dynamic = 'force-dynamic';
+
 // POST /api/groups/[id]/archive - Archive or restore a group
 export async function POST(
   request: NextRequest,

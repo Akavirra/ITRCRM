@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
 import { uploadBuffer, deleteImage, getPublicIdFromUrl } from '@/lib/cloudinary';
 
+export const dynamic = 'force-dynamic';
+
 // Allowed MIME types
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
 import { getStudentsWithGroupCount, getStudents, createStudent, searchStudents, quickSearchStudents, getStudentsWithGroups, searchStudentsWithGroups } from '@/lib/students';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   fullNameRequired: "П.І.Б. обов'язкове",

@@ -4,6 +4,8 @@ import { getStudentById, getStudentWithGroups, updateStudent, archiveStudent, re
 import { verifyPassword } from '@/lib/auth';
 import { get } from '@/db';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   invalidStudentId: 'Невірний ID учня',

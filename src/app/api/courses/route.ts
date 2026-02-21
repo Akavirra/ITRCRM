@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
 import { getCoursesWithStats, getCourses, createCourse, searchCourses } from '@/lib/courses';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   titleRequired: "Назва обов'язкова",

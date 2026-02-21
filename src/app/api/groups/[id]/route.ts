@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden, notFound, checkGroupAccess } from '@/lib/api-utils';
-import { 
-  getGroupById, 
-  getGroupWithDetailsById, 
+import {
+  getGroupById,
+  getGroupWithDetailsById,
   updateGroup, 
   updateGroupStatus,
   archiveGroup, 
@@ -21,6 +21,8 @@ import { getCourseById } from '@/lib/courses';
 import { verifyPassword } from '@/lib/auth';
 import { get } from '@/db';
 import { addGroupHistoryEntry, formatFieldEditedDescription, formatTeacherChangedDescription, formatStatusChangedDescription } from '@/lib/group-history';
+
+export const dynamic = 'force-dynamic';
 
 // Ukrainian error messages
 const ERROR_MESSAGES = {

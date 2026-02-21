@@ -3,6 +3,8 @@ import { getAuthUser, unauthorized, isAdmin, forbidden, notFound } from '@/lib/a
 import { getCourseById, updateCourseFlyerPath, getCourseFlyerPath } from '@/lib/courses';
 import { uploadBuffer, deleteImage, getPublicIdFromUrl } from '@/lib/cloudinary';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   invalidCourseId: 'Невірний ID курсу',

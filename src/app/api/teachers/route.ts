@@ -5,6 +5,8 @@ import { hashPassword } from '@/lib/auth';
 import { generatePublicId } from '@/lib/public-id';
 import { uploadImage } from '@/lib/cloudinary';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/teachers - список викладачів
 export async function GET(req: NextRequest) {
   try {

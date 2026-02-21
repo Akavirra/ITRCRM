@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden, checkGroupAccess } from '@/lib/api-utils';
 import { getPaymentStatusForGroupMonth, createPayment, updatePayment, deletePayment, getPaymentById } from '@/lib/payments';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   invalidGroupId: 'Невірний ID групи',

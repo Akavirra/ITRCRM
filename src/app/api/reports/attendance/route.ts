@@ -3,6 +3,8 @@ import { getAuthUser, unauthorized, isAdmin, getAccessibleGroupIds } from '@/lib
 import { getGroupAttendanceStats, getStudentAttendanceStats } from '@/lib/attendance';
 import { all } from '@/db';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   accessDenied: 'Недостатньо прав доступу',

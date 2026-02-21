@@ -4,6 +4,8 @@ import { get, run } from '@/db';
 import { parseISO, setHours, setMinutes, format } from 'date-fns';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
 
+export const dynamic = 'force-dynamic';
+
 interface Lesson {
   id: number;
   group_id: number;

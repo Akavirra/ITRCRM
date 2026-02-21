@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized } from '@/lib/api-utils';
 import { run, get } from '@/db';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   notAuthenticated: 'Необхідна авторизація',

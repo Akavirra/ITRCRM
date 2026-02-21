@@ -9,6 +9,8 @@ import fs from 'fs';
 import path from 'path';
 import { KYIV_TIMEZONE, UKRAINIAN_LOCALE } from '@/lib/date-utils';
 
+export const dynamic = 'force-dynamic';
+
 // Helper to sanitize filename (replace forbidden characters)
 function sanitizeFilename(name: string): string {
   // Replace characters that are forbidden in Windows filenames

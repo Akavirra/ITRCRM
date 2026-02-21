@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden, notFound } from '@/lib/api-utils';
 import { getCourseById, archiveCourse, restoreCourse } from '@/lib/courses';
 
+export const dynamic = 'force-dynamic';
+
 // POST /api/courses/[id]/archive - Archive or restore a course
 export async function POST(
   request: NextRequest,

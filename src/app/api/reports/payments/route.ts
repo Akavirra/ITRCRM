@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, getAccessibleGroupIds } from '@/lib/api-utils';
 import { getPaymentStats, getPaymentsForExport } from '@/lib/payments';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   accessDenied: 'Недостатньо прав доступу',

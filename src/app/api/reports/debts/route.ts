@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, getAccessibleGroupIds } from '@/lib/api-utils';
 import { getStudentsWithDebt, getTotalDebtForMonth } from '@/lib/students';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/reports/debts - Debts report
 export async function GET(request: NextRequest) {
   const user = await getAuthUser(request);

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, checkGroupAccess, forbidden } from '@/lib/api-utils';
 import { getGroupHistory, getRecentGroupHistory } from '@/lib/group-history';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   invalidGroupId: 'Невірний ID групи',

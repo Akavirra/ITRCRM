@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
 import { generateLessonsForAllGroups } from '@/lib/lessons';
 
+export const dynamic = 'force-dynamic';
+
 // POST /api/schedule/generate-all - Generate lessons for all active groups
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request);

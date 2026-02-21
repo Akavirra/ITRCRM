@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { login } from '@/lib/auth';
 import { initializeDatabase } from '@/db';
 
+export const dynamic = 'force-dynamic';
+
 // Initialize database on first request
 let dbInitialized = false;
 

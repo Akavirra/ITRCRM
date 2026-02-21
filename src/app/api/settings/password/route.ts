@@ -3,6 +3,8 @@ import { getAuthUser, unauthorized } from '@/lib/api-utils';
 import { run, get } from '@/db';
 import { verifyPassword, hashPassword } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   notAuthenticated: 'Необхідна авторизація',

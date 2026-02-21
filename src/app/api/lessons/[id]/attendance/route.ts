@@ -4,6 +4,8 @@ import { getAttendanceForLessonWithStudents, setAttendance, setAttendanceForAll,
 import { get } from '@/db';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   invalidLessonId: 'Невірний ID заняття',

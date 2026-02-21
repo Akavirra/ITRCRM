@@ -1,6 +1,11 @@
 import { neon, neonConfig } from '@neondatabase/serverless';
 
-neonConfig.fetchConnectionCache = true;
+// ВАЖЛИВО: Next.js 14 розширює глобальний fetch() і кешує відповіді за замовчуванням.
+// Neon driver використовує fetch() для HTTP запитів до Neon API.
+// Без cache: 'no-store' SQL запити кешуються і GET повертає застарілі дані.
+neonConfig.fetchFunction = (url: any, init: any) => {
+  return fetch(url, { ...init, cache: 'no-store' });
+};
 
 // Не викидаємо помилку, якщо DATABASE_URL не встановлена (для збірки)
 let sql: any;

@@ -4,6 +4,8 @@ import { getCourseById, updateCourse, archiveCourse, restoreCourse, deleteCourse
 import { verifyPassword } from '@/lib/auth';
 import { get } from '@/db';
 
+export const dynamic = 'force-dynamic';
+
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   invalidCourseId: 'Невірний ID курсу',
