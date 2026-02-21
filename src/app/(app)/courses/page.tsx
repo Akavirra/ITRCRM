@@ -250,6 +250,10 @@ export default function CoursesPage() {
       // Refresh courses
       const res = await fetch('/api/courses?withStats=true&includeInactive=true');
       const data = await res.json();
+      console.log('[CLIENT] Refreshed courses after save:', data.courses?.length, 'courses');
+      if (data.courses) {
+        console.log('[CLIENT] First course sample after save:', data.courses[0]);
+      }
       setCourses(data.courses || []);
     } catch (error) {
       console.error('Failed to save course:', error);
@@ -456,6 +460,9 @@ export default function CoursesPage() {
       return c.is_active === 1 && c.title.toLowerCase().includes(search.toLowerCase());
     })
     .sort((a, b) => a.title.localeCompare(b.title, 'uk'));
+
+  // DEBUG: тимчасове логування
+  console.log('[CLIENT] filteredCourses count:', filteredCourses.length, 'from total:', courses.length, 'showArchived:', showArchived);
 
   return (
     <Layout user={user}>
