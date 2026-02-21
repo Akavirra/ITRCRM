@@ -16,9 +16,9 @@ export async function query(text: string, params?: unknown[]) {
   try {
     if (params && params.length > 0) {
       // Neon очікує template strings, але підтримує і звичайні рядки через any
-      return await (sql as any)(text, params);
+      return await sql.query(text, params);
     }
-    return await (sql as any)(text);
+    return await sql.query(text);
   } catch (error) {
     console.error('DB Query Error:', { text, params, error });
     throw error;
