@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { formatShortDateKyiv, formatTimeKyiv } from '@/lib/date-utils';
 
 interface GroupHistoryEntry {
@@ -25,9 +25,8 @@ export default function GroupHistoryPanel({ groupId }: GroupHistoryPanelProps) {
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
+  const fetchHistory = useCallback(async (isInitial = false) => {
+    try {
         // Fetch recent history (4 items)
         const recentRes = await fetch(`/api/groups/${groupId}/history?recent=true&limit=4`);
         const recentData = await recentRes.json();
@@ -40,14 +39,25 @@ export default function GroupHistoryPanel({ groupId }: GroupHistoryPanelProps) {
       } catch (error) {
         console.error('Failed to fetch group history:', error);
       } finally {
-        setLoading(false);
+        // Only set loading to false on initial fetch
+        if (isInitial) {
+          setLoading(false);
+        }
       }
-    };
+    }, [groupId]);
 
-    if (groupId) {
-      fetchHistory();
-    }
-  }, [groupId]);
+    useEffect(() => {
+      if (groupId) {
+        // Initial fetch with loading indicator
+        fetchHistory(true);
+        
+        // Polling for automatic updates every 10 seconds
+        const intervalId = setInterval(() => fetchHistory(false), 10000);
+        
+        // Cleanup interval on unmount
+        return () => clearInterval(intervalId);
+      }
+    }, [groupId, fetchHistory]);
 
   const formatDate = (dateStr: string) => {
     return formatShortDateKyiv(dateStr);

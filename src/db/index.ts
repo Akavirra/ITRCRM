@@ -15,10 +15,6 @@ const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), 'data', DEFAULT_
 const IS_DEV = APP_ENV !== 'prod';
 export { DB_PATH, IS_DEV, APP_ENV };
 
-// Debug logs to trace which database is being used (after IS_DEV is defined)
-console.log(`[DB] APP_ENV=${APP_ENV} IS_DEV=${IS_DEV}`);
-console.log(`[DB] DB_PATH=${DB_PATH}`);
-
 // Schema version for tracking DB compatibility
 const SCHEMA_VERSION = 2;
 
@@ -35,13 +31,19 @@ let db: Database.Database | null = null;
 let isInitialized = false;
 let initPromise: Promise<void> | null = null;
 
-// Get or create database connection
+// Get or create database connection with lazy initialization
 export function getDb(): Database.Database {
   if (!db) {
     db = new Database(DB_PATH);
     db.pragma('foreign_keys = ON');
     console.log('Database connection established:', DB_PATH);
   }
+  
+  // Lazy initialize on first call to getDb() - but only if not already initialized
+  if (!isInitialized) {
+    initializeDatabase();
+  }
+  
   return db;
 }
 
@@ -308,7 +310,6 @@ function createAllTables(): void {
   `;
   
   database.exec(createTablesSQL);
-  console.log('Database tables created/verified');
 }
 
 // Seed demo users (idempotent)
@@ -324,7 +325,7 @@ function seedDemoUsers(): void {
       database.prepare(
         'INSERT INTO users (name, email, password_hash, role, is_active) VALUES (?, ?, ?, ?, ?)'
       ).run('Admin', 'admin@school.ua', adminPasswordHash, 'admin', 1);
-      console.log('Created demo admin user: admin@school.ua');
+
     }
 
     // Check if teacher user exists
@@ -335,7 +336,7 @@ function seedDemoUsers(): void {
       database.prepare(
         'INSERT INTO users (name, email, password_hash, role, is_active) VALUES (?, ?, ?, ?, ?)'
       ).run('Teacher', 'teacher@school.ua', teacherPasswordHash, 'teacher', 1);
-      console.log('Created demo teacher user: teacher@school.ua');
+
     }
   } catch (error) {
     console.error('Failed to seed demo users:', error);
@@ -357,30 +358,30 @@ function runMigrations(): void {
     const groupsColumns = groupsTableInfo.map(col => col.name);
     
     if (!groupsColumns.includes('status')) {
-      console.log('Adding status column to groups table...');
+  
       database.exec(`ALTER TABLE groups ADD COLUMN status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'graduate', 'inactive'))`);
       database.exec(`CREATE INDEX IF NOT EXISTS idx_groups_status ON groups(status)`);
-      console.log('Migration: status column added');
+
     }
     
     if (!groupsColumns.includes('note')) {
-      console.log('Adding note column to groups table...');
+  
       database.exec(`ALTER TABLE groups ADD COLUMN note TEXT`);
-      console.log('Migration: note column added');
+
     }
     
     if (!groupsColumns.includes('photos_folder_url')) {
-      console.log('Adding photos_folder_url column to groups table...');
+  
       database.exec(`ALTER TABLE groups ADD COLUMN photos_folder_url TEXT`);
-      console.log('Migration: photos_folder_url column added');
+
     }
     
     // Add public_id column to groups table if it doesn't exist
     if (!groupsColumns.includes('public_id')) {
-      console.log('Adding public_id column to groups table...');
+  
       database.exec(`ALTER TABLE groups ADD COLUMN public_id TEXT`);
       database.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_groups_public_id ON groups(public_id)`);
-      console.log('Migration: public_id column added to groups');
+
     }
     
     // Add public_id column to students table if it doesn't exist
@@ -389,15 +390,15 @@ function runMigrations(): void {
       const studentsColumns = studentsTableInfo.map(col => col.name);
       
       if (!studentsColumns.includes('public_id')) {
-        console.log('Adding public_id column to students table...');
+    
         database.exec(`ALTER TABLE students ADD COLUMN public_id TEXT`);
         database.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_students_public_id ON students(public_id)`);
-        console.log('Migration: public_id column added to students');
+  
       }
       
       // Add email column to students table if it doesn't exist
       if (!studentsColumns.includes('email')) {
-        console.log('Adding email column to students table...');
+    
         database.exec(`ALTER TABLE students ADD COLUMN email TEXT`);
         console.log('Migration: email column added to students');
       }
@@ -409,16 +410,16 @@ function runMigrations(): void {
       const coursesColumns = coursesTableInfo.map(col => col.name);
       
       if (!coursesColumns.includes('public_id')) {
-        console.log('Adding public_id column to courses table...');
+    
         database.exec(`ALTER TABLE courses ADD COLUMN public_id TEXT`);
         database.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_courses_public_id ON courses(public_id)`);
-        console.log('Migration: public_id column added to courses');
+  
       }
       
       // Migrate from age_label (TEXT) to age_min (INTEGER)
       // Check if age_min column exists
       if (!coursesColumns.includes('age_min')) {
-        console.log('Migrating age_label to age_min...');
+    
         // Check if age_label exists and has data
         if (coursesColumns.includes('age_label')) {
           // Extract numeric value from age_label (e.g., "6+" -> 6)
@@ -434,33 +435,33 @@ function runMigrations(): void {
             const ageValue = match ? parseInt(match[1], 10) : 6;
             database.prepare('UPDATE courses SET age_min = ? WHERE id = ?').run(ageValue, course.id);
           }
-          console.log('Migration: age_label migrated to age_min');
+
         } else {
           // No age_label column, just add age_min
           database.exec(`ALTER TABLE courses ADD COLUMN age_min INTEGER NOT NULL DEFAULT 6`);
-          console.log('Migration: age_min column added to courses');
+
         }
       }
       
       // Add duration_months column to courses table if it doesn't exist
       if (!coursesColumns.includes('duration_months')) {
-        console.log('Adding duration_months column to courses table...');
+    
         database.exec(`ALTER TABLE courses ADD COLUMN duration_months INTEGER NOT NULL DEFAULT 1`);
-        console.log('Migration: duration_months column added to courses');
+  
       }
       
       // Add program column to courses table if it doesn't exist
       if (!coursesColumns.includes('program')) {
-        console.log('Adding program column to courses table...');
+    
         database.exec(`ALTER TABLE courses ADD COLUMN program TEXT`);
-        console.log('Migration: program column added to courses');
+  
       }
       
       // Add flyer_path column to courses table if it doesn't exist
       if (!coursesColumns.includes('flyer_path')) {
-        console.log('Adding flyer_path column to courses table...');
+    
         database.exec(`ALTER TABLE courses ADD COLUMN flyer_path TEXT NULL`);
-        console.log('Migration: flyer_path column added to courses');
+  
       }
     }
     
@@ -470,38 +471,36 @@ function runMigrations(): void {
       const usersColumns = usersTableInfo.map(col => col.name);
       
       if (!usersColumns.includes('phone')) {
-        console.log('Adding phone column to users table...');
+    
         database.exec(`ALTER TABLE users ADD COLUMN phone TEXT`);
-        console.log('Migration: phone column added to users');
+  
       }
       
       if (!usersColumns.includes('telegram_id')) {
-        console.log('Adding telegram_id column to users table...');
+    
         database.exec(`ALTER TABLE users ADD COLUMN telegram_id TEXT`);
-        console.log('Migration: telegram_id column added to users');
+  
       }
       
       if (!usersColumns.includes('photo_url')) {
-        console.log('Adding photo_url column to users table...');
+    
         database.exec(`ALTER TABLE users ADD COLUMN photo_url TEXT`);
-        console.log('Migration: photo_url column added to users');
+  
       }
       
       if (!usersColumns.includes('notes')) {
-        console.log('Adding notes column to users table...');
+    
         database.exec(`ALTER TABLE users ADD COLUMN notes TEXT`);
-        console.log('Migration: notes column added to users');
+  
       }
       
       if (!usersColumns.includes('public_id')) {
-        console.log('Adding public_id column to users table...');
+    
         database.exec(`ALTER TABLE users ADD COLUMN public_id TEXT`);
         database.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_public_id ON users(public_id)`);
-        console.log('Migration: public_id column added to users');
+  
       }
     }
-    
-    console.log('Migrations completed successfully');
   } catch (error) {
     console.error('Migration error:', error);
   }
@@ -513,27 +512,27 @@ export function resetDatabase(): void {
     console.error('resetDatabase() can only be called in development mode!');
     return;
   }
-  
+
   console.log('Resetting database (dev mode)...');
-  
+
   // Close existing connection
   if (db) {
     db.close();
     db = null;
   }
-  
+
   // Delete the database file
   if (fs.existsSync(DB_PATH)) {
     fs.unlinkSync(DB_PATH);
     console.log('Database file deleted:', DB_PATH);
   }
-  
+
   // Reset initialization state
   isInitialized = false;
-  
+
   // Re-initialize
   initializeDatabase();
-  
+
   console.log('Database reset complete');
 }
 
@@ -542,9 +541,12 @@ export function initializeDatabase(): void {
   if (isInitialized) {
     return;
   }
+
+  // Mark as initializing to prevent recursion
+  isInitialized = true;
   
   console.log('Initializing database...');
-  
+
   try {
     // Create all tables first
     createAllTables();
@@ -558,14 +560,15 @@ export function initializeDatabase(): void {
     // Update schema version
     setSchemaVersion(SCHEMA_VERSION);
     
-    isInitialized = true;
     console.log('Database initialization complete');
   } catch (error) {
+    // Reset the flag so it can try again
+    isInitialized = false;
+    
     console.error('Failed to initialize database:', error);
     
     // In development, try to recover by resetting the database
     if (IS_DEV) {
-      console.log('Attempting to recover by resetting database...');
       try {
         resetDatabase();
       } catch (resetError) {
@@ -578,39 +581,26 @@ export function initializeDatabase(): void {
   }
 }
 
-// Ensure database is initialized before any operation
-export function ensureInitialized(): boolean {
-  if (!isInitialized) {
-    initializeDatabase();
-  }
-  return isInitialized;
-}
-
 // Helper functions for common database operations
-// All helpers ensure DB is initialized before executing
 export function run(sql: string, params: any[] = []) {
-  ensureInitialized();
-  const database = getDb();
+  const database = getDb(); // getDb() handles initialization
   const stmt = database.prepare(sql);
   return stmt.run(...params);
 }
 
 export function get<T = any>(sql: string, params: any[] = []): T | undefined {
-  ensureInitialized();
   const database = getDb();
   const stmt = database.prepare(sql);
   return stmt.get(...params) as T | undefined;
 }
 
 export function all<T = any>(sql: string, params: any[] = []): T[] {
-  ensureInitialized();
   const database = getDb();
   const stmt = database.prepare(sql);
   return stmt.all(...params) as T[];
 }
 
 export function transaction<T>(fn: () => T): T {
-  ensureInitialized();
   const database = getDb();
   return database.transaction(fn)();
 }
@@ -634,5 +624,4 @@ export function logError(
   }
 }
 
-// Auto-initialize on module import
-ensureInitialized();
+

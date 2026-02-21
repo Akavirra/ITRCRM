@@ -126,8 +126,8 @@ export function formatFieldEditedDescription(fieldName: string, oldValue: string
   };
   
   const label = fieldLabels[fieldName] || fieldName;
-  const oldVal = oldValue || '(порожньо)';
-  const newVal = newValue || '(порожньо)';
+  const oldVal = oldValue ?? '(порожньо)';
+  const newVal = newValue ?? '(порожньо)';
   
   return `Змінено ${label}: ${oldVal} → ${newVal}`;
 }

@@ -317,6 +317,21 @@ export async function PUT(
       );
     }
     
+    // Check if note changed
+    const oldNote = existingGroup.note;
+    const newNote = note;
+    if (oldNote !== newNote) {
+      addGroupHistoryEntry(
+        groupId,
+        'edited',
+        formatFieldEditedDescription('note', oldNote, newNote),
+        user.id,
+        user.name,
+        oldNote,
+        newNote
+      );
+    }
+    
     return NextResponse.json({ 
       message: 'Групу успішно оновлено',
       group: updatedGroup,

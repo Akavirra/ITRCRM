@@ -374,7 +374,7 @@ export default function SchedulePage() {
                   color: '#111827',
                   marginTop: '0.125rem',
                 }}>
-                  {format(parseISO(day.date), 'd')}
+                  {format(parseISO(day.date), 'd.MM')}
                 </div>
                 <div style={{ 
                   fontSize: '0.875rem', 
