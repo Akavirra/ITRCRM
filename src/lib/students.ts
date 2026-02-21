@@ -479,7 +479,7 @@ export async function getStudentsWithDebt(month: string): Promise<StudentWithDeb
    LEFT JOIN payments p ON p.student_id = s.id AND p.group_id = g.id AND p.month = $1
    WHERE sg.is_active = TRUE AND s.is_active = TRUE AND g.is_active = TRUE
    GROUP BY s.id, g.id
-   HAVING debt > 0
+   HAVING g.monthly_price - COALESCE(SUM(p.amount), 0) > 0
    ORDER BY debt DESC, s.full_name`;
   
   return await all<StudentWithDebt>(sql, [month, month]);
@@ -501,7 +501,7 @@ export async function getTotalDebtForMonth(month: string): Promise<{ total_debt:
        LEFT JOIN payments p ON p.student_id = s.id AND p.group_id = g.id AND p.month = $1
        WHERE sg.is_active = TRUE AND s.is_active = TRUE AND g.is_active = TRUE
        GROUP BY s.id, g.id
-       HAVING debt > 0
+       HAVING g.monthly_price - COALESCE(SUM(p.amount), 0) > 0
      )`,
     [month]
   );
