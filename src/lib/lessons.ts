@@ -1,6 +1,6 @@
 import { run, get, all, transaction } from '@/db';
 import { addDays, setHours, setMinutes, format, parse, isAfter, isBefore, startOfDay } from 'date-fns';
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 interface Group {
   id: number;
