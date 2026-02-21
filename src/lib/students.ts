@@ -482,7 +482,7 @@ export async function getStudentsWithDebt(month: string): Promise<StudentWithDeb
    HAVING g.monthly_price - COALESCE(SUM(p.amount), 0) > 0
    ORDER BY debt DESC, s.full_name`;
   
-  return await all<StudentWithDebt>(sql, [month, month]);
+  return await all<StudentWithDebt>(sql, [month]);
 }
 
 // Get total debt for current month
