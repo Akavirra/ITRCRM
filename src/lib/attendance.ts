@@ -1,4 +1,5 @@
 import { run, get, all, transaction } from '@/db';
+import { format } from 'date-fns';
 
 export type AttendanceStatus = 'present' | 'absent' | 'makeup_planned' | 'makeup_done';
 export type StudyStatus = 'studying' | 'not_studying';
@@ -159,11 +160,15 @@ export async function copyAttendanceFromPreviousLesson(
   }
   
   // Get the previous lesson
+  // Convert lesson_date to yyyy-MM-dd format for proper comparison
+  // (PostgreSQL returns DATE as ISO string with time component)
+  const currentLessonDate = format(new Date(currentLesson.lesson_date), 'yyyy-MM-dd');
+  
   const previousLesson = await get<{ id: number }>(
     `SELECT id FROM lessons 
      WHERE group_id = $1 AND lesson_date < $2 AND status != 'canceled'
      ORDER BY lesson_date DESC LIMIT 1`,
-    [currentLesson.group_id, currentLesson.lesson_date]
+    [currentLesson.group_id, currentLessonDate]
   );
   
   if (!previousLesson) {

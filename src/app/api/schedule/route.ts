@@ -117,8 +117,11 @@ export async function GET(request: NextRequest) {
   }
   
   for (const lesson of lessons) {
-    if (daysMap[lesson.lesson_date]) {
-      daysMap[lesson.lesson_date].push(lesson);
+    // Convert lesson_date to yyyy-MM-dd format for proper matching
+    // (PostgreSQL returns DATE as ISO string with time component)
+    const lessonDateStr = format(new Date(lesson.lesson_date), 'yyyy-MM-dd');
+    if (daysMap[lessonDateStr]) {
+      daysMap[lessonDateStr].push(lesson);
     }
   }
   

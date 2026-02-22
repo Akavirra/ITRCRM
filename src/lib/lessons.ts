@@ -49,7 +49,12 @@ export async function generateLessonsForGroup(
     `SELECT lesson_date FROM lessons WHERE group_id = $1`,
     [groupId]
   );
-  const existingDates = new Set(existingLessons.map(l => l.lesson_date));
+  // Convert dates to yyyy-MM-dd format for proper comparison
+  // (PostgreSQL returns DATE as ISO string with time component)
+  const existingDates = new Set(existingLessons.map(l => {
+    const date = new Date(l.lesson_date);
+    return format(date, 'yyyy-MM-dd');
+  }));
   
   let generated = 0;
   let skipped = 0;
