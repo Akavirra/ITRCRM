@@ -161,7 +161,7 @@ export async function PUT(
     
     return NextResponse.json({ success: true, message: 'Дані викладача оновлено' });
   } catch (error: any) {
-    if (error.code === 'SQLITE_CONSTRAINT' || error.message?.includes('UNIQUE constraint')) {
+    if (error.code === '23505' || error.code === 'SQLITE_CONSTRAINT' || error.message?.includes('unique constraint') || error.message?.includes('UNIQUE constraint')) {
       return badRequest(ERROR_MESSAGES.emailExists);
     }
     console.error('Update teacher error:', error);

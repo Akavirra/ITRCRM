@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       message: 'Користувача успішно створено',
     });
   } catch (error: any) {
-    if (error.code === 'SQLITE_CONSTRAINT') {
+    if (error.code === '23505' || error.code === 'SQLITE_CONSTRAINT' || error.message?.includes('unique constraint') || error.message?.includes('UNIQUE constraint')) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.emailExists },
         { status: 400 }

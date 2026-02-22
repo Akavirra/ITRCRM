@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating teacher:', error);
-    if (error.message?.includes('UNIQUE constraint failed') || error.code === 'SQLITE_CONSTRAINT') {
+    if (error.code === '23505' || error.code === 'SQLITE_CONSTRAINT' || error.message?.includes('unique constraint') || error.message?.includes('UNIQUE constraint')) {
       return badRequest('Email already exists');
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
