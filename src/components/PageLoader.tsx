@@ -16,13 +16,23 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ 
-            duration: 0.15, 
+            duration: 0.2, 
             ease: 'easeOut' 
           }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-white"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50"
         >
-          <div className="flex flex-col items-center gap-4">
-            {/* Simple flat spinner */}
+          <div className="flex flex-col items-center gap-5">
+            {/* Logo/Brand */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.3 }}
+              className="text-2xl font-bold text-blue-600"
+            >
+              ITRobotics
+            </motion.div>
+
+            {/* Simple spinner */}
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ 
@@ -33,16 +43,14 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
               className="w-8 h-8"
             >
               <svg viewBox="0 0 32 32" className="w-full h-full">
-                {/* Background circle */}
                 <circle
                   cx="16"
                   cy="16"
                   r="14"
-                  stroke="#e5e7eb"
+                  stroke="#e2e8f0"
                   strokeWidth="3"
                   fill="none"
                 />
-                {/* Progress arc */}
                 <circle
                   cx="16"
                   cy="16"
@@ -56,11 +64,6 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
                 />
               </svg>
             </motion.div>
-
-            {/* Loading text */}
-            <span className="text-sm text-gray-400 font-medium">
-              Завантаження...
-            </span>
           </div>
         </motion.div>
       )}

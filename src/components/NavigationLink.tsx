@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { usePageTransition } from './PageTransitionProvider';
 
 interface NavigationLinkProps {
   href: string;
@@ -11,13 +10,7 @@ interface NavigationLinkProps {
 }
 
 export const NavigationLink = ({ href, children, className, onClick }: NavigationLinkProps) => {
-  const { startLoading } = usePageTransition();
-
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // Start the loading animation immediately before navigation
-    startLoading();
-    
-    // Call onClick if provided
     if (onClick) {
       onClick();
     }

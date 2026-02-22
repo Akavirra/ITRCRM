@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 interface PageTransitionContextType {
   isLoading: boolean;
@@ -24,81 +24,34 @@ interface PageTransitionProviderProps {
 }
 
 export const PageTransitionProvider = ({ children }: PageTransitionProviderProps) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const prevPathRef = useRef<string | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const clearAllTimeouts = useCallback(() => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-      loadingTimeoutRef.current = null;
-    }
-  }, []);
 
   const startLoading = useCallback(() => {
-    clearAllTimeouts();
-    setIsLoading(true);
-  }, [clearAllTimeouts]);
+    // Не показуємо глобальний лоадер при навігації - сторінки мають свої loading стани
+  }, []);
 
   const stopLoading = useCallback(() => {
-    clearAllTimeouts();
     setIsLoading(false);
-  }, [clearAllTimeouts]);
+  }, []);
 
-  // Initial load - показуємо лоадер тільки при першому завантаженні
+  // Initial load - показуємо лоадер тільки при першому завантаженні сайту
   useEffect(() => {
-    if (isInitialLoad) {
-      setIsLoading(true);
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-        setIsInitialLoad(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [isInitialLoad]);
-
-  // Monitor pathname changes - зупиняємо завантаження коли шлях змінився
-  useEffect(() => {
-    if (isInitialLoad) return;
-
-    const currentPath = pathname + (searchParams?.toString() ? '?' + searchParams.toString() : '');
+    // Затримка для показу лоадера при першому завантаженні
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+      setIsInitialLoad(false);
+    }, 300);
     
-    // Якщо шлях змінився
-    if (prevPathRef.current !== null && prevPathRef.current !== currentPath) {
-      // Зупиняємо завантаження з невеликою затримкою для плавності
-      loadingTimeoutRef.current = setTimeout(() => {
-        setIsLoading(false);
-      }, 100);
-    }
-    
-    prevPathRef.current = currentPath;
-    
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [pathname, searchParams, isInitialLoad]);
+    return () => clearTimeout(timer);
+  }, []);
 
-  // Handle browser back/forward buttons
+  // Оновлюємо ref при зміні шляху
   useEffect(() => {
-    if (isInitialLoad) return;
-
-    const handlePopState = () => {
-      setIsLoading(true);
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [isInitialLoad]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => clearAllTimeouts();
-  }, [clearAllTimeouts]);
+    prevPathRef.current = pathname;
+  }, [pathname]);
 
   const contextValue: PageTransitionContextType = {
     isLoading,

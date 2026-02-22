@@ -1,8 +1,7 @@
 'use client';
 
-import { useRef, MouseEvent, AnchorHTMLAttributes } from 'react';
+import { MouseEvent, AnchorHTMLAttributes } from 'react';
 import Link from 'next/link';
-import { usePageTransition } from './PageTransitionProvider';
 
 interface TransitionLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> {
   href: string;
@@ -16,28 +15,19 @@ export const TransitionLink = ({
   onClick,
   ...props 
 }: TransitionLinkProps) => {
-  const { startLoading } = usePageTransition();
   const isExternal = href.startsWith('http') || href.startsWith('//');
 
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
     if (isExternal) {
-      return; // Зовнішні посилання відкриваються звичайним чином
-    }
-
-    // Якщо це поточна сторінка, не робимо нічого
-    if (window.location.pathname === href) {
-      e.preventDefault();
       return;
     }
-    
+
     if (onClick) {
       onClick();
     }
-
-    // Починаємо показувати лоадер
-    startLoading();
     
-    // Посилання буде оброблено Next.js Link автоматично
+    // Next.js Link обробить навігацію автоматично
+    // Сторінка покаже свій власний loading стан
   };
 
   if (isExternal) {
