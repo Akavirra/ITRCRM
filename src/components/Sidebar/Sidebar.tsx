@@ -23,6 +23,8 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onLogout: () => void;
+  isMobile?: boolean;
+  isTablet?: boolean;
 }
 
 const menuItems = [
@@ -40,42 +42,70 @@ const adminMenuItems = [
   { href: '/users', labelKey: 'nav.users', icon: Settings },
 ];
 
-export default function Sidebar({ user, isOpen, onClose, onLogout }: SidebarProps) {
+export default function Sidebar({ user, isOpen, onClose, onLogout, isMobile = false, isTablet = false }: SidebarProps) {
   const pathname = usePathname();
 
-  // Calculate sidebar position based on isOpen
-  const sidebarLeft = isOpen ? '16px' : '-256px';
+  const isSmallScreen = isMobile || isTablet;
+
+  // On mobile/tablet, sidebar slides from left as overlay
+  // On desktop, sidebar is fixed in place
+  const getSidebarLeft = () => {
+    if (isSmallScreen) {
+      return isOpen ? '0px' : '-280px';
+    }
+    return isOpen ? '16px' : '-256px';
+  };
+
+  const getSidebarTop = () => {
+    if (isSmallScreen) return '0px';
+    return '80px';
+  };
+
+  const getSidebarHeight = () => {
+    if (isSmallScreen) return '100vh';
+    return 'calc(100vh - 100px)';
+  };
+
+  const getSidebarWidth = () => {
+    if (isMobile) return '280px';
+    return '240px';
+  };
+
+  const getSidebarBorderRadius = () => {
+    if (isSmallScreen) return '0 16px 16px 0';
+    return '16px';
+  };
 
   const sidebarStyle: React.CSSProperties = {
     position: 'fixed',
-    top: '80px',
-    left: sidebarLeft,
-    width: '240px',
-    height: 'calc(100vh - 100px)',
+    top: getSidebarTop(),
+    left: getSidebarLeft(),
+    width: getSidebarWidth(),
+    height: getSidebarHeight(),
     backgroundColor: '#ffffff',
     color: '#333333',
     transition: 'left 0.3s ease',
-    zIndex: 25,
+    zIndex: isSmallScreen ? 30 : 25,
     boxShadow: isOpen ? '0 4px 20px rgba(0, 0, 0, 0.08)' : 'none',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    borderRadius: '16px',
-    marginBottom: '16px',
-    border: '1px solid #f0f0f0',
+    borderRadius: getSidebarBorderRadius(),
+    marginBottom: isSmallScreen ? '0' : '16px',
+    border: isSmallScreen ? 'none' : '1px solid #f0f0f0',
   };
 
   const navItemStyle = (isActive: boolean): React.CSSProperties => ({
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    padding: '12px 16px',
+    padding: isMobile ? '14px 16px' : '12px 16px',
     borderRadius: '12px',
     color: isActive ? '#1565c0' : '#666666',
     backgroundColor: isActive ? '#e3f2fd' : 'transparent',
     textDecoration: 'none',
     fontWeight: isActive ? '600' : '500',
-    fontSize: '14px',
+    fontSize: isMobile ? '15px' : '14px',
     transition: 'all 0.2s ease',
     marginBottom: '4px',
     marginLeft: '12px',
@@ -85,18 +115,16 @@ export default function Sidebar({ user, isOpen, onClose, onLogout }: SidebarProp
 
   return (
     <>
-      {/* Mobile overlay */}
-      {isOpen && (
+      {/* Mobile/Tablet overlay */}
+      {isSmallScreen && isOpen && (
         <div 
           onClick={onClose}
           style={{
             position: 'fixed',
             inset: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            zIndex: 24,
-            display: 'none',
+            zIndex: 29,
           }}
-          className="mobile-overlay"
         />
       )}
 
@@ -110,6 +138,7 @@ export default function Sidebar({ user, isOpen, onClose, onLogout }: SidebarProp
           justifyContent: 'center',
           flexShrink: 0,
           borderBottom: '1px solid #f5f5f5',
+          minHeight: isSmallScreen ? '64px' : 'auto',
         }}>
           <img 
             src="/logo.svg" 
@@ -124,7 +153,7 @@ export default function Sidebar({ user, isOpen, onClose, onLogout }: SidebarProp
         </div>
 
         {/* Navigation */}
-        <nav style={{ padding: '24px 8px', flex: 1, overflowY: 'auto' }}>
+        <nav style={{ padding: '24px 8px', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -207,7 +236,7 @@ export default function Sidebar({ user, isOpen, onClose, onLogout }: SidebarProp
             onClick={onLogout}
             style={{ 
               width: '100%', 
-              padding: '12px 16px',
+              padding: isMobile ? '14px 16px' : '12px 16px',
               borderRadius: '12px',
               border: '1px solid #e0e0e0',
               backgroundColor: 'transparent',
@@ -237,15 +266,6 @@ export default function Sidebar({ user, isOpen, onClose, onLogout }: SidebarProp
           </button>
         </div>
       </aside>
-
-      {/* Show overlay on mobile when sidebar is open */}
-      <style jsx global>{`
-        @media (max-width: 1024px) {
-          .mobile-overlay {
-            display: block !important;
-          }
-        }
-      `}</style>
     </>
   );
 }

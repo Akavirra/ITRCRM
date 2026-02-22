@@ -39,25 +39,37 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
   const router = useRouter();
   const pathname = usePathname();
   const [isDesktop, setIsDesktop] = useState(true);
+  const [isTablet, setIsTablet] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Check if we're on desktop
+  // Check viewport size
   useEffect(() => {
-    const checkDesktop = () => {
-      setIsDesktop(window.innerWidth >= 1025);
+    const checkViewport = () => {
+      const width = window.innerWidth;
+      setIsDesktop(width >= 1025);
+      setIsTablet(width >= 769 && width < 1025);
+      setIsMobile(width < 769);
     };
     
-    checkDesktop();
-    window.addEventListener('resize', checkDesktop);
-    return () => window.removeEventListener('resize', checkDesktop);
+    checkViewport();
+    window.addEventListener('resize', checkViewport);
+    return () => window.removeEventListener('resize', checkViewport);
   }, []);
 
-  // On desktop, sidebar starts open; on mobile, starts closed
+  // On desktop, sidebar starts open; on mobile/tablet, starts closed
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setSidebarOpen(window.innerWidth >= 1025);
     }
   }, []);
+
+  // Close sidebar on route change for mobile/tablet
+  useEffect(() => {
+    if (!isDesktop) {
+      setSidebarOpen(false);
+    }
+  }, [pathname, isDesktop]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -76,8 +88,23 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
     return t('app.name');
   };
 
-  // Calculate margin based on sidebar state
-  const contentMarginLeft = sidebarOpen ? '272px' : '16px';
+  // Calculate margin based on sidebar state and viewport
+  const getContentMarginLeft = () => {
+    if (isMobile || isTablet) return '0px';
+    return sidebarOpen ? '272px' : '16px';
+  };
+
+  const getContentMarginRight = () => {
+    if (isMobile) return '0px';
+    if (isTablet) return '8px';
+    return '16px';
+  };
+
+  const getMainPadding = () => {
+    if (isMobile) return '0.75rem';
+    if (isTablet) return '1rem';
+    return '1.5rem';
+  };
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -97,6 +124,8 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           onLogout={handleLogout}
+          isMobile={isMobile}
+          isTablet={isTablet}
         />
 
         {/* Main content */}
@@ -104,9 +133,9 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
           style={{
             flex: 1,
             minWidth: 0,
-            marginLeft: contentMarginLeft,
-            marginRight: '16px',
-            transition: 'margin-left 0.3s ease',
+            marginLeft: getContentMarginLeft(),
+            marginRight: getContentMarginRight(),
+            transition: isDesktop ? 'margin-left 0.3s ease' : 'none',
           }}
         >
           {/* Page header (optional) */}
@@ -116,31 +145,38 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
               top: '64px',
               backgroundColor: 'white',
               borderBottom: '1px solid #e5e7eb',
-              padding: '1rem 1.5rem',
+              padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
               display: 'flex',
-              alignItems: 'center',
+              alignItems: isMobile ? 'flex-start' : 'center',
               justifyContent: 'space-between',
-              gap: '1rem',
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: isMobile ? '0.75rem' : '1rem',
               zIndex: 10,
-              borderRadius: '12px',
-              marginTop: '8px',
+              borderRadius: isMobile ? '0' : '12px',
+              marginTop: isMobile ? '0' : '8px',
             }}>
-              <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0 }}>
+              <h2 style={{ fontSize: isMobile ? '1rem' : '1.125rem', fontWeight: '600', margin: 0 }}>
                 {getPageTitle()}
               </h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem',
+                width: isMobile ? '100%' : 'auto',
+                flexWrap: 'wrap',
+              }}>
                 {headerActions}
               </div>
             </header>
           )}
 
           {/* Page content */}
-          <main style={{ padding: '1.5rem' }}>
+          <main style={{ padding: getMainPadding() }}>
             {children}
           </main>
         </div>
 
-        {/* Mobile overlay when sidebar is open on mobile */}
+        {/* Mobile/Tablet overlay when sidebar is open */}
         {!isDesktop && sidebarOpen && (
           <div
             onClick={() => setSidebarOpen(false)}
@@ -149,6 +185,7 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
               inset: 0,
               backgroundColor: 'rgba(0, 0, 0, 0.5)',
               zIndex: 20,
+              transition: 'opacity 0.3s ease',
             }}
           />
         )}

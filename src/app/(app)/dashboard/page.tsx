@@ -100,7 +100,7 @@ export default function DashboardPage() {
   return (
     <Layout user={user}>
       {/* Stats cards */}
-      <div style={{
+      <div className="stats-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
         gap: '1.5rem',

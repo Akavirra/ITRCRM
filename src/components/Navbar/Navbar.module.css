@@ -298,18 +298,61 @@
   background: #fef2f2;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* Responsive - Tablet */
+@media (max-width: 1024px) and (min-width: 769px) {
   .navbar {
     padding: 0 16px;
   }
 
   .navbarCenter {
-    max-width: 100%;
+    max-width: 400px;
   }
 
   .searchHint {
     display: none;
+  }
+
+  .userInfo {
+    display: flex;
+  }
+
+  .userBlock {
+    padding: 4px 8px 4px 4px;
+    margin-left: 4px;
+  }
+}
+
+/* Responsive - Mobile */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 12px;
+    height: 56px;
+  }
+
+  .navbarInner {
+    gap: 8px;
+  }
+
+  .navbarCenter {
+    max-width: 100%;
+    flex: 1;
+  }
+
+  .searchHint {
+    display: none;
+  }
+
+  .searchInput {
+    height: 38px;
+    font-size: 14px;
+    padding: 0 12px 0 38px;
+    border-radius: 10px;
+  }
+
+  .searchIcon {
+    left: 12px;
+    width: 16px;
+    height: 16px;
   }
 
   .userInfo {
@@ -321,41 +364,66 @@
     margin-left: 4px;
   }
 
+  .userAvatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
   .userChevron {
     display: none;
+  }
+
+  .homeButton {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .iconButton {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .notificationBadge {
+    top: 4px;
+    right: 4px;
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
   }
 }
 
 @media (max-width: 480px) {
+  .navbar {
+    padding: 0 8px;
+  }
+
+  .navbarInner {
+    gap: 4px;
+  }
+
   .searchContainer {
     position: static;
   }
 
   .searchInput {
-    width: 42px;
-    height: 42px;
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: 12px;
+    height: 36px;
+    font-size: 13px;
   }
 
-  .searchInput::placeholder {
-    color: transparent;
+  .navbarRight {
+    gap: 2px;
   }
 
-  .searchInput:focus {
-    width: 100%;
-    padding: 0 16px 0 44px;
-    background: #fff;
-    border: 1px solid #e2e8f0;
+  .homeButton {
+    width: 34px;
+    height: 34px;
   }
 
-  .searchIcon {
-    left: 12px;
-  }
-
-  .searchHint {
-    display: none;
+  .iconButton {
+    width: 34px;
+    height: 34px;
   }
 }
