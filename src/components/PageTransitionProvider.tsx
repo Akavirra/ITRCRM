@@ -24,7 +24,7 @@ interface PageTransitionProviderProps {
 }
 
 export const PageTransitionProvider = ({ children }: PageTransitionProviderProps) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true to show animation on page load
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const prevPathRef = useRef(pathname);
@@ -32,6 +32,7 @@ export const PageTransitionProvider = ({ children }: PageTransitionProviderProps
   const isLinkClickRef = useRef(false);
 
   const startLoading = useCallback(() => {
+    console.log('[PageTransition] startLoading called');
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -40,11 +41,22 @@ export const PageTransitionProvider = ({ children }: PageTransitionProviderProps
   }, []);
 
   const stopLoading = useCallback(() => {
+    console.log('[PageTransition] stopLoading called');
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     setIsLoading(false);
     isLinkClickRef.current = false;
+  }, []);
+
+  // Stop loading after initial mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isLoading) {
+        stopLoading();
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
   }, []);
 
   // Stop loading when route changes (navigation completed)
@@ -53,11 +65,11 @@ export const PageTransitionProvider = ({ children }: PageTransitionProviderProps
     
     // Only auto-stop if we initiated the navigation
     if (isLoading && isLinkClickRef.current && prevPathRef.current !== currentPath) {
-      // Small delay to show the animation
+      console.log('[PageTransition] Route changed, stopping loader');
       timeoutRef.current = setTimeout(() => {
         stopLoading();
         prevPathRef.current = currentPath;
-      }, 800);
+      }, 1200);
     }
     
     prevPathRef.current = currentPath;
@@ -74,13 +86,15 @@ export const PageTransitionProvider = ({ children }: PageTransitionProviderProps
       const href = anchor.getAttribute('href');
       if (!href) return;
       
+      console.log('[PageTransition] Link clicked:', href);
+      
       // Internal navigation only
       if (href.startsWith('/') && !href.startsWith('//') && !href.startsWith('#')) {
         const currentPath = pathname + (searchParams.toString() ? '?' + searchParams.toString() : '');
         
         // Only trigger if navigating to a different page
         if (href !== currentPath && href !== currentPath.split('?')[0] + '/') {
-          // Start loading immediately
+          console.log('[PageTransition] Starting loader for navigation');
           startLoading();
         }
       }
@@ -93,6 +107,7 @@ export const PageTransitionProvider = ({ children }: PageTransitionProviderProps
   // Handle browser back/forward buttons
   useEffect(() => {
     const handlePopState = () => {
+      console.log('[PageTransition] Popstate event');
       startLoading();
     };
 

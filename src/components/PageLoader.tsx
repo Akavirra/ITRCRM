@@ -75,6 +75,7 @@ interface PageLoaderProps {
 }
 
 export const PageLoader = ({ isLoading }: PageLoaderProps) => {
+  console.log('[PageLoader] Rendering, isLoading:', isLoading);
   if (!isLoading) return null;
 
   return (
