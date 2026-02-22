@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
 import { 
   Home, 
   Settings, 
@@ -17,6 +16,7 @@ import {
 } from 'lucide-react';
 import { t } from '@/i18n/t';
 import styles from './Navbar.module.css';
+import TransitionLink from '@/components/TransitionLink';
 
 interface NavbarProps {
   user?: {
@@ -118,9 +118,9 @@ const Navbar: React.FC<NavbarProps> = ({
                 <Menu size={20} strokeWidth={1.5} />
               </button>
             )}
-            <Link href="/dashboard" className={styles.homeButton} title={t('nav.dashboard')}>
+            <TransitionLink href="/dashboard" className={styles.homeButton} title={t('nav.dashboard')}>
               <Home size={20} strokeWidth={1.5} />
-            </Link>
+            </TransitionLink>
           </div>
 
           {/* Center section - Search */}

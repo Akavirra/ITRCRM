@@ -13,6 +13,7 @@ import {
   Settings,
   LogOut
 } from 'lucide-react';
+import TransitionLink from '@/components/TransitionLink';
 
 interface SidebarProps {
   user: {
@@ -158,7 +159,7 @@ export default function Sidebar({ user, isOpen, onClose, onLogout, isMobile = fa
             const Icon = item.icon;
             const isActive = pathname === item.href;
             return (
-              <a
+              <TransitionLink
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
@@ -178,7 +179,7 @@ export default function Sidebar({ user, isOpen, onClose, onLogout, isMobile = fa
               >
                 <Icon width="20" height="20" style={{ color: isActive ? '#1565c0' : '#666666', flexShrink: 0 }} />
                 {t(item.labelKey)}
-              </a>
+              </TransitionLink>
             );
           })}
 
@@ -189,7 +190,7 @@ export default function Sidebar({ user, isOpen, onClose, onLogout, isMobile = fa
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
                 return (
-                  <a
+                  <TransitionLink
                     key={item.href}
                     href={item.href}
                     onClick={onClose}
@@ -209,7 +210,7 @@ export default function Sidebar({ user, isOpen, onClose, onLogout, isMobile = fa
                   >
                     <Icon width="20" height="20" style={{ color: isActive ? '#1565c0' : '#666666', flexShrink: 0 }} />
                     {t(item.labelKey)}
-                  </a>
+                  </TransitionLink>
                 );
               })}
             </>

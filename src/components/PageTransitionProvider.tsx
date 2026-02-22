@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useRouter } from 'next/navigation';
 
 interface PageTransitionContextType {
   isLoading: boolean;
@@ -26,113 +25,109 @@ interface PageTransitionProviderProps {
 
 export const PageTransitionProvider = ({ children }: PageTransitionProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const prevPathRef = useRef(pathname);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isNavigatingRef = useRef(false);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const minDisplayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const loadingStartTimeRef = useRef<number>(0);
+
+  const MIN_DISPLAY_TIME = 300; // Мінімальний час показу лоадера
+  const MAX_LOADING_TIME = 5000; // Максимум 5 секунд
+
+  const clearAllTimeouts = useCallback(() => {
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
+    }
+    if (minDisplayTimeoutRef.current) {
+      clearTimeout(minDisplayTimeoutRef.current);
+      minDisplayTimeoutRef.current = null;
+    }
+  }, []);
 
   const startLoading = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+    clearAllTimeouts();
+    loadingStartTimeRef.current = Date.now();
     setIsLoading(true);
-    isNavigatingRef.current = true;
-  }, []);
+
+    // Failsafe - зняти завантаження через MAX_LOADING_TIME
+    loadingTimeoutRef.current = setTimeout(() => {
+      setIsLoading(false);
+    }, MAX_LOADING_TIME);
+  }, [clearAllTimeouts]);
 
   const stopLoading = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    setIsLoading(false);
-    isNavigatingRef.current = false;
-  }, []);
+    clearAllTimeouts();
+    
+    const elapsed = Date.now() - loadingStartTimeRef.current;
+    const remainingTime = MIN_DISPLAY_TIME - elapsed;
 
-  // Stop loading after initial mount
+    if (remainingTime > 0) {
+      // Дочекатися мінімального часу показу
+      minDisplayTimeoutRef.current = setTimeout(() => {
+        setIsLoading(false);
+      }, remainingTime);
+    } else {
+      setIsLoading(false);
+    }
+  }, [clearAllTimeouts]);
+
+  // Initial mount
   useEffect(() => {
+    setIsMounted(true);
+    loadingStartTimeRef.current = Date.now();
+    
+    // Показуємо лоадер при першому завантаженні
     const timer = setTimeout(() => {
-      if (isLoading) {
-        stopLoading();
-      }
-    }, 500);
+      setIsLoading(false);
+    }, 400);
+    
     return () => clearTimeout(timer);
   }, []);
 
-  // Use router events to detect navigation
+  // Monitor pathname changes for navigation
   useEffect(() => {
-    const handleRouteChangeStart = () => {
-      startLoading();
-    };
+    if (!isMounted) return;
 
-    const handleRouteChangeComplete = () => {
-      if (isNavigatingRef.current) {
-        timeoutRef.current = setTimeout(() => {
-          stopLoading();
-          isNavigatingRef.current = false;
-        }, 300);
-      }
-    };
-
-    // These events might not be available in newer Next.js, but let's try
-    // @ts-ignore
-    if (router.events) {
-      // @ts-ignore
-      router.events.on('routeChangeStart', handleRouteChangeStart);
-      // @ts-ignore
-      router.events.on('routeChangeComplete', handleRouteChangeComplete);
-      // @ts-ignore
-      router.events.on('routeChangeError', handleRouteChangeComplete);
-    }
-
-    return () => {
-      // @ts-ignore
-      if (router.events) {
-        // @ts-ignore
-        router.events.off('routeChangeStart', handleRouteChangeStart);
-        // @ts-ignore
-        router.events.off('routeChangeComplete', handleRouteChangeComplete);
-        // @ts-ignore
-        router.events.off('routeChangeError', handleRouteChangeComplete);
-      }
-    };
-  }, [router, startLoading, stopLoading]);
-
-  // Fallback: also monitor pathname changes
-  useEffect(() => {
-    const currentPath = pathname + (searchParams.toString() ? '?' + searchParams.toString() : '');
+    const currentPath = pathname + (searchParams?.toString() ? '?' + searchParams.toString() : '');
     
-    // If we were navigating and path changed, stop loading
-    if (isLoading && isNavigatingRef.current && prevPathRef.current !== currentPath) {
-      timeoutRef.current = setTimeout(() => {
-        stopLoading();
-        prevPathRef.current = currentPath;
-      }, 200);
+    // Якщо шлях змінився і ми не на початковому завантаженні
+    if (prevPathRef.current !== currentPath && prevPathRef.current !== pathname) {
+      // Зупиняємо завантаження після зміни шляху
+      stopLoading();
     }
     
     prevPathRef.current = currentPath;
-  }, [pathname, searchParams, isLoading, stopLoading]);
+  }, [pathname, searchParams, isMounted, stopLoading]);
 
   // Handle browser back/forward buttons
   useEffect(() => {
+    if (!isMounted) return;
+
     const handlePopState = () => {
-      isNavigatingRef.current = true;
       startLoading();
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [startLoading]);
+  }, [isMounted, startLoading]);
 
-  // Cleanup
+  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
+    return () => clearAllTimeouts();
+  }, [clearAllTimeouts]);
+
+  // Expose methods for manual control
+  const contextValue: PageTransitionContextType = {
+    isLoading,
+    startLoading,
+    stopLoading,
+  };
 
   return (
-    <PageTransitionContext.Provider value={{ isLoading, startLoading, stopLoading }}>
+    <PageTransitionContext.Provider value={contextValue}>
       {children}
     </PageTransitionContext.Provider>
   );
