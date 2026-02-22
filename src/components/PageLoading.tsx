@@ -9,7 +9,7 @@ interface PageLoadingProps {
 export const PageLoading = ({ message = 'Завантаження' }: PageLoadingProps) => {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="flex flex-col items-center gap-5">
+      <div className="flex flex-col items-center gap-4">
         {/* Spinner */}
         <motion.div
           animate={{ rotate: 360 }}
@@ -18,34 +18,34 @@ export const PageLoading = ({ message = 'Завантаження' }: PageLoadin
             repeat: Infinity, 
             ease: 'linear' 
           }}
-          className="w-10 h-10"
+          style={{ width: '24px', height: '24px' }}
         >
-          <svg viewBox="0 0 40 40" className="w-full h-full">
+          <svg viewBox="0 0 24 24" style={{ width: '100%', height: '100%' }}>
             <circle
-              cx="20"
-              cy="20"
-              r="18"
+              cx="12"
+              cy="12"
+              r="10"
               stroke="#e2e8f0"
-              strokeWidth="3"
+              strokeWidth="2"
               fill="none"
             />
             <circle
-              cx="20"
-              cy="20"
-              r="18"
+              cx="12"
+              cy="12"
+              r="10"
               stroke="#3b82f6"
-              strokeWidth="3"
+              strokeWidth="2"
               strokeLinecap="round"
               fill="none"
-              strokeDasharray="113"
-              strokeDashoffset="85"
+              strokeDasharray="63"
+              strokeDashoffset="47"
             />
           </svg>
         </motion.div>
 
         {/* Loading text with animated dots */}
         <div className="flex items-center gap-1">
-          <span className="text-gray-500 font-medium">{message}</span>
+          <span className="text-gray-500 text-sm font-medium">{message}</span>
           <motion.span
             animate={{ opacity: [0, 1, 0] }}
             transition={{ 
@@ -53,7 +53,7 @@ export const PageLoading = ({ message = 'Завантаження' }: PageLoadin
               repeat: Infinity, 
               ease: 'easeInOut' 
             }}
-            className="text-gray-500 font-medium"
+            className="text-gray-500 text-sm font-medium"
           >
             ...
           </motion.span>
