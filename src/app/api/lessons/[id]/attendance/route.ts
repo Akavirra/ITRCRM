@@ -93,11 +93,11 @@ export async function POST(
             { status: 400 }
           );
         }
-        setAttendance(lessonId, parseInt(studentId), status, user.id, comment, makeupLessonId);
+        await setAttendance(lessonId, parseInt(studentId), status, user.id, comment, makeupLessonId);
         
         // Check if this is marking attendance for a 'done' lesson - add history entry
         const lessonInfo = await get<{ group_id: number; status: string; lesson_date: string; topic: string }>(
-          `SELECT group_id, status, lesson_date, topic FROM lessons WHERE id = $2`,
+          `SELECT group_id, status, lesson_date, topic FROM lessons WHERE id = $1`,
           [lessonId]
         );
         

@@ -131,7 +131,7 @@ export async function PATCH(
     let params: (string | number)[] = [];
     
     if (topic !== undefined) {
-      updates.push(`topic = ${params.length + 1}`);
+      updates.push(`topic = $${params.length + 1}`);
       params.push(topic);
     }
     
@@ -142,7 +142,7 @@ export async function PATCH(
       
       // Add history entry when lesson is marked as done
       if (status === 'done' && lesson.status !== 'done') {
-        addGroupHistoryEntry(
+        await addGroupHistoryEntry(
           lesson.group_id,
           'lesson_conducted',
           formatLessonConductedDescription(lesson.lesson_date, lesson.topic),
@@ -151,7 +151,7 @@ export async function PATCH(
         );
       }
       
-      updates.push(`status = ${params.length + 1}`);
+      updates.push(`status = $${params.length + 1}`);
       params.push(status);
     }
     
@@ -164,17 +164,17 @@ export async function PATCH(
       const startDateTime = setMinutes(setHours(newDate, hours), minutes);
       const endDateTime = new Date(startDateTime.getTime() + 90 * 60 * 1000); // Default 90 min
       
-      updates.push(`lesson_date = ${params.length + 1}`);
+      updates.push(`lesson_date = $${params.length + 1}`);
       params.push(format(newDate, 'yyyy-MM-dd'));
-      updates.push(`start_datetime = ${params.length + 1}`);
+      updates.push(`start_datetime = $${params.length + 1}`);
       params.push(format(startDateTime, 'yyyy-MM-dd HH:mm:ss'));
-      updates.push(`end_datetime = ${params.length + 1}`);
+      updates.push(`end_datetime = $${params.length + 1}`);
       params.push(format(endDateTime, 'yyyy-MM-dd HH:mm:ss'));
     }
     
     params.push(lessonId);
     
-    const sql = `UPDATE lessons SET ${updates.join(', ')} WHERE id = ${params.length}`;
+    const sql = `UPDATE lessons SET ${updates.join(', ')} WHERE id = $${params.length}`;
     await run(sql, params);
     
     // Get updated lesson with group, course and teacher details

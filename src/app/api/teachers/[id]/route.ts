@@ -150,11 +150,11 @@ export async function PUT(
     let updateParams: (string | number | null)[] = [name.trim(), email.trim().toLowerCase(), phone || null, telegram_id || null, notes || null];
     
     if (photoUrl !== undefined) {
-      updateQuery += `, photo_url = $6`;
+      updateQuery += `, photo_url = $${updateParams.length + 1}`;
       updateParams.push(photoUrl);
     }
     
-    updateQuery += ` WHERE id = $7 AND role = 'teacher'`;
+    updateQuery += ` WHERE id = $${updateParams.length + 1} AND role = 'teacher'`;
     updateParams.push(params.id);
     
     await run(updateQuery, updateParams);

@@ -25,6 +25,6 @@ export async function GET(request: NextRequest) {
   }
   
   // Get upcoming lessons
-  const lessons = getUpcomingLessons(limit);
+  const lessons = await getUpcomingLessons(limit);
   return NextResponse.json({ lessons });
 }
