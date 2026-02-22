@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
 import { uk } from '@/i18n/uk';
 import { formatDateShortMonthKyiv, formatTimeKyiv } from '@/lib/date-utils';
+import PageLoading from '@/components/PageLoading';
 
 interface User {
   id: number;
@@ -79,11 +80,9 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{t('common.loading')}</div>
-        </div>
-      </div>
+      <Layout user={{ id: 0, name: '', email: '', role: 'admin' }}>
+        <PageLoading />
+      </Layout>
     );
   }
 

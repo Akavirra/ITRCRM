@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';
 import Portal from '@/components/Portal';
 import { t } from '@/i18n/t';
 import { useCourseModals } from '@/components/CourseModalsContext';
+import PageLoading from '@/components/PageLoading';
 
 interface User {
   id: number;
@@ -446,7 +447,11 @@ export default function CoursesPage() {
   };
 
   if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>{t('common.loading')}</div>;
+    return (
+      <Layout user={{ id: 0, name: '', email: '', role: 'admin' }}>
+        <PageLoading />
+      </Layout>
+    );
   }
 
   if (!user) return null;

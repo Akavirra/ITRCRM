@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';
 import Portal from '@/components/Portal';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { uk } from '@/i18n/uk';
+import PageLoading from '@/components/PageLoading';
 
 interface User {
   id: number;
@@ -547,7 +548,11 @@ export default function GroupsPage() {
   };
 
   if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>{uk.common.loading}</div>;
+    return (
+      <Layout user={{ id: 0, name: '', email: '', role: 'admin' }}>
+        <PageLoading />
+      </Layout>
+    );
   }
 
   if (!user) return null;

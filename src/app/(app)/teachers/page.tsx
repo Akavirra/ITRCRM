@@ -8,6 +8,7 @@ import { useGroupModals } from '@/components/GroupModalsContext';
 import { useTeacherModals } from '@/components/TeacherModalsContext';
 import { t } from '@/i18n/t';
 import { formatDateKyiv } from '@/lib/date-utils';
+import PageLoading from '@/components/PageLoading';
 
 interface User {
   id: number;
@@ -438,7 +439,11 @@ export default function TeachersPage() {
   }, []);
 
   if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>{t('common.loading')}</div>;
+    return (
+      <Layout user={{ id: 0, name: '', email: '', role: 'admin' }}>
+        <PageLoading />
+      </Layout>
+    );
   }
 
   if (!user) return null;
