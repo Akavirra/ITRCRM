@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
+import PageLoading from '@/components/PageLoading';
 
 interface User {
   id: number;
@@ -106,7 +107,7 @@ export default function ReportsPage() {
   };
 
   if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>{t('common.loading')}</div>;
+    return <PageLoading />;
   }
 
   if (!user) return null;

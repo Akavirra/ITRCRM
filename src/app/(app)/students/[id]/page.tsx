@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
+import PageLoading from '@/components/PageLoading';
 import { uk } from '@/i18n/uk';
 import { formatDateTimeKyiv, formatDateKyiv } from '@/lib/date-utils';
 import DraggableModal from '@/components/DraggableModal';
@@ -622,11 +623,7 @@ export default function StudentProfilePage() {
 
   // Show loading state
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f9fafb' }}>
-        <div className="spinner"></div>
-      </div>
-    );
+    return <PageLoading />;
   }
 
   // Redirect if not authenticated

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
+import PageLoading from '@/components/PageLoading';
 import { uk } from '@/i18n/uk';
 
 type CategoryType = 'active' | 'graduate' | 'inactive';
@@ -475,7 +476,7 @@ export default function CourseDetailsPage() {
   };
 
   if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>{t('common.loading')}</div>;
+    return <PageLoading />;
   }
 
   if (notFound) {

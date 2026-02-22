@@ -7,6 +7,7 @@ import DraggableModal from '@/components/DraggableModal';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { formatDateKyiv } from '@/lib/date-utils';
 import { t } from '@/i18n/t';
+import PageLoading from '@/components/PageLoading';
 import { uk } from '@/i18n/uk';
 
 interface User {
@@ -383,11 +384,7 @@ export default function TeacherProfilePage() {
 
   // Show loading state
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f9fafb' }}>
-        <div className="spinner"></div>
-      </div>
-    );
+    return <PageLoading />;
   }
 
   // Redirect if not authenticated

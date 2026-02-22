@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { uk } from '@/i18n/uk';
+import PageLoading from '@/components/PageLoading';
 
 interface User {
   id: number;
@@ -176,7 +177,7 @@ export default function EditGroupPage() {
   };
 
   if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>{uk.common.loading}</div>;
+    return <PageLoading />;
   }
 
   if (!user || user.role !== 'admin' || !group) return null;

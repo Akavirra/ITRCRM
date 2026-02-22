@@ -7,6 +7,7 @@ import { useLessonModals } from '@/components/LessonModalsContext';
 import { format, addWeeks, subWeeks, startOfWeek, addDays, parseISO, startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
 import { uk } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, BookOpen, Check, X, RefreshCw } from 'lucide-react';
+import PageLoading from '@/components/PageLoading';
 
 interface User {
   id: number;
@@ -186,17 +187,7 @@ export default function SchedulePage() {
   };
 
   if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#f9fafb',
-      }}>
-        <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>Завантаження...</div>
-      </div>
-    );
+    return <PageLoading />;
   }
 
   if (!user) {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
+import PageLoading from '@/components/PageLoading';
 import { 
   Settings as SettingsIcon, 
   User, 
@@ -159,13 +160,7 @@ export default function SettingsPage() {
   };
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{t('common.loading')}</div>
-        </div>
-      </div>
-    );
+    return <PageLoading />;
   }
 
   if (!user) return null;
