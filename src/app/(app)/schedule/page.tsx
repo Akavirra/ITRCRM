@@ -77,6 +77,18 @@ export default function SchedulePage() {
     setSchedule(data);
   }, [currentWeekStart, groupFilter, teacherFilter]);
 
+  // Listen for lesson deletion to refresh schedule
+  useEffect(() => {
+    const handleLessonDeleted = () => {
+      fetchSchedule();
+    };
+    
+    window.addEventListener('itrobot-lesson-deleted', handleLessonDeleted);
+    return () => {
+      window.removeEventListener('itrobot-lesson-deleted', handleLessonDeleted);
+    };
+  }, [fetchSchedule]);
+
   useEffect(() => {
     const checkAuth = async () => {
       const authRes = await fetch('/api/auth/me');

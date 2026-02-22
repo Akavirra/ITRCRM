@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import DraggableModal from './DraggableModal';
 import { useLessonModals } from './LessonModalsContext';
-import { Clock, BookOpen, User, Check, X, Calendar } from 'lucide-react';
+import { Clock, BookOpen, User, Check, X, Calendar, Trash2 } from 'lucide-react';
 
 interface LessonData {
   id: number;
@@ -208,6 +208,36 @@ export default function LessonModalsManager() {
     }
   };
 
+  const handleDeleteLesson = async (lessonId: number) => {
+    if (!confirm('Ви впевнені, що хочете видалити це заняття? Цю дію неможливо скасувати.')) {
+      return;
+    }
+    
+    setSaving(prev => ({ ...prev, [lessonId]: true }));
+    try {
+      const res = await fetch(`/api/lessons/${lessonId}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        // Close the modal
+        closeLessonModal(lessonId);
+        // Dispatch event to notify schedule page to refresh
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('itrobot-lesson-deleted'));
+        }
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Не вдалося видалити заняття');
+      }
+    } catch (error) {
+      console.error('Failed to delete lesson:', error);
+      alert('Не вдалося видалити заняття');
+    } finally {
+      setSaving(prev => ({ ...prev, [lessonId]: false }));
+    }
+  };
+
   if (!isHydrated || openModals.length === 0) return null;
 
   return (
@@ -324,6 +354,25 @@ export default function LessonModalsManager() {
                         Скасувати
                       </button>
                     </div>
+                  )}
+                  
+                  {/* Delete button - only for scheduled lessons */}
+                  {lesson.status === 'scheduled' && (
+                    <button
+                      onClick={() => handleDeleteLesson(modal.id)}
+                      disabled={isSaving}
+                      className="btn"
+                      style={{ 
+                        width: '100%', 
+                        justifyContent: 'center',
+                        background: '#fee2e2',
+                        color: '#dc2626',
+                        border: '1px solid #fecaca',
+                      }}
+                    >
+                      <Trash2 size={14} />
+                      {isSaving ? 'Видалення...' : 'Видалити заняття'}
+                    </button>
                   )}
                 </div>
               </div>
