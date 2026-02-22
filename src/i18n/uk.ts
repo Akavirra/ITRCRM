@@ -11,6 +11,17 @@ export const uk = {
     lessons: 'Заняття',
     reports: 'Звіти',
     users: 'Користувачі',
+    settings: 'Налаштування',
+  },
+
+  // Search
+  search: {
+    placeholder: 'Пошук...',
+  },
+
+  // Notifications
+  notifications: {
+    title: 'Сповіщення',
   },
 
   // Page titles
