@@ -42,9 +42,9 @@ export async function GET(
   
   if (recent) {
     const limitCount = limit ? parseInt(limit, 10) : 4;
-    history = getRecentGroupHistory(groupId, limitCount);
+    history = await getRecentGroupHistory(groupId, limitCount);
   } else {
-    history = getGroupHistory(groupId);
+    history = await getGroupHistory(groupId);
   }
   
   return NextResponse.json({ history });
