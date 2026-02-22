@@ -10,6 +10,8 @@ import { TeacherModalsProvider } from '@/components/TeacherModalsProvider';
 import TeacherModalsWrapper from '@/components/TeacherModalsWrapper';
 import { LessonModalsProvider } from '@/components/LessonModalsProvider';
 import LessonModalsWrapper from '@/components/LessonModalsWrapper';
+import { PageTransitionProvider } from '@/components/PageTransitionProvider';
+import PageTransitionLoader from '@/components/PageTransitionLoader';
 
 export const metadata: Metadata = {
   title: 'Адміністрування школи',
@@ -24,22 +26,25 @@ export default function RootLayout({
   return (
     <html lang="uk">
       <body>
-        <GroupModalsProvider>
-          <StudentModalsProvider>
-            <CourseModalsProvider>
-              <TeacherModalsProvider>
-                <LessonModalsProvider>
-                  {children}
-                  <GroupModalsWrapper />
-                  <StudentModalsWrapper />
-                  <CourseModalsWrapper />
-                  <TeacherModalsWrapper />
-                  <LessonModalsWrapper />
-                </LessonModalsProvider>
-              </TeacherModalsProvider>
-            </CourseModalsProvider>
-          </StudentModalsProvider>
-        </GroupModalsProvider>
+        <PageTransitionProvider>
+          <GroupModalsProvider>
+            <StudentModalsProvider>
+              <CourseModalsProvider>
+                <TeacherModalsProvider>
+                  <LessonModalsProvider>
+                    {children}
+                    <GroupModalsWrapper />
+                    <StudentModalsWrapper />
+                    <CourseModalsWrapper />
+                    <TeacherModalsWrapper />
+                    <LessonModalsWrapper />
+                    <PageTransitionLoader />
+                  </LessonModalsProvider>
+                </TeacherModalsProvider>
+              </CourseModalsProvider>
+            </StudentModalsProvider>
+          </GroupModalsProvider>
+        </PageTransitionProvider>
       </body>
     </html>
   );
