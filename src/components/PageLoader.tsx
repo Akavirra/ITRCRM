@@ -159,7 +159,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
           </motion.div>
 
           {/* Icons positioned in circle */}
-          {themes.map(({ Icon, color, delay }, index) => {
+          {themes.map(({ Icon, color }, index) => {
             const angle = (index * 60 - 90) * (Math.PI / 180);
             const radius = 70;
             const x = 112 + radius * Math.cos(angle);
@@ -174,8 +174,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
                   scale: 1,
                 }}
                 transition={{ 
-                  duration: 0.6, 
-                  delay: delay * 2,
+                  duration: 0.4, 
                   ease: 'easeOut'
                 }}
                 className="absolute"
@@ -189,10 +188,9 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
                     y: [0, -4, 0],
                   }}
                   transition={{ 
-                    duration: 2 + index * 0.2, 
+                    duration: 2, 
                     repeat: Infinity, 
-                    ease: 'easeInOut',
-                    delay: delay * 2 + 0.5
+                    ease: 'easeInOut'
                   }}
                   className={`w-10 h-10 flex items-center justify-center ${color}`}
                 >
@@ -207,7 +205,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.2 }}
           className="mt-12 w-40"
         >
           <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
@@ -228,7 +226,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
+          transition={{ delay: 0.3 }}
           className="mt-6 flex gap-2"
         >
           {[0, 1, 2, 3].map((i) => (
