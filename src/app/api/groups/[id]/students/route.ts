@@ -123,16 +123,16 @@ export async function POST(
       });
     }
     
-    const studentGroupId = addStudentToGroup(
+    const studentGroupId = await addStudentToGroup(
       studentId,
       groupId,
       join_date
     );
     
     // Get student name for history
-    const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $2`, [studentId]);
+    const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [studentId]);
     if (student) {
-      addGroupHistoryEntry(
+      await addGroupHistoryEntry(
         groupId,
         'student_added',
         formatStudentAddedDescription(student.full_name),
@@ -185,7 +185,7 @@ export async function DELETE(
   if (studentGroupId) {
     const studentInfo = await get<{ student_id: number }>(`SELECT student_id FROM student_groups WHERE id = $1`, [parseInt(studentGroupId)]);
     if (studentInfo) {
-      const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $2`, [studentInfo.student_id]);
+      const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [studentInfo.student_id]);
       studentName = student?.full_name || '';
     }
   } else if (studentId) {
@@ -194,9 +194,9 @@ export async function DELETE(
   }
   
   if (studentGroupId) {
-    removeStudentFromGroup(parseInt(studentGroupId));
+    await removeStudentFromGroup(parseInt(studentGroupId));
   } else if (studentId) {
-    removeStudentFromGroupByIDs(parseInt(studentId), groupId);
+    await removeStudentFromGroupByIDs(parseInt(studentId), groupId);
   } else {
     return NextResponse.json(
       { error: ERROR_MESSAGES.studentGroupIdRequired },
@@ -206,7 +206,7 @@ export async function DELETE(
   
   // Add history entry for student removal
   if (studentName) {
-    addGroupHistoryEntry(
+    await addGroupHistoryEntry(
       groupId,
       'student_removed',
       formatStudentRemovedDescription(studentName),

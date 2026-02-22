@@ -1,405 +1,302 @@
 # ITRCRM
 
-ITRCrobotCRM is a comprehensive admin panel for managing a robotics and technology course school. The system handles students, groups, lessons, attendance tracking, and payment management with role-based access control.
+CRM-система для управління школою робототехніки та технологічних курсів. Система забезпечує управління учнями, групами, уроками, відвідуваністю та оплатами з рольовим розмежуванням доступу.
 
-## Features
+## Можливості
 
-- **Authentication**: Session-based login/logout with secure password hashing
-- **Role-based Access Control**: Two roles - Admin (full access) and Teacher (limited access)
-- **Courses**: Create and manage course catalog with descriptions, age requirements, duration, and program materials
-- **Groups**: Manage student groups with scheduling (day of week, time, duration), assigned teachers, and pricing
-- **Students**: Comprehensive student records including contact information, parent details, birth dates, and notes
-- **Teachers**: Manage teacher profiles with photos, contact information, and group assignments
-- **Lessons**: Auto-generation of lessons based on group schedule parameters (8 weeks ahead)
-- **Attendance**: Track student attendance with multiple statuses (present, absent, makeup planned, makeup completed)
-- **Payments**: Monthly payment tracking with multiple payment methods (cash, account transfer)
-- **Reports**: Generate attendance reports, payment history, and debt reports with CSV export functionality
+- **Автентифікація**: Сесійна авторизація з JWT-токенами та bcrypt-хешуванням паролів
+- **Рольовий доступ**: Адміністратор (повний доступ) та Викладач (обмежений доступ)
+- **Курси**: Каталог курсів з описом, віковими вимогами, тривалістю, програмою та флаєрами
+- **Групи**: Управління групами з розкладом, призначеними викладачами, ціноутворенням та історією змін
+- **Учні**: Картки учнів з контактами, батьками, датою народження, школою та знижками
+- **Викладачі**: Профілі викладачів з фото, контактами та призначеними групами
+- **Уроки**: Автогенерація уроків за розкладом групи, скасування та перенесення
+- **Відвідуваність**: Відмітки з кількома статусами (присутній, відсутній, відпрацювання заплановано, відпрацювання виконано)
+- **Оплати**: Помісячний облік оплат (готівка, переказ на рахунок)
+- **Розклад**: Загальний розклад з генерацією уроків для всіх груп
+- **Звіти**: Звіти відвідуваності, оплат та боргів з експортом у CSV
+- **Налаштування**: Зміна профілю та пароля користувача
+- **Локалізація**: Повна українська локалізація інтерфейсу
 
-## Tech Stack
+## Технологічний стек
 
 - **Frontend**: Next.js 14 (App Router), React 18, TypeScript
-- **Database**: SQLite with better-sqlite3
-- **Authentication**: Session-based auth with bcrypt password hashing
-- **Styling**: Custom CSS (no external UI frameworks)
+- **База даних**: Neon PostgreSQL (serverless)
+- **Автентифікація**: JWT + сесії з bcrypt-хешуванням
+- **Зберігання файлів**: Cloudinary (фото викладачів, флаєри курсів)
+- **Стилізація**: CSS Modules + глобальні стилі (без UI-фреймворків)
+- **Анімації**: Motion (Framer Motion)
+- **Іконки**: Lucide React
+- **PDF**: pdf-lib, jsPDF, PDFKit
+- **Деплой**: Vercel
 
-## Installation
+## Встановлення
 
-### Prerequisites
+### Передумови
 
 - Node.js 18+
 - npm
+- Обліковий запис Neon (neon.tech) для PostgreSQL
+- Обліковий запис Cloudinary для зберігання файлів
 
-### Windows
+### Налаштування
 
-```cmd
-:: Install dependencies
-npm install
+1. Клонувати репозиторій
+2. Встановити залежності:
+   ```bash
+   npm install
+   ```
+3. Скопіювати `.env.local.example` у `.env.local` та заповнити змінні середовища
+4. Запустити міграцію бази даних:
+   ```bash
+   npm run db:migrate:neon
+   ```
+5. (Опціонально) Заповнити базу тестовими даними:
+   ```bash
+   npm run db:seed:neon
+   ```
+6. Запустити сервер розробки:
+   ```bash
+   npm run dev
+   ```
 
-:: Initialize database with seed data
-npm run db:seed
+Після запуску відкрити `http://localhost:3000/login`.
 
-:: Start development server
-npm run dev
-```
+## Змінні середовища
 
-### Linux/Mac
+| Змінна | Опис |
+|--------|------|
+| `DATABASE_URL` | Connection string для Neon PostgreSQL |
+| `CLOUDINARY_CLOUD_NAME` | Ім'я хмари Cloudinary |
+| `CLOUDINARY_API_KEY` | API-ключ Cloudinary |
+| `CLOUDINARY_API_SECRET` | API-секрет Cloudinary |
+| `JWT_SECRET` | Секретний ключ для підпису JWT-токенів (мін. 32 символи) |
+| `NODE_ENV` | Режим: `development` або `production` |
 
-```bash
-# Install dependencies
-npm install
+## Схема бази даних
 
-# Initialize database with seed data
-npm run db:seed
+| Таблиця | Призначення |
+|---------|-------------|
+| `users` | Користувачі системи (адміни, викладачі) |
+| `courses` | Каталог курсів |
+| `groups` | Навчальні групи з розкладом |
+| `students` | Картки учнів |
+| `student_groups` | Зв'язок учнів з групами (M:N) |
+| `lessons` | Згенеровані уроки |
+| `attendance` | Записи відвідуваності |
+| `payments` | Записи оплат |
+| `pricing` | Історія цін груп |
+| `sessions` | Сесії автентифікації |
+| `group_history` | Аудит-лог змін у групах |
+| `error_logs` | Логування помилок |
 
-# Start development server
-npm run dev
-```
+## API-ендпоінти
 
-After starting the server, open your browser and navigate to `http://localhost:3000/login`.
+### Автентифікація
+- `POST /api/auth/login` — Вхід
+- `POST /api/auth/logout` — Вихід
+- `GET /api/auth/me` — Поточний користувач
 
-## Environment Variables
+### Курси
+- `GET /api/courses` — Список курсів
+- `POST /api/courses` — Створити курс (Admin)
+- `GET /api/courses/[id]` — Деталі курсу
+- `PUT /api/courses/[id]` — Оновити курс (Admin)
+- `POST /api/courses/[id]/archive` — Архівувати курс (Admin)
+- `GET /api/courses/[id]/groups` — Групи курсу
+- `GET /api/courses/[id]/students` — Учні курсу
+- `POST /api/courses/[id]/flyer` — Завантажити флаєр
+- `GET /api/courses/[id]/program-pdf` — Згенерувати PDF програми
 
-| Variable | Description |
-|----------|-------------|
-| `JWT_SECRET` | Secret key used for session token signing. Must be a strong, unique string. |
-| `NODE_ENV` | Environment mode: `development` or `production` |
-| `DB_PATH` | (Optional) Custom path to SQLite database file |
+### Групи
+- `GET /api/groups` — Список груп
+- `POST /api/groups` — Створити групу (Admin)
+- `GET /api/groups/[id]` — Деталі групи
+- `PUT /api/groups/[id]` — Оновити групу (Admin)
+- `POST /api/groups/[id]/archive` — Архівувати групу (Admin)
+- `GET /api/groups/[id]/students` — Учні групи
+- `POST /api/groups/[id]/students` — Додати учня до групи (Admin)
+- `POST /api/groups/[id]/generate-lessons` — Згенерувати уроки
+- `GET /api/groups/[id]/payments` — Статус оплат групи
+- `GET /api/groups/[id]/history` — Історія змін групи
 
-> ⚠️ **SECURITY WARNING**: Before deploying to production, you MUST replace all default credentials, secret keys, and sensitive configuration values with strong, unique values. This includes database credentials, JWT secrets, API keys, and any other sensitive parameters. Never use default or example values in production.
+### Учні
+- `GET /api/students` — Список учнів
+- `POST /api/students` — Створити учня (Admin)
+- `GET /api/students/[id]` — Деталі учня
+- `PUT /api/students/[id]` — Оновити учня (Admin)
+- `DELETE /api/students/[id]` — Архівувати учня (Admin)
 
-## Database Schema
+### Викладачі
+- `GET /api/teachers` — Список викладачів
+- `POST /api/teachers` — Створити викладача (Admin)
+- `GET /api/teachers/[id]` — Деталі викладача
+- `PUT /api/teachers/[id]` — Оновити викладача (Admin)
+- `DELETE /api/teachers/[id]` — Архівувати викладача (Admin)
 
-| Table | Purpose |
-|-------|---------|
-| `users` | Administrators and teachers (id, name, email, password_hash, role, is_active) |
-| `courses` | Course catalog (id, title, description, age_min, duration_months, program, flyer_path, is_active) |
-| `groups` | Student groups with schedule (id, course_id, teacher_id, title, weekly_day, start_time, duration_minutes, start_date, end_date, capacity, monthly_price, status) |
-| `students` | Student records (id, full_name, phone, parent_name, parent_phone, notes, birth_date, photo, school, discount) |
-| `student_groups` | Many-to-many relationship linking students to groups (student_id, group_id, join_date, leave_date, is_active) |
-| `lessons` | Generated lessons (id, group_id, lesson_date, start_datetime, end_datetime, topic, status, created_by) |
-| `attendance` | Student attendance records (id, lesson_id, student_id, status, comment, makeup_lesson_id, updated_by) |
-| `payments` | Payment records (id, student_id, group_id, month, amount, method, paid_at, note, created_by) |
-| `pricing` | Group pricing history (id, group_id, monthly_price, currency, effective_from, effective_to) |
-| `sessions` | Authentication sessions (id, user_id, expires_at) |
-| `error_logs` | Error logging (id, error_message, error_stack, user_id, request_path, request_method) |
+### Уроки
+- `GET /api/lessons` — Список уроків
+- `GET /api/lessons/[id]` — Деталі уроку
+- `PUT /api/lessons/[id]` — Оновити урок
+- `GET /api/lessons/[id]/attendance` — Відвідуваність уроку
+- `POST /api/lessons/[id]/attendance` — Зберегти відвідуваність
+- `POST /api/lessons/[id]/cancel` — Скасувати урок
+- `POST /api/lessons/[id]/reschedule` — Перенести урок
 
-## API Endpoints
+### Розклад
+- `GET /api/schedule` — Отримати розклад
+- `POST /api/schedule/generate-all` — Згенерувати уроки для всіх груп
 
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
-- `GET /api/auth/me` - Get current authenticated user
+### Звіти
+- `GET /api/reports/attendance` — Звіт відвідуваності
+- `GET /api/reports/payments` — Звіт оплат
+- `GET /api/reports/debts` — Звіт боргів
 
-### Courses
-- `GET /api/courses` - List all active courses
-- `POST /api/courses` - Create new course (Admin only)
-- `GET /api/courses/[id]` - Get course details
-- `PUT /api/courses/[id]` - Update course (Admin only)
-- `DELETE /api/courses/[id]` - Archive course (Admin only)
-- `GET /api/courses/[id]/groups` - Get groups for a course
-- `GET /api/courses/[id]/students` - Get students enrolled in course groups
-- `POST /api/courses/[id]/flyer` - Upload course flyer image
-- `GET /api/courses/[id]/program-pdf` - Generate program PDF
+### Налаштування
+- `GET /api/settings` — Отримати налаштування
+- `PUT /api/settings` — Оновити профіль
+- `PUT /api/settings/password` — Змінити пароль
 
-### Groups
-- `GET /api/groups` - List groups (filtered by teacher for teachers)
-- `POST /api/groups` - Create new group (Admin only)
-- `GET /api/groups/[id]` - Get group details
-- `PUT /api/groups/[id]` - Update group (Admin only)
-- `DELETE /api/groups/[id]` - Archive group (Admin only)
-- `GET /api/groups/[id]/students` - Get students in group
-- `POST /api/groups/[id]/students` - Add student to group (Admin only)
-- `POST /api/groups/[id]/generate-lessons` - Generate lessons for group
-- `GET /api/groups/[id]/payments` - Get payment status for group
+### Завантаження файлів
+- `POST /api/upload` — Завантажити файл (Cloudinary)
 
-### Students
-- `GET /api/students` - List all students
-- `POST /api/students` - Create new student (Admin only)
-- `GET /api/students/[id]` - Get student details
-- `PUT /api/students/[id]` - Update student (Admin only)
-- `DELETE /api/students/[id]` - Archive student (Admin only)
+### Користувачі
+- `GET /api/users` — Список користувачів (Admin)
+- `POST /api/users` — Створити користувача (Admin)
 
-### Teachers
-- `GET /api/teachers` - List all teachers
-- `POST /api/teachers` - Create new teacher (Admin only)
-- `GET /api/teachers/[id]` - Get teacher details
-- `PUT /api/teachers/[id]` - Update teacher (Admin only)
-- `DELETE /api/teachers/[id]` - Archive teacher (Admin only)
+## Ролі та дозволи
 
-### Lessons
-- `GET /api/lessons` - List lessons (filtered by group access)
-- `GET /api/lessons/[id]` - Get lesson details
-- `PUT /api/lessons/[id]` - Update lesson (topic, status)
-- `GET /api/lessons/[id]/attendance` - Get attendance for lesson
-- `POST /api/lessons/[id]/attendance` - Set attendance for lesson
+### Адміністратор
+- Повний доступ до всіх модулів
+- Управління користувачами, курсами, групами, учнями, викладачами
+- Доступ до оплат та фінансових звітів
+- Архівування/відновлення сутностей
+- Завантаження матеріалів та флаєрів
 
-### Reports
-- `GET /api/reports/attendance` - Generate attendance report with date range
-- `GET /api/reports/payments` - Generate payments report
-- `GET /api/reports/debts` - Generate debts report
+### Викладач
+- Доступ лише до призначених груп
+- Перегляд учнів своїх груп
+- Відмітка відвідуваності та тем уроків
+- Без доступу до оплат та фінансових даних
+- Без можливості створення/зміни користувачів, курсів, груп, викладачів
 
-### Users
-- `GET /api/users` - List all users (Admin only)
-- `POST /api/users` - Create new user (Admin only)
-
-## Role Permissions
-
-### Admin
-- Full access to all modules and features
-- Can manage users (create, update, deactivate)
-- Can manage courses, groups, and students
-- Can manage teachers
-- Can access and modify all payment records
-- Can view financial reports and export data
-- Can archive/restore any entity
-- Can upload course materials and flyers
-
-### Teacher
-- Limited to assigned groups only
-- Can view students in their groups
-- Can mark attendance and set lesson topics
-- Can view lessons for their groups
-- Cannot access payment or financial data
-- Cannot create or modify users, courses, groups, or teachers
-- Cannot access admin-only settings
-
-## Project Structure
+## Структура проєкту
 
 ```
 ITRobotCRM/
 ├── public/
-│   └── uploads/
-│       ├── course-flyers/        # Uploaded course flyer images
-│       └── teacher-photos/      # Uploaded teacher photos
+│   └── uploads/                  # Локальні завантаження (legacy)
 ├── scripts/
-│   ├── backfill-public-ids.js   # Script to generate public IDs
-│   ├── migrate-courses.js       # Course migration script
-│   ├── migrate-students.js      # Student migration script
-│   ├── reset.js                 # Database reset script
-│   ├── seed.js                  # Database seeding script
-│   ├── start-prod.js            # Production startup script
-│   └── verify-public-ids.js     # Public ID verification script
+│   ├── migrate-neon.js           # Міграція схеми на Neon PostgreSQL
+│   ├── seed-neon.js              # Заповнення Neon тестовими даними
+│   ├── seed.js                   # Заповнення локальної БД
+│   ├── reset.js                  # Скидання БД
+│   ├── backfill-public-ids.js    # Генерація публічних ID
+│   └── verify-public-ids.js      # Верифікація публічних ID
 ├── src/
+│   ├── middleware.ts              # Middleware автентифікації
 │   ├── app/
-│   │   ├── (app)/               # Authenticated pages (dashboard, courses, groups, etc.)
-│   │   │   ├── courses/         # Course management pages
-│   │   │   │   └── [id]/        # Course detail page
-│   │   │   ├── dashboard/       # Dashboard overview
-│   │   │   ├── groups/          # Group management pages
-│   │   │   │   ├── new/         # Create new group
-│   │   │   │   └── [id]/        # Group detail page
-│   │   │   │       └── edit/    # Edit group page
-│   │   │   ├── reports/         # Reports with CSV export
-│   │   │   ├── settings/        # Application settings
-│   │   │   ├── students/        # Student management pages
-│   │   │   │   └── [id]/        # Student detail page
-│   │   │   ├── teachers/        # Teacher management pages
-│   │   │   │   └── [id]/        # Teacher detail page
-│   │   │   └── users/           # User management (Admin only)
-│   │   ├── (auth)/              # Authentication pages
-│   │   │   └── login/           # Login page
-│   │   ├── api/                 # API routes
-│   │   │   ├── auth/            # Authentication endpoints
-│   │   │   │   ├── login/
-│   │   │   │   ├── logout/
-│   │   │   │   └── me/
-│   │   │   ├── courses/         # Course CRUD endpoints
-│   │   │   │   └── [id]/
-│   │   │   │       ├── archive/
-│   │   │   │       ├── flyer/
-│   │   │   │       ├── groups/
-│   │   │   │       ├── program-pdf/
-│   │   │   │       └── students/
-│   │   │   ├── groups/          # Group CRUD endpoints
-│   │   │   │   └── [id]/
-│   │   │   │       ├── archive/
-│   │   │   │       ├── generate-lessons/
-│   │   │   │       ├── payments/
-│   │   │   │       └── students/
-│   │   │   ├── lessons/         # Lesson management endpoints
-│   │   │   │   └── [id]/
-│   │   │   │       └── attendance/
-│   │   │   ├── reports/         # Report generation endpoints
-│   │   │   │   ├── attendance/
-│   │   │   │   ├── debts/
-│   │   │   │   └── payments/
-│   │   │   ├── students/        # Student CRUD endpoints
-│   │   │   │   └── [id]/
-│   │   │   ├── teachers/        # Teacher CRUD endpoints
-│   │   │   │   └── [id]/
-│   │   │   └── users/           # User management endpoints
-│   │   ├── globals.css          # Global styles
-│   │   ├── layout.tsx           # Root layout
-│   │   └── page.tsx             # Landing page
-│   ├── components/              # Reusable React components
-│   │   ├── CourseModalsContext.tsx
-│   │   ├── CourseModalsManager.tsx
-│   │   ├── CourseModalsProvider.tsx
-│   │   ├── CourseModalsWrapper.tsx
-│   │   ├── DraggableModal.tsx
-│   │   ├── GroupModalsContext.tsx
-│   │   ├── GroupModalsManager.tsx
-│   │   ├── GroupModalsProvider.tsx
-│   │   ├── GroupModalsWrapper.tsx
-│   │   ├── Header.tsx
-│   │   ├── IconButton.tsx
-│   │   ├── Layout.tsx
-│   │   ├── Portal.tsx
-│   │   ├── SearchInput.tsx
-│   │   ├── StudentModalsContext.tsx
-│   │   ├── StudentModalsManager.tsx
-│   │   ├── StudentModalsProvider.tsx
-│   │   ├── StudentModalsWrapper.tsx
-│   │   ├── TeacherModalsContext.tsx
-│   │   ├── TeacherModalsManager.tsx
-│   │   ├── TeacherModalsProvider.tsx
-│   │   ├── TeacherModalsWrapper.tsx
-│   │   ├── Navbar/
-│   │   │   ├── index.ts
-│   │   │   ├── Navbar.module.css
-│   │   │   └── Navbar.tsx
-│   │   └── Sidebar/
-│   │       └── Sidebar.tsx
+│   │   ├── globals.css            # Глобальні стилі
+│   │   ├── layout.tsx             # Кореневий layout
+│   │   ├── page.tsx               # Головна сторінка
+│   │   ├── (app)/                 # Захищені сторінки
+│   │   │   ├── dashboard/         # Дашборд
+│   │   │   ├── courses/           # Курси
+│   │   │   ├── groups/            # Групи (список, деталі, створення, редагування)
+│   │   │   ├── students/          # Учні
+│   │   │   ├── teachers/          # Викладачі
+│   │   │   ├── schedule/          # Розклад
+│   │   │   ├── reports/           # Звіти
+│   │   │   ├── settings/          # Налаштування
+│   │   │   └── users/             # Управління користувачами (Admin)
+│   │   ├── (auth)/                # Сторінки автентифікації
+│   │   │   └── login/             # Сторінка входу
+│   │   └── api/                   # API-маршрути
+│   ├── components/                # React-компоненти
+│   │   ├── Layout.tsx             # Основний layout з навігацією
+│   │   ├── Header.tsx             # Заголовок сторінки
+│   │   ├── DraggableModal.tsx     # Перетягуваний модальний компонент
+│   │   ├── LoadingOverlay.tsx     # Оверлей завантаження
+│   │   ├── SearchInput.tsx        # Поле пошуку
+│   │   ├── IconButton.tsx         # Кнопка з іконкою
+│   │   ├── Portal.tsx             # React Portal
+│   │   ├── GroupHistoryPanel.tsx   # Панель історії змін групи
+│   │   ├── *ModalsContext.tsx      # Контексти модальних вікон (Course, Group, Student, Teacher, Lesson)
+│   │   ├── *ModalsManager.tsx     # Менеджери модальних вікон
+│   │   ├── *ModalsProvider.tsx    # Провайдери модальних вікон
+│   │   ├── *ModalsWrapper.tsx     # Обгортки модальних вікон
+│   │   ├── Navbar/                # Навігаційна панель
+│   │   └── Sidebar/               # Бічна панель
 │   ├── db/
-│   │   ├── index.ts             # Database operations
-│   │   └── schema.sql           # Schema definitions
-│   ├── i18n/                    # Internationalization
-│   │   ├── pluralUk.ts          # Ukrainian plural forms
-│   │   ├── t.ts                 # Translation utilities
-│   │   └── uk.ts                # Ukrainian translations
-│   └── lib/                     # Business logic utilities
-│       ├── api-utils.ts         # API utilities
-│       ├── attendance.ts        # Attendance operations
-│       ├── auth.ts              # Authentication utilities
-│       ├── courses.ts           # Course operations
-│       ├── date-utils.ts        # Date manipulation utilities
-│       ├── groups.ts            # Group operations
-│       ├── lessons.ts           # Lesson operations
-│       ├── payments.ts          # Payment processing
-│       ├── public-id.ts         # Public ID generation
-│       └── students.ts          # Student operations
-├── tests/                       # Test files
-│   ├── lessons.test.ts          # Lesson tests
-│   └── student-status.test.ts   # Student status tests
+│   │   ├── index.ts               # Proxy до Neon PostgreSQL
+│   │   ├── neon.ts                # Neon PostgreSQL клієнт
+│   │   └── schema.sql             # SQL-схема (довідкова)
+│   ├── i18n/                      # Локалізація
+│   │   ├── uk.ts                  # Українські переклади
+│   │   ├── t.ts                   # Функції перекладу
+│   │   └── pluralUk.ts            # Українські множинні форми
+│   └── lib/                       # Бізнес-логіка
+│       ├── api-utils.ts           # Утиліти API
+│       ├── auth.ts                # Автентифікація
+│       ├── cloudinary.ts          # Інтеграція з Cloudinary
+│       ├── courses.ts             # Операції з курсами
+│       ├── date-utils.ts          # Утиліти дат
+│       ├── groups.ts              # Операції з групами
+│       ├── group-history.ts       # Історія змін груп
+│       ├── lessons.ts             # Операції з уроками
+│       ├── payments.ts            # Операції з оплатами
+│       ├── public-id.ts           # Генерація публічних ID
+│       ├── students.ts            # Операції з учнями
+│       └── attendance.ts          # Операції з відвідуваністю
 ├── assets/
-│   └── fonts/                   # Font files
-├── data/                        # Database storage (gitignored)
-├── .env.example                 # Environment variables template
-├── .gitignore                   # Git ignore rules
-├── jest.config.js               # Jest configuration
-├── next.config.js               # Next.js configuration
-├── package.json                 # Project dependencies
-├── package-lock.json            # Locked dependencies
-├── tsconfig.json                # TypeScript configuration
-└── README.md                    # This file
+│   └── fonts/                     # Шрифти (Roboto)
+├── tests/                         # Тести
+├── .env.example                   # Шаблон змінних середовища
+├── .env.local.example             # Шаблон локальних змінних
+├── jest.config.js                 # Конфігурація Jest
+├── next.config.js                 # Конфігурація Next.js
+├── tsconfig.json                  # Конфігурація TypeScript
+├── DEPLOY.md                      # Інструкція деплою
+└── README.md                      # Цей файл
 ```
 
-## Development
+## Розробка
 
 ```bash
-# Run development server with hot reload
+# Сервер розробки
 npm run dev
 
-# Build for production
+# Збірка для production
 npm run build
 
-# Start production server
+# Запуск production
 npm start
 
-# Run production build with custom start script
+# Production збірка + запуск
 npm run prod
 
-# Run tests
+# Тести
 npm test
 
-# Run database migration
-npm run db:migrate
+# Міграція Neon PostgreSQL
+npm run db:migrate:neon
 
-# Reset database (delete and reinitialize)
+# Заповнення Neon тестовими даними
+npm run db:seed:neon
+
+# Скидання локальної БД
 npm run db:reset
-
-# Seed database with initial data
-npm run db:seed
 ```
 
-## Database Troubleshooting
+## Деплой (Vercel)
 
-### Windows
+1. Підключити репозиторій до Vercel
+2. Додати змінні середовища (`DATABASE_URL`, `CLOUDINARY_*`, `JWT_SECRET`)
+3. Запустити міграцію: `npm run db:migrate:neon`
+4. Деплой відбувається автоматично при push
 
-#### Reset Database
+Детальніше — у [DEPLOY.md](DEPLOY.md).
 
-1. Stop the development server (press `Ctrl+C`)
-2. Delete the database file:
-   ```cmd
-   del data\school.db
-   ```
-3. (Optional) Clear Next.js cache for clean rebuild:
-   ```cmd
-   rmdir /s /q .next
-   ```
-4. Restart the development server:
-   ```cmd
-   npm run dev
-   ```
-5. Reinitialize with seed data:
-   ```cmd
-   npm run db:seed
-   ```
-
-#### Common Issues
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| `SQLITE_ERROR: no such table` | Missing database tables | Delete `data\school.db` and restart |
-| `SQLITE_ERROR: table has no column` | Schema mismatch | Delete `data\school.db` and restart |
-| Login refresh loop | Missing sessions table | Delete `data\school.db` and restart |
-| "Database is locked" | Concurrent database access | Close all terminals and applications using the DB |
-
-### Linux/Mac
-
-#### Reset Database
-
-1. Stop the development server (`Ctrl+C`)
-2. Delete the database file:
-   ```bash
-   rm data/school.db
-   ```
-3. (Optional) Clear Next.js cache:
-   ```bash
-   rm -rf .next
-   ```
-4. Restart the development server:
-   ```bash
-   npm run dev
-   ```
-5. Reinitialize with seed data:
-   ```bash
-   npm run db:seed
-   ```
-
-#### Common Issues
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| `SQLITE_ERROR: no such table` | Missing database tables | Delete `data/school.db` and restart |
-| `SQLITE_ERROR: table has no column` | Schema mismatch | Delete `data/school.db` and restart |
-| Login refresh loop | Missing sessions table | Delete `data/school.db` and restart |
-| "Database is locked" | Concurrent database access | Close all processes using the DB |
-
-### Database File Location
-
-- **Default**: `data/school.db` (relative to project root)
-- **Custom**: Set `DB_PATH` environment variable
-
-### Automatic Recovery
-
-During development, the application automatically:
-- Creates missing tables on startup
-- Seeds demo users if they don't exist
-- Runs schema migrations when needed
-
-> ⚠️ **Production Note**: In production, the database is never auto-deleted. Schema changes require proper migration scripts to preserve data.
-
-## License
+## Ліцензія
 
 MIT

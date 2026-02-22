@@ -1211,12 +1211,12 @@ export default function StudentsPage() {
           </div>
         </div>
 
-        <div style={{ padding: '0.5rem' }}>
+        <div style={{ padding: '1rem 0.75rem' }}>
           {filteredStudents.length > 0 ? (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-              gap: '16px',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
+              gap: '1.25rem',
               alignItems: 'start',
             }}>
               {filteredStudents.map((student) => {
@@ -1226,224 +1226,272 @@ export default function StudentsPage() {
                 // Truncate notes for display
                 const MAX_NOTE_LENGTH = 80;
                 const isNoteTruncated = student.notes && student.notes.length > MAX_NOTE_LENGTH;
-                const displayNote = (isNoteTruncated && !expandedNotes.has(student.id)) 
-                  ? student.notes!.substring(0, MAX_NOTE_LENGTH) + '...' 
+                const displayNote = (isNoteTruncated && !expandedNotes.has(student.id))
+                  ? student.notes!.substring(0, MAX_NOTE_LENGTH) + '...'
                   : student.notes;
                 
                 return (
                   <div
                     key={student.id}
+                    className="student-card-hover"
                     style={{
                       backgroundColor: 'white',
-                      borderRadius: '0.75rem',
-                      border: '1px solid #e5e7eb',
-                      padding: '1rem',
+                      borderRadius: '1rem',
+                      border: '1px solid #f0f0f5',
+                      padding: '0',
                       display: 'flex',
                       flexDirection: 'column',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                      width: '360px',
-                      minWidth: '360px',
-                      height: '240px',
+                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)',
                       overflow: 'hidden',
-                      position: 'relative',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.08), 0 2px 10px rgba(0,0,0,0.04)';
+                      e.currentTarget.style.borderColor = '#e0e7ff';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)';
+                      e.currentTarget.style.borderColor = '#f0f0f5';
+                      e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
-                    {/* ID Badge - fixed top left */}
-                    <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', zIndex: 1 }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#6b7280', backgroundColor: '#f3f4f6', padding: '0.125rem 0.375rem', borderRadius: '0.25rem' }}>
-                        {student.public_id}
-                      </span>
-                    </div>
-                    {/* Status Badge */}
-                    <div style={{ position: 'absolute', top: '0.75rem', right: user.role === 'admin' ? '5.5rem' : '2.5rem', zIndex: 1 }}>
-                      <span className={`badge ${student.study_status === 'studying' ? 'badge-success' : 'badge-gray'}`}>
-                        {student.study_status === 'studying' ? t('status.studying') : t('status.notStudying')}
-                      </span>
-                    </div>
-                    
-                    {/* Open in modal button - for all users */}
-                    <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', zIndex: 1 }}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openStudentModal(student.id, student.full_name);
-                        }}
-                        style={{
-                          padding: '0.25rem',
-                          borderRadius: '0.25rem',
-                          backgroundColor: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: '#6b7280',
-                        }}
-                        title="Відкрити в модальному вікні"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                          <polyline points="15 3 21 3 21 9" />
-                          <line x1="10" y1="14" x2="21" y2="3" />
-                        </svg>
-                      </button>
-                    </div>
-                    
-                    {/* Menu - Three dots button (for admins only) */}
-                    {user.role === 'admin' && (
-                      <div style={{ position: 'absolute', top: '0.5rem', right: '2.5rem', zIndex: 1 }}>
+                    {/* Top section: Header bar with ID, status, actions */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.625rem 1rem',
+                      borderBottom: '1px solid #f5f5fa',
+                      backgroundColor: '#fafbff',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.6875rem',
+                          color: '#94a3b8',
+                          backgroundColor: '#f1f5f9',
+                          padding: '0.125rem 0.5rem',
+                          borderRadius: '0.375rem',
+                          letterSpacing: '0.02em',
+                        }}>
+                          {student.public_id}
+                        </span>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.125rem 0.5rem',
+                          borderRadius: '9999px',
+                          fontSize: '0.6875rem',
+                          fontWeight: 600,
+                          letterSpacing: '0.01em',
+                          backgroundColor: student.study_status === 'studying' ? '#ecfdf5' : '#f9fafb',
+                          color: student.study_status === 'studying' ? '#059669' : '#9ca3af',
+                          border: `1px solid ${student.study_status === 'studying' ? '#a7f3d0' : '#e5e7eb'}`,
+                        }}>
+                          <span style={{
+                            width: '5px',
+                            height: '5px',
+                            borderRadius: '50%',
+                            backgroundColor: student.study_status === 'studying' ? '#10b981' : '#d1d5db',
+                          }} />
+                          {student.study_status === 'studying' ? t('status.studying') : t('status.notStudying')}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.125rem' }}>
+                        {/* Open in modal button */}
                         <button
-                          ref={openDropdownId === student.id ? dropdownButtonRef : undefined}
-                          className="btn btn-secondary btn-sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOpenDropdownId(openDropdownId === student.id ? null : student.id);
+                            openStudentModal(student.id, student.full_name);
                           }}
                           style={{
-                            padding: '0.5rem',
+                            padding: '0.375rem',
                             borderRadius: '0.5rem',
-                            backgroundColor: openDropdownId === student.id ? '#f3f4f6' : 'transparent',
+                            backgroundColor: 'transparent',
                             border: 'none',
                             cursor: 'pointer',
+                            color: '#94a3b8',
                             transition: 'all 0.15s',
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#eef2ff'; e.currentTarget.style.color = '#6366f1'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#94a3b8'; }}
+                          title="Відкрити в модальному вікні"
                         >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <circle cx="12" cy="5" r="2" />
-                            <circle cx="12" cy="12" r="2" />
-                            <circle cx="12" cy="19" r="2" />
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
                           </svg>
                         </button>
-                        {openDropdownId === student.id && (
-                          <Portal anchorRef={dropdownButtonRef} menuRef={dropdownMenuRef} offsetY={6}>
-                            <div
-                              style={{
-                                backgroundColor: 'white',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '0.75rem',
-                                boxShadow: '0 10px 40px -10px rgba(0,0,0,0.15), 0 0 2px rgba(0,0,0,0.1)',
-                                minWidth: '180px',
-                                padding: '0.5rem',
-                                zIndex: 50,
-                                overflow: 'hidden',
-                                animation: 'dropdownFadeIn 0.15s ease-out',
+                        {/* Menu - Three dots button (for admins only) */}
+                        {user.role === 'admin' && (
+                          <div style={{ position: 'relative' }}>
+                            <button
+                              ref={openDropdownId === student.id ? dropdownButtonRef : undefined}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdownId(openDropdownId === student.id ? null : student.id);
                               }}
+                              style={{
+                                padding: '0.375rem',
+                                borderRadius: '0.5rem',
+                                backgroundColor: openDropdownId === student.id ? '#eef2ff' : 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                                color: openDropdownId === student.id ? '#6366f1' : '#94a3b8',
+                                display: 'flex',
+                                alignItems: 'center',
+                              }}
+                              onMouseEnter={(e) => { if (openDropdownId !== student.id) { e.currentTarget.style.backgroundColor = '#eef2ff'; e.currentTarget.style.color = '#6366f1'; } }}
+                              onMouseLeave={(e) => { if (openDropdownId !== student.id) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#94a3b8'; } }}
                             >
-                              <style>{`
-                                @keyframes dropdownFadeIn {
-                                  from { opacity: 0; transform: translateY(-8px); }
-                                  to { opacity: 1; transform: translateY(0); }
-                                }
-                              `}</style>
-                              <a
-                                href={`/students/${student.id}`}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.75rem',
-                                  padding: '0.625rem 0.75rem',
-                                  color: '#374151',
-                                  textDecoration: 'none',
-                                  fontSize: '0.875rem',
-                                  fontWeight: '500',
-                                  borderRadius: '0.5rem',
-                                  transition: 'all 0.15s',
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.color = '#1f2937'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151'; }}
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#6b7280' }}>
-                                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                                </svg>
-                                Переглянути
-                              </a>
-                              <button
-                                className="btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenDropdownId(null);
-                                  handleEdit(student);
-                                }}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.75rem',
-                                  width: '100%',
-                                  padding: '0.625rem 0.75rem',
-                                  backgroundColor: 'transparent',
-                                  border: 'none',
-                                  borderRadius: '0.5rem',
-                                  color: '#374151',
-                                  fontSize: '0.875rem',
-                                  fontWeight: '500',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.15s',
-                                  textAlign: 'left',
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.color = '#1f2937'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151'; }}
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#6b7280' }}>
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                </svg>
-                                Редагувати
-                              </button>
-                              <button
-                                className="btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenDropdownId(null);
-                                  handleDeleteClick(student);
-                                }}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.75rem',
-                                  width: '100%',
-                                  padding: '0.625rem 0.75rem',
-                                  backgroundColor: 'transparent',
-                                  border: 'none',
-                                  borderRadius: '0.5rem',
-                                  color: '#dc2626',
-                                  fontSize: '0.875rem',
-                                  fontWeight: '500',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.15s',
-                                  textAlign: 'left',
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#dc2626' }}>
-                                  <polyline points="3 6 5 6 21 6" />
-                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                </svg>
-                                Видалити
-                              </button>
-                            </div>
-                          </Portal>
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="5" r="2" />
+                                <circle cx="12" cy="12" r="2" />
+                                <circle cx="12" cy="19" r="2" />
+                              </svg>
+                            </button>
+                            {openDropdownId === student.id && (
+                              <Portal anchorRef={dropdownButtonRef} menuRef={dropdownMenuRef} offsetY={6}>
+                                <div
+                                  style={{
+                                    backgroundColor: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '0.75rem',
+                                    boxShadow: '0 10px 40px -10px rgba(0,0,0,0.15), 0 0 2px rgba(0,0,0,0.1)',
+                                    minWidth: '180px',
+                                    padding: '0.5rem',
+                                    zIndex: 50,
+                                    overflow: 'hidden',
+                                    animation: 'dropdownFadeIn 0.15s ease-out',
+                                  }}
+                                >
+                                  <style>{`
+                                    @keyframes dropdownFadeIn {
+                                      from { opacity: 0; transform: translateY(-8px); }
+                                      to { opacity: 1; transform: translateY(0); }
+                                    }
+                                  `}</style>
+                                  <a
+                                    href={`/students/${student.id}`}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '0.75rem',
+                                      padding: '0.625rem 0.75rem',
+                                      color: '#374151',
+                                      textDecoration: 'none',
+                                      fontSize: '0.875rem',
+                                      fontWeight: '500',
+                                      borderRadius: '0.5rem',
+                                      transition: 'all 0.15s',
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.color = '#1f2937'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151'; }}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#6b7280' }}>
+                                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                                      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                                    </svg>
+                                    Переглянути
+                                  </a>
+                                  <button
+                                    className="btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdownId(null);
+                                      handleEdit(student);
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '0.75rem',
+                                      width: '100%',
+                                      padding: '0.625rem 0.75rem',
+                                      backgroundColor: 'transparent',
+                                      border: 'none',
+                                      borderRadius: '0.5rem',
+                                      color: '#374151',
+                                      fontSize: '0.875rem',
+                                      fontWeight: '500',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.15s',
+                                      textAlign: 'left',
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.color = '#1f2937'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151'; }}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#6b7280' }}>
+                                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                    </svg>
+                                    Редагувати
+                                  </button>
+                                  <button
+                                    className="btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdownId(null);
+                                      handleDeleteClick(student);
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '0.75rem',
+                                      width: '100%',
+                                      padding: '0.625rem 0.75rem',
+                                      backgroundColor: 'transparent',
+                                      border: 'none',
+                                      borderRadius: '0.5rem',
+                                      color: '#dc2626',
+                                      fontSize: '0.875rem',
+                                      fontWeight: '500',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.15s',
+                                      textAlign: 'left',
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#dc2626' }}>
+                                      <polyline points="3 6 5 6 21 6" />
+                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    </svg>
+                                    Видалити
+                                  </button>
+                                </div>
+                              </Portal>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
+                    </div>
                     
-                    {/* Main content - Two columns for balance - fixed position */}
-                    <div style={{ display: 'flex', gap: '1rem', position: 'absolute', top: '3.5rem', left: '1rem', right: '1rem', bottom: '3.5rem' }}>
-                      {/* Left Column - Avatar & Personal Info */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '80px', flexShrink: 0 }}>
+                    {/* Main content area */}
+                    <div style={{ padding: '1.125rem 1.25rem', display: 'flex', gap: '1.125rem', flex: 1 }}>
+                      {/* Left Column - Avatar & Age */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.625rem', flexShrink: 0 }}>
                         {/* Round Avatar with Discount Badge */}
                         <div style={{ position: 'relative' }}>
                           <div
                             style={{
-                              width: '56px',
-                              height: '56px',
+                              width: '52px',
+                              height: '52px',
                               borderRadius: '50%',
                               overflow: 'hidden',
                               flexShrink: 0,
-                              backgroundColor: student.photo ? 'transparent' : '#e0e7ff',
+                              backgroundColor: student.photo ? 'transparent' : 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)',
+                              background: student.photo ? 'transparent' : 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              border: '2px solid #e0e7ff',
+                              border: '2.5px solid #e0e7ff',
+                              boxShadow: '0 2px 8px rgba(99, 102, 241, 0.1)',
                             }}
                           >
                             {student.photo ? (
@@ -1458,9 +1506,10 @@ export default function StudentsPage() {
                               />
                             ) : (
                               <span style={{
-                                fontSize: '1.25rem',
-                                fontWeight: 600,
-                                color: '#4f46e5',
+                                fontSize: '1.125rem',
+                                fontWeight: 700,
+                                color: '#6366f1',
+                                letterSpacing: '-0.02em',
                               }}>
                                 {firstLetter}
                               </span>
@@ -1468,27 +1517,28 @@ export default function StudentsPage() {
                           </div>
                           {/* Discount Badge on Avatar Corner */}
                           {student.discount && (
-                            <div 
+                            <div
                               title={`Знижка на навчання: ${student.discount.replace(/[^0-9]/g, '')}%`}
                               style={{
                                 position: 'absolute',
-                                top: '-8px',
-                                right: '-8px',
-                                backgroundColor: 'var(--warning)',
+                                top: '-6px',
+                                right: '-10px',
+                                backgroundColor: '#f59e0b',
                                 color: 'white',
-                                padding: '0.25rem 0.5rem',
+                                padding: '0.125rem 0.375rem',
                                 borderRadius: '9999px',
-                                fontSize: '0.6875rem',
+                                fontSize: '0.625rem',
                                 fontWeight: '700',
-                                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
+                                boxShadow: '0 2px 6px rgba(245, 158, 11, 0.35)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.125rem',
                                 zIndex: 1,
                                 border: '2px solid white',
-                                cursor: 'pointer',
+                                cursor: 'default',
+                                lineHeight: 1.2,
                               }}>
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
                                 <line x1="7" y1="7" x2="7.01" y2="7"></line>
                               </svg>
@@ -1502,19 +1552,19 @@ export default function StudentsPage() {
                           <div style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '0.25rem',
-                            padding: '0.25rem 0.5rem',
-                            backgroundColor: '#dbeafe',
-                            borderRadius: '1rem',
-                            fontSize: '0.75rem',
+                            gap: '0.1875rem',
+                            padding: '0.1875rem 0.5rem',
+                            backgroundColor: '#eef2ff',
+                            borderRadius: '9999px',
+                            fontSize: '0.6875rem',
                           }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                               <line x1="16" y1="2" x2="16" y2="6"></line>
                               <line x1="8" y1="2" x2="8" y2="6"></line>
                               <line x1="3" y1="10" x2="21" y2="10"></line>
                             </svg>
-                            <span style={{ fontWeight: 600, color: '#1d4ed8' }}>
+                            <span style={{ fontWeight: 600, color: '#6366f1' }}>
                               {formatAge(student.birth_date)}
                             </span>
                           </div>
@@ -1522,111 +1572,113 @@ export default function StudentsPage() {
                       </div>
                       
                       {/* Right Column - Details */}
-                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                         {/* Name */}
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                            <a
-                              href={`/students/${student.id}`}
-                              style={{
-                                fontWeight: 600,
-                                fontSize: '1rem',
-                                color: '#111827',
-                                textDecoration: 'none',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {student.full_name}
-                            </a>
-                          </div>
-                        </div>
+                        <a
+                          href={`/students/${student.id}`}
+                          style={{
+                            fontWeight: 700,
+                            fontSize: '0.9375rem',
+                            color: '#1e293b',
+                            textDecoration: 'none',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            display: 'block',
+                            letterSpacing: '-0.01em',
+                            lineHeight: 1.3,
+                            transition: 'color 0.15s',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = '#6366f1'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = '#1e293b'; }}
+                        >
+                          {student.full_name}
+                        </a>
                         
-                        {/* Contact Info - Phone and Email on separate lines */}
+                        {/* Contact Info */}
                         {(student.phone || student.email) && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                             {student.phone && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
                                 <span
                                   onClick={() => copyPhone(student.phone, 'main')}
                                   style={{
-                                    fontSize: '0.875rem',
-                                    color: copiedField === `main-${student.phone}` ? '#10b981' : '#374151',
+                                    fontSize: '0.8125rem',
+                                    color: copiedField === `main-${student.phone}` ? '#10b981' : '#475569',
                                     cursor: 'pointer',
-                                    display: 'flex',
+                                    display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '0.375rem',
+                                    gap: '0.3125rem',
                                     transition: 'color 0.15s',
+                                    fontWeight: 500,
+                                    fontVariantNumeric: 'tabular-nums',
                                   }}
-                                  onMouseEnter={(e) => { if (copiedField !== `main-${student.phone}`) e.currentTarget.style.color = '#4f46e5'; }}
-                                  onMouseLeave={(e) => { if (copiedField !== `main-${student.phone}`) e.currentTarget.style.color = '#374151'; }}
+                                  onMouseEnter={(e) => { if (copiedField !== `main-${student.phone}`) e.currentTarget.style.color = '#6366f1'; }}
+                                  onMouseLeave={(e) => { if (copiedField !== `main-${student.phone}`) e.currentTarget.style.color = '#475569'; }}
                                   title="Клікніть щоб скопіювати"
                                 >
                                   {copiedField === `main-${student.phone}` ? (
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                       <polyline points="20 6 9 17 4 12" />
                                     </svg>
                                   ) : (
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                                     </svg>
                                   )}
                                   {student.phone}
                                 </span>
-                                {/* Parent info on same line as phone */}
+                                {/* Parent info */}
                                 {(student.parent_name || student.parent_relation) && (
-                                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>
-                                    {student.parent_name && student.parent_relation 
-                                      ? `${student.parent_name} (${translateRelation(student.parent_relation)})` 
+                                  <span style={{ fontSize: '0.6875rem', color: '#94a3b8', fontWeight: 400 }}>
+                                    · {student.parent_name && student.parent_relation
+                                      ? `${student.parent_name} (${translateRelation(student.parent_relation)})`
                                       : student.parent_name || translateRelation(student.parent_relation)}
                                   </span>
                                 )}
                               </div>
                             )}
                             {student.email && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(student.email || '');
-                                    setCopiedField(`email-${student.email}`);
-                                    setTimeout(() => setCopiedField(null), 2000);
-                                  }}
-                                  style={{
-                                    fontSize: '0.875rem',
-                                    color: copiedField === `email-${student.email}` ? '#10b981' : '#374151',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.375rem',
-                                    transition: 'color 0.15s',
-                                    wordBreak: 'break-all',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                  }}
-                                  onMouseEnter={(e) => { if (copiedField !== `email-${student.email}`) e.currentTarget.style.color = '#4f46e5'; }}
-                                  onMouseLeave={(e) => { if (copiedField !== `email-${student.email}`) e.currentTarget.style.color = '#374151'; }}
-                                  title={`${student.email} (клікніть щоб скопіювати)`}
-                                >
-                                  {copiedField === `email-${student.email}` ? (
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <polyline points="20 6 9 17 4 12" />
-                                    </svg>
-                                  ) : (
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
-                                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                                      <polyline points="22,6 12,13 2,6"></polyline>
-                                    </svg>
-                                  )}
-                                  {student.email}
-                                </span>
-                              </div>
+                              <span
+                                onClick={() => {
+                                  navigator.clipboard.writeText(student.email || '');
+                                  setCopiedField(`email-${student.email}`);
+                                  setTimeout(() => setCopiedField(null), 2000);
+                                }}
+                                style={{
+                                  fontSize: '0.8125rem',
+                                  color: copiedField === `email-${student.email}` ? '#10b981' : '#475569',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.3125rem',
+                                  transition: 'color 0.15s',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                onMouseEnter={(e) => { if (copiedField !== `email-${student.email}`) e.currentTarget.style.color = '#6366f1'; }}
+                                onMouseLeave={(e) => { if (copiedField !== `email-${student.email}`) e.currentTarget.style.color = '#475569'; }}
+                                title={`${student.email} (клікніть щоб скопіювати)`}
+                              >
+                                {copiedField === `email-${student.email}` ? (
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                ) : (
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                  </svg>
+                                )}
+                                {student.email}
+                              </span>
                             )}
                             {/* Show parent info on separate line only if no phone */}
                             {!student.phone && (student.parent_name || student.parent_relation) && (
-                              <span style={{ fontSize: '0.75rem', color: '#6b7280', paddingLeft: '1.25rem' }}>
-                                {student.parent_name && student.parent_relation 
-                                  ? `${student.parent_name} (${translateRelation(student.parent_relation)})` 
+                              <span style={{ fontSize: '0.6875rem', color: '#94a3b8', paddingLeft: '1.125rem' }}>
+                                {student.parent_name && student.parent_relation
+                                  ? `${student.parent_name} (${translateRelation(student.parent_relation)})`
                                   : student.parent_name || translateRelation(student.parent_relation)}
                               </span>
                             )}
@@ -1635,55 +1687,53 @@ export default function StudentsPage() {
                         
                         {/* Groups list */}
                         {student.groups && student.groups.length > 0 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-                              {student.groups.map((group) => (
-                                <div
-                                  key={group.id}
-                                  onClick={() => handleOpenGroupModal(group)}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '0.25rem',
-                                    padding: '0.25rem 0.5rem',
-                                    backgroundColor: '#f0fdf4',
-                                    border: '1px solid #86efac',
-                                    borderRadius: '0.5rem',
-                                    textDecoration: 'none',
-                                    fontSize: '0.75rem',
-                                    color: '#166534',
-                                    fontWeight: 500,
-                                    transition: 'all 0.15s',
-                                    cursor: 'pointer',
-                                  }}
-                                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#dcfce7'; e.currentTarget.style.borderColor = '#4ade80'; }}
-                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f0fdf4'; e.currentTarget.style.borderColor = '#86efac'; }}
-                                >
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                                    <circle cx="9" cy="7" r="4" />
-                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                                  </svg>
-                                  {group.title}
-                                </div>
-                              ))}
-                            </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                            {student.groups.map((group) => (
+                              <div
+                                key={group.id}
+                                onClick={() => handleOpenGroupModal(group)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  padding: '0.1875rem 0.5rem',
+                                  backgroundColor: '#f0fdf4',
+                                  border: '1px solid #bbf7d0',
+                                  borderRadius: '9999px',
+                                  textDecoration: 'none',
+                                  fontSize: '0.6875rem',
+                                  color: '#15803d',
+                                  fontWeight: 500,
+                                  transition: 'all 0.15s',
+                                  cursor: 'pointer',
+                                  letterSpacing: '0.01em',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#dcfce7'; e.currentTarget.style.borderColor = '#86efac'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f0fdf4'; e.currentTarget.style.borderColor = '#bbf7d0'; }}
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                  <circle cx="9" cy="7" r="4" />
+                                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                </svg>
+                                {group.title}
+                              </div>
+                            ))}
                           </div>
                         )}
-                        
                       </div>
                     </div>
                     
-                    {/* Note - fixed bottom */}
-                    <div style={{ position: 'absolute', bottom: '0.75rem', left: '0.75rem', right: '0.75rem' }}>
+                    {/* Note section - bottom */}
+                    <div style={{ padding: '0 1.25rem 1rem' }}>
                       {editingNoteId === student.id ? (
                         <div
                           style={{
-                            padding: '0.5rem 0.625rem',
-                            backgroundColor: '#fefce8',
-                            borderRadius: '0.375rem',
-                            border: '1px solid #fef08a',
+                            padding: '0.75rem',
+                            backgroundColor: '#fffbeb',
+                            borderRadius: '0.625rem',
+                            border: '1px solid #fde68a',
                           }}
                         >
                           <textarea
@@ -1692,13 +1742,15 @@ export default function StudentsPage() {
                             placeholder="Додати нотатку..."
                             style={{
                               width: '100%',
-                              minHeight: '60px',
-                              padding: '0.375rem',
+                              minHeight: '56px',
+                              padding: '0.5rem',
                               fontSize: '0.8125rem',
                               border: '1px solid #e5e7eb',
-                              borderRadius: '0.25rem',
+                              borderRadius: '0.375rem',
                               resize: 'vertical',
                               fontFamily: 'inherit',
+                              lineHeight: 1.5,
+                              outline: 'none',
                             }}
                             autoFocus
                           />
@@ -1707,7 +1759,7 @@ export default function StudentsPage() {
                               className="btn btn-primary btn-sm"
                               onClick={() => saveNote(student.id)}
                               disabled={savingNote}
-                              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                              style={{ fontSize: '0.75rem', padding: '0.25rem 0.625rem', borderRadius: '0.375rem' }}
                             >
                               {savingNote ? '...' : 'Зберегти'}
                             </button>
@@ -1715,7 +1767,7 @@ export default function StudentsPage() {
                               className="btn btn-secondary btn-sm"
                               onClick={cancelEditingNote}
                               disabled={savingNote}
-                              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                              style={{ fontSize: '0.75rem', padding: '0.25rem 0.625rem', borderRadius: '0.375rem' }}
                             >
                               Скасувати
                             </button>
@@ -1723,101 +1775,110 @@ export default function StudentsPage() {
                         </div>
                       ) : student.notes ? (
                         <div style={{
-                          padding: '0.5rem 0.625rem',
-                          backgroundColor: '#fefce8',
-                          borderRadius: '0.375rem',
-                          border: '1px solid #fef08a',
+                          padding: '0.5rem 0.75rem',
+                          backgroundColor: '#fffbeb',
+                          borderRadius: '0.625rem',
+                          border: '1px solid #fde68a',
                         }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.375rem', wordBreak: 'break-word' }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a16207" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '0.125rem' }}>
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                            <line x1="16" y1="13" x2="8" y2="13" />
-                            <line x1="16" y1="17" x2="8" y2="17" />
-                            <polyline points="10 9 9 9 8 9" />
-                          </svg>
-                          <span 
-                            style={{ fontSize: '0.8125rem', color: '#a16207', lineHeight: 1.4, wordBreak: 'break-word', overflowWrap: 'break-word', flex: 1, display: expandedNotes.has(student.id) ? 'block' : '-webkit-box', WebkitLineClamp: expandedNotes.has(student.id) ? 999 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-                            title={isNoteTruncated ? student.notes : undefined}
-                          >
-                            {displayNote}
-                            {isNoteTruncated && (
-                              <span 
-                                style={{ color: '#b45309', fontWeight: 500, cursor: 'pointer' }}
-                                onClick={() => toggleNoteExpand(student.id)}
-                              >
-                                {expandedNotes.has(student.id) ? ' Згорнути' : ' Читати далі'}
-                              </span>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.375rem', wordBreak: 'break-word' }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '0.1875rem', opacity: 0.7 }}>
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <polyline points="14 2 14 8 20 8" />
+                              <line x1="16" y1="13" x2="8" y2="13" />
+                              <line x1="16" y1="17" x2="8" y2="17" />
+                              <polyline points="10 9 9 9 8 9" />
+                            </svg>
+                            <span
+                              style={{ fontSize: '0.8125rem', color: '#92400e', lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'break-word', flex: 1, display: expandedNotes.has(student.id) ? 'block' : '-webkit-box', WebkitLineClamp: expandedNotes.has(student.id) ? 999 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                              title={isNoteTruncated ? student.notes : undefined}
+                            >
+                              {displayNote}
+                              {isNoteTruncated && (
+                                <span
+                                  style={{ color: '#b45309', fontWeight: 600, cursor: 'pointer', fontSize: '0.75rem' }}
+                                  onClick={() => toggleNoteExpand(student.id)}
+                                >
+                                  {expandedNotes.has(student.id) ? ' Згорнути' : ' Читати далі'}
+                                </span>
+                              )}
+                            </span>
+                            {user.role === 'admin' && (
+                              <div style={{ display: 'flex', gap: '0.125rem', flexShrink: 0, marginLeft: '0.25rem' }}>
+                                <button
+                                  onClick={() => startEditingNote(student)}
+                                  style={{
+                                    padding: '0.25rem',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#d97706',
+                                    opacity: 0.5,
+                                    borderRadius: '0.25rem',
+                                    transition: 'opacity 0.15s',
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; }}
+                                  title="Редагувати нотатку"
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => clearNote(student.id)}
+                                  style={{
+                                    padding: '0.25rem',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#d97706',
+                                    opacity: 0.5,
+                                    borderRadius: '0.25rem',
+                                    transition: 'opacity 0.15s',
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; }}
+                                  title="Очистити нотатку"
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                  </svg>
+                                </button>
+                              </div>
                             )}
-                          </span>
-                          {user.role === 'admin' && (
-                            <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
-                              <button
-                                onClick={() => startEditingNote(student)}
-                                style={{
-                                  padding: '0.125rem',
-                                  background: 'transparent',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  color: '#a16207',
-                                  opacity: 0.6,
-                                }}
-                                title="Редагувати нотатку"
-                              >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={() => clearNote(student.id)}
-                                style={{
-                                  padding: '0.125rem',
-                                  background: 'transparent',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  color: '#a16207',
-                                  opacity: 0.6,
-                                }}
-                                title="Очистити нотатку"
-                              >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <line x1="18" y1="6" x2="6" y2="18" />
-                                  <line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
-                              </button>
-                            </div>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    ) : user.role === 'admin' ? (
-                      <button
-                        onClick={() => startEditingNote(student)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.375rem',
-                          padding: '0.5rem 0.625rem',
-                          backgroundColor: '#f9fafb',
-                          border: '1px dashed #d1d5db',
-                          borderRadius: '0.375rem',
-                          color: '#6b7280',
-                          fontSize: '0.8125rem',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
-                          width: '100%',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.borderColor = '#9ca3af'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb'; e.currentTarget.style.borderColor = '#d1d5db'; }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="12" y1="5" x2="12" y2="19" />
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                        Додати нотатку
-                      </button>
-                    ) : null}
+                      ) : user.role === 'admin' ? (
+                        <button
+                          onClick={() => startEditingNote(student)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.375rem',
+                            padding: '0.5rem',
+                            backgroundColor: 'transparent',
+                            border: '1px dashed #e2e8f0',
+                            borderRadius: '0.625rem',
+                            color: '#94a3b8',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            width: '100%',
+                            fontWeight: 500,
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#64748b'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#94a3b8'; }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                          Додати нотатку
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 );

@@ -142,10 +142,10 @@ export async function PUT(
     // If only status is being updated, handle it separately
     if (status && !course_id && !teacher_id && !weekly_day && !start_time) {
       const oldStatus = existingGroup.status;
-      updateGroupStatus(groupId, status);
+      await updateGroupStatus(groupId, status);
       
       // Add history entry for status change
-      addGroupHistoryEntry(
+      await addGroupHistoryEntry(
         groupId,
         'status_changed',
         formatStatusChangedDescription(oldStatus, status),
@@ -246,7 +246,7 @@ export async function PUT(
       timezone: timezone || 'Europe/Uzhgorod',
     };
     
-    updateGroup(groupId, input);
+    await updateGroup(groupId, input);
     
     // Get updated group with details
     const updatedGroup = await getGroupWithDetailsById(groupId);
@@ -257,9 +257,9 @@ export async function PUT(
     // Check if teacher changed
     if (existingGroup.teacher_id !== parseInt(teacher_id)) {
       const oldTeacher = await get<{ name: string }>(`SELECT name FROM users WHERE id = $1`, [existingGroup.teacher_id]);
-      const newTeacher = await get<{ name: string }>(`SELECT name FROM users WHERE id = $2`, [parseInt(teacher_id)]);
+      const newTeacher = await get<{ name: string }>(`SELECT name FROM users WHERE id = $1`, [parseInt(teacher_id)]);
       if (oldTeacher && newTeacher) {
-        addGroupHistoryEntry(
+        await addGroupHistoryEntry(
           groupId,
           'teacher_changed',
           formatTeacherChangedDescription(oldTeacher.name, newTeacher.name),
@@ -274,9 +274,9 @@ export async function PUT(
     // Check other field changes
     if (existingGroup.course_id !== parseInt(course_id)) {
       const oldCourse = await get<{ title: string }>(`SELECT title FROM courses WHERE id = $1`, [existingGroup.course_id]);
-      const newCourse = await get<{ title: string }>(`SELECT title FROM courses WHERE id = $2`, [parseInt(course_id)]);
+      const newCourse = await get<{ title: string }>(`SELECT title FROM courses WHERE id = $1`, [parseInt(course_id)]);
       if (oldCourse && newCourse) {
-        addGroupHistoryEntry(
+        await addGroupHistoryEntry(
           groupId,
           'edited',
           formatFieldEditedDescription('course_id', oldCourse.title, newCourse.title),
@@ -287,7 +287,7 @@ export async function PUT(
     }
     
     if (existingGroup.start_time !== start_time) {
-      addGroupHistoryEntry(
+      await addGroupHistoryEntry(
         groupId,
         'edited',
         formatFieldEditedDescription('start_time', existingGroup.start_time, start_time),
@@ -298,7 +298,7 @@ export async function PUT(
     
     if (existingGroup.weekly_day !== dayNum) {
       const dayNames = ['', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', "П'ятниця", 'Субота', 'Неділя'];
-      addGroupHistoryEntry(
+      await addGroupHistoryEntry(
         groupId,
         'edited',
         formatFieldEditedDescription('weekly_day', dayNames[existingGroup.weekly_day], dayNames[dayNum]),
@@ -308,7 +308,7 @@ export async function PUT(
     }
     
     if (status && existingGroup.status !== status) {
-      addGroupHistoryEntry(
+      await addGroupHistoryEntry(
         groupId,
         'status_changed',
         formatStatusChangedDescription(existingGroup.status, status),
@@ -323,7 +323,7 @@ export async function PUT(
     const oldNote = existingGroup.note;
     const newNote = note;
     if (oldNote !== newNote) {
-      addGroupHistoryEntry(
+      await addGroupHistoryEntry(
         groupId,
         'edited',
         formatFieldEditedDescription('note', oldNote, newNote),
@@ -451,13 +451,13 @@ export async function PATCH(
     return NextResponse.json({ error: ERROR_MESSAGES.invalidGroupId }, { status: 400 });
   }
   
-  const existingGroup = getGroupById(groupId);
+  const existingGroup = await getGroupById(groupId);
   
   if (!existingGroup) {
     return notFound(ERROR_MESSAGES.groupNotFound);
   }
   
-  restoreGroup(groupId);
+  await restoreGroup(groupId);
   
   return NextResponse.json({ message: 'Групу успішно відновлено' });
 }
