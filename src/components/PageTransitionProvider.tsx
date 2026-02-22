@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 interface PageTransitionContextType {
   isLoading: boolean;
@@ -24,29 +25,28 @@ interface PageTransitionProviderProps {
 }
 
 export const PageTransitionProvider = ({ children }: PageTransitionProviderProps) => {
-  const [isLoading, setIsLoading] = useState(true); // Start with loading true to show animation on page load
+  const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const prevPathRef = useRef(pathname);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isLinkClickRef = useRef(false);
+  const isNavigatingRef = useRef(false);
 
   const startLoading = useCallback(() => {
-    console.log('[PageTransition] startLoading called');
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     setIsLoading(true);
-    isLinkClickRef.current = true;
+    isNavigatingRef.current = true;
   }, []);
 
   const stopLoading = useCallback(() => {
-    console.log('[PageTransition] stopLoading called');
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     setIsLoading(false);
-    isLinkClickRef.current = false;
+    isNavigatingRef.current = false;
   }, []);
 
   // Stop loading after initial mount
@@ -55,59 +55,68 @@ export const PageTransitionProvider = ({ children }: PageTransitionProviderProps
       if (isLoading) {
         stopLoading();
       }
-    }, 1500);
+    }, 2000);
     return () => clearTimeout(timer);
   }, []);
 
-  // Stop loading when route changes (navigation completed)
+  // Use router events to detect navigation
+  useEffect(() => {
+    const handleRouteChangeStart = () => {
+      startLoading();
+    };
+
+    const handleRouteChangeComplete = () => {
+      if (isNavigatingRef.current) {
+        timeoutRef.current = setTimeout(() => {
+          stopLoading();
+          isNavigatingRef.current = false;
+        }, 1000);
+      }
+    };
+
+    // These events might not be available in newer Next.js, but let's try
+    // @ts-ignore
+    if (router.events) {
+      // @ts-ignore
+      router.events.on('routeChangeStart', handleRouteChangeStart);
+      // @ts-ignore
+      router.events.on('routeChangeComplete', handleRouteChangeComplete);
+      // @ts-ignore
+      router.events.on('routeChangeError', handleRouteChangeComplete);
+    }
+
+    return () => {
+      // @ts-ignore
+      if (router.events) {
+        // @ts-ignore
+        router.events.off('routeChangeStart', handleRouteChangeStart);
+        // @ts-ignore
+        router.events.off('routeChangeComplete', handleRouteChangeComplete);
+        // @ts-ignore
+        router.events.off('routeChangeError', handleRouteChangeComplete);
+      }
+    };
+  }, [router, startLoading, stopLoading]);
+
+  // Fallback: also monitor pathname changes
   useEffect(() => {
     const currentPath = pathname + (searchParams.toString() ? '?' + searchParams.toString() : '');
     
-    // Only auto-stop if we initiated the navigation
-    if (isLoading && isLinkClickRef.current && prevPathRef.current !== currentPath) {
-      console.log('[PageTransition] Route changed, stopping loader');
+    // If we were navigating and path changed, stop loading
+    if (isLoading && isNavigatingRef.current && prevPathRef.current !== currentPath) {
       timeoutRef.current = setTimeout(() => {
         stopLoading();
         prevPathRef.current = currentPath;
-      }, 1200);
+      }, 800);
     }
     
     prevPathRef.current = currentPath;
   }, [pathname, searchParams, isLoading, stopLoading]);
 
-  // Intercept all link clicks on the page
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const anchor = target.closest('a');
-      
-      if (!anchor) return;
-      
-      const href = anchor.getAttribute('href');
-      if (!href) return;
-      
-      console.log('[PageTransition] Link clicked:', href);
-      
-      // Internal navigation only
-      if (href.startsWith('/') && !href.startsWith('//') && !href.startsWith('#')) {
-        const currentPath = pathname + (searchParams.toString() ? '?' + searchParams.toString() : '');
-        
-        // Only trigger if navigating to a different page
-        if (href !== currentPath && href !== currentPath.split('?')[0] + '/') {
-          console.log('[PageTransition] Starting loader for navigation');
-          startLoading();
-        }
-      }
-    };
-
-    document.addEventListener('click', handleClick, true);
-    return () => document.removeEventListener('click', handleClick, true);
-  }, [pathname, searchParams, startLoading]);
-
   // Handle browser back/forward buttons
   useEffect(() => {
     const handlePopState = () => {
-      console.log('[PageTransition] Popstate event');
+      isNavigatingRef.current = true;
       startLoading();
     };
 
