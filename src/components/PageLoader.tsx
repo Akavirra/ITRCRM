@@ -103,7 +103,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
       <div className="relative flex flex-col items-center">
         
         {/* Animated Icons Circle */}
-        <div className="relative w-56 h-56">
+        <div className="relative w-32 h-32">
           {/* Outer rotating ring */}
           <motion.div
             animate={{ rotate: 360 }}
@@ -129,7 +129,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
           <motion.div
             animate={{ rotate: -360 }}
             transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
-            className="absolute inset-4"
+            className="absolute inset-2"
           >
             <svg viewBox="0 0 200 200" className="w-full h-full">
               <circle
@@ -155,15 +155,15 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-100 to-yellow-50 blur-xl" />
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 to-yellow-50 blur-xl" />
           </motion.div>
 
           {/* Icons positioned in circle */}
           {themes.map(({ Icon, color }, index) => {
             const angle = (index * 60 - 90) * (Math.PI / 180);
-            const radius = 70;
-            const x = 112 + radius * Math.cos(angle);
-            const y = 112 + radius * Math.sin(angle);
+            const radius = 45;
+            const x = 64 + radius * Math.cos(angle);
+            const y = 64 + radius * Math.sin(angle);
             
             return (
               <motion.div
@@ -179,22 +179,22 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
                 }}
                 className="absolute"
                 style={{
-                  left: x - 20,
-                  top: y - 20,
+                  left: x - 14,
+                  top: y - 14,
                 }}
               >
                 <motion.div
                   animate={{ 
-                    y: [0, -4, 0],
+                    y: [0, -3, 0],
                   }}
                   transition={{ 
                     duration: 2, 
                     repeat: Infinity, 
                     ease: 'easeInOut'
                   }}
-                  className={`w-10 h-10 flex items-center justify-center ${color}`}
+                  className={`w-7 h-7 flex items-center justify-center ${color}`}
                 >
-                  <Icon className="w-9 h-9" />
+                  <Icon className="w-6 h-6" />
                 </motion.div>
               </motion.div>
             );
@@ -206,7 +206,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mt-12 w-40"
+          className="mt-8 w-32"
         >
           <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
             <motion.div
@@ -227,7 +227,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="mt-6 flex gap-2"
+          className="mt-4 flex gap-2"
         >
           {[0, 1, 2, 3].map((i) => (
             <motion.div
@@ -242,7 +242,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
                 delay: i * 0.2,
                 ease: 'easeInOut'
               }}
-              className="w-1.5 h-1.5 rounded-full"
+              className="w-1 h-1 rounded-full"
               style={{
                 backgroundColor: i % 2 === 0 ? '#3b82f6' : '#fbbf24'
               }}
