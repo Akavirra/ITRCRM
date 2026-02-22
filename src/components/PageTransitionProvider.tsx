@@ -55,7 +55,7 @@ export const PageTransitionProvider = ({ children }: PageTransitionProviderProps
       if (isLoading) {
         stopLoading();
       }
-    }, 2000);
+    }, 500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -70,7 +70,7 @@ export const PageTransitionProvider = ({ children }: PageTransitionProviderProps
         timeoutRef.current = setTimeout(() => {
           stopLoading();
           isNavigatingRef.current = false;
-        }, 1000);
+        }, 300);
       }
     };
 
@@ -107,7 +107,7 @@ export const PageTransitionProvider = ({ children }: PageTransitionProviderProps
       timeoutRef.current = setTimeout(() => {
         stopLoading();
         prevPathRef.current = currentPath;
-      }, 800);
+      }, 200);
     }
     
     prevPathRef.current = currentPath;

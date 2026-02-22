@@ -82,8 +82,8 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
     <motion.div
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.4, ease: 'easeInOut' }}
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-white"
+      transition={{ duration: 0.2, ease: 'easeInOut' }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-white overflow-hidden"
     >
       {/* Background Pattern - Subtle Grid */}
       <div className="absolute inset-0 opacity-[0.03]">
@@ -103,7 +103,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
       <div className="relative flex flex-col items-center">
         
         {/* Animated Icons Circle */}
-        <div className="relative w-32 h-32">
+        <div className="relative w-24 h-24">
           {/* Outer rotating ring */}
           <motion.div
             animate={{ rotate: 360 }}
@@ -129,7 +129,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
           <motion.div
             animate={{ rotate: -360 }}
             transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
-            className="absolute inset-2"
+            className="absolute inset-1"
           >
             <svg viewBox="0 0 200 200" className="w-full h-full">
               <circle
@@ -155,15 +155,15 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 to-yellow-50 blur-xl" />
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-100 to-yellow-50 blur-xl" />
           </motion.div>
 
           {/* Icons positioned in circle */}
           {themes.map(({ Icon, color }, index) => {
             const angle = (index * 60 - 90) * (Math.PI / 180);
-            const radius = 45;
-            const x = 64 + radius * Math.cos(angle);
-            const y = 64 + radius * Math.sin(angle);
+            const radius = 35;
+            const x = 48 + radius * Math.cos(angle);
+            const y = 48 + radius * Math.sin(angle);
             
             return (
               <motion.div
@@ -179,22 +179,22 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
                 }}
                 className="absolute"
                 style={{
-                  left: x - 14,
-                  top: y - 14,
+                  left: x - 10,
+                  top: y - 10,
                 }}
               >
                 <motion.div
                   animate={{ 
-                    y: [0, -3, 0],
+                    y: [0, -2, 0],
                   }}
                   transition={{ 
                     duration: 2, 
                     repeat: Infinity, 
                     ease: 'easeInOut'
                   }}
-                  className={`w-7 h-7 flex items-center justify-center ${color}`}
+                  className={`w-5 h-5 flex items-center justify-center ${color}`}
                 >
-                  <Icon className="w-6 h-6" />
+                  <Icon className="w-4 h-4" />
                 </motion.div>
               </motion.div>
             );
@@ -206,13 +206,13 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mt-8 w-32"
+          className="mt-6 w-24"
         >
           <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
             <motion.div
               initial={{ width: '0%' }}
               animate={{ width: '100%' }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+              transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
               className="h-full rounded-full"
               style={{
                 background: 'linear-gradient(90deg, #3b82f6 0%, #fbbf24 50%, #3b82f6 100%)',
@@ -227,7 +227,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="mt-4 flex gap-2"
+          className="mt-3 flex gap-1.5"
         >
           {[0, 1, 2, 3].map((i) => (
             <motion.div
