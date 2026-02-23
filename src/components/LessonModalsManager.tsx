@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import DraggableModal from './DraggableModal';
 import { useLessonModals } from './LessonModalsContext';
 import { Clock, BookOpen, User, Check, X, Calendar, Trash2, ArrowRightCircle, UserMinus, Users } from 'lucide-react';
@@ -67,6 +67,7 @@ export default function LessonModalsManager() {
   const { openModals, updateModalState, closeLessonModal } = useLessonModals();
   const [lessonData, setLessonData] = useState<Record<number, LessonData>>({});
   const [loadingLessons, setLoadingLessons] = useState<Record<number, boolean>>({});
+  const loadingRef = useRef<Record<number, boolean>>({}); // Track loading state without causing re-renders
   const [isHydrated, setIsHydrated] = useState(false);
   
   // Form state
@@ -101,8 +102,10 @@ export default function LessonModalsManager() {
     setIsHydrated(true);
   }, []);
 
-  const loadLessonData = async (lessonId: number) => {
-    if (lessonData[lessonId] || loadingLessons[lessonId]) return;
+  const loadLessonData = useCallback(async (lessonId: number) => {
+    // Use ref to check if already loading to avoid duplicate requests
+    if (loadingRef.current[lessonId]) return;
+    loadingRef.current[lessonId] = true;
     
     setLoadingLessons(prev => ({ ...prev, [lessonId]: true }));
     
@@ -131,21 +134,27 @@ export default function LessonModalsManager() {
     } catch (error) {
       console.error('Error loading lesson:', error);
     } finally {
+      loadingRef.current[lessonId] = false;
       setLoadingLessons(prev => ({ ...prev, [lessonId]: false }));
     }
-  };
+  }, [updateModalState]);
 
   useEffect(() => {
     openModals.forEach(modal => {
-      if (modal.isOpen && !lessonData[modal.id]) {
-        loadLessonData(modal.id);
-      }
-      // Initialize topic from stored modal data
-      if (modal.isOpen && modal.lessonData && !lessonTopic[modal.id]) {
-        setLessonTopic(prev => ({ ...prev, [modal.id]: modal.lessonData?.topic || '' }));
+      if (modal.isOpen) {
+        // Try to fetch fresh data from API when modal opens
+        // but don't block if we already have modalData
+        if (!lessonData[modal.id] && !loadingRef.current[modal.id]) {
+          loadLessonData(modal.id);
+        }
+        // Initialize topic from stored modal data or API data
+        const topicSource = modal.lessonData?.topic ?? lessonData[modal.id]?.topic;
+        if (topicSource !== undefined && !lessonTopic[modal.id]) {
+          setLessonTopic(prev => ({ ...prev, [modal.id]: topicSource || '' }));
+        }
       }
     });
-  }, [openModals]);
+  }, [openModals, lessonData, lessonTopic, loadLessonData]);
 
   const handleClose = (lessonId: number) => {
     closeLessonModal(lessonId);
@@ -347,11 +356,13 @@ export default function LessonModalsManager() {
       {openModals.map((modal) => {
         if (!modal.isOpen) return null;
         
-        // Prefer stored modal data, fall back to API data if it has all required fields
+        // Prefer modal data from context (passed from schedule page), fall back to API data
+        // This ensures data is available immediately when modal opens
         const apiData = lessonData[modal.id];
-        const modalData = modal.lessonData as LessonData;
-        const lesson = (apiData && apiData.groupTitle) ? apiData : modalData;
-        const isLoading = loadingLessons[modal.id];
+        const modalData = modal.lessonData as LessonData | undefined;
+        // Use modalData if it exists and has required fields, otherwise fall back to API data
+        const lesson = (modalData && modalData.groupTitle) ? modalData : (apiData || undefined);
+        const isLoading = loadingLessons[modal.id] && !lesson;
         const isSaving = saving[modal.id];
         const currentTopic = lessonTopic[modal.id] ?? lesson?.topic ?? '';
 
