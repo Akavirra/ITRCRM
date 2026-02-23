@@ -131,7 +131,13 @@ export async function POST(
       [lessonId]
     );
     
-    // Transform to camelCase format
+    // Transform to camelCase format - handle date conversion
+    const formatDateTime = (date: any) => {
+      if (!date) return '';
+      const dateStr = typeof date === 'string' ? date : new Date(date).toISOString();
+      return dateStr.split(' ')[1]?.substring(0, 5) || '';
+    };
+    
     const updatedLesson = updatedLessonRaw ? {
       id: updatedLessonRaw.id,
       groupId: updatedLessonRaw.group_id,
@@ -141,8 +147,8 @@ export async function POST(
       teacherName: updatedLessonRaw.teacher_name || replacementTeacher.name,
       originalTeacherId: originalTeacherId,
       isReplaced: true,
-      startTime: updatedLessonRaw.start_datetime.split(' ')[1].substring(0, 5),
-      endTime: updatedLessonRaw.end_datetime.split(' ')[1].substring(0, 5),
+      startTime: formatDateTime(updatedLessonRaw.start_datetime),
+      endTime: formatDateTime(updatedLessonRaw.end_datetime),
       status: updatedLessonRaw.status,
       topic: updatedLessonRaw.topic,
     } : null;
@@ -245,7 +251,13 @@ export async function DELETE(
       [lessonId]
     );
     
-    // Transform to camelCase format
+    // Transform to camelCase format - handle date conversion
+    const formatDateTime = (date: any) => {
+      if (!date) return '';
+      const dateStr = typeof date === 'string' ? date : new Date(date).toISOString();
+      return dateStr.split(' ')[1]?.substring(0, 5) || '';
+    };
+    
     const updatedLesson = updatedLessonRaw ? {
       id: updatedLessonRaw.id,
       groupId: updatedLessonRaw.group_id,
@@ -255,8 +267,8 @@ export async function DELETE(
       teacherName: originalTeacher?.name || (group.teacher_id ? 'Викладач групи' : 'Немає викладача'),
       originalTeacherId: group.teacher_id || null,
       isReplaced: false,
-      startTime: updatedLessonRaw.start_datetime.split(' ')[1].substring(0, 5),
-      endTime: updatedLessonRaw.end_datetime.split(' ')[1].substring(0, 5),
+      startTime: formatDateTime(updatedLessonRaw.start_datetime),
+      endTime: formatDateTime(updatedLessonRaw.end_datetime),
       status: updatedLessonRaw.status,
       topic: updatedLessonRaw.topic,
     } : null;

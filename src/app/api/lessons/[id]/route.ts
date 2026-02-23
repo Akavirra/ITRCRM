@@ -74,23 +74,29 @@ export async function GET(
     [lessonId]
   );
   
-  // Transform to camelCase format - handle null teacher_id
-  const transformedLesson = lessonWithDetails ? {
-    id: lessonWithDetails.id,
-    groupId: lessonWithDetails.group_id,
-    groupTitle: lessonWithDetails.group_title,
-    courseTitle: lessonWithDetails.course_title,
-    // If lesson has replacement teacher, use it; otherwise use group teacher or null
-    teacherId: lessonWithDetails.teacher_id || lessonWithDetails.original_teacher_id || null,
-    // Show replacement teacher name if replaced, otherwise show group teacher name or placeholder
-    teacherName: lessonWithDetails.teacher_name || (lessonWithDetails.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
-    originalTeacherId: lessonWithDetails.original_teacher_id || null,
-    isReplaced: lessonWithDetails.is_replaced,
-    startTime: lessonWithDetails.start_datetime.split(' ')[1].substring(0, 5),
-    endTime: lessonWithDetails.end_datetime.split(' ')[1].substring(0, 5),
-    status: lessonWithDetails.status,
-    topic: lessonWithDetails.topic,
-  } : null;
+    // Transform to camelCase format - handle null teacher_id and date conversion
+    const formatDateTime = (date: any) => {
+      if (!date) return '';
+      const dateStr = typeof date === 'string' ? date : new Date(date).toISOString();
+      return dateStr.split(' ')[1]?.substring(0, 5) || '';
+    };
+    
+    const transformedLesson = lessonWithDetails ? {
+      id: lessonWithDetails.id,
+      groupId: lessonWithDetails.group_id,
+      groupTitle: lessonWithDetails.group_title,
+      courseTitle: lessonWithDetails.course_title,
+      // If lesson has replacement teacher, use it; otherwise use group teacher or null
+      teacherId: lessonWithDetails.teacher_id || lessonWithDetails.original_teacher_id || null,
+      // Show replacement teacher name if replaced, otherwise show group teacher name or placeholder
+      teacherName: lessonWithDetails.teacher_name || (lessonWithDetails.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
+      originalTeacherId: lessonWithDetails.original_teacher_id || null,
+      isReplaced: lessonWithDetails.is_replaced,
+      startTime: formatDateTime(lessonWithDetails.start_datetime),
+      endTime: formatDateTime(lessonWithDetails.end_datetime),
+      status: lessonWithDetails.status,
+      topic: lessonWithDetails.topic,
+    } : null;
   
   return NextResponse.json({ lesson: transformedLesson });
 }
@@ -206,7 +212,13 @@ export async function PATCH(
       [lessonId]
     );
     
-    // Transform to camelCase format - handle null teacher_id
+    // Transform to camelCase format - handle null teacher_id and date conversion
+    const formatDateTime = (date: any) => {
+      if (!date) return '';
+      const dateStr = typeof date === 'string' ? date : new Date(date).toISOString();
+      return dateStr.split(' ')[1]?.substring(0, 5) || '';
+    };
+    
     const updatedLesson = updatedLessonRaw ? {
       id: updatedLessonRaw.id,
       groupId: updatedLessonRaw.group_id,
@@ -216,8 +228,8 @@ export async function PATCH(
       teacherName: updatedLessonRaw.teacher_name || (updatedLessonRaw.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
       originalTeacherId: updatedLessonRaw.original_teacher_id || null,
       isReplaced: updatedLessonRaw.is_replaced,
-      startTime: updatedLessonRaw.start_datetime.split(' ')[1].substring(0, 5),
-      endTime: updatedLessonRaw.end_datetime.split(' ')[1].substring(0, 5),
+      startTime: formatDateTime(updatedLessonRaw.start_datetime),
+      endTime: formatDateTime(updatedLessonRaw.end_datetime),
       status: updatedLessonRaw.status,
       topic: updatedLessonRaw.topic,
     } : null;
