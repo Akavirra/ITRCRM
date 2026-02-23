@@ -58,13 +58,18 @@ export async function POST(
     }
     
     // Get original teacher from group
-    const group = await get<{ teacher_id: number }>(
+    const group = await get<{ teacher_id: number | null }>(
       `SELECT teacher_id FROM groups WHERE id = $1`,
       [lesson.group_id]
     );
     
     if (!group) {
       return NextResponse.json({ error: 'Групу не знайдено' }, { status: 404 });
+    }
+
+    // If group has no teacher, we can't replace (need original teacher to compare)
+    if (!group.teacher_id) {
+      return NextResponse.json({ error: 'Група не має викладача для заміни' }, { status: 400 });
     }
     
     const originalTeacherId = group.teacher_id;
@@ -103,7 +108,7 @@ export async function POST(
     );
     
     // Get updated lesson with details
-    const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_name: string }>(
+    const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_name: string | null }>(
       `SELECT 
         l.id,
         l.group_id,
@@ -116,7 +121,7 @@ export async function POST(
         l.teacher_id,
         g.title as group_title,
         c.title as course_title,
-        COALESCE(u.name, g_teacher.name) as teacher_name
+        u.name as teacher_name
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       JOIN courses c ON g.course_id = c.id
@@ -133,7 +138,7 @@ export async function POST(
       groupTitle: updatedLessonRaw.group_title,
       courseTitle: updatedLessonRaw.course_title,
       teacherId: updatedLessonRaw.teacher_id || originalTeacherId,
-      teacherName: updatedLessonRaw.teacher_name,
+      teacherName: updatedLessonRaw.teacher_name || replacementTeacher.name,
       originalTeacherId: originalTeacherId,
       isReplaced: true,
       startTime: updatedLessonRaw.start_datetime.split(' ')[1].substring(0, 5),
@@ -187,7 +192,7 @@ export async function DELETE(
   
   try {
     // Get original teacher from group
-    const group = await get<{ teacher_id: number }>(
+    const group = await get<{ teacher_id: number | null }>(
       `SELECT teacher_id FROM groups WHERE id = $1`,
       [lesson.group_id]
     );
@@ -208,11 +213,14 @@ export async function DELETE(
       [lessonId]
     );
     
-    // Get original teacher name
-    const originalTeacher = await get<{ id: number; name: string }>(
-      `SELECT id, name FROM users WHERE id = $1`,
-      [group.teacher_id]
-    );
+    // Get original teacher name (if group has a teacher)
+    let originalTeacher: { id: number; name: string } | undefined;
+    if (group.teacher_id) {
+      originalTeacher = await get<{ id: number; name: string }>(
+        `SELECT id, name FROM users WHERE id = $1`,
+        [group.teacher_id]
+      );
+    }
     
     // Get updated lesson with details
     const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_name: string }>(
@@ -243,9 +251,9 @@ export async function DELETE(
       groupId: updatedLessonRaw.group_id,
       groupTitle: updatedLessonRaw.group_title,
       courseTitle: updatedLessonRaw.course_title,
-      teacherId: group.teacher_id,
-      teacherName: originalTeacher?.name || '',
-      originalTeacherId: group.teacher_id,
+      teacherId: group.teacher_id || null,
+      teacherName: originalTeacher?.name || (group.teacher_id ? 'Викладач групи' : 'Немає викладача'),
+      originalTeacherId: group.teacher_id || null,
       isReplaced: false,
       startTime: updatedLessonRaw.start_datetime.split(' ')[1].substring(0, 5),
       endTime: updatedLessonRaw.end_datetime.split(' ')[1].substring(0, 5),

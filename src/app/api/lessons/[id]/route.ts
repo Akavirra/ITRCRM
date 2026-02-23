@@ -51,7 +51,7 @@ export async function GET(
   }
   
   // Get lesson with group, course and teacher details
-  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; teacher_id: number; teacher_name: string; original_teacher_id: number; is_replaced: boolean }>(
+  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean }>(
     `SELECT 
       l.id,
       l.group_id,
@@ -61,8 +61,8 @@ export async function GET(
       l.topic,
       l.status,
       l.created_by,
-      COALESCE(l.teacher_id, g.teacher_id) as teacher_id,
-      COALESCE(u.name, g_teacher.name) as teacher_name,
+      l.teacher_id,
+      u.name as teacher_name,
       g.teacher_id as original_teacher_id,
       CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced
     FROM lessons l
@@ -74,15 +74,17 @@ export async function GET(
     [lessonId]
   );
   
-  // Transform to camelCase format
+  // Transform to camelCase format - handle null teacher_id
   const transformedLesson = lessonWithDetails ? {
     id: lessonWithDetails.id,
     groupId: lessonWithDetails.group_id,
     groupTitle: lessonWithDetails.group_title,
     courseTitle: lessonWithDetails.course_title,
-    teacherId: lessonWithDetails.teacher_id,
-    teacherName: lessonWithDetails.teacher_name,
-    originalTeacherId: lessonWithDetails.original_teacher_id,
+    // If lesson has replacement teacher, use it; otherwise use group teacher or null
+    teacherId: lessonWithDetails.teacher_id || lessonWithDetails.original_teacher_id || null,
+    // Show replacement teacher name if replaced, otherwise show group teacher name or placeholder
+    teacherName: lessonWithDetails.teacher_name || (lessonWithDetails.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
+    originalTeacherId: lessonWithDetails.original_teacher_id || null,
     isReplaced: lessonWithDetails.is_replaced,
     startTime: lessonWithDetails.start_datetime.split(' ')[1].substring(0, 5),
     endTime: lessonWithDetails.end_datetime.split(' ')[1].substring(0, 5),
@@ -181,7 +183,7 @@ export async function PATCH(
     await run(sql, params);
     
     // Get updated lesson with group, course and teacher details
-    const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_id: number; teacher_name: string; original_teacher_id: number; is_replaced: boolean }>(
+    const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean }>(
       `SELECT 
         l.id,
         l.group_id,
@@ -191,8 +193,8 @@ export async function PATCH(
         l.topic,
         l.status,
         l.created_by,
-        COALESCE(l.teacher_id, g.teacher_id) as teacher_id,
-        COALESCE(u.name, g_teacher.name) as teacher_name,
+        l.teacher_id,
+        u.name as teacher_name,
         g.teacher_id as original_teacher_id,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced
       FROM lessons l
@@ -204,15 +206,15 @@ export async function PATCH(
       [lessonId]
     );
     
-    // Transform to camelCase format
+    // Transform to camelCase format - handle null teacher_id
     const updatedLesson = updatedLessonRaw ? {
       id: updatedLessonRaw.id,
       groupId: updatedLessonRaw.group_id,
       groupTitle: updatedLessonRaw.group_title,
       courseTitle: updatedLessonRaw.course_title,
-      teacherId: updatedLessonRaw.teacher_id,
-      teacherName: updatedLessonRaw.teacher_name,
-      originalTeacherId: updatedLessonRaw.original_teacher_id,
+      teacherId: updatedLessonRaw.teacher_id || updatedLessonRaw.original_teacher_id || null,
+      teacherName: updatedLessonRaw.teacher_name || (updatedLessonRaw.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
+      originalTeacherId: updatedLessonRaw.original_teacher_id || null,
       isReplaced: updatedLessonRaw.is_replaced,
       startTime: updatedLessonRaw.start_datetime.split(' ')[1].substring(0, 5),
       endTime: updatedLessonRaw.end_datetime.split(' ')[1].substring(0, 5),
