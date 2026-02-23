@@ -13,7 +13,6 @@ interface LessonData {
   end_datetime: string;
   status: string;
   topic: string | null;
-  notes: string | null;
   group_title: string;
   course_title: string;
   teacher_id: number;
@@ -57,11 +56,11 @@ export async function POST(request: NextRequest) {
     
     // Process each lesson
     for (const lessonId of lessonIds) {
-      // Get lesson data with group, course, teacher info, topic and notes
+      // Get lesson data with group, course, teacher info, and topic
       const lesson = await get<LessonData>(
         `SELECT 
           l.id, l.group_id, l.lesson_date, l.start_datetime, l.end_datetime, l.status,
-          l.topic, l.notes,
+          l.topic,
           g.title as group_title, c.title as course_title,
           g.teacher_id,
           u.name as teacher_name, u.telegram_id as teacher_telegram_id,
@@ -136,10 +135,6 @@ export async function POST(request: NextRequest) {
       
       if (lesson.topic) {
         messageText += `<b>📝 Тема:</b> ${lesson.topic}\n`;
-      }
-      
-      if (lesson.notes) {
-        messageText += `<b>📋 Нотатки:</b> ${lesson.notes}\n`;
       }
       
       messageText += `\n<b>👥 Відмітьте присутність:</b>\n`;
