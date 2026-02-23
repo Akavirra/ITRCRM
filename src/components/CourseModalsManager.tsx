@@ -77,26 +77,30 @@ export default function CourseModalsManager() {
     try {
       // Fetch course details
       const courseResponse = await fetch(`/api/courses/${courseId}`);
-      if (courseResponse.ok) {
-        const courseResult = await courseResponse.json();
-        
-        // Fetch groups for this course
-        const groupsResponse = await fetch(`/api/courses/${courseId}/groups`);
-        const groupsResult = await groupsResponse.json();
-        
-        // Fetch students for this course
-        const studentsResponse = await fetch(`/api/courses/${courseId}/students`);
-        const studentsResult = await studentsResponse.json();
-        
-        setCourseData(prev => ({ 
-          ...prev, 
-          [courseId]: { 
-            course: courseResult.course, 
-            groups: groupsResult.groups || [],
-            students: studentsResult.students || []
-          } 
-        }));
+      if (!courseResponse.ok) {
+        const errorData = await courseResponse.json().catch(() => ({}));
+        console.error('Error loading course:', courseResponse.status, errorData.error || 'Unknown error');
+        setLoadingCourses(prev => ({ ...prev, [courseId]: false }));
+        return;
       }
+      const courseResult = await courseResponse.json();
+      
+      // Fetch groups for this course
+      const groupsResponse = await fetch(`/api/courses/${courseId}/groups`);
+      const groupsResult = groupsResponse.ok ? await groupsResponse.json() : { groups: [] };
+      
+      // Fetch students for this course
+      const studentsResponse = await fetch(`/api/courses/${courseId}/students`);
+      const studentsResult = studentsResponse.ok ? await studentsResponse.json() : { students: [] };
+      
+      setCourseData(prev => ({ 
+        ...prev, 
+        [courseId]: { 
+          course: courseResult.course, 
+          groups: groupsResult.groups || [],
+          students: studentsResult.students || []
+        } 
+      }));
     } catch (error) {
       console.error('Error loading course:', error);
     } finally {

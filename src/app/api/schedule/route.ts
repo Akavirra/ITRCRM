@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 interface LessonRow {
   id: number;
   group_id: number;
+  course_id: number;
   lesson_date: string;
   start_datetime: string;
   end_datetime: string;
@@ -66,6 +67,7 @@ export async function GET(request: NextRequest) {
     SELECT 
       l.id,
       l.group_id,
+      g.course_id,
       l.lesson_date,
       l.start_datetime,
       l.end_datetime,
@@ -144,6 +146,7 @@ export async function GET(request: NextRequest) {
       lessons: daysMap[dateStr].map(lesson => ({
         id: lesson.id,
         groupId: lesson.group_id,
+        courseId: lesson.course_id,
         groupTitle: lesson.group_title,
         courseTitle: lesson.course_title,
         teacherId: lesson.teacher_id,

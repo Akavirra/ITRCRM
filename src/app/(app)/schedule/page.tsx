@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { useLessonModals } from '@/components/LessonModalsContext';
 import { useGroupModals } from '@/components/GroupModalsContext';
+import { useCourseModals } from '@/components/CourseModalsContext';
 import { format, addWeeks, subWeeks, startOfWeek, addDays, parseISO, startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
 import { uk } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, Users, BookOpen, Check, X, RefreshCw } from 'lucide-react';
@@ -64,6 +65,7 @@ export default function SchedulePage() {
   // Use global lesson modals instead of local state
   const { openLessonModal } = useLessonModals();
   const { openGroupModal } = useGroupModals();
+  const { openCourseModal } = useCourseModals();
 
   // Generate modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -155,6 +157,11 @@ export default function SchedulePage() {
   const handleGroupClick = (e: React.MouseEvent, lesson: Lesson) => {
     e.stopPropagation();
     openGroupModal(lesson.groupId, lesson.groupTitle);
+  };
+
+  const handleCourseClick = (e: React.MouseEvent, lesson: Lesson) => {
+    e.stopPropagation();
+    openCourseModal(lesson.courseId, lesson.courseTitle);
   };
 
   const handleGenerateAll = async () => {
@@ -571,14 +578,25 @@ export default function SchedulePage() {
                         <Users size={10} />
                         {lesson.groupTitle}
                       </div>
-                      <div style={{
-                        fontSize: '0.875rem',
-                        color: '#6b7280',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        marginTop: '0.125rem',
-                      }}>
+                      <div
+                        onClick={(e) => handleCourseClick(e, lesson)}
+                        style={{
+                          fontSize: '0.875rem',
+                          color: '#3b82f6',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          marginTop: '0.125rem',
+                          cursor: 'pointer',
+                          transition: 'color 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#2563eb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = '#3b82f6';
+                        }}
+                      >
                         <BookOpen size={9} />
                         {lesson.courseTitle}
                       </div>
