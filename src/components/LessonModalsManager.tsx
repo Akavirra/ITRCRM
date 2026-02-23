@@ -80,14 +80,15 @@ export default function LessonModalsManager() {
 
   // Load teachers list
   const loadTeachers = async (lessonId: number) => {
-    if (teachers[lessonId]?.length > 0 || teachersLoading[lessonId]) return;
+    if ((teachers[lessonId]?.length ?? 0) > 0 || teachersLoading[lessonId]) return;
     
     setTeachersLoading(prev => ({ ...prev, [lessonId]: true }));
     try {
       const response = await fetch('/api/teachers');
       if (response.ok) {
         const data = await response.json();
-        setTeachers(prev => ({ ...prev, [lessonId]: data.teachers || [] }));
+        // API returns array directly, not { teachers: [] }
+        setTeachers(prev => ({ ...prev, [lessonId]: data || [] }));
       }
     } catch (error) {
       console.error('Error loading teachers:', error);
