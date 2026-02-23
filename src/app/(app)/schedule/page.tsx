@@ -62,7 +62,6 @@ export default function SchedulePage() {
   // Generate modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [weeksAhead, setWeeksAhead] = useState(8);
 
   const fetchSchedule = useCallback(async () => {
     const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
@@ -143,12 +142,11 @@ export default function SchedulePage() {
       const res = await fetch('/api/schedule/generate-all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ weeksAhead }),
       });
       
       if (res.ok) {
         const data = await res.json();
-        alert(`Згенеровано ${data.totalGenerated} занять, пропущено ${data.totalSkipped}`);
+        alert(`Згенеровано ${data.totalGenerated} занять (${data.monthsLabel}), пропущено ${data.totalSkipped}`);
         fetchSchedule();
         setShowGenerateModal(false);
       }
@@ -530,26 +528,22 @@ export default function SchedulePage() {
               </h3>
               
               <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.8125rem', lineHeight: 1.5 }}>
-                Це створить заняття для всіх активних груп на вказану кількість тижнів наперед.
+                Це створить заняття для всіх активних груп на поточний та наступний місяць.
               </p>
               
-              <div style={{ marginBottom: '1.25rem' }}>
-                <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.375rem' }}>Кількість тижнів</div>
-                <input
-                  type="number"
-                  value={weeksAhead}
-                  onChange={(e) => setWeeksAhead(parseInt(e.target.value) || 8)}
-                  min={1}
-                  max={52}
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem 0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.375rem',
-                    fontSize: '0.875rem',
-                    outline: 'none',
-                  }}
-                />
+              <div style={{ 
+                marginBottom: '1.25rem', 
+                padding: '0.75rem', 
+                background: '#eff6ff', 
+                borderRadius: '0.5rem',
+                border: '1px solid #dbeafe'
+              }}>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#1e40af' }}>
+                  Період генерації:
+                </div>
+                <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#3b82f6', marginTop: '0.25rem' }}>
+                  Поточний місяць + Наступний місяць
+                </div>
               </div>
               
               <div style={{ display: 'flex', gap: '0.5rem' }}>

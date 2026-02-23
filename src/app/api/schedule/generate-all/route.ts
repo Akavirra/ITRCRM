@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
 import { generateLessonsForAllGroups } from '@/lib/lessons';
+import { format, addMonths, endOfMonth, startOfMonth } from 'date-fns';
+import { uk } from 'date-fns/locale';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,10 +19,15 @@ export async function POST(request: NextRequest) {
   }
   
   try {
-    const body = await request.json();
-    const weeksAhead = body.weeksAhead || 8;
+    // Default to 1 month ahead (current month + next month)
+    const monthsAhead = 1;
+    const today = new Date();
+    const currentMonthStart = startOfMonth(today);
+    const targetMonthEnd = endOfMonth(addMonths(today, monthsAhead));
     
-    const results = await generateLessonsForAllGroups(weeksAhead, user.id);
+    const monthsLabel = `${format(currentMonthStart, 'MMMM yyyy', { locale: uk })} - ${format(targetMonthEnd, 'MMMM yyyy', { locale: uk })}`;
+    
+    const results = await generateLessonsForAllGroups(8, user.id, monthsAhead);
     
     const totalGenerated = results.reduce((sum, r) => sum + r.generated, 0);
     const totalSkipped = results.reduce((sum, r) => sum + r.skipped, 0);
@@ -29,6 +36,7 @@ export async function POST(request: NextRequest) {
       message: 'Заняття успішно згенеровано',
       totalGenerated,
       totalSkipped,
+      monthsLabel,
       results,
     });
   } catch (error) {

@@ -1,5 +1,5 @@
 import { run, get, all, transaction } from '@/db';
-import { addDays, setHours, setMinutes, format, parse, isAfter, isBefore, startOfDay } from 'date-fns';
+import { addDays, addMonths, setHours, setMinutes, format, parse, isAfter, isBefore, startOfDay, endOfMonth } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 interface Group {
@@ -25,7 +25,8 @@ interface Lesson {
 export async function generateLessonsForGroup(
   groupId: number,
   weeksAhead: number = 8,
-  createdBy: number
+  createdBy: number,
+  monthsAhead: number = 1
 ): Promise<{ generated: number; skipped: number }> {
   const group = await get<Group>(
     `SELECT id, weekly_day, start_time, duration_minutes, timezone, start_date, end_date 
@@ -38,8 +39,11 @@ export async function generateLessonsForGroup(
   }
   
   const today = startOfDay(new Date());
-  const endDate = group.end_date ? new Date(group.end_date) : addDays(today, weeksAhead * 7);
-  const targetEndDate = addDays(today, weeksAhead * 7);
+  
+  // Calculate target end date based on monthsAhead
+  // monthsAhead = 1 means current month + next month (end of next month)
+  const targetEndDate = endOfMonth(addMonths(today, monthsAhead));
+  const endDate = group.end_date ? new Date(group.end_date) : targetEndDate;
   
   // Use the earlier of group end date or target end date
   const finalEndDate = group.end_date && isBefore(endDate, targetEndDate) ? endDate : targetEndDate;
@@ -115,7 +119,8 @@ export async function generateLessonsForGroup(
 // Generate lessons for all active groups
 export async function generateLessonsForAllGroups(
   weeksAhead: number = 8,
-  createdBy: number
+  createdBy: number,
+  monthsAhead: number = 1
 ): Promise<{ groupId: number; generated: number; skipped: number }[]> {
   const groups = await all<{ id: number }>(
     `SELECT id FROM groups WHERE is_active = TRUE`
@@ -124,7 +129,7 @@ export async function generateLessonsForAllGroups(
   const results: { groupId: number; generated: number; skipped: number }[] = [];
   
   for (const group of groups) {
-    const result = await generateLessonsForGroup(group.id, weeksAhead, createdBy);
+    const result = await generateLessonsForGroup(group.id, weeksAhead, createdBy, monthsAhead);
     results.push({ groupId: group.id, ...result });
   }
   
