@@ -1,9 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  trailingSlash: false,
   async headers() {
     const isDev = process.env.NODE_ENV === 'development';
     return [
+      {
+        source: '/api/notifications/telegram',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-transform, must-revalidate' }
+        ]
+      },
+      {
+        source: '/api/notifications/telegram/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-transform, must-revalidate' }
+        ]
+      },
       {
         source: '/:path*',
         headers: [
