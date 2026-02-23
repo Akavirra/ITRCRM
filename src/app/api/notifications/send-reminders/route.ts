@@ -99,12 +99,11 @@ export async function POST(request: NextRequest) {
       }
       
       // Get active students for this group
-      const students = await all<Student>(
-        `SELECT s.name 
-         FROM group_students gs
-         JOIN students st ON gs.student_id = st.id
-         JOIN users s ON st.user_id = s.id
-         WHERE gs.group_id = $1 AND gs.status = 'active'`,
+      const students = await all<{ full_name: string }>(
+        `SELECT s.full_name 
+         FROM student_groups sg
+         JOIN students s ON sg.student_id = s.id
+         WHERE sg.group_id = $1 AND sg.is_active = TRUE`,
         [lesson.group_id]
       );
       
@@ -135,7 +134,7 @@ export async function POST(request: NextRequest) {
       
       if (students.length > 0) {
         students.forEach((student, index) => {
-          messageText += `${index + 1}. ${student.name}\n`;
+          messageText += `${index + 1}. ${student.full_name}\n`;
         });
       } else {
         messageText += `Немає активних учнів у групі\n`;
