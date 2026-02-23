@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { useLessonModals } from '@/components/LessonModalsContext';
+import { useGroupModals } from '@/components/GroupModalsContext';
 import { format, addWeeks, subWeeks, startOfWeek, addDays, parseISO, startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
 import { uk } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, Users, BookOpen, Check, X, RefreshCw } from 'lucide-react';
@@ -61,6 +62,7 @@ export default function SchedulePage() {
 
   // Use global lesson modals instead of local state
   const { openLessonModal } = useLessonModals();
+  const { openGroupModal } = useGroupModals();
 
   // Generate modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -146,6 +148,11 @@ export default function SchedulePage() {
       status: lesson.status,
       topic: lesson.topic,
     });
+  };
+
+  const handleGroupClick = (e: React.MouseEvent, lesson: Lesson) => {
+    e.stopPropagation();
+    openGroupModal(lesson.groupId, lesson.groupTitle);
   };
 
   const handleGenerateAll = async () => {
@@ -537,17 +544,28 @@ export default function SchedulePage() {
                         <Clock size={10} />
                         {lesson.startTime} - {lesson.endTime}
                       </div>
-                      <div style={{
-                        fontSize: '0.8125rem',
-                        fontWeight: 600,
-                        color: '#111827',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}>
+                      <div
+                        onClick={(e) => handleGroupClick(e, lesson)}
+                        style={{
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          color: '#111827',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          cursor: 'pointer',
+                          transition: 'color 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#3b82f6';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = '#111827';
+                        }}
+                      >
                         <Users size={10} />
                         {lesson.groupTitle}
                       </div>
