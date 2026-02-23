@@ -293,18 +293,24 @@ async function migrate() {
     await sql`CREATE INDEX IF NOT EXISTS idx_error_logs_created ON error_logs(created_at)`;
 
     // 13. Lesson teacher replacements table (після lessons та users)
-    await sql`
-      CREATE TABLE IF NOT EXISTS lesson_teacher_replacements (
-        id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-        lesson_id INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
-        original_teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-        replacement_teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-        replaced_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-        reason TEXT,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
-    console.log('✅ Таблиця lesson_teacher_replacements готова');
+    // Використовуємо CREATE TABLE IF NOT EXISTS, але PostgreSQL Neon може не підтримувати це повністю
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS lesson_teacher_replacements (
+          id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+          lesson_id INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+          original_teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+          replacement_teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+          replaced_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+          reason TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
+      console.log('✅ Таблиця lesson_teacher_replacements готова');
+    } catch (e) {
+      // Якщо таблиця вже існує - продовжуємо
+      console.log('ℹ️ Таблиця lesson_teacher_replacements вже існує');
+    }
 
     await sql`CREATE INDEX IF NOT EXISTS idx_lesson_teacher_replacements_lesson ON lesson_teacher_replacements(lesson_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_lesson_teacher_replacements_replacement_teacher ON lesson_teacher_replacements(replacement_teacher_id)`;
