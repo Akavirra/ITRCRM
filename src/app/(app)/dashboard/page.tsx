@@ -7,6 +7,7 @@ import { t } from '@/i18n/t';
 import { uk } from '@/i18n/uk';
 import { formatDateShortMonthKyiv, formatTimeKyiv } from '@/lib/date-utils';
 import PageLoading from '@/components/PageLoading';
+import SendRemindersModal from '@/components/SendRemindersModal';
 
 interface User {
   id: number;
@@ -29,6 +30,7 @@ interface UpcomingLesson {
   group_title: string;
   course_title: string;
   teacher_name?: string;
+  replacement_teacher_name?: string;
 }
 
 export default function DashboardPage() {
@@ -37,6 +39,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [upcomingLessons, setUpcomingLessons] = useState<UpcomingLesson[]>([]);
+  const [showRemindersModal, setShowRemindersModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,7 +56,7 @@ export default function DashboardPage() {
         // Fetch dashboard data
         const [groupsRes, lessonsRes, debtsRes] = await Promise.all([
           fetch('/api/groups'),
-          fetch('/api/lessons?limit=5'),
+          fetch('/api/lessons?today=true'),
           fetch(`/api/reports/debts?month=${new Date().toISOString().substring(0, 7)}-01`),
         ]);
 
@@ -210,11 +213,21 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Upcoming lessons */}
+      {/* Today's lessons */}
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">{t('dashboard.upcomingLessons')}</h3>
-          <a href="/schedule" className="btn btn-secondary btn-sm">{t('dashboard.allLessons')}</a>
+          <h3 className="card-title">Заняття сьогодні</h3>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {user.role === 'admin' && (
+              <button 
+                className="btn btn-primary btn-sm"
+                onClick={() => setShowRemindersModal(true)}
+              >
+                📢 Надіслати нагадування
+              </button>
+            )}
+            <a href="/schedule" className="btn btn-secondary btn-sm">{t('dashboard.allLessons')}</a>
+          </div>
         </div>
         <div className="table-container">
           {upcomingLessons.length > 0 ? (
@@ -235,7 +248,7 @@ export default function DashboardPage() {
                     <td>{formatTime(lesson.start_datetime)}</td>
                     <td>{lesson.group_title}</td>
                     <td>{lesson.course_title}</td>
-                    {user.role === 'admin' && <td>{lesson.teacher_name}</td>}
+                    {user.role === 'admin' && <td>{lesson.replacement_teacher_name || lesson.teacher_name}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -247,6 +260,11 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      <SendRemindersModal 
+        isOpen={showRemindersModal} 
+        onClose={() => setShowRemindersModal(false)} 
+      />
     </Layout>
   );
 }
