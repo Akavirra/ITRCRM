@@ -13,6 +13,7 @@
     "db:seed": "node scripts/seed.js",
     "db:seed:neon": "node scripts/seed-neon.js",
     "db:reset": "node scripts/reset.js",
+    "db:add-lesson-tracking": "node scripts/add-lesson-tracking-fields.js",
     "test": "jest"
   },
   "dependencies": {
