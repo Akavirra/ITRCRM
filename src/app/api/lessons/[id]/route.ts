@@ -16,6 +16,10 @@ interface Lesson {
   notes: string | null;
   status: string;
   created_by: number;
+  topic_set_by: number | null;
+  topic_set_at: string | null;
+  notes_set_by: number | null;
+  notes_set_at: string | null;
 }
 
 // GET /api/lessons/[id] - Get a specific lesson
@@ -52,7 +56,7 @@ export async function GET(
   }
   
   // Get lesson with group, course and teacher details
-  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean }>(
+  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null }>(
     `SELECT 
       l.id,
       l.group_id,
@@ -64,15 +68,23 @@ export async function GET(
       l.status,
       l.created_by,
       l.teacher_id,
+      l.topic_set_by,
+      l.topic_set_at,
+      l.notes_set_by,
+      l.notes_set_at,
       u.name as teacher_name,
       g.teacher_id as original_teacher_id,
       g.course_id as course_id,
-      CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced
+      CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
+      topic_user.name as topic_set_by_name,
+      notes_user.name as notes_set_by_name
     FROM lessons l
     JOIN groups g ON l.group_id = g.id
     JOIN courses c ON g.course_id = c.id
     LEFT JOIN users u ON l.teacher_id = u.id
     LEFT JOIN users g_teacher ON g.teacher_id = g_teacher.id
+    LEFT JOIN users topic_user ON l.topic_set_by = topic_user.id
+    LEFT JOIN users notes_user ON l.notes_set_by = notes_user.id
     WHERE l.id = $1`,
     [lessonId]
   );
@@ -82,6 +94,18 @@ export async function GET(
       if (!date) return '';
       const dateStr = typeof date === 'string' ? date : new Date(date).toISOString();
       return dateStr.split(' ')[1]?.substring(0, 5) || '';
+    };
+    
+    const formatTimestamp = (timestamp: string | null): string | null => {
+      if (!timestamp) return null;
+      const date = new Date(timestamp);
+      return date.toLocaleString('uk-UA', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     };
     
     const transformedLesson = lessonWithDetails ? {
@@ -101,6 +125,10 @@ export async function GET(
       status: lessonWithDetails.status,
       topic: lessonWithDetails.topic,
       notes: lessonWithDetails.notes,
+      topicSetBy: lessonWithDetails.topic_set_by_name,
+      topicSetAt: formatTimestamp(lessonWithDetails.topic_set_at),
+      notesSetBy: lessonWithDetails.notes_set_by_name,
+      notesSetAt: formatTimestamp(lessonWithDetails.notes_set_at),
     } : null;
   
   return NextResponse.json({ lesson: transformedLesson });
@@ -141,7 +169,7 @@ export async function PATCH(
   
   try {
     const body = await request.json();
-    const { topic, notes, status, lesson_date, start_time } = body;
+    const { topic, notes, status, lesson_date, start_time, set_by_telegram } = body;
     
     let updates: string[] = ['updated_at = NOW()'];
     let params: (string | number)[] = [];
@@ -149,11 +177,21 @@ export async function PATCH(
     if (topic !== undefined) {
       updates.push(`topic = $${params.length + 1}`);
       params.push(topic);
+      // Track who set the topic
+      updates.push(`topic_set_by = $${params.length + 1}`);
+      params.push(user.id);
+      updates.push(`topic_set_at = $${params.length + 1}`);
+      params.push('NOW()');
     }
     
     if (notes !== undefined) {
       updates.push(`notes = $${params.length + 1}`);
       params.push(notes);
+      // Track who set the notes
+      updates.push(`notes_set_by = $${params.length + 1}`);
+      params.push(user.id);
+      updates.push(`notes_set_at = $${params.length + 1}`);
+      params.push('NOW()');
     }
     
     if (status !== undefined) {
@@ -199,7 +237,7 @@ export async function PATCH(
     await run(sql, params);
     
     // Get updated lesson with group, course and teacher details
-    const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean }>(
+    const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null }>(
       `SELECT 
         l.id,
         l.group_id,
@@ -211,14 +249,22 @@ export async function PATCH(
         l.status,
         l.created_by,
         l.teacher_id,
+        l.topic_set_by,
+        l.topic_set_at,
+        l.notes_set_by,
+        l.notes_set_at,
         u.name as teacher_name,
         g.teacher_id as original_teacher_id,
-        CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced
+        CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
+        topic_user.name as topic_set_by_name,
+        notes_user.name as notes_set_by_name
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       JOIN courses c ON g.course_id = c.id
       LEFT JOIN users u ON l.teacher_id = u.id
       LEFT JOIN users g_teacher ON g.teacher_id = g_teacher.id
+      LEFT JOIN users topic_user ON l.topic_set_by = topic_user.id
+      LEFT JOIN users notes_user ON l.notes_set_by = notes_user.id
       WHERE l.id = $1`,
       [lessonId]
     );
@@ -228,6 +274,18 @@ export async function PATCH(
       if (!date) return '';
       const dateStr = typeof date === 'string' ? date : new Date(date).toISOString();
       return dateStr.split(' ')[1]?.substring(0, 5) || '';
+    };
+    
+    const formatTimestamp = (timestamp: string | null): string | null => {
+      if (!timestamp) return null;
+      const date = new Date(timestamp);
+      return date.toLocaleString('uk-UA', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     };
     
     const updatedLesson = updatedLessonRaw ? {
@@ -244,6 +302,10 @@ export async function PATCH(
       status: updatedLessonRaw.status,
       topic: updatedLessonRaw.topic,
       notes: updatedLessonRaw.notes,
+      topicSetBy: updatedLessonRaw.topic_set_by_name,
+      topicSetAt: formatTimestamp(updatedLessonRaw.topic_set_at),
+      notesSetBy: updatedLessonRaw.notes_set_by_name,
+      notesSetAt: formatTimestamp(updatedLessonRaw.notes_set_at),
     } : null;
     
     return NextResponse.json({

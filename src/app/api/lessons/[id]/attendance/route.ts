@@ -101,6 +101,23 @@ export async function POST(
           [lessonId]
         );
         
+        // Automatically set lesson status to 'done' when attendance is marked
+        if (lessonInfo && lessonInfo.status === 'scheduled') {
+          const { run } = await import('@/db');
+          await run(`UPDATE lessons SET status = 'done', updated_at = NOW() WHERE id = $1`, [lessonId]);
+          
+          // Add history entry for lesson conducted
+          if (lessonInfo.group_id) {
+            await addGroupHistoryEntry(
+              lessonInfo.group_id,
+              'lesson_conducted',
+              formatLessonConductedDescription(lessonInfo.lesson_date, lessonInfo.topic),
+              user.id,
+              user.name
+            );
+          }
+        }
+        
         return NextResponse.json({ message: 'Відвідуваність успішно встановлена' });
         
       case 'setAll':

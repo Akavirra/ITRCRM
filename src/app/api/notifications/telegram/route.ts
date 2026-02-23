@@ -128,10 +128,16 @@ export async function POST(request: NextRequest) {
         // Check for pending topic action
         const topicAction = pendingActions.get(`${telegramId}_topic`);
         if (topicAction && replyToMessage.text?.includes('тему')) {
-          // Save topic to database
+          // Get user by telegram_id
+          const user = await get<{ id: number }>(
+            `SELECT id FROM users WHERE telegram_id = $1 LIMIT 1`,
+            [telegramId]
+          );
+          
+          // Save topic to database with who and when set it
           await run(
-            `UPDATE lessons SET topic = $1, updated_at = NOW() WHERE id = $2`,
-            [text, topicAction.lessonId]
+            `UPDATE lessons SET topic = $1, topic_set_by = $2, topic_set_at = NOW(), updated_at = NOW() WHERE id = $3`,
+            [text, user?.id || null, topicAction.lessonId]
           );
           
           pendingActions.delete(`${telegramId}_topic`);
@@ -143,10 +149,16 @@ export async function POST(request: NextRequest) {
         // Check for pending notes action
         const notesAction = pendingActions.get(`${telegramId}_notes`);
         if (notesAction && replyToMessage.text?.includes('нотатки')) {
-          // Save notes to database
+          // Get user by telegram_id
+          const user = await get<{ id: number }>(
+            `SELECT id FROM users WHERE telegram_id = $1 LIMIT 1`,
+            [telegramId]
+          );
+          
+          // Save notes to database with who and when set it
           await run(
-            `UPDATE lessons SET notes = $1, updated_at = NOW() WHERE id = $2`,
-            [text, notesAction.lessonId]
+            `UPDATE lessons SET notes = $1, notes_set_by = $2, notes_set_at = NOW(), updated_at = NOW() WHERE id = $3`,
+            [text, user?.id || null, notesAction.lessonId]
           );
           
           pendingActions.delete(`${telegramId}_notes`);

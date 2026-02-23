@@ -6,7 +6,7 @@ import { useLessonModals } from './LessonModalsContext';
 import { useGroupModals } from './GroupModalsContext';
 import { useCourseModals } from './CourseModalsContext';
 import { useTeacherModals } from './TeacherModalsContext';
-import { Clock, BookOpen, User, Check, X, Calendar, Trash2, ArrowRightCircle, UserMinus, Users } from 'lucide-react';
+import { Clock, BookOpen, User, Check, X, Calendar, Trash2, UserMinus, Users, MoreVertical, Edit2, Save, RefreshCw } from 'lucide-react';
 
 interface Teacher {
   id: number;
@@ -39,6 +39,10 @@ interface LessonData {
   status: 'scheduled' | 'done' | 'canceled';
   topic: string | null;
   notes: string | null;
+  topicSetBy?: string | null;
+  topicSetAt?: string | null;
+  notesSetBy?: string | null;
+  notesSetAt?: string | null;
 }
 
 function formatDateTime(startTime: string, endTime: string): string {
@@ -92,6 +96,11 @@ export default function LessonModalsManager() {
   const [lessonTopic, setLessonTopic] = useState<Record<number, string>>({});
   const [lessonNotes, setLessonNotes] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState<Record<number, boolean>>({});
+  const [savingTopic, setSavingTopic] = useState<Record<number, boolean>>({});
+  const [savingNotes, setSavingNotes] = useState<Record<number, boolean>>({});
+  const [editingTopic, setEditingTopic] = useState<Record<number, boolean>>({});
+  const [editingNotes, setEditingNotes] = useState<Record<number, boolean>>({});
+  const [showActionsMenu, setShowActionsMenu] = useState<Record<number, boolean>>({});
   const [teachers, setTeachers] = useState<Record<number, Teacher[]>>({});
   const [showTeacherSelect, setShowTeacherSelect] = useState<Record<number, boolean>>({});
   const [selectedTeacherId, setSelectedTeacherId] = useState<Record<number, number | null>>({});
@@ -151,12 +160,41 @@ export default function LessonModalsManager() {
       });
       if (response.ok) {
         // Update local state
+        const updatedAttendance = (attendance[lessonId] || []).map(a => 
+          a.student_id === studentId ? { ...a, status } : a
+        );
         setAttendance(prev => ({
           ...prev,
-          [lessonId]: (prev[lessonId] || []).map(a => 
-            a.student_id === studentId ? { ...a, status } : a
-          ),
+          [lessonId]: updatedAttendance,
         }));
+        
+        // Check if this is the first attendance being set - auto-mark lesson as done
+        const currentLesson = lessonData[lessonId];
+        if (currentLesson && currentLesson.status === 'scheduled') {
+          // Check if any attendance was set before this change
+          const hadAttendanceBefore = (attendance[lessonId] || []).some(a => a.status !== null);
+          const hasAttendanceNow = updatedAttendance.some(a => a.status !== null);
+          
+          // If this is the first attendance being set, mark lesson as done
+          if (!hadAttendanceBefore && hasAttendanceNow) {
+            // Update lesson status to done
+            const statusResponse = await fetch(`/api/lessons/${lessonId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: 'done' }),
+            });
+            if (statusResponse.ok) {
+              const data = await statusResponse.json();
+              setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
+              updateModalState(lessonId, { 
+                lessonData: {
+                  ...lessonData[lessonId],
+                  status: 'done',
+                }
+              });
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Error setting attendance:', error);
@@ -255,59 +293,136 @@ export default function LessonModalsManager() {
     updateModalState(lessonId, { size });
   };
 
-  const handleSaveTopic = async (lessonId: number) => {
-    setSaving(prev => ({ ...prev, [lessonId]: true }));
+  // Start editing topic
+  const startEditingTopic = (lessonId: number) => {
+    setEditingTopic(prev => ({ ...prev, [lessonId]: true }));
+  };
+
+  // Cancel editing topic
+  const cancelEditingTopic = (lessonId: number) => {
+    setLessonTopic(prev => ({ ...prev, [lessonId]: lessonData[lessonId]?.topic || '' }));
+    setEditingTopic(prev => ({ ...prev, [lessonId]: false }));
+  };
+
+  // Save topic
+  const saveTopic = async (lessonId: number) => {
+    const newTopic = lessonTopic[lessonId];
+    
+    setSavingTopic(prev => ({ ...prev, [lessonId]: true }));
     try {
       const res = await fetch(`/api/lessons/${lessonId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: lessonTopic[lessonId] }),
+        body: JSON.stringify({ topic: newTopic }),
       });
       
       if (res.ok) {
         const data = await res.json();
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
-        // Update modal data as well
         updateModalState(lessonId, { 
           lessonData: {
             ...lessonData[lessonId],
-            topic: lessonTopic[lessonId],
+            topic: newTopic,
           }
         });
+        setEditingTopic(prev => ({ ...prev, [lessonId]: false }));
       }
     } catch (error) {
       console.error('Failed to save topic:', error);
     } finally {
-      setSaving(prev => ({ ...prev, [lessonId]: false }));
+      setSavingTopic(prev => ({ ...prev, [lessonId]: false }));
     }
   };
 
-  const handleSaveNotes = async (lessonId: number) => {
-    setSaving(prev => ({ ...prev, [lessonId]: true }));
+  // Start editing notes
+  const startEditingNotes = (lessonId: number) => {
+    setEditingNotes(prev => ({ ...prev, [lessonId]: true }));
+  };
+
+  // Cancel editing notes
+  const cancelEditingNotes = (lessonId: number) => {
+    setLessonNotes(prev => ({ ...prev, [lessonId]: lessonData[lessonId]?.notes || '' }));
+    setEditingNotes(prev => ({ ...prev, [lessonId]: false }));
+  };
+
+  // Save notes
+  const saveNotes = async (lessonId: number) => {
+    const newNotes = lessonNotes[lessonId];
+    
+    setSavingNotes(prev => ({ ...prev, [lessonId]: true }));
     try {
       const res = await fetch(`/api/lessons/${lessonId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: lessonNotes[lessonId] }),
+        body: JSON.stringify({ notes: newNotes }),
       });
       
       if (res.ok) {
         const data = await res.json();
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
-        // Update modal data as well
         updateModalState(lessonId, { 
           lessonData: {
             ...lessonData[lessonId],
-            notes: lessonNotes[lessonId],
+            notes: newNotes,
           }
         });
+        setEditingNotes(prev => ({ ...prev, [lessonId]: false }));
       }
     } catch (error) {
       console.error('Failed to save notes:', error);
     } finally {
-      setSaving(prev => ({ ...prev, [lessonId]: false }));
+      setSavingNotes(prev => ({ ...prev, [lessonId]: false }));
     }
   };
+
+  // Polling for live updates when modal is open
+  useEffect(() => {
+    if (openModals.length === 0) return;
+    
+    const pollInterval = setInterval(() => {
+      openModals.forEach(modal => {
+        if (modal.isOpen && modal.id) {
+          // Silently refresh lesson data
+          fetch(`/api/lessons/${modal.id}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              if (data?.lesson) {
+                const serverLesson = data.lesson;
+                const serverTopic = serverLesson.topic || '';
+                const serverNotes = serverLesson.notes || '';
+                
+                // Get current local state
+                const currentLesson = lessonData[modal.id];
+                const localTopic = lessonTopic[modal.id] ?? '';
+                const localNotes = lessonNotes[modal.id] ?? '';
+                const currentLocalTopic = currentLesson?.topic || '';
+                const currentLocalNotes = currentLesson?.notes || '';
+                
+                // Update lesson data (always update to get latest status, teacher info, etc.)
+                setLessonData(prev => ({ ...prev, [modal.id]: serverLesson }));
+                
+                // Update modal state for context
+                updateModalState(modal.id, { 
+                  lessonData: serverLesson
+                });
+                
+                // Only update local input state if user is not editing
+                // (values match what was last known from server)
+                if (!editingTopic[modal.id] && localTopic === currentLocalTopic && serverTopic !== currentLocalTopic) {
+                  setLessonTopic(prev => ({ ...prev, [modal.id]: serverTopic }));
+                }
+                if (!editingNotes[modal.id] && localNotes === currentLocalNotes && serverNotes !== currentLocalNotes) {
+                  setLessonNotes(prev => ({ ...prev, [modal.id]: serverNotes }));
+                }
+              }
+            })
+            .catch(err => console.error('Polling error:', err));
+        }
+      });
+    }, 3000); // Poll every 3 seconds for more responsive updates
+    
+    return () => clearInterval(pollInterval);
+  }, [openModals, lessonTopic, lessonNotes, lessonData, editingTopic, editingNotes, updateModalState]);
 
   const handleCancelLesson = async (lessonId: number) => {
     setSaving(prev => ({ ...prev, [lessonId]: true }));
@@ -503,9 +618,9 @@ export default function LessonModalsManager() {
             onPositionChange={(pos) => handleUpdatePosition(modal.id, pos)}
             onSizeChange={(size) => handleUpdateSize(modal.id, size)}
             headerAction={
-              lesson?.status === 'scheduled' ? (
+              <div style={{ position: 'relative' }}>
                 <button
-                  onClick={() => handleDeleteLesson(modal.id)}
+                  onClick={() => setShowActionsMenu(prev => ({ ...prev, [modal.id]: !prev[modal.id] }))}
                   disabled={isSaving}
                   style={{
                     display: 'flex',
@@ -513,7 +628,7 @@ export default function LessonModalsManager() {
                     justifyContent: 'center',
                     width: '28px',
                     height: '28px',
-                    backgroundColor: 'transparent',
+                    backgroundColor: showActionsMenu[modal.id] ? '#f3f4f6' : 'transparent',
                     border: 'none',
                     borderRadius: '6px',
                     cursor: isSaving ? 'not-allowed' : 'pointer',
@@ -522,18 +637,129 @@ export default function LessonModalsManager() {
                     opacity: isSaving ? 0.5 : 1,
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#fee2e2';
-                    e.currentTarget.style.color = '#dc2626';
+                    e.currentTarget.style.backgroundColor = '#f3f4f6';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = '#64748b';
+                    if (!showActionsMenu[modal.id]) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
                   }}
-                  title="Видалити заняття"
+                  title="Дії"
                 >
-                  <Trash2 size={14} />
+                  <MoreVertical size={14} />
                 </button>
-              ) : undefined
+                
+                {showActionsMenu[modal.id] && (
+                  <>
+                    {/* Backdrop to close menu */}
+                    <div 
+                      style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+                      onClick={() => setShowActionsMenu(prev => ({ ...prev, [modal.id]: false }))}
+                    />
+                    
+                    {/* Dropdown menu */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: '4px',
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                      border: '1px solid #e5e7eb',
+                      minWidth: '180px',
+                      zIndex: 50,
+                      overflow: 'hidden',
+                    }}>
+                      {lesson?.status === 'scheduled' && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setShowActionsMenu(prev => ({ ...prev, [modal.id]: false }));
+                              loadTeachers(modal.id);
+                              setShowTeacherSelect(prev => ({ ...prev, [modal.id]: true }));
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              width: '100%',
+                              padding: '0.625rem 0.75rem',
+                              fontSize: '0.8125rem',
+                              color: '#374151',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <UserMinus size={14} />
+                            Замінити викладача
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              setShowActionsMenu(prev => ({ ...prev, [modal.id]: false }));
+                              handleCancelLesson(modal.id);
+                            }}
+                            disabled={isSaving}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              width: '100%',
+                              padding: '0.625rem 0.75rem',
+                              fontSize: '0.8125rem',
+                              color: '#f59e0b',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              cursor: isSaving ? 'not-allowed' : 'pointer',
+                              textAlign: 'left',
+                              opacity: isSaving ? 0.5 : 1,
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fffbeb'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <X size={14} />
+                            Скасувати заняття
+                          </button>
+                          
+                          <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '0.25rem 0' }} />
+                        </>
+                      )}
+                      
+                      <button
+                        onClick={() => {
+                          setShowActionsMenu(prev => ({ ...prev, [modal.id]: false }));
+                          handleDeleteLesson(modal.id);
+                        }}
+                        disabled={isSaving}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          width: '100%',
+                          padding: '0.625rem 0.75rem',
+                          fontSize: '0.8125rem',
+                          color: '#dc2626',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: isSaving ? 'not-allowed' : 'pointer',
+                          textAlign: 'left',
+                          opacity: isSaving ? 0.5 : 1,
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <Trash2 size={14} />
+                        Видалити заняття
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             }
           >
             {isLoading ? (
@@ -713,31 +939,8 @@ export default function LessonModalsManager() {
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => {
-                      loadTeachers(modal.id);
-                      setShowTeacherSelect(prev => ({ ...prev, [modal.id]: true }));
-                    }}
-                    className="btn"
-                    style={{ 
-                      width: '100%', 
-                      justifyContent: 'center',
-                      background: '#fef3c7',
-                      color: '#92400e',
-                      border: '1px solid #fcd34d',
-                      marginBottom: '1rem',
-                      fontSize: '0.8125rem',
-                      padding: '0.375rem'
-                    }}
-                  >
-                    <UserMinus size={14} />
-                    Замінити викладача
-                  </button>
-                )}
-                
-                {/* Show cancel replacement button if replaced */}
-                {lesson.isReplaced && !showTeacherSelect[modal.id] && (
+                ) : lesson.isReplaced ? (
+                  /* Show cancel replacement button if replaced */
                   <button
                     onClick={() => handleCancelReplacement(modal.id)}
                     disabled={isSaving}
@@ -754,9 +957,9 @@ export default function LessonModalsManager() {
                     }}
                   >
                     <X size={14} />
-                    Скасувати заміну
+                    Скасувати заміну викладача
                   </button>
-                )}
+                ) : null}
                 
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>Час</div>
@@ -766,48 +969,213 @@ export default function LessonModalsManager() {
                   </div>
                 </div>
                 
+                {/* Topic field */}
                 <div style={{ marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.375rem' }}>Тема заняття</div>
-                  <input
-                    type="text"
-                    value={currentTopic}
-                    onChange={(e) => setLessonTopic(prev => ({ ...prev, [modal.id]: e.target.value }))}
-                    placeholder="Введіть тему заняття"
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 0.75rem',
-                      fontSize: '0.875rem',
-                      border: '1px solid #d1d5db',
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
+                    <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>
+                      Тема заняття
+                      {lesson?.topicSetBy && lesson?.topicSetAt && (
+                        <span style={{ fontWeight: 400, color: '#9ca3af', marginLeft: '0.5rem' }}>
+                          ({lesson.topicSetBy}, {lesson.topicSetAt})
+                        </span>
+                      )}
+                    </div>
+                    {!editingTopic[modal.id] && (
+                      <button
+                        onClick={() => startEditingTopic(modal.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '24px',
+                          height: '24px',
+                          padding: 0,
+                          background: 'transparent',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          color: '#6b7280',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#f3f4f6';
+                          e.currentTarget.style.color = '#3b82f6';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.color = '#6b7280';
+                        }}
+                        title="Редагувати тему"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {editingTopic[modal.id] ? (
+                    <div>
+                      <input
+                        type="text"
+                        value={currentTopic}
+                        onChange={(e) => setLessonTopic(prev => ({ ...prev, [modal.id]: e.target.value }))}
+                        placeholder="Введіть тему заняття"
+                        disabled={savingTopic[modal.id]}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem 0.75rem',
+                          fontSize: '0.875rem',
+                          border: '1px solid #3b82f6',
+                          borderRadius: '0.375rem',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          backgroundColor: savingTopic[modal.id] ? '#f9fafb' : 'white',
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <button
+                          onClick={() => saveTopic(modal.id)}
+                          disabled={savingTopic[modal.id]}
+                          className="btn btn-primary"
+                          style={{ flex: 1, justifyContent: 'center', fontSize: '0.8125rem', padding: '0.375rem 0.75rem' }}
+                        >
+                          {savingTopic[modal.id] ? 'Збереження...' : 'Зберегти'}
+                        </button>
+                        <button
+                          onClick={() => cancelEditingTopic(modal.id)}
+                          disabled={savingTopic[modal.id]}
+                          className="btn"
+                          style={{ 
+                            flex: 1, 
+                            justifyContent: 'center', 
+                            background: '#f3f4f6', 
+                            border: '1px solid #d1d5db',
+                            fontSize: '0.8125rem', 
+                            padding: '0.375rem 0.75rem' 
+                          }}
+                        >
+                          Скасувати
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      padding: '0.5rem 0.75rem', 
+                      fontSize: '0.875rem', 
+                      color: currentTopic ? '#374151' : '#9ca3af',
+                      backgroundColor: '#f9fafb',
                       borderRadius: '0.375rem',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                    onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                  />
+                      border: '1px solid #e5e7eb',
+                      minHeight: '2.375rem',
+                    }}>
+                      {currentTopic || 'Тема не вказана'}
+                    </div>
+                  )}
                 </div>
                 
+                {/* Notes field */}
                 <div style={{ marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.375rem' }}>Нотатки</div>
-                  <textarea
-                    value={lessonNotes[modal.id] ?? lesson?.notes ?? ''}
-                    onChange={(e) => setLessonNotes(prev => ({ ...prev, [modal.id]: e.target.value }))}
-                    placeholder="Введіть нотатки до заняття"
-                    rows={3}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 0.75rem',
-                      fontSize: '0.875rem',
-                      border: '1px solid #d1d5db',
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
+                    <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>
+                      Нотатки
+                      {lesson?.notesSetBy && lesson?.notesSetAt && (
+                        <span style={{ fontWeight: 400, color: '#9ca3af', marginLeft: '0.5rem' }}>
+                          ({lesson.notesSetBy}, {lesson.notesSetAt})
+                        </span>
+                      )}
+                    </div>
+                    {!editingNotes[modal.id] && (
+                      <button
+                        onClick={() => startEditingNotes(modal.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '24px',
+                          height: '24px',
+                          padding: 0,
+                          background: 'transparent',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          color: '#6b7280',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#f3f4f6';
+                          e.currentTarget.style.color = '#3b82f6';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.color = '#6b7280';
+                        }}
+                        title="Редагувати нотатки"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {editingNotes[modal.id] ? (
+                    <div>
+                      <textarea
+                        value={lessonNotes[modal.id] ?? lesson?.notes ?? ''}
+                        onChange={(e) => setLessonNotes(prev => ({ ...prev, [modal.id]: e.target.value }))}
+                        placeholder="Введіть нотатки до заняття"
+                        rows={3}
+                        disabled={savingNotes[modal.id]}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem 0.75rem',
+                          fontSize: '0.875rem',
+                          border: '1px solid #3b82f6',
+                          borderRadius: '0.375rem',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          resize: 'vertical',
+                          fontFamily: 'inherit',
+                          backgroundColor: savingNotes[modal.id] ? '#f9fafb' : 'white',
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <button
+                          onClick={() => saveNotes(modal.id)}
+                          disabled={savingNotes[modal.id]}
+                          className="btn btn-primary"
+                          style={{ flex: 1, justifyContent: 'center', fontSize: '0.8125rem', padding: '0.375rem 0.75rem' }}
+                        >
+                          {savingNotes[modal.id] ? 'Збереження...' : 'Зберегти'}
+                        </button>
+                        <button
+                          onClick={() => cancelEditingNotes(modal.id)}
+                          disabled={savingNotes[modal.id]}
+                          className="btn"
+                          style={{ 
+                            flex: 1, 
+                            justifyContent: 'center', 
+                            background: '#f3f4f6', 
+                            border: '1px solid #d1d5db',
+                            fontSize: '0.8125rem', 
+                            padding: '0.375rem 0.75rem' 
+                          }}
+                        >
+                          Скасувати
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      padding: '0.5rem 0.75rem', 
+                      fontSize: '0.875rem', 
+                      color: (lessonNotes[modal.id] ?? lesson?.notes) ? '#374151' : '#9ca3af',
+                      backgroundColor: '#f9fafb',
                       borderRadius: '0.375rem',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                      resize: 'vertical',
-                      fontFamily: 'inherit',
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                    onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                  />
+                      border: '1px solid #e5e7eb',
+                      minHeight: '2.375rem',
+                      whiteSpace: 'pre-wrap',
+                    }}>
+                      {(lessonNotes[modal.id] ?? lesson?.notes) || 'Нотатки відсутні'}
+                    </div>
+                  )}
                 </div>
                 
                 {/* Attendance section */}
@@ -905,51 +1273,48 @@ export default function LessonModalsManager() {
                   ) : null}
                 </div>
                 
-                {/* Actions */}
+                {/* Actions - removed "Проведено" and "Скасовано" buttons, status is now auto-set based on attendance */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.25rem' }}>
-                  <button
-                    onClick={() => handleSaveTopic(modal.id)}
-                    disabled={isSaving}
-                    className="btn btn-primary"
-                    style={{ width: '100%', justifyContent: 'center' }}
-                  >
-                    {isSaving ? 'Збереження...' : 'Зберегти тему'}
-                  </button>
-                  
-                  <button
-                    onClick={() => handleSaveNotes(modal.id)}
-                    disabled={isSaving}
-                    className="btn btn-secondary"
-                    style={{ width: '100%', justifyContent: 'center', background: '#f3f4f6', border: '1px solid #d1d5db', color: '#374151' }}
-                  >
-                    {isSaving ? 'Збереження...' : 'Зберегти нотатки'}
-                  </button>
-                  
-                  {lesson.status === 'scheduled' && (
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button
-                        onClick={() => handleMarkDone(modal.id)}
-                        disabled={isSaving}
-                        className="btn btn-success"
-                        style={{ flex: 1, justifyContent: 'center' }}
-                      >
-                        <Check size={14} />
-                        Проведено
-                      </button>
-                      <button
-                        onClick={() => handleCancelLesson(modal.id)}
-                        disabled={isSaving}
-                        className="btn btn-danger"
-                        style={{ flex: 1, justifyContent: 'center' }}
-                      >
-                        <X size={14} />
-                        Скасувати
-                      </button>
-                    </div>
-                  )}
-                  
                   {/* Delete button - only for scheduled lessons - MOVED TO HEADER */}
                   {/* Old delete button removed - now in header */}
+                </div>
+                
+                {/* Submission info section */}
+                <div style={{ 
+                  marginTop: '1rem', 
+                  paddingTop: '1rem', 
+                  borderTop: '1px solid #e5e7eb',
+                }}>
+                  <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                    Інформація про передачу даних
+                  </div>
+                  
+                  {(lesson?.topicSetBy || lesson?.notesSetBy) ? (
+                    <div style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                      {lesson.topicSetBy && lesson.topicSetAt && (
+                        <div style={{ marginBottom: '0.25rem' }}>
+                          <span style={{ color: '#6b7280' }}>Тему передав:</span>{' '}
+                          <span style={{ fontWeight: 500 }}>{lesson.topicSetBy}</span>
+                          <span style={{ color: '#9ca3af', marginLeft: '0.5rem' }}>{lesson.topicSetAt}</span>
+                        </div>
+                      )}
+                      {lesson.notesSetBy && lesson.notesSetAt && (
+                        <div>
+                          <span style={{ color: '#6b7280' }}>Нотатки передав:</span>{' '}
+                          <span style={{ fontWeight: 500 }}>{lesson.notesSetBy}</span>
+                          <span style={{ color: '#9ca3af', marginLeft: '0.5rem' }}>{lesson.notesSetAt}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      fontSize: '0.8125rem', 
+                      color: '#9ca3af',
+                      fontStyle: 'italic',
+                    }}>
+                      Дані ще не надані
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

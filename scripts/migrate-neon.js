@@ -191,6 +191,51 @@ async function migrate() {
       }
     }
 
+    // Додаємо колонки для відстеження хто і коли надав дані
+    try {
+      await sql`ALTER TABLE lessons ADD COLUMN topic_set_by INTEGER REFERENCES users(id) ON DELETE SET NULL`;
+      console.log('✅ Колонка topic_set_by додана до lessons');
+    } catch (e) {
+      if (e.message && e.message.includes('already exists')) {
+        console.log('ℹ️ Колонка topic_set_by вже існує в lessons');
+      } else {
+        throw e;
+      }
+    }
+
+    try {
+      await sql`ALTER TABLE lessons ADD COLUMN topic_set_at TIMESTAMPTZ`;
+      console.log('✅ Колонка topic_set_at додана до lessons');
+    } catch (e) {
+      if (e.message && e.message.includes('already exists')) {
+        console.log('ℹ️ Колонка topic_set_at вже існує в lessons');
+      } else {
+        throw e;
+      }
+    }
+
+    try {
+      await sql`ALTER TABLE lessons ADD COLUMN notes_set_by INTEGER REFERENCES users(id) ON DELETE SET NULL`;
+      console.log('✅ Колонка notes_set_by додана до lessons');
+    } catch (e) {
+      if (e.message && e.message.includes('already exists')) {
+        console.log('ℹ️ Колонка notes_set_by вже існує в lessons');
+      } else {
+        throw e;
+      }
+    }
+
+    try {
+      await sql`ALTER TABLE lessons ADD COLUMN notes_set_at TIMESTAMPTZ`;
+      console.log('✅ Колонка notes_set_at додана до lessons');
+    } catch (e) {
+      if (e.message && e.message.includes('already exists')) {
+        console.log('ℹ️ Колонка notes_set_at вже існує в lessons');
+      } else {
+        throw e;
+      }
+    }
+
     // 7. Attendance table (після lessons, students, users)
     await sql`
       CREATE TABLE IF NOT EXISTS attendance (
