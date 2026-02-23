@@ -79,8 +79,12 @@ export function LessonModalsProvider({ children }: { children: ReactNode }) {
       const existingModal = prev.find(m => m.id === lessonId);
       if (existingModal) {
         // Modal already open - just ensure it's marked as open and update data
+        // Only update lessonData if new data is provided
+        const newLessonData = lessonData && Object.keys(lessonData).length > 0 
+          ? lessonData 
+          : existingModal.lessonData;
         return prev.map(m => 
-          m.id === lessonId ? { ...m, isOpen: true, lessonData: lessonData || m.lessonData } : m
+          m.id === lessonId ? { ...m, isOpen: true, lessonData: newLessonData } : m
         );
       }
       // Add new modal with random position to avoid overlapping

@@ -103,6 +103,12 @@ export default function LessonModalsManager() {
   }, []);
 
   const loadLessonData = useCallback(async (lessonId: number) => {
+    // Validate lessonId before making request
+    if (!lessonId || typeof lessonId !== 'number' || isNaN(lessonId)) {
+      console.error('Invalid lessonId:', lessonId);
+      return;
+    }
+    
     // Use ref to check if already loading to avoid duplicate requests
     if (loadingRef.current[lessonId]) return;
     loadingRef.current[lessonId] = true;
@@ -141,17 +147,23 @@ export default function LessonModalsManager() {
 
   useEffect(() => {
     openModals.forEach(modal => {
-      if (modal.isOpen) {
-        // Try to fetch fresh data from API when modal opens
-        // but don't block if we already have modalData
-        if (!lessonData[modal.id] && !loadingRef.current[modal.id]) {
-          loadLessonData(modal.id);
-        }
-        // Initialize topic from stored modal data or API data
-        const topicSource = modal.lessonData?.topic ?? lessonData[modal.id]?.topic;
-        if (topicSource !== undefined && !lessonTopic[modal.id]) {
-          setLessonTopic(prev => ({ ...prev, [modal.id]: topicSource || '' }));
-        }
+      // Validate modal has valid id
+      if (!modal.isOpen || !modal.id || typeof modal.id !== 'number') {
+        return;
+      }
+      
+      // Try to fetch fresh data from API when modal opens
+      // but don't block if we already have modalData
+      const hasModalData = modal.lessonData && modal.lessonData.groupTitle;
+      const hasApiData = lessonData[modal.id] && lessonData[modal.id].groupTitle;
+      
+      if (!hasModalData && !hasApiData && !loadingRef.current[modal.id]) {
+        loadLessonData(modal.id);
+      }
+      // Initialize topic from stored modal data or API data
+      const topicSource = modal.lessonData?.topic ?? lessonData[modal.id]?.topic;
+      if (topicSource !== undefined && !lessonTopic[modal.id]) {
+        setLessonTopic(prev => ({ ...prev, [modal.id]: topicSource || '' }));
       }
     });
   }, [openModals, lessonData, lessonTopic, loadLessonData]);
@@ -356,12 +368,21 @@ export default function LessonModalsManager() {
       {openModals.map((modal) => {
         if (!modal.isOpen) return null;
         
-        // Prefer modal data from context (passed from schedule page), fall back to API data
-        // This ensures data is available immediately when modal opens
+        // Use modalData if it exists and has required fields, otherwise fall back to API data
+        // Never use undefined - prefer existing data over unknown
         const apiData = lessonData[modal.id];
         const modalData = modal.lessonData as LessonData | undefined;
-        // Use modalData if it exists and has required fields, otherwise fall back to API data
-        const lesson = (modalData && modalData.groupTitle) ? modalData : (apiData || undefined);
+        let lesson: LessonData | undefined;
+        
+        if (modalData && modalData.groupTitle) {
+          // Prefer modal data from context (passed from schedule page)
+          lesson = modalData;
+        } else if (apiData && apiData.groupTitle) {
+          // Fall back to API data
+          lesson = apiData;
+        }
+        // If neither has data, lesson remains undefined
+        
         const isLoading = loadingLessons[modal.id] && !lesson;
         const isSaving = saving[modal.id];
         const currentTopic = lessonTopic[modal.id] ?? lesson?.topic ?? '';
