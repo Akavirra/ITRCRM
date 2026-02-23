@@ -34,12 +34,23 @@ export async function POST(request: NextRequest) {
           [studentId]
         );
         
+        // Get user by telegram_id
+        const user = await get<{ id: number }>(
+          `SELECT id FROM users WHERE telegram_id = $1 LIMIT 1`,
+          [telegramId]
+        );
+        
+        if (!user) {
+          await answerCallbackQuery(callbackQuery.id, `❌ Помилка: користувача не знайдено в системі. Telegram ID: ${telegramId}`);
+          return NextResponse.json({ ok: false, error: 'User not found' });
+        }
+        
         // Record attendance in database
         await run(
-          `INSERT INTO lesson_attendance (lesson_id, student_id, status, recorded_at, recorded_by)
-           VALUES ($1, $2, $3, NOW(), (SELECT id FROM users WHERE telegram_id = $4 LIMIT 1))
-           ON CONFLICT (lesson_id, student_id) DO UPDATE SET status = $3, recorded_at = NOW()`,
-          [lessonId, studentId, status === 'present' ? 'present' : 'absent', telegramId]
+          `INSERT INTO attendance (lesson_id, student_id, status, updated_at, updated_by)
+           VALUES ($1, $2, $3, NOW(), $4)
+           ON CONFLICT (lesson_id, student_id) DO UPDATE SET status = $3, updated_at = NOW(), updated_by = $4`,
+          [lessonId, studentId, status === 'present' ? 'present' : 'absent', user.id]
         );
         
         // Answer the callback query
