@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import DraggableModal from './DraggableModal';
 import { useLessonModals } from './LessonModalsContext';
+import { useGroupModals } from './GroupModalsContext';
 import { Clock, BookOpen, User, Check, X, Calendar, Trash2, ArrowRightCircle, UserMinus, Users } from 'lucide-react';
 
 interface Teacher {
@@ -65,6 +66,7 @@ function getStatusBadge(status: 'scheduled' | 'done' | 'canceled') {
 
 export default function LessonModalsManager() {
   const { openModals, updateModalState, closeLessonModal } = useLessonModals();
+  const { openGroupModal } = useGroupModals();
   const [lessonData, setLessonData] = useState<Record<number, LessonData>>({});
   const [loadingLessons, setLoadingLessons] = useState<Record<number, boolean>>({});
   const loadingRef = useRef<Record<number, boolean>>({}); // Track loading state without causing re-renders
@@ -447,7 +449,27 @@ export default function LessonModalsManager() {
               
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>Група</div>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>{lesson.groupTitle}</div>
+                  <button
+                    onClick={() => openGroupModal(lesson.groupId, lesson.groupTitle)}
+                    style={{
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      color: '#3b82f6',
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      transition: 'color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#3b82f6'}
+                  >
+                    <Users size={14} />
+                    {lesson.groupTitle}
+                  </button>
                 </div>
                 
                 <div style={{ marginBottom: '0.75rem' }}>
