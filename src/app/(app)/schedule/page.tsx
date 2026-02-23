@@ -6,7 +6,7 @@ import Layout from '@/components/Layout';
 import { useLessonModals } from '@/components/LessonModalsContext';
 import { format, addWeeks, subWeeks, startOfWeek, addDays, parseISO, startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
 import { uk } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar, Clock, User, BookOpen, Check, X, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Clock, User, Users, BookOpen, Check, X, RefreshCw } from 'lucide-react';
 import PageLoading from '@/components/PageLoading';
 
 interface User {
@@ -532,13 +532,17 @@ export default function SchedulePage() {
                         {lesson.startTime} - {lesson.endTime}
                       </div>
                       <div style={{
-                        fontSize: '0.9375rem',
-                        fontWeight: 500,
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
                         color: '#111827',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                       }}>
+                        <Users size={10} />
                         {lesson.groupTitle}
                       </div>
                       <div style={{
