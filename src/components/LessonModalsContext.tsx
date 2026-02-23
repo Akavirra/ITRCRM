@@ -22,6 +22,7 @@ interface StoredModal {
     endTime: string;
     status: 'scheduled' | 'done' | 'canceled';
     topic: string | null;
+    notes?: string | null;
   };
 }
 

@@ -38,6 +38,7 @@ interface LessonData {
   endTime: string;
   status: 'scheduled' | 'done' | 'canceled';
   topic: string | null;
+  notes: string | null;
 }
 
 function formatDateTime(startTime: string, endTime: string): string {
@@ -89,6 +90,7 @@ export default function LessonModalsManager() {
   
   // Form state
   const [lessonTopic, setLessonTopic] = useState<Record<number, string>>({});
+  const [lessonNotes, setLessonNotes] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState<Record<number, boolean>>({});
   const [teachers, setTeachers] = useState<Record<number, Teacher[]>>({});
   const [showTeacherSelect, setShowTeacherSelect] = useState<Record<number, boolean>>({});
@@ -199,9 +201,11 @@ export default function LessonModalsManager() {
             endTime: data.lesson.endTime,
             status: data.lesson.status,
             topic: data.lesson.topic,
+            notes: data.lesson.notes,
           }
         });
         setLessonTopic(prev => ({ ...prev, [lessonId]: data.lesson.topic || '' }));
+        setLessonNotes(prev => ({ ...prev, [lessonId]: data.lesson.notes || '' }));
       }
     } catch (error) {
       console.error('Error loading lesson:', error);
@@ -273,6 +277,33 @@ export default function LessonModalsManager() {
       }
     } catch (error) {
       console.error('Failed to save topic:', error);
+    } finally {
+      setSaving(prev => ({ ...prev, [lessonId]: false }));
+    }
+  };
+
+  const handleSaveNotes = async (lessonId: number) => {
+    setSaving(prev => ({ ...prev, [lessonId]: true }));
+    try {
+      const res = await fetch(`/api/lessons/${lessonId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: lessonNotes[lessonId] }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
+        // Update modal data as well
+        updateModalState(lessonId, { 
+          lessonData: {
+            ...lessonData[lessonId],
+            notes: lessonNotes[lessonId],
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to save notes:', error);
     } finally {
       setSaving(prev => ({ ...prev, [lessonId]: false }));
     }
@@ -756,6 +787,29 @@ export default function LessonModalsManager() {
                   />
                 </div>
                 
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.375rem' }}>Нотатки</div>
+                  <textarea
+                    value={lessonNotes[modal.id] ?? lesson?.notes ?? ''}
+                    onChange={(e) => setLessonNotes(prev => ({ ...prev, [modal.id]: e.target.value }))}
+                    placeholder="Введіть нотатки до заняття"
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      fontSize: '0.875rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.375rem',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      resize: 'vertical',
+                      fontFamily: 'inherit',
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                    onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                  />
+                </div>
+                
                 {/* Attendance section */}
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
@@ -860,6 +914,15 @@ export default function LessonModalsManager() {
                     style={{ width: '100%', justifyContent: 'center' }}
                   >
                     {isSaving ? 'Збереження...' : 'Зберегти тему'}
+                  </button>
+                  
+                  <button
+                    onClick={() => handleSaveNotes(modal.id)}
+                    disabled={isSaving}
+                    className="btn btn-secondary"
+                    style={{ width: '100%', justifyContent: 'center', background: '#f3f4f6', border: '1px solid #d1d5db', color: '#374151' }}
+                  >
+                    {isSaving ? 'Збереження...' : 'Зберегти нотатки'}
                   </button>
                   
                   {lesson.status === 'scheduled' && (

@@ -179,6 +179,18 @@ async function migrate() {
       }
     }
 
+    // Додаємо колонку notes для нотаток до заняття
+    try {
+      await sql`ALTER TABLE lessons ADD COLUMN notes TEXT`;
+      console.log('✅ Колонка notes додана до lessons');
+    } catch (e) {
+      if (e.message && e.message.includes('already exists')) {
+        console.log('ℹ️ Колонка notes вже існує в lessons');
+      } else {
+        throw e;
+      }
+    }
+
     // 7. Attendance table (після lessons, students, users)
     await sql`
       CREATE TABLE IF NOT EXISTS attendance (

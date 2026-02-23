@@ -105,3 +105,60 @@ export async function answerCallbackQuery(callbackQueryId: string, text: string)
     return false;
   }
 }
+
+/**
+ * Send a message with a force reply (requests user input)
+ * @param telegramId - The Telegram user ID
+ * @param text - The message text to send
+ * @param placeholder - Optional placeholder for the input field
+ * @returns true if successful
+ */
+export async function sendMessageWithForceReply(
+  telegramId: string, 
+  text: string, 
+  placeholder?: string
+): Promise<boolean> {
+  if (!TELEGRAM_BOT_TOKEN) {
+    console.error('TELEGRAM_BOT_TOKEN is not configured');
+    return false;
+  }
+
+  if (!telegramId) {
+    console.error('Telegram ID is required');
+    return false;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: telegramId,
+          text: text,
+          parse_mode: 'HTML',
+          reply_markup: {
+            force_reply: true,
+            selective: true,
+            input_field_placeholder: placeholder || 'Введіть текст...',
+          },
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      console.error('Telegram API error:', data.description);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Failed to send Telegram message with force reply:', error);
+    return false;
+  }
+}

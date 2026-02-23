@@ -13,6 +13,7 @@ interface Lesson {
   start_datetime: string;
   end_datetime: string;
   topic: string | null;
+  notes: string | null;
   status: string;
   created_by: number;
 }
@@ -59,6 +60,7 @@ export async function GET(
       l.start_datetime,
       l.end_datetime,
       l.topic,
+      l.notes,
       l.status,
       l.created_by,
       l.teacher_id,
@@ -98,6 +100,7 @@ export async function GET(
       endTime: formatDateTime(lessonWithDetails.end_datetime),
       status: lessonWithDetails.status,
       topic: lessonWithDetails.topic,
+      notes: lessonWithDetails.notes,
     } : null;
   
   return NextResponse.json({ lesson: transformedLesson });
@@ -138,7 +141,7 @@ export async function PATCH(
   
   try {
     const body = await request.json();
-    const { topic, status, lesson_date, start_time } = body;
+    const { topic, notes, status, lesson_date, start_time } = body;
     
     let updates: string[] = ['updated_at = NOW()'];
     let params: (string | number)[] = [];
@@ -146,6 +149,11 @@ export async function PATCH(
     if (topic !== undefined) {
       updates.push(`topic = $${params.length + 1}`);
       params.push(topic);
+    }
+    
+    if (notes !== undefined) {
+      updates.push(`notes = $${params.length + 1}`);
+      params.push(notes);
     }
     
     if (status !== undefined) {
@@ -199,6 +207,7 @@ export async function PATCH(
         l.start_datetime,
         l.end_datetime,
         l.topic,
+        l.notes,
         l.status,
         l.created_by,
         l.teacher_id,
@@ -234,6 +243,7 @@ export async function PATCH(
       endTime: formatDateTime(updatedLessonRaw.end_datetime),
       status: updatedLessonRaw.status,
       topic: updatedLessonRaw.topic,
+      notes: updatedLessonRaw.notes,
     } : null;
     
     return NextResponse.json({
