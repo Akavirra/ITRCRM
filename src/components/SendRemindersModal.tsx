@@ -32,10 +32,12 @@ export default function SendRemindersModal({ isOpen, onClose, onSuccess }: SendR
 
   // Fetch today's lessons
   const fetchTodayLessons = useCallback(async () => {
+    console.log('[SendRemindersModal] Fetching today lessons...');
     setLoading(true);
     try {
       const res = await fetch('/api/lessons?today=true');
       const data = await res.json();
+      console.log('[SendRemindersModal] Lessons data:', data);
       setLessons(data.lessons || []);
       // Auto-select all by default
       setSelectedIds(new Set((data.lessons || []).map((l: TodayLesson) => l.id)));
@@ -72,19 +74,23 @@ export default function SendRemindersModal({ isOpen, onClose, onSuccess }: SendR
   };
 
   const handleSend = async () => {
+    console.log('[SendRemindersModal] handleSend called, selectedIds:', selectedIds);
     if (selectedIds.size === 0) {
       alert('Оберіть хоча б одне заняття');
       return;
     }
 
     setSending(true);
+    console.log('[SendRemindersModal] Sending request to API...');
     try {
       const res = await fetch('/api/notifications/send-reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lessonIds: Array.from(selectedIds) }),
       });
+      console.log('[SendRemindersModal] Response status:', res.status);
       const data = await res.json();
+      console.log('[SendRemindersModal] Response data:', data);
       setResult(data);
       if (data.sent && data.sent.length > 0 && onSuccess) {
         onSuccess();
@@ -321,7 +327,10 @@ export default function SendRemindersModal({ isOpen, onClose, onSuccess }: SendR
           </button>
           {!result && (
             <button
-              onClick={handleSend}
+              onClick={() => {
+                console.log('[SendRemindersModal] Send button clicked');
+                handleSend();
+              }}
               disabled={sending || selectedIds.size === 0 || lessons.length === 0}
               className="btn btn-primary"
               style={{
