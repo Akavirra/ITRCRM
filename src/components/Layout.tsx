@@ -27,7 +27,6 @@ const menuItems = [
   { href: '/groups', labelKey: 'nav.groups', icon: 'users' },
   { href: '/students', labelKey: 'nav.students', icon: 'user' },
   { href: '/teachers', labelKey: 'nav.teachers', icon: 'teacher' },
-  { href: '/lessons', labelKey: 'nav.lessons', icon: 'calendar' },
   { href: '/reports', labelKey: 'nav.reports', icon: 'chart' },
 ];
 
