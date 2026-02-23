@@ -5,6 +5,7 @@ import DraggableModal from './DraggableModal';
 import { useLessonModals } from './LessonModalsContext';
 import { useGroupModals } from './GroupModalsContext';
 import { useCourseModals } from './CourseModalsContext';
+import { useTeacherModals } from './TeacherModalsContext';
 import { Clock, BookOpen, User, Check, X, Calendar, Trash2, ArrowRightCircle, UserMinus, Users } from 'lucide-react';
 
 interface Teacher {
@@ -70,6 +71,7 @@ export default function LessonModalsManager() {
   const { openModals, updateModalState, closeLessonModal } = useLessonModals();
   const { openGroupModal } = useGroupModals();
   const { openCourseModal } = useCourseModals();
+  const { openTeacherModal } = useTeacherModals();
   const [lessonData, setLessonData] = useState<Record<number, LessonData>>({});
   const [loadingLessons, setLoadingLessons] = useState<Record<number, boolean>>({});
   const loadingRef = useRef<Record<number, boolean>>({}); // Track loading state without causing re-renders
@@ -503,8 +505,25 @@ export default function LessonModalsManager() {
                 
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>Викладач</div>
-                  <div style={{ fontSize: '0.875rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Users size={14} />
+                  <button
+                    onClick={() => openTeacherModal(lesson.teacherId, lesson.teacherName)}
+                    style={{
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      color: '#3b82f6',
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      transition: 'color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#3b82f6'}
+                  >
+                    <User size={14} />
                     {lesson.teacherName}
                     {lesson.isReplaced && (
                       <span style={{ 
@@ -518,7 +537,7 @@ export default function LessonModalsManager() {
                         (Зам.)
                       </span>
                     )}
-                  </div>
+                  </button>
                 </div>
                 
                 {/* Teacher replacement section */}
