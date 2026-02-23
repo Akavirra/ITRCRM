@@ -166,6 +166,19 @@ async function migrate() {
     await sql`CREATE INDEX IF NOT EXISTS idx_lessons_date ON lessons(lesson_date)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_lessons_status ON lessons(status)`;
 
+    // Додаємо колонку teacher_id для заміни викладача
+    try {
+      await sql`ALTER TABLE lessons ADD COLUMN teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL`;
+      console.log('✅ Колонка teacher_id додана до lessons');
+    } catch (e) {
+      // Колонка вже існує - це нормально при повторному запуску
+      if (e.message && e.message.includes('already exists')) {
+        console.log('ℹ️ Колонка teacher_id вже існує в lessons');
+      } else {
+        throw e;
+      }
+    }
+
     // 7. Attendance table (після lessons, students, users)
     await sql`
       CREATE TABLE IF NOT EXISTS attendance (
@@ -278,6 +291,23 @@ async function migrate() {
     console.log('✅ Таблиця error_logs готова');
 
     await sql`CREATE INDEX IF NOT EXISTS idx_error_logs_created ON error_logs(created_at)`;
+
+    // 13. Lesson teacher replacements table (після lessons та users)
+    await sql`
+      CREATE TABLE IF NOT EXISTS lesson_teacher_replacements (
+        id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+        lesson_id INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+        original_teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+        replacement_teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+        replaced_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+        reason TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    console.log('✅ Таблиця lesson_teacher_replacements готова');
+
+    await sql`CREATE INDEX IF NOT EXISTS idx_lesson_teacher_replacements_lesson ON lesson_teacher_replacements(lesson_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_lesson_teacher_replacements_replacement_teacher ON lesson_teacher_replacements(replacement_teacher_id)`;
 
     console.log('\n🎉 Міграція успішна! Всі таблиці створені.');
     console.log('Наступний крок: npm run db:seed:neon — для тестових даних');

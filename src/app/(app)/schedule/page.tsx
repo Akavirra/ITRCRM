@@ -23,6 +23,8 @@ interface Lesson {
   courseTitle: string;
   teacherId: number;
   teacherName: string;
+  originalTeacherId?: number;
+  isReplaced?: boolean;
   startTime: string;
   endTime: string;
   status: 'scheduled' | 'done' | 'canceled';
@@ -86,8 +88,10 @@ export default function SchedulePage() {
     };
     
     window.addEventListener('itrobot-lesson-deleted', handleLessonDeleted);
+    window.addEventListener('itrobot-lesson-updated', fetchSchedule);
     return () => {
       window.removeEventListener('itrobot-lesson-deleted', handleLessonDeleted);
+      window.removeEventListener('itrobot-lesson-updated', fetchSchedule);
     };
   }, [fetchSchedule]);
 
@@ -135,6 +139,8 @@ export default function SchedulePage() {
       courseTitle: lesson.courseTitle,
       teacherId: lesson.teacherId,
       teacherName: lesson.teacherName,
+      originalTeacherId: lesson.originalTeacherId,
+      isReplaced: lesson.isReplaced,
       startTime: lesson.startTime,
       endTime: lesson.endTime,
       status: lesson.status,
@@ -558,7 +564,7 @@ export default function SchedulePage() {
                       </div>
                       <div style={{
                         fontSize: '0.8125rem',
-                        color: '#9ca3af',
+                        color: lesson.isReplaced ? '#d97706' : '#9ca3af',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.25rem',
@@ -566,6 +572,18 @@ export default function SchedulePage() {
                       }}>
                         <User size={9} />
                         {lesson.teacherName}
+                        {lesson.isReplaced && (
+                          <span style={{ 
+                            background: '#fef3c7', 
+                            color: '#d97706', 
+                            fontSize: '0.625rem', 
+                            padding: '0.0625rem 0.25rem', 
+                            borderRadius: '0.125rem',
+                            marginLeft: '0.125rem'
+                          }}>
+                            (Зам.)
+                          </span>
+                        )}
                       </div>
                       {lesson.topic && (
                         <div style={{

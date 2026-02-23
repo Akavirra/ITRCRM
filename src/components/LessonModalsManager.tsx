@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import DraggableModal from './DraggableModal';
 import { useLessonModals } from './LessonModalsContext';
-import { Clock, BookOpen, User, Check, X, Calendar, Trash2, ArrowRightCircle, UserMinus } from 'lucide-react';
+import { Clock, BookOpen, User, Check, X, Calendar, Trash2, ArrowRightCircle, UserMinus, Users } from 'lucide-react';
 
 interface Teacher {
   id: number;
@@ -72,10 +72,29 @@ export default function LessonModalsManager() {
   // Form state
   const [lessonTopic, setLessonTopic] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState<Record<number, boolean>>({});
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [teachers, setTeachers] = useState<Record<number, Teacher[]>>({});
   const [showTeacherSelect, setShowTeacherSelect] = useState<Record<number, boolean>>({});
   const [selectedTeacherId, setSelectedTeacherId] = useState<Record<number, number | null>>({});
   const [replacementReason, setReplacementReason] = useState<Record<number, string>>({});
+  const [teachersLoading, setTeachersLoading] = useState<Record<number, boolean>>({});
+
+  // Load teachers list
+  const loadTeachers = async (lessonId: number) => {
+    if (teachers[lessonId]?.length > 0 || teachersLoading[lessonId]) return;
+    
+    setTeachersLoading(prev => ({ ...prev, [lessonId]: true }));
+    try {
+      const response = await fetch('/api/teachers');
+      if (response.ok) {
+        const data = await response.json();
+        setTeachers(prev => ({ ...prev, [lessonId]: data.teachers || [] }));
+      }
+    } catch (error) {
+      console.error('Error loading teachers:', error);
+    } finally {
+      setTeachersLoading(prev => ({ ...prev, [lessonId]: false }));
+    }
+  };
 
   useEffect(() => {
     setIsHydrated(true);
@@ -250,6 +269,76 @@ export default function LessonModalsManager() {
     }
   };
 
+  const handleReplaceTeacher = async (lessonId: number) => {
+    const teacherId = selectedTeacherId[lessonId];
+    if (!teacherId) {
+      alert('Оберіть викладача для заміни');
+      return;
+    }
+    
+    setSaving(prev => ({ ...prev, [lessonId]: true }));
+    try {
+      const res = await fetch(`/api/lessons/${lessonId}/replace-teacher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          replacementTeacherId: teacherId,
+          reason: replacementReason[lessonId] || ''
+        }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
+        setShowTeacherSelect(prev => ({ ...prev, [lessonId]: false }));
+        setSelectedTeacherId(prev => ({ ...prev, [lessonId]: null }));
+        setReplacementReason(prev => ({ ...prev, [lessonId]: '' }));
+        // Dispatch event to notify schedule page to refresh
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('itrobot-lesson-updated'));
+        }
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Не вдалося замінити викладача');
+      }
+    } catch (error) {
+      console.error('Failed to replace teacher:', error);
+      alert('Не вдалося замінити викладача');
+    } finally {
+      setSaving(prev => ({ ...prev, [lessonId]: false }));
+    }
+  };
+
+  const handleCancelReplacement = async (lessonId: number) => {
+    if (!confirm('Скасувати заміну викладача?')) {
+      return;
+    }
+    
+    setSaving(prev => ({ ...prev, [lessonId]: true }));
+    try {
+      const res = await fetch(`/api/lessons/${lessonId}/replace-teacher`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
+        // Dispatch event to notify schedule page to refresh
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('itrobot-lesson-updated'));
+        }
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Не вдалося скасувати заміну');
+      }
+    } catch (error) {
+      console.error('Failed to cancel replacement:', error);
+      alert('Не вдалося скасувати заміну');
+    } finally {
+      setSaving(prev => ({ ...prev, [lessonId]: false }));
+    }
+  };
+
   if (!isHydrated || openModals.length === 0) return null;
 
   return (
@@ -302,8 +391,147 @@ export default function LessonModalsManager() {
                 
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>Викладач</div>
-                  <div style={{ fontSize: '0.875rem', color: '#374151' }}>{lesson.teacherName}</div>
+                  <div style={{ fontSize: '0.875rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Users size={14} />
+                    {lesson.teacherName}
+                    {lesson.isReplaced && (
+                      <span style={{ 
+                        background: '#fef3c7', 
+                        color: '#d97706', 
+                        fontSize: '0.6875rem', 
+                        padding: '0.125rem 0.375rem', 
+                        borderRadius: '0.25rem',
+                        marginLeft: '0.25rem'
+                      }}>
+                        (Зам.)
+                      </span>
+                    )}
+                  </div>
                 </div>
+                
+                {/* Teacher replacement section */}
+                {showTeacherSelect[modal.id] ? (
+                  <div style={{ 
+                    marginBottom: '1rem', 
+                    padding: '1rem', 
+                    background: '#f9fafb', 
+                    borderRadius: '0.5rem',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>
+                      Заміна викладача
+                    </div>
+                    
+                    <select
+                      value={selectedTeacherId[modal.id] || ''}
+                      onChange={(e) => setSelectedTeacherId(prev => ({ ...prev, [modal.id]: e.target.value ? parseInt(e.target.value) : null }))}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        fontSize: '0.875rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.375rem',
+                        marginBottom: '0.5rem',
+                        background: 'white'
+                      }}
+                    >
+                      <option value="">Оберіть викладача...</option>
+                      {teachers[modal.id]?.filter(t => t.id !== lesson.teacherId).map(teacher => (
+                        <option key={teacher.id} value={teacher.id}>
+                          {teacher.name}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    <input
+                      type="text"
+                      value={replacementReason[modal.id] || ''}
+                      onChange={(e) => setReplacementReason(prev => ({ ...prev, [modal.id]: e.target.value }))}
+                      placeholder="Причина заміни (необов'язково)"
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        fontSize: '0.875rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.375rem',
+                        marginBottom: '0.5rem',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        onClick={() => handleReplaceTeacher(modal.id)}
+                        disabled={isSaving || !selectedTeacherId[modal.id]}
+                        className="btn btn-primary"
+                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.8125rem', padding: '0.375rem' }}
+                      >
+                        {isSaving ? 'Збереження...' : 'Замінити'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowTeacherSelect(prev => ({ ...prev, [modal.id]: false }));
+                          setSelectedTeacherId(prev => ({ ...prev, [modal.id]: null }));
+                          setReplacementReason(prev => ({ ...prev, [modal.id]: '' }));
+                        }}
+                        className="btn"
+                        style={{ 
+                          flex: 1, 
+                          justifyContent: 'center', 
+                          background: '#f3f4f6', 
+                          border: '1px solid #d1d5db',
+                          fontSize: '0.8125rem', 
+                          padding: '0.375rem' 
+                        }}
+                      >
+                        Скасувати
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      loadTeachers(modal.id);
+                      setShowTeacherSelect(prev => ({ ...prev, [modal.id]: true }));
+                    }}
+                    className="btn"
+                    style={{ 
+                      width: '100%', 
+                      justifyContent: 'center',
+                      background: '#fef3c7',
+                      color: '#92400e',
+                      border: '1px solid #fcd34d',
+                      marginBottom: '1rem',
+                      fontSize: '0.8125rem',
+                      padding: '0.375rem'
+                    }}
+                  >
+                    <UserMinus size={14} />
+                    Замінити викладача
+                  </button>
+                )}
+                
+                {/* Show cancel replacement button if replaced */}
+                {lesson.isReplaced && !showTeacherSelect[modal.id] && (
+                  <button
+                    onClick={() => handleCancelReplacement(modal.id)}
+                    disabled={isSaving}
+                    className="btn"
+                    style={{ 
+                      width: '100%', 
+                      justifyContent: 'center',
+                      background: '#fee2e2',
+                      color: '#dc2626',
+                      border: '1px solid #fecaca',
+                      marginBottom: '1rem',
+                      fontSize: '0.8125rem',
+                      padding: '0.375rem'
+                    }}
+                  >
+                    <X size={14} />
+                    Скасувати заміну
+                  </button>
+                )}
                 
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>Час</div>
