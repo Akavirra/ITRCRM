@@ -13,6 +13,7 @@ interface StoredModal {
     groupId: number;
     groupTitle: string;
     courseTitle: string;
+    courseId: number;
     teacherId: number;
     teacherName: string;
     originalTeacherId?: number;

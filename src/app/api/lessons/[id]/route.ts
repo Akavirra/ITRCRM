@@ -51,7 +51,7 @@ export async function GET(
   }
   
   // Get lesson with group, course and teacher details
-  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean }>(
+  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean }>(
     `SELECT 
       l.id,
       l.group_id,
@@ -64,6 +64,7 @@ export async function GET(
       l.teacher_id,
       u.name as teacher_name,
       g.teacher_id as original_teacher_id,
+      g.course_id as course_id,
       CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced
     FROM lessons l
     JOIN groups g ON l.group_id = g.id
@@ -86,6 +87,7 @@ export async function GET(
       groupId: lessonWithDetails.group_id,
       groupTitle: lessonWithDetails.group_title,
       courseTitle: lessonWithDetails.course_title,
+      courseId: lessonWithDetails.course_id,
       // If lesson has replacement teacher, use it; otherwise use group teacher or null
       teacherId: lessonWithDetails.teacher_id || lessonWithDetails.original_teacher_id || null,
       // Show replacement teacher name if replaced, otherwise show group teacher name or placeholder
