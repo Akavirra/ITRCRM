@@ -38,6 +38,17 @@ export async function sendMessage(telegramId: string, text: string, options?: Se
   }
 
   try {
+    const body: Record<string, unknown> = {
+      chat_id: telegramId,
+      text: text,
+      parse_mode: options?.parseMode || 'HTML',
+    };
+    
+    // Only include reply_markup if it's provided
+    if (options?.replyMarkup) {
+      body.reply_markup = options.replyMarkup;
+    }
+    
     const response = await fetch(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
       {
@@ -45,12 +56,7 @@ export async function sendMessage(telegramId: string, text: string, options?: Se
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          chat_id: telegramId,
-          text: text,
-          parse_mode: options?.parseMode || 'HTML',
-          reply_markup: options?.replyMarkup || null,
-        }),
+        body: JSON.stringify(body),
       }
     );
 
