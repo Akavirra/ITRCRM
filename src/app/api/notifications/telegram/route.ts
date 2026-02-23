@@ -7,7 +7,9 @@ export const dynamic = 'force-dynamic';
 // Telegram Webhook for handling callback queries
 export async function POST(request: NextRequest) {
   try {
+    console.log('[TelegramWebhook] Received request');
     const body = await request.json();
+    console.log('[TelegramWebhook] Body:', JSON.stringify(body));
     
     // Handle callback query (button click)
     if (body.callback_query) {
