@@ -14,6 +14,16 @@ interface Teacher {
   public_id: string;
 }
 
+interface AttendanceRecord {
+  student_id: number;
+  student_name: string;
+  student_phone: string | null;
+  attendance_id: number | null;
+  status: 'present' | 'absent' | 'makeup_planned' | 'makeup_done' | null;
+  comment: string | null;
+  makeup_lesson_id: number | null;
+}
+
 interface LessonData {
   id: number;
   groupId: number;
@@ -85,6 +95,11 @@ export default function LessonModalsManager() {
   const [selectedTeacherId, setSelectedTeacherId] = useState<Record<number, number | null>>({});
   const [replacementReason, setReplacementReason] = useState<Record<number, string>>({});
   const [teachersLoading, setTeachersLoading] = useState<Record<number, boolean>>({});
+  
+  // Attendance state
+  const [attendance, setAttendance] = useState<Record<number, AttendanceRecord[]>>({});
+  const [attendanceLoading, setAttendanceLoading] = useState<Record<number, boolean>>({});
+  const [attendanceSaving, setAttendanceSaving] = useState<Record<number, boolean>>({});
 
   // Load teachers list
   const loadTeachers = async (lessonId: number) => {
@@ -102,6 +117,49 @@ export default function LessonModalsManager() {
       console.error('Error loading teachers:', error);
     } finally {
       setTeachersLoading(prev => ({ ...prev, [lessonId]: false }));
+    }
+  };
+
+  // Load attendance for lesson
+  const loadAttendance = async (lessonId: number) => {
+    if (attendanceLoading[lessonId]) return;
+    
+    setAttendanceLoading(prev => ({ ...prev, [lessonId]: true }));
+    try {
+      const response = await fetch(`/api/lessons/${lessonId}/attendance`);
+      if (response.ok) {
+        const data = await response.json();
+        setAttendance(prev => ({ ...prev, [lessonId]: data.attendance || [] }));
+      }
+    } catch (error) {
+      console.error('Error loading attendance:', error);
+    } finally {
+      setAttendanceLoading(prev => ({ ...prev, [lessonId]: false }));
+    }
+  };
+
+  // Set attendance for a student
+  const setStudentAttendance = async (lessonId: number, studentId: number, status: 'present' | 'absent') => {
+    setAttendanceSaving(prev => ({ ...prev, [lessonId]: true }));
+    try {
+      const response = await fetch(`/api/lessons/${lessonId}/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set', studentId, status }),
+      });
+      if (response.ok) {
+        // Update local state
+        setAttendance(prev => ({
+          ...prev,
+          [lessonId]: (prev[lessonId] || []).map(a => 
+            a.student_id === studentId ? { ...a, status } : a
+          ),
+        }));
+      }
+    } catch (error) {
+      console.error('Error setting attendance:', error);
+    } finally {
+      setAttendanceSaving(prev => ({ ...prev, [lessonId]: false }));
     }
   };
 
@@ -173,8 +231,13 @@ export default function LessonModalsManager() {
       if (topicSource !== undefined && !lessonTopic[modal.id]) {
         setLessonTopic(prev => ({ ...prev, [modal.id]: topicSource || '' }));
       }
+      
+      // Load attendance if not loaded
+      if (!attendance[modal.id] && !attendanceLoading[modal.id]) {
+        loadAttendance(modal.id);
+      }
     });
-  }, [openModals, lessonData, lessonTopic, loadLessonData]);
+  }, [openModals, lessonData, lessonTopic, loadLessonData, attendance, attendanceLoading]);
 
   const handleClose = (lessonId: number) => {
     closeLessonModal(lessonId);
@@ -691,6 +754,101 @@ export default function LessonModalsManager() {
                     onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
                     onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                   />
+                </div>
+                
+                {/* Attendance section */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                    Відвідуваність
+                    {attendanceLoading[modal.id] && <span style={{ marginLeft: '0.5rem', color: '#9ca3af' }}>Завантаження...</span>}
+                  </div>
+                  
+                  {attendance[modal.id] && attendance[modal.id].length > 0 ? (
+                    <div style={{ 
+                      border: '1px solid #e5e7eb', 
+                      borderRadius: '0.5rem', 
+                      overflow: 'hidden',
+                      maxHeight: '200px',
+                      overflowY: 'auto'
+                    }}>
+                      {attendance[modal.id].map((att, idx) => (
+                        <div 
+                          key={att.student_id}
+                          style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            padding: '0.5rem 0.75rem',
+                            borderBottom: idx < attendance[modal.id].length - 1 ? '1px solid #e5e7eb' : 'none',
+                            backgroundColor: idx % 2 === 0 ? 'white' : '#f9fafb'
+                          }}
+                        >
+                          <span style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                            {att.student_name}
+                          </span>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            <button
+                              onClick={() => setStudentAttendance(modal.id, att.student_id, 'present')}
+                              disabled={attendanceSaving[modal.id]}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '28px',
+                                height: '28px',
+                                padding: 0,
+                                border: '1px solid',
+                                borderColor: att.status === 'present' ? '#22c55e' : '#d1d5db',
+                                borderRadius: '0.25rem',
+                                backgroundColor: att.status === 'present' ? '#dcfce7' : 'white',
+                                color: att.status === 'present' ? '#16a34a' : '#6b7280',
+                                cursor: attendanceSaving[modal.id] ? 'not-allowed' : 'pointer',
+                                opacity: attendanceSaving[modal.id] ? 0.5 : 1,
+                                transition: 'all 0.15s ease',
+                              }}
+                              title="Присутній"
+                            >
+                              <Check size={14} />
+                            </button>
+                            <button
+                              onClick={() => setStudentAttendance(modal.id, att.student_id, 'absent')}
+                              disabled={attendanceSaving[modal.id]}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '28px',
+                                height: '28px',
+                                padding: 0,
+                                border: '1px solid',
+                                borderColor: att.status === 'absent' ? '#ef4444' : '#d1d5db',
+                                borderRadius: '0.25rem',
+                                backgroundColor: att.status === 'absent' ? '#fee2e2' : 'white',
+                                color: att.status === 'absent' ? '#dc2626' : '#6b7280',
+                                cursor: attendanceSaving[modal.id] ? 'not-allowed' : 'pointer',
+                                opacity: attendanceSaving[modal.id] ? 0.5 : 1,
+                                transition: 'all 0.15s ease',
+                              }}
+                              title="Відсутній"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : !attendanceLoading[modal.id] ? (
+                    <div style={{ 
+                      padding: '0.75rem', 
+                      backgroundColor: '#f9fafb', 
+                      borderRadius: '0.5rem',
+                      color: '#6b7280',
+                      fontSize: '0.8125rem',
+                      textAlign: 'center'
+                    }}>
+                      Немає студентів у групі
+                    </div>
+                  ) : null}
                 </div>
                 
                 {/* Actions */}
