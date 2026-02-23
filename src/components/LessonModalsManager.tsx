@@ -361,13 +361,46 @@ export default function LessonModalsManager() {
             id={`lesson-modal-${modal.id}`}
             isOpen={true}
             onClose={() => handleClose(modal.id)}
-            title="Деталі заняття"
+            title="Групове заняття"
             groupUrl={`/groups/${lesson?.groupId}`}
             initialWidth={modal.size?.width || 420}
             initialHeight={modal.size?.height || 480}
             initialPosition={modal.position}
             onPositionChange={(pos) => handleUpdatePosition(modal.id, pos)}
             onSizeChange={(size) => handleUpdateSize(modal.id, size)}
+            headerAction={
+              lesson?.status === 'scheduled' ? (
+                <button
+                  onClick={() => handleDeleteLesson(modal.id)}
+                  disabled={isSaving}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '28px',
+                    height: '28px',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    color: '#64748b',
+                    transition: 'all 0.15s ease',
+                    opacity: isSaving ? 0.5 : 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#fee2e2';
+                    e.currentTarget.style.color = '#dc2626';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#64748b';
+                  }}
+                  title="Видалити заняття"
+                >
+                  <Trash2 size={14} />
+                </button>
+              ) : undefined
+            }
           >
             {isLoading ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
@@ -597,24 +630,8 @@ export default function LessonModalsManager() {
                     </div>
                   )}
                   
-                  {/* Delete button - only for scheduled lessons */}
-                  {lesson.status === 'scheduled' && (
-                    <button
-                      onClick={() => handleDeleteLesson(modal.id)}
-                      disabled={isSaving}
-                      className="btn"
-                      style={{ 
-                        width: '100%', 
-                        justifyContent: 'center',
-                        background: '#fee2e2',
-                        color: '#dc2626',
-                        border: '1px solid #fecaca',
-                      }}
-                    >
-                      <Trash2 size={14} />
-                      {isSaving ? 'Видалення...' : 'Видалити заняття'}
-                    </button>
-                  )}
+                  {/* Delete button - only for scheduled lessons - MOVED TO HEADER */}
+                  {/* Old delete button removed - now in header */}
                 </div>
               </div>
             ) : (

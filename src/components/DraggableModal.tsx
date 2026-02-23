@@ -17,6 +17,7 @@ interface DraggableModalProps {
   courseUrl?: string;
   onPositionChange?: (position: { x: number; y: number }) => void;
   onSizeChange?: (size: { width: number; height: number }) => void;
+  headerAction?: ReactNode;
 }
 
 export default function DraggableModal({
@@ -34,6 +35,7 @@ export default function DraggableModal({
   courseUrl,
   onPositionChange,
   onSizeChange,
+  headerAction,
 }: DraggableModalProps) {
   const [position, setPosition] = useState({ 
     x: initialPosition?.x ?? 100 + Math.random() * 100, 
@@ -294,6 +296,7 @@ export default function DraggableModal({
               </h3>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+              {headerAction}
               {(groupUrl || courseUrl) && (
                 <a
                   href={groupUrl || courseUrl}
@@ -452,6 +455,7 @@ export default function DraggableModal({
             </h3>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {headerAction}
             {/* Go to page button */}
             {(groupUrl || courseUrl) && (
               <a
