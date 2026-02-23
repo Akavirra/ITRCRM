@@ -51,6 +51,7 @@ export default function SchedulePage() {
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(
     startOfWeek(new Date(), { weekStartsOn: 1, locale: uk })
   );
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Filters
   const [groupFilter, setGroupFilter] = useState<string>('');
@@ -64,6 +65,7 @@ export default function SchedulePage() {
   const [generating, setGenerating] = useState(false);
 
   const fetchSchedule = useCallback(async () => {
+    setIsNavigating(true);
     const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
     const weekEndStr = format(addDays(currentWeekStart, 6), 'yyyy-MM-dd');
     
@@ -74,6 +76,7 @@ export default function SchedulePage() {
     const res = await fetch(url);
     const data = await res.json();
     setSchedule(data);
+    setTimeout(() => setIsNavigating(false), 300);
   }, [currentWeekStart, groupFilter, teacherFilter]);
 
   // Listen for lesson deletion to refresh schedule
@@ -110,14 +113,17 @@ export default function SchedulePage() {
   }, [loading, user, fetchSchedule]);
 
   const goToPreviousWeek = () => {
+    setIsNavigating(true);
     setCurrentWeekStart(prev => subWeeks(prev, 1));
   };
 
   const goToNextWeek = () => {
+    setIsNavigating(true);
     setCurrentWeekStart(prev => addWeeks(prev, 1));
   };
 
   const goToCurrentWeek = () => {
+    setIsNavigating(true);
     setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1, locale: uk }));
   };
 
@@ -258,15 +264,39 @@ export default function SchedulePage() {
           }}>
             <button
               onClick={goToPreviousWeek}
+              disabled={isNavigating}
               className="btn btn-secondary"
-              style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}
+              style={{ 
+                padding: '0.5rem 0.75rem', 
+                fontSize: '0.8125rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s ease',
+                opacity: isNavigating ? 0.7 : 1,
+              }}
             >
-              <ChevronLeft size={16} />
-              Попередній
+              <span style={{ 
+                display: 'inline-flex',
+                animation: isNavigating ? 'spin 0.6s linear infinite' : 'none',
+              }}>
+                <ChevronLeft size={16} />
+              </span>
+              {!isNavigating && 'Попередній'}
+              {isNavigating && 'Завантаження...'}
             </button>
             
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
+              <div style={{ 
+                fontSize: '0.9375rem', 
+                fontWeight: 600, 
+                color: '#111827', 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.5px', 
+                marginBottom: '0.25rem',
+                transition: 'opacity 0.2s ease',
+                opacity: isNavigating ? 0.5 : 1,
+              }}>
                 {schedule?.weekStart && format(parseISO(schedule.weekStart), 'LLLL yyyy', { locale: uk })}
               </div>
               <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>
@@ -278,11 +308,18 @@ export default function SchedulePage() {
                   return `${weeks.length} тижнів у місяці`;
                 })()}
               </div>
-              <div style={{ fontSize: '1.125rem', fontWeight: 500, color: '#111827' }}>
+              <div style={{ 
+                fontSize: '1.125rem', 
+                fontWeight: 500, 
+                color: '#111827',
+                transition: 'opacity 0.2s ease',
+                opacity: isNavigating ? 0.5 : 1,
+              }}>
                 {schedule?.weekStart && formatDate(schedule.weekStart)} — {schedule?.weekEnd && formatDate(schedule.weekEnd)}
               </div>
               <button
                 onClick={goToCurrentWeek}
+                disabled={isNavigating}
                 style={{
                   fontSize: '0.8125rem',
                   fontWeight: 500,
@@ -290,14 +327,17 @@ export default function SchedulePage() {
                   background: '#eff6ff',
                   border: '1px solid #dbeafe',
                   borderRadius: '0.5rem',
-                  cursor: 'pointer',
+                  cursor: isNavigating ? 'not-allowed' : 'pointer',
                   padding: '0.375rem 0.75rem',
                   marginTop: '0.5rem',
                   transition: 'all 0.15s ease',
+                  opacity: isNavigating ? 0.7 : 1,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#dbeafe';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  if (!isNavigating) {
+                    e.currentTarget.style.background = '#dbeafe';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = '#eff6ff';
@@ -310,11 +350,26 @@ export default function SchedulePage() {
             
             <button
               onClick={goToNextWeek}
+              disabled={isNavigating}
               className="btn btn-secondary"
-              style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}
+              style={{ 
+                padding: '0.5rem 0.75rem', 
+                fontSize: '0.8125rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s ease',
+                opacity: isNavigating ? 0.7 : 1,
+              }}
             >
-              Наступний
-              <ChevronRight size={16} />
+              {!isNavigating && 'Наступний'}
+              {isNavigating && 'Завантаження...'}
+              <span style={{ 
+                display: 'inline-flex',
+                animation: isNavigating ? 'spin 0.6s linear infinite' : 'none',
+              }}>
+                <ChevronRight size={16} />
+              </span>
             </button>
           </div>
         </div>
@@ -325,8 +380,30 @@ export default function SchedulePage() {
         display: 'grid', 
         gridTemplateColumns: 'repeat(7, 1fr)', 
         gap: '0.75rem',
+        minHeight: '400px',
+        transition: 'opacity 0.2s ease',
+        opacity: isNavigating ? 0.6 : 1,
       }} className="schedule-grid">
         <style>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+          }
+          .schedule-grid {
+            animation: fadeIn 0.3s ease-out;
+          }
+          .schedule-day {
+            animation: fadeIn 0.4s ease-out backwards;
+          }
+          ${[0,1,2,3,4,5,6].map(i => `.schedule-day:nth-child(${i + 1}) { animation-delay: ${i * 0.05}s; }`).join('\n')}
           @media (max-width: 1200px) {
             .schedule-grid {
               grid-template-columns: repeat(4, 1fr) !important;
