@@ -51,7 +51,7 @@ export async function GET(
   }
   
   // Get lesson with group, course and teacher details
-  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; teacher_id: number; teacher_name: string }>(
+  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; teacher_id: number; teacher_name: string; original_teacher_id: number; is_replaced: boolean }>(
     `SELECT 
       l.id,
       l.group_id,
@@ -61,14 +61,15 @@ export async function GET(
       l.topic,
       l.status,
       l.created_by,
-      g.title as group_title,
-      c.title as course_title,
-      g.teacher_id,
-      u.name as teacher_name
+      COALESCE(l.teacher_id, g.teacher_id) as teacher_id,
+      COALESCE(u.name, g_teacher.name) as teacher_name,
+      g.teacher_id as original_teacher_id,
+      CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced
     FROM lessons l
     JOIN groups g ON l.group_id = g.id
     JOIN courses c ON g.course_id = c.id
-    JOIN users u ON g.teacher_id = u.id
+    LEFT JOIN users u ON l.teacher_id = u.id
+    LEFT JOIN users g_teacher ON g.teacher_id = g_teacher.id
     WHERE l.id = $1`,
     [lessonId]
   );
@@ -81,6 +82,8 @@ export async function GET(
     courseTitle: lessonWithDetails.course_title,
     teacherId: lessonWithDetails.teacher_id,
     teacherName: lessonWithDetails.teacher_name,
+    originalTeacherId: lessonWithDetails.original_teacher_id,
+    isReplaced: lessonWithDetails.is_replaced,
     startTime: lessonWithDetails.start_datetime.split(' ')[1].substring(0, 5),
     endTime: lessonWithDetails.end_datetime.split(' ')[1].substring(0, 5),
     status: lessonWithDetails.status,
@@ -178,7 +181,7 @@ export async function PATCH(
     await run(sql, params);
     
     // Get updated lesson with group, course and teacher details
-    const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_id: number; teacher_name: string }>(
+    const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_id: number; teacher_name: string; original_teacher_id: number; is_replaced: boolean }>(
       `SELECT 
         l.id,
         l.group_id,
@@ -188,14 +191,15 @@ export async function PATCH(
         l.topic,
         l.status,
         l.created_by,
-        g.title as group_title,
-        c.title as course_title,
-        g.teacher_id,
-        u.name as teacher_name
+        COALESCE(l.teacher_id, g.teacher_id) as teacher_id,
+        COALESCE(u.name, g_teacher.name) as teacher_name,
+        g.teacher_id as original_teacher_id,
+        CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       JOIN courses c ON g.course_id = c.id
-      JOIN users u ON g.teacher_id = u.id
+      LEFT JOIN users u ON l.teacher_id = u.id
+      LEFT JOIN users g_teacher ON g.teacher_id = g_teacher.id
       WHERE l.id = $1`,
       [lessonId]
     );
@@ -208,6 +212,8 @@ export async function PATCH(
       courseTitle: updatedLessonRaw.course_title,
       teacherId: updatedLessonRaw.teacher_id,
       teacherName: updatedLessonRaw.teacher_name,
+      originalTeacherId: updatedLessonRaw.original_teacher_id,
+      isReplaced: updatedLessonRaw.is_replaced,
       startTime: updatedLessonRaw.start_datetime.split(' ')[1].substring(0, 5),
       endTime: updatedLessonRaw.end_datetime.split(' ')[1].substring(0, 5),
       status: updatedLessonRaw.status,

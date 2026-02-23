@@ -18,6 +18,8 @@ interface LessonRow {
   course_title: string;
   teacher_id: number;
   teacher_name: string;
+  original_teacher_id: number;
+  is_replaced: boolean;
   weekly_day: number;
   start_time: string;
   duration_minutes: number;
@@ -71,15 +73,18 @@ export async function GET(request: NextRequest) {
       l.status,
       g.title as group_title,
       c.title as course_title,
-      g.teacher_id,
-      u.name as teacher_name,
+      COALESCE(l.teacher_id, g.teacher_id) as teacher_id,
+      COALESCE(u.name, g_teacher.name) as teacher_name,
+      g.teacher_id as original_teacher_id,
+      CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
       g.weekly_day,
       g.start_time,
       g.duration_minutes
     FROM lessons l
     JOIN groups g ON l.group_id = g.id
     JOIN courses c ON g.course_id = c.id
-    JOIN users u ON g.teacher_id = u.id
+    LEFT JOIN users u ON l.teacher_id = u.id
+    LEFT JOIN users g_teacher ON g.teacher_id = g_teacher.id
     WHERE l.lesson_date >= $1 AND l.lesson_date <= $2
   `;
   
@@ -143,6 +148,8 @@ export async function GET(request: NextRequest) {
         courseTitle: lesson.course_title,
         teacherId: lesson.teacher_id,
         teacherName: lesson.teacher_name,
+        originalTeacherId: lesson.original_teacher_id,
+        isReplaced: lesson.is_replaced,
         startTime: lesson.start_time,
         endTime: calculateEndTime(lesson.start_time, lesson.duration_minutes),
         status: lesson.status,

@@ -3,7 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import DraggableModal from './DraggableModal';
 import { useLessonModals } from './LessonModalsContext';
-import { Clock, BookOpen, User, Check, X, Calendar, Trash2 } from 'lucide-react';
+import { Clock, BookOpen, User, Check, X, Calendar, Trash2, ArrowRightCircle, UserMinus } from 'lucide-react';
+
+interface Teacher {
+  id: number;
+  name: string;
+  public_id: string;
+}
 
 interface LessonData {
   id: number;
@@ -12,6 +18,8 @@ interface LessonData {
   courseTitle: string;
   teacherId: number;
   teacherName: string;
+  originalTeacherId?: number;
+  isReplaced?: boolean;
   startTime: string;
   endTime: string;
   status: 'scheduled' | 'done' | 'canceled';
@@ -64,6 +72,10 @@ export default function LessonModalsManager() {
   // Form state
   const [lessonTopic, setLessonTopic] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState<Record<number, boolean>>({});
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [showTeacherSelect, setShowTeacherSelect] = useState<Record<number, boolean>>({});
+  const [selectedTeacherId, setSelectedTeacherId] = useState<Record<number, number | null>>({});
+  const [replacementReason, setReplacementReason] = useState<Record<number, string>>({});
 
   useEffect(() => {
     setIsHydrated(true);

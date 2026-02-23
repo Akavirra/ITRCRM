@@ -15,6 +15,8 @@ interface StoredModal {
     courseTitle: string;
     teacherId: number;
     teacherName: string;
+    originalTeacherId?: number;
+    isReplaced?: boolean;
     startTime: string;
     endTime: string;
     status: 'scheduled' | 'done' | 'canceled';
