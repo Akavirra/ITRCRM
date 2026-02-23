@@ -202,6 +202,12 @@ export default function SchedulePage() {
     return format(date, 'd MMM', { locale: uk });
   };
 
+  const isToday = (dateStr: string) => {
+    const today = new Date();
+    const date = parseISO(dateStr);
+    return format(today, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+  };
+
   if (loading) {
     return <PageLoading />;
   }
@@ -421,26 +427,49 @@ export default function SchedulePage() {
           }
         `}</style>
         
-        {schedule?.days.map((day) => (
-          <div
-            key={day.date}
-            className="card"
-            style={{ 
-              minHeight: '200px',
-            }}
-          >
+        {schedule?.days.map((day) => {
+          const todayStyle = isToday(day.date) ? {
+            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+            border: '2px solid #3b82f6',
+            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)',
+          } : {};
+          
+          return (
+            <div
+              key={day.date}
+              className="card"
+              style={{ 
+                minHeight: '200px',
+                ...todayStyle,
+              }}>
             <div className="card-body" style={{ padding: '0.75rem' }}>
               {/* Day Header */}
               <div style={{ 
                 textAlign: 'center', 
                 marginBottom: '0.75rem',
                 paddingBottom: '0.5rem',
-                borderBottom: '1px solid #e5e7eb',
+                borderBottom: isToday(day.date) ? '2px solid #3b82f6' : '1px solid #e5e7eb',
               }}>
+                {isToday(day.date) && (
+                  <div style={{ 
+                    background: '#3b82f6', 
+                    color: 'white', 
+                    fontSize: '0.625rem', 
+                    fontWeight: 700, 
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    padding: '0.125rem 0.5rem',
+                    borderRadius: '0.25rem',
+                    marginBottom: '0.25rem',
+                    display: 'inline-block',
+                  }}>
+                    Сьогодні
+                  </div>
+                )}
                 <div style={{ 
                   fontSize: '0.8125rem', 
                   fontWeight: 600, 
-                  color: '#6b7280', 
+                  color: isToday(day.date) ? '#3b82f6' : '#6b7280', 
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
                 }}>
@@ -576,8 +605,9 @@ export default function SchedulePage() {
                 )}
               </div>
             </div>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       {showGenerateModal && (
