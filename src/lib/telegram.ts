@@ -5,13 +5,28 @@
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
+interface TelegramInlineKeyboardButton {
+  text: string;
+  url?: string;
+  callback_data?: string;
+}
+
+interface TelegramInlineKeyboard {
+  inline_keyboard: TelegramInlineKeyboardButton[][];
+}
+
+interface SendMessageOptions {
+  parseMode?: 'HTML' | 'Markdown';
+  replyMarkup?: TelegramInlineKeyboard;
+}
+
 /**
  * Send a message to a Telegram user
  * @param telegramId - The Telegram user ID
  * @param text - The message text to send
  * @returns true if successful, false if telegram_id not found or error
  */
-export async function sendMessage(telegramId: string, text: string): Promise<boolean> {
+export async function sendMessage(telegramId: string, text: string, options?: SendMessageOptions): Promise<boolean> {
   if (!TELEGRAM_BOT_TOKEN) {
     console.error('TELEGRAM_BOT_TOKEN is not configured');
     return false;
@@ -33,7 +48,8 @@ export async function sendMessage(telegramId: string, text: string): Promise<boo
         body: JSON.stringify({
           chat_id: telegramId,
           text: text,
-          parse_mode: 'HTML',
+          parse_mode: options?.parseMode || 'HTML',
+          reply_markup: options?.replyMarkup || null,
         }),
       }
     );

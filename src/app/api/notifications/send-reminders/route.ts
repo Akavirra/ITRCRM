@@ -12,6 +12,8 @@ interface LessonData {
   start_datetime: string;
   end_datetime: string;
   status: string;
+  topic: string | null;
+  notes: string | null;
   group_title: string;
   course_title: string;
   teacher_id: number;
@@ -55,10 +57,11 @@ export async function POST(request: NextRequest) {
     
     // Process each lesson
     for (const lessonId of lessonIds) {
-      // Get lesson data with group, course, and teacher info
+      // Get lesson data with group, course, teacher info, topic and notes
       const lesson = await get<LessonData>(
         `SELECT 
           l.id, l.group_id, l.lesson_date, l.start_datetime, l.end_datetime, l.status,
+          l.topic, l.notes,
           g.title as group_title, c.title as course_title,
           g.teacher_id,
           u.name as teacher_name, u.telegram_id as teacher_telegram_id,
@@ -99,8 +102,8 @@ export async function POST(request: NextRequest) {
       }
       
       // Get active students for this group
-      const students = await all<{ full_name: string }>(
-        `SELECT s.full_name 
+      const students = await all<{ student_id: number; full_name: string }>(
+        `SELECT s.id as student_id, s.full_name 
          FROM student_groups sg
          JOIN students s ON sg.student_id = s.id
          WHERE sg.group_id = $1 AND sg.is_active = TRUE`,
@@ -124,26 +127,67 @@ export async function POST(request: NextRequest) {
         minute: '2-digit'
       });
       
-      // Build message text
-      let messageText = `📚 Нагадування про заняття сьогодні\n\n`;
-      messageText += `Група: ${lesson.group_title}\n`;
-      messageText += `Курс: ${lesson.course_title}\n`;
-      messageText += `Час: ${startTime} - ${endTime}\n`;
-      messageText += `Дата: ${lessonDate}\n\n`;
-      messageText += `👥 Список учнів:\n`;
+      // Build beautiful HTML message with inline keyboard for students
+      let messageText = `<b>📚 Нагадування про заняття</b>\n\n`;
+      messageText += `<b>Група:</b> ${lesson.group_title}\n`;
+      messageText += `<b>Курс:</b> ${lesson.course_title}\n`;
+      messageText += `<b>🕐 Час:</b> ${startTime} - ${endTime}\n`;
+      messageText += `<b>📅 Дата:</b> ${lessonDate}\n`;
+      
+      if (lesson.topic) {
+        messageText += `<b>📝 Тема:</b> ${lesson.topic}\n`;
+      }
+      
+      if (lesson.notes) {
+        messageText += `<b>📋 Нотатки:</b> ${lesson.notes}\n`;
+      }
+      
+      messageText += `\n<b>👥 Відмітьте присутність:</b>\n`;
+      
+      // Create inline keyboard for students
+      const keyboard: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } = {
+        inline_keyboard: []
+      };
       
       if (students.length > 0) {
         students.forEach((student, index) => {
           messageText += `${index + 1}. ${student.full_name}\n`;
+          // Add button for each student
+          keyboard.inline_keyboard.push([
+            {
+              text: `✅ ${student.full_name} - Присутній`,
+              callback_data: `attendance_${lessonId}_${student.student_id}_present`
+            },
+            {
+              text: `❌ ${student.full_name} - Відсутній`,
+              callback_data: `attendance_${lessonId}_${student.student_id}_absent`
+            }
+          ]);
         });
       } else {
-        messageText += `Немає активних учнів у групі\n`;
+        messageText += `<i>Немає активних учнів у групі</i>\n`;
       }
       
-      messageText += `\nВідмітьте присутність та вкажіть тему заняття у системі.`;
+      // Add button to set topic
+      keyboard.inline_keyboard.push([
+        {
+          text: '📝 Вказати тему заняття',
+          callback_data: `set_topic_${lessonId}`
+        }
+      ]);
       
-      // Send message
-      const success = await sendMessage(teacherTelegramId, messageText);
+      keyboard.inline_keyboard.push([
+        {
+          text: '📋 Вказати нотатки',
+          callback_data: `set_notes_${lessonId}`
+        }
+      ]);
+      
+      // Send message with inline keyboard
+      const success = await sendMessage(teacherTelegramId, messageText, {
+        parseMode: 'HTML',
+        replyMarkup: keyboard
+      });
       
       if (success) {
         sent.push({
