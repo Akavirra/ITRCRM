@@ -21,6 +21,7 @@ interface Lesson {
   id: number;
   groupId: number;
   groupTitle: string;
+  courseId: number;
   courseTitle: string;
   teacherId: number;
   teacherName: string;
@@ -136,6 +137,7 @@ export default function SchedulePage() {
   const handleLessonClick = (lesson: Lesson) => {
     openLessonModal(lesson.id, `Заняття #${lesson.id}`, {
       id: lesson.id,
+      courseId: lesson.courseId,
       groupId: lesson.groupId,
       groupTitle: lesson.groupTitle,
       courseTitle: lesson.courseTitle,
