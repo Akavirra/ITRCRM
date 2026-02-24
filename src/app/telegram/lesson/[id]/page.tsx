@@ -63,10 +63,20 @@ export default function TelegramLessonPage() {
       window.Telegram.WebApp.ready();
       window.Telegram.WebApp.expand();
     }
-    loadData();
+    // Only load data if lessonId is valid
+    if (lessonId > 0) {
+      loadData();
+    }
   }, [lessonId]);
   
   const loadData = async () => {
+    // Validate lessonId first
+    if (isNaN(lessonId)) {
+      setError('Невірний ID заняття: ' + params.id);
+      setLoading(false);
+      return;
+    }
+    
     try {
       // Pass Telegram initData for authentication
       const telegramInitData = window.Telegram?.WebApp?.initData || '';
