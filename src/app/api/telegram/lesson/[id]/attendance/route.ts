@@ -95,9 +95,13 @@ export async function POST(
   
   try {
     const body = await request.json();
+    console.log('[Telegram Attendance POST] Incoming request body:', body);
+    
     const { action, studentId, status } = body;
     
     if (action === 'set' && studentId && status) {
+      console.log('[Telegram Attendance POST] Setting attendance for studentId:', studentId, 'status:', status);
+      
       if (telegramUser) {
         await run(
           `INSERT INTO attendance (lesson_id, student_id, status, updated_at, updated_by)
@@ -105,6 +109,7 @@ export async function POST(
            ON CONFLICT (lesson_id, student_id) DO UPDATE SET status = $3, updated_at = NOW(), updated_by = $4`,
           [lessonId, studentId, status, telegramUser.id]
         );
+        console.log('[Telegram Attendance POST] Attendance updated with user info');
       } else {
         await run(
           `INSERT INTO attendance (lesson_id, student_id, status, updated_at)
@@ -112,14 +117,16 @@ export async function POST(
            ON CONFLICT (lesson_id, student_id) DO UPDATE SET status = $3, updated_at = NOW()`,
           [lessonId, studentId, status]
         );
+        console.log('[Telegram Attendance POST] Attendance updated without user info');
       }
       
       return NextResponse.json({ success: true });
     }
     
+    console.error('[Telegram Attendance POST] Invalid action or parameters:', { action, studentId, status });
     return NextResponse.json({ error: 'Невірна дія' }, { status: 400 });
   } catch (error) {
-    console.error('Error setting attendance:', error);
+    console.error('[Telegram Attendance POST] Error setting attendance:', error);
     return NextResponse.json({ error: 'Помилка' }, { status: 500 });
   }
 }

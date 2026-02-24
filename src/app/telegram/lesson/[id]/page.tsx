@@ -150,6 +150,8 @@ export default function TelegramLessonPage() {
   
   const setAttendance = async (studentId: number, status: 'present' | 'absent') => {
     try {
+      console.log('[setAttendance] Setting attendance for student', studentId, 'to', status);
+      
       const telegramInitData = window.Telegram?.WebApp?.initData || '';
       
       const response = await fetch(`/api/telegram/lesson/${lessonId}/attendance`, {
@@ -161,13 +163,22 @@ export default function TelegramLessonPage() {
         body: JSON.stringify({ action: 'set', studentId, status })
       });
       
+      console.log('[setAttendance] Response status:', response.status);
+      const responseData = await response.json();
+      console.log('[setAttendance] Response data:', responseData);
+      
       if (response.ok) {
         setStudents(prev => prev.map(s => 
           s.student_id === studentId ? { ...s, status } : s
         ));
+        console.log('[setAttendance] Students state updated');
+      } else {
+        console.error('[setAttendance] Error setting attendance:', responseData.error);
+        setError(`Помилка: ${responseData.error}`);
       }
     } catch (err) {
-      console.error('Error setting attendance:', err);
+      console.error('[setAttendance] Exception:', err);
+      setError('Помилка при встановленні відвідуваності');
     }
   };
   
