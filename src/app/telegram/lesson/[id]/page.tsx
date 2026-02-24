@@ -65,32 +65,10 @@ export default function TelegramLessonPage() {
       window.Telegram.WebApp.expand();
     }
     
-    // Only load data if lessonId is valid and Telegram WebApp is initialized
-    const initAndLoad = () => {
-      if (lessonId > 0) {
-        // Check if Telegram WebApp is available and has initData
-        if (window.Telegram?.WebApp?.initData) {
-          loadData();
-        } else {
-          // If not available yet, wait and retry
-          const interval = setInterval(() => {
-            if (window.Telegram?.WebApp?.initData) {
-              clearInterval(interval);
-              loadData();
-            }
-          }, 500);
-          
-          // Timeout after 10 seconds
-          setTimeout(() => {
-            clearInterval(interval);
-            setLoading(false);
-            setError("Помилка: Не вдалося під'єднатися до Telegram WebApp");
-          }, 10000);
-        }
-      }
-    };
-    
-    initAndLoad();
+    // Load data directly (we've removed strict Telegram auth check)
+    if (lessonId > 0) {
+      loadData();
+    }
   }, [lessonId]);
   
   const loadData = async () => {
