@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, forbidden } from '@/lib/api-utils';
-import { get, all, run } from '@/db';
+import { get, run } from '@/db';
 import { sendMessage } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
@@ -110,17 +110,6 @@ export async function POST(request: NextRequest) {
         continue;
       }
       
-      // Get active students for this group with their current attendance status
-      const students = await all<{ student_id: number; full_name: string; status: string | null }>(
-        `SELECT s.id as student_id, s.full_name, a.status
-         FROM student_groups sg
-         JOIN students s ON sg.student_id = s.id
-         LEFT JOIN attendance a ON a.lesson_id = $1 AND a.student_id = s.id
-         WHERE sg.group_id = $2 AND sg.is_active = TRUE
-         ORDER BY s.full_name`,
-        [lessonId, lesson.group_id]
-      );
-      
       // Format date and time
       const lessonDate = new Date(lesson.lesson_date).toLocaleDateString('uk-UA', {
         day: '2-digit',
@@ -133,95 +122,26 @@ export async function POST(request: NextRequest) {
         minute: '2-digit'
       });
       
-      const endTime = new Date(lesson.end_datetime).toLocaleTimeString('uk-UA', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      
-      // Build beautiful HTML message with inline keyboard for students
-      let messageText = `<b>📚 Нагадування про заняття</b>\n\n`;
+      // Build simple message - ONLY required information
+      let messageText = `<b>Нагадування про заняття</b>\n\n`;
       messageText += `<b>Група:</b> ${lesson.group_title}\n`;
-      messageText += `<b>Курс:</b> ${lesson.course_title}\n`;
-      messageText += `<b>🕐 Час:</b> ${startTime} - ${endTime}\n`;
-      messageText += `<b>📅 Дата:</b> ${lessonDate}\n`;
+      messageText += `<b>Дата:</b> ${lessonDate}\n`;
+      messageText += `<b>Час:</b> ${startTime}\n`;
       
-      if (lesson.topic) {
-        messageText += `<b>📝 Тема:</b> ${lesson.topic}\n`;
-      } else {
-        messageText += `<b>📝 Тема:</b> <i>Ще не вказано</i>\n`;
-      }
-      
-      if (lesson.notes) {
-        messageText += `<b>📋 Нотатки:</b> ${lesson.notes}\n`;
-      } else {
-        messageText += `<b>📋 Нотатки:</b> <i>Ще не вказано</i>\n`;
-      }
-      
-      messageText += `\n<b>👥 Відмітьте присутність:</b>\n`;
-      
-      // Create inline keyboard for students
+      // Create inline keyboard with ONLY "Open form" button
       const keyboard: { inline_keyboard: Array<Array<{ text: string; callback_data?: string; web_app?: { url: string } }>> } = {
         inline_keyboard: []
       };
       
-      if (students.length > 0) {
-        students.forEach((student, index) => {
-          const currentStatus = student.status === 'present' ? '✅' : student.status === 'absent' ? '❌' : '⬜';
-          messageText += `${index + 1}. ${currentStatus} ${student.full_name}\n`;
-          
-          // Only show buttons for students not yet marked
-          if (!student.status) {
-            // Add button for each student
-            keyboard.inline_keyboard.push([
-              {
-                text: `✅ ${student.full_name}`,
-                callback_data: `attendance_${lessonId}_${student.student_id}_present`
-              },
-              {
-                text: `❌ ${student.full_name}`,
-                callback_data: `attendance_${lessonId}_${student.student_id}_absent`
-              }
-            ]);
-          }
-        });
-        
-        // Add info about attendance count
-        const presentCount = students.filter(s => s.status === 'present').length;
-        const absentCount = students.filter(s => s.status === 'absent').length;
-        const unmarkedCount = students.filter(s => !s.status).length;
-        messageText += `\n<b>Підсумок:</b> ✅ ${presentCount} | ❌ ${absentCount} | ⬜ ${unmarkedCount}`;
-      } else {
-        messageText += `<i>Немає активних учнів у групі</i>\n`;
-      }
-      
       // Add button to open web app for lesson details
-      // Note: Replace 'https://itrcrm.vercel.app' with your actual domain
       const WEB_APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://itrcrm.vercel.app';
       
-      // Add callback URL for attendance buttons
-      const CALLBACK_URL = process.env.NEXT_PUBLIC_APP_URL 
-        ? `${process.env.NEXT_PUBLIC_APP_URL}/api/telegram/callback`
-        : 'https://itrcrm.vercel.app/api/telegram/callback';
-      
-      // Add action buttons for quick actions
       keyboard.inline_keyboard.push([
         {
           text: '📋 Відкрити форму',
           web_app: {
             url: `${WEB_APP_URL}/telegram/lesson/${lessonId}`
           }
-        }
-      ]);
-      
-      // Add quick action buttons
-      keyboard.inline_keyboard.push([
-        {
-          text: '📝 Додати тему',
-          callback_data: `topic_${lessonId}`
-        },
-        {
-          text: '📋 Додати нотатки',
-          callback_data: `notes_${lessonId}`
         }
       ]);
       
