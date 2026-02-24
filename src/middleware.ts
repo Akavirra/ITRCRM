@@ -9,11 +9,16 @@ const PUBLIC_ROUTES = [
   '/telegram',
 ]
 
+// Check if pathname starts with any of the public routes
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'));
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Пропускаємо публічні маршрути
-  if (PUBLIC_ROUTES.some(route => pathname === route)) {
+  if (isPublicRoute(pathname)) {
     return NextResponse.next()
   }
 
