@@ -81,7 +81,7 @@ export default function TelegramLessonPage() {
           setTopic(data.lesson.topic || '');
           setNotes(data.lesson.notes || '');
         } else {
-          setError(data.error || 'Заняття не знайдено');
+          setError(data.error || 'Заняття не знайдено' + (data.debug ? ` (ID: ${data.debug.lessonId})` : ''));
         }
       } else if (lessonRes.status === 401) {
         setError('Доступ заборонено. Ви не прив\'язані до системи. Зверніться до адміністратора для прив\'язки Telegram-акаунту.');

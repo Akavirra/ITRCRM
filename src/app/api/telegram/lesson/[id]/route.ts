@@ -107,7 +107,8 @@ export async function GET(
   
   if (!lessonWithDetails) {
     console.error('[Telegram Lesson] Lesson not found in database:', lessonId);
-    return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
+    console.error('[Telegram Lesson] SQL query was executed, but returned no results');
+    return NextResponse.json({ error: 'Заняття не знайдено', debug: { lessonId } }, { status: 404 });
   }
   
   console.log('[Telegram Lesson] Found lesson:', lessonWithDetails.group_title, lessonWithDetails.course_title);
