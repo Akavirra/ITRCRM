@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS attendance (
   status TEXT NOT NULL DEFAULT 'present' CHECK(status IN ('present', 'absent', 'makeup_planned', 'makeup_done')),
   comment TEXT,
   makeup_lesson_id INTEGER,
-  updated_by INTEGER NOT NULL,
+  updated_by INTEGER,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE,
   FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
