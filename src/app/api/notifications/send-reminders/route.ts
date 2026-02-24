@@ -67,25 +67,54 @@ export async function POST(request: NextRequest) {
     // Process each lesson
     for (const lessonId of lessonIds) {
       // Get lesson data with group, course, teacher info, and topic
-      const lesson = await get<LessonData>(
-        `SELECT 
-          l.id, l.group_id, l.lesson_date, l.start_datetime, l.end_datetime, l.status,
-          l.topic, l.notes,
-          g.title as group_title, c.title as course_title,
-          g.teacher_id,
-          u.name as teacher_name, u.telegram_id as teacher_telegram_id,
-          ltr.replacement_teacher_id,
-          ru.name as replacement_teacher_name, ru.telegram_id as replacement_teacher_telegram_id
-        FROM lessons l
-        JOIN groups g ON l.group_id = g.id
-        JOIN courses c ON g.course_id = c.id
-        JOIN users g_teacher ON g.teacher_id = g_teacher.id
-        LEFT JOIN lesson_teacher_replacements ltr ON l.id = ltr.lesson_id
-        LEFT JOIN users u ON g.teacher_id = u.id
-        LEFT JOIN users ru ON ltr.replacement_teacher_id = ru.id
-        WHERE l.id = $1`,
-        [lessonId]
-      );
+      // Support both numeric id and public_id (LSN-XXXXXXXX)
+      let lesson;
+      const numericId = parseInt(lessonId, 10);
+      if (!isNaN(numericId)) {
+        // Try numeric id
+        lesson = await get<LessonData>(
+          `SELECT 
+            l.id, l.group_id, l.lesson_date, l.start_datetime, l.end_datetime, l.status,
+            l.topic, l.notes,
+            g.title as group_title, c.title as course_title,
+            g.teacher_id,
+            u.name as teacher_name, u.telegram_id as teacher_telegram_id,
+            ltr.replacement_teacher_id,
+            ru.name as replacement_teacher_name, ru.telegram_id as replacement_teacher_telegram_id
+          FROM lessons l
+          JOIN groups g ON l.group_id = g.id
+          JOIN courses c ON g.course_id = c.id
+          JOIN users g_teacher ON g.teacher_id = g_teacher.id
+          LEFT JOIN lesson_teacher_replacements ltr ON l.id = ltr.lesson_id
+          LEFT JOIN users u ON g.teacher_id = u.id
+          LEFT JOIN users ru ON ltr.replacement_teacher_id = ru.id
+          WHERE l.id = $1`,
+          [numericId]
+        );
+      }
+      
+      // If not found by numeric id, try public_id
+      if (!lesson && typeof lessonId === 'string' && lessonId.includes('LSN-')) {
+        lesson = await get<LessonData>(
+          `SELECT 
+            l.id, l.group_id, l.lesson_date, l.start_datetime, l.end_datetime, l.status,
+            l.topic, l.notes,
+            g.title as group_title, c.title as course_title,
+            g.teacher_id,
+            u.name as teacher_name, u.telegram_id as teacher_telegram_id,
+            ltr.replacement_teacher_id,
+            ru.name as replacement_teacher_name, ru.telegram_id as replacement_teacher_telegram_id
+          FROM lessons l
+          JOIN groups g ON l.group_id = g.id
+          JOIN courses c ON g.course_id = c.id
+          JOIN users g_teacher ON g.teacher_id = g_teacher.id
+          LEFT JOIN lesson_teacher_replacements ltr ON l.id = ltr.lesson_id
+          LEFT JOIN users u ON g.teacher_id = u.id
+          LEFT JOIN users ru ON ltr.replacement_teacher_id = ru.id
+          WHERE l.public_id = $1`,
+          [lessonId]
+        );
+      }
       
       if (!lesson) {
         skipped.push({ lessonId, reason: 'Заняття не знайдено' });

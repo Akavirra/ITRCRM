@@ -52,18 +52,96 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Parse lessonId
+  // Parse lessonId - support both numeric id and public_id (LSN-XXXXXXXX)
   console.log('[Telegram Lesson] Raw params.id:', JSON.stringify(params.id));
-  const lessonId = parseInt(params.id, 10);
+  const rawId = params.id;
+  let lesson;
   
-  console.log('[Telegram Lesson] params.id:', params.id, 'parsed lessonId:', lessonId);
-  
-  if (isNaN(lessonId)) {
-    console.error('[Telegram Lesson] Invalid lesson ID:', params.id);
-    return NextResponse.json({ error: 'Невірний ID заняття' }, { status: 400 });
+  // Try to parse as numeric id first
+  const numericId = parseInt(rawId, 10);
+  if (!isNaN(numericId)) {
+    console.log('[Telegram Lesson] Trying to find lesson by numeric id:', numericId);
+    lesson = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null }>(
+      `SELECT 
+        l.id,
+        l.group_id,
+        l.lesson_date,
+        l.start_datetime,
+        l.end_datetime,
+        l.topic,
+        l.notes,
+        l.status,
+        l.created_by,
+        l.teacher_id,
+        l.topic_set_by,
+        l.topic_set_at,
+        l.notes_set_by,
+        l.notes_set_at,
+        u.name as teacher_name,
+        g.title as group_title,
+        g.teacher_id as original_teacher_id,
+        g.course_id as course_id,
+        c.title as course_title,
+        CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
+        topic_user.name as topic_set_by_name,
+        notes_user.name as notes_set_by_name
+      FROM lessons l
+      JOIN groups g ON l.group_id = g.id
+      JOIN courses c ON g.course_id = c.id
+      LEFT JOIN users u ON l.teacher_id = u.id
+      LEFT JOIN users topic_user ON l.topic_set_by = topic_user.id
+      LEFT JOIN users notes_user ON l.notes_set_by = notes_user.id
+      WHERE l.id = $1`,
+      [numericId]
+    );
   }
   
-  console.log('[Telegram Lesson] Loading lesson:', lessonId);
+  // If not found by numeric id, try to find by public_id
+  if (!lesson && rawId.includes('LSN-')) {
+    console.log('[Telegram Lesson] Trying to find lesson by public_id:', rawId);
+    lesson = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null }>(
+      `SELECT 
+        l.id,
+        l.group_id,
+        l.lesson_date,
+        l.start_datetime,
+        l.end_datetime,
+        l.topic,
+        l.notes,
+        l.status,
+        l.created_by,
+        l.teacher_id,
+        l.topic_set_by,
+        l.topic_set_at,
+        l.notes_set_by,
+        l.notes_set_at,
+        u.name as teacher_name,
+        g.title as group_title,
+        g.teacher_id as original_teacher_id,
+        g.course_id as course_id,
+        c.title as course_title,
+        CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
+        topic_user.name as topic_set_by_name,
+        notes_user.name as notes_set_by_name
+      FROM lessons l
+      JOIN groups g ON l.group_id = g.id
+      JOIN courses c ON g.course_id = c.id
+      LEFT JOIN users u ON l.teacher_id = u.id
+      LEFT JOIN users topic_user ON l.topic_set_by = topic_user.id
+      LEFT JOIN users notes_user ON l.notes_set_by = notes_user.id
+      WHERE l.public_id = $1`,
+      [rawId]
+    );
+  }
+  
+  if (!lesson) {
+    console.error('[Telegram Lesson] Lesson not found by any identifier:', rawId);
+    const lessonsCount = await get<{ count: number }>(`SELECT COUNT(*) as count FROM lessons`);
+    const allLessons = await all<{ id: number; public_id: string; group_id: number; lesson_date: string }>(`SELECT id, public_id, group_id, lesson_date FROM lessons LIMIT 10`);
+    console.error('[Telegram Lesson] Lessons count:', lessonsCount?.count);
+    console.error('[Telegram Lesson] First 10 lessons:', allLessons);
+    return NextResponse.json({ error: 'Заняття не знайдено', debug: { searchedId: rawId, lessonsCount: lessonsCount?.count, allLessons } }, { status: 404 });
+  }
   
   // Verify Telegram user
   const initData = request.nextUrl.searchParams.get('initData') || '';
@@ -76,55 +154,7 @@ export async function GET(
   
   console.log('[Telegram Lesson] Authorized user:', telegramUser.id, telegramUser.name);
   
-  console.log('[Telegram Lesson] Querying database for lesson:', lessonId);
-  
-  // Get lesson with group, course and teacher details
-  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null }>(
-    `SELECT 
-      l.id,
-      l.group_id,
-      l.lesson_date,
-      l.start_datetime,
-      l.end_datetime,
-      l.topic,
-      l.notes,
-      l.status,
-      l.created_by,
-      l.teacher_id,
-      l.topic_set_by,
-      l.topic_set_at,
-      l.notes_set_by,
-      l.notes_set_at,
-      u.name as teacher_name,
-      g.title as group_title,
-      g.teacher_id as original_teacher_id,
-      g.course_id as course_id,
-      c.title as course_title,
-      CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
-      topic_user.name as topic_set_by_name,
-      notes_user.name as notes_set_by_name
-    FROM lessons l
-    JOIN groups g ON l.group_id = g.id
-    JOIN courses c ON g.course_id = c.id
-    LEFT JOIN users u ON l.teacher_id = u.id
-    LEFT JOIN users topic_user ON l.topic_set_by = topic_user.id
-    LEFT JOIN users notes_user ON l.notes_set_by = notes_user.id
-    WHERE l.id = $1`,
-    [lessonId]
-  );
-  
-  if (!lessonWithDetails) {
-    console.error('[Telegram Lesson] Lesson not found in database:', lessonId);
-    console.error('[Telegram Lesson] SQL query was executed, but returned no results');
-    // Перевірка чи існує таблиця lessons та чи є в ній дані
-    const lessonsCount = await get<{ count: number }>(`SELECT COUNT(*) as count FROM lessons`);
-    const allLessons = await all<{ id: number; group_id: number; lesson_date: string }>(`SELECT id, group_id, lesson_date FROM lessons LIMIT 10`);
-    console.error('[Telegram Lesson] Lessons count:', lessonsCount?.count);
-    console.error('[Telegram Lesson] First 10 lessons:', allLessons);
-    return NextResponse.json({ error: 'Заняття не знайдено', debug: { lessonId, lessonsCount: lessonsCount?.count, allLessons } }, { status: 404 });
-  }
-  
-  console.log('[Telegram Lesson] Found lesson:', lessonWithDetails.group_title, lessonWithDetails.course_title);
+  console.log('[Telegram Lesson] Found lesson:', lesson.group_title, lesson.course_title);
   
   // Format datetime
   const formatDateTime = (date: any) => {
@@ -155,27 +185,27 @@ export async function GET(
     });
   };
   
-  const transformedLesson = lessonWithDetails ? {
-    id: lessonWithDetails.id,
-    groupId: lessonWithDetails.group_id,
-    groupTitle: lessonWithDetails.group_title,
-    courseTitle: lessonWithDetails.course_title,
-    courseId: lessonWithDetails.course_id,
-    teacherId: lessonWithDetails.teacher_id || lessonWithDetails.original_teacher_id || null,
-    teacherName: lessonWithDetails.teacher_name || (lessonWithDetails.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
-    originalTeacherId: lessonWithDetails.original_teacher_id || null,
-    isReplaced: lessonWithDetails.is_replaced,
-    startTime: formatDateTime(lessonWithDetails.start_datetime),
-    endTime: formatDateTime(lessonWithDetails.end_datetime),
-    lessonDate: formatDate(lessonWithDetails.lesson_date),
-    status: lessonWithDetails.status,
-    topic: lessonWithDetails.topic,
-    notes: lessonWithDetails.notes,
-    topicSetBy: lessonWithDetails.topic_set_by_name,
-    topicSetAt: formatTimestamp(lessonWithDetails.topic_set_at),
-    notesSetBy: lessonWithDetails.notes_set_by_name,
-    notesSetAt: formatTimestamp(lessonWithDetails.notes_set_at),
-  } : null;
+  const transformedLesson = {
+    id: lesson.id,
+    groupId: lesson.group_id,
+    groupTitle: lesson.group_title,
+    courseTitle: lesson.course_title,
+    courseId: lesson.course_id,
+    teacherId: lesson.teacher_id || lesson.original_teacher_id || null,
+    teacherName: lesson.teacher_name || (lesson.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
+    originalTeacherId: lesson.original_teacher_id || null,
+    isReplaced: lesson.is_replaced,
+    startTime: formatDateTime(lesson.start_datetime),
+    endTime: formatDateTime(lesson.end_datetime),
+    lessonDate: formatDate(lesson.lesson_date),
+    status: lesson.status,
+    topic: lesson.topic,
+    notes: lesson.notes,
+    topicSetBy: lesson.topic_set_by_name,
+    topicSetAt: formatTimestamp(lesson.topic_set_at),
+    notesSetBy: lesson.notes_set_by_name,
+    notesSetAt: formatTimestamp(lesson.notes_set_at),
+  };
 
   return NextResponse.json({ lesson: transformedLesson });
 }

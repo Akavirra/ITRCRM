@@ -2,6 +2,30 @@ import { run, get, all, transaction } from '@/db';
 import { addDays, addMonths, setHours, setMinutes, format, parse, isAfter, isBefore, startOfDay, endOfMonth } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
+// Character set for generating random alphanumeric strings (uppercase only)
+const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const MIN_RANDOM_LENGTH = 8;
+const MAX_RANDOM_LENGTH = 10;
+
+function generateRandomString(length: number): string {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  let result = '';
+  
+  for (let i = 0; i < length; i++) {
+    const index = bytes[i] % CHARSET.length;
+    result += CHARSET[index];
+  }
+  
+  return result;
+}
+
+function generatePublicId(prefix: string): string {
+  const length = MIN_RANDOM_LENGTH + Math.floor(Math.random() * (MAX_RANDOM_LENGTH - MIN_RANDOM_LENGTH + 1));
+  const randomPart = generateRandomString(length);
+  return `${prefix}-${randomPart}`;
+}
+
 interface Group {
   id: number;
   weekly_day: number; // 0-6 (Sunday-Saturday)
@@ -14,6 +38,7 @@ interface Group {
 
 interface Lesson {
   id: number;
+  public_id: string;
   group_id: number;
   lesson_date: string;
   start_datetime: string;
@@ -75,7 +100,7 @@ export async function generateLessonsForGroup(
   }
   
   // Generate lessons
-  const lessonsToInsert: Array<[number, string, string, string, string, number]> = [];
+  const lessonsToInsert: Array<[string, number, string, string, string, string, number]> = [];
   
   while (!isAfter(currentDate, finalEndDate)) {
     const dateStr = format(currentDate, 'yyyy-MM-dd');
@@ -91,7 +116,7 @@ export async function generateLessonsForGroup(
       const startStr = format(startDateTime, 'yyyy-MM-dd HH:mm:ss');
       const endStr = format(endDateTime, 'yyyy-MM-dd HH:mm:ss');
       
-      lessonsToInsert.push([groupId, dateStr, startStr, endStr, 'scheduled', createdBy]);
+      lessonsToInsert.push([generatePublicId('LSN'), groupId, dateStr, startStr, endStr, 'scheduled', createdBy]);
       generated++;
     } else {
       skipped++;
@@ -105,8 +130,8 @@ export async function generateLessonsForGroup(
     await transaction(async () => {
       for (const lesson of lessonsToInsert) {
         await run(
-          `INSERT INTO lessons (group_id, lesson_date, start_datetime, end_datetime, status, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
+          `INSERT INTO lessons (public_id, group_id, lesson_date, start_datetime, end_datetime, status, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           lesson
         );
       }

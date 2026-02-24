@@ -124,6 +124,7 @@ CREATE INDEX idx_student_groups_active ON student_groups(is_active);
 -- Lessons table
 CREATE TABLE IF NOT EXISTS lessons (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  public_id TEXT UNIQUE,
   group_id INTEGER NOT NULL,
   lesson_date DATE NOT NULL,
   start_datetime DATETIME NOT NULL,
@@ -140,6 +141,7 @@ CREATE TABLE IF NOT EXISTS lessons (
 CREATE INDEX idx_lessons_group_date ON lessons(group_id, lesson_date);
 CREATE INDEX idx_lessons_date ON lessons(lesson_date);
 CREATE INDEX idx_lessons_status ON lessons(status);
+CREATE UNIQUE INDEX idx_lessons_public_id ON lessons(public_id);
 
 -- Attendance table
 CREATE TABLE IF NOT EXISTS attendance (

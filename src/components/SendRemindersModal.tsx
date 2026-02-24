@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 
 interface TodayLesson {
   id: number;
+  public_id: string;
   lesson_date: string;
   start_datetime: string;
   end_datetime: string;
@@ -248,7 +249,7 @@ export default function SendRemindersModal({ isOpen, onClose, onSuccess }: SendR
               }}>
                 {lessons.map(lesson => (
                   <div
-                    key={lesson.id}
+                    key={lesson.public_id}
                     style={{
                       display: 'flex',
                       alignItems: 'flex-start',

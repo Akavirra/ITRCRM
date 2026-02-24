@@ -24,7 +24,6 @@
     "csv-stringify": "^6.4.6",
     "date-fns": "^3.0.6",
     "date-fns-tz": "^3.2.0",
-    "dotenv": "^17.3.1",
     "iconv-lite": "^0.7.2",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^4.1.0",
@@ -46,9 +45,12 @@
     "@types/react": "^18.2.46",
     "@types/react-dom": "^18.2.18",
     "@types/uuid": "^9.0.7",
+    "better-sqlite3": "^12.6.2",
+    "dotenv": "^17.3.1",
     "eslint": "^8.56.0",
     "eslint-config-next": "14.0.4",
     "jest": "^29.7.0",
+    "pg": "^8.18.0",
     "ts-jest": "^29.1.1",
     "typescript": "^5.3.3"
   }

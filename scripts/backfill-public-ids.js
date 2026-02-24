@@ -26,6 +26,7 @@ const PREFIXES = {
   courses: 'CRS',
   groups: 'GRP',
   students: 'STU',
+  lessons: 'LSN',
 };
 
 // Min and max length for the random part
@@ -191,6 +192,7 @@ function main() {
       { name: 'courses', prefix: PREFIXES.courses },
       { name: 'groups', prefix: PREFIXES.groups },
       { name: 'students', prefix: PREFIXES.students },
+      { name: 'lessons', prefix: PREFIXES.lessons },
     ];
 
     // Ensure public_id column exists in all tables

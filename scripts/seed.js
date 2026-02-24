@@ -2,6 +2,29 @@ const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+
+const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const MIN_RANDOM_LENGTH = 8;
+const MAX_RANDOM_LENGTH = 10;
+
+function generateRandomString(length) {
+  const bytes = crypto.randomBytes(length);
+  let result = '';
+  
+  for (let i = 0; i < length; i++) {
+    const index = bytes[i] % CHARSET.length;
+    result += CHARSET[index];
+  }
+  
+  return result;
+}
+
+function generatePublicId(prefix) {
+  const length = MIN_RANDOM_LENGTH + Math.floor(Math.random() * (MAX_RANDOM_LENGTH - MIN_RANDOM_LENGTH + 1));
+  const randomPart = generateRandomString(length);
+  return `${prefix}-${randomPart}`;
+}
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'school.db');
 
@@ -148,9 +171,10 @@ async function seed() {
     
     try {
       db.prepare(`
-        INSERT INTO lessons (group_id, lesson_date, start_datetime, end_datetime, topic, status, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO lessons (public_id, group_id, lesson_date, start_datetime, end_datetime, topic, status, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
+        generatePublicId('LSN'),
         groupId,
         dateStr,
         startDateTime,
