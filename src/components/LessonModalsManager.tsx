@@ -253,6 +253,23 @@ export default function LessonModalsManager() {
     }
   }, [updateModalState]);
 
+  // Auto-refresh lesson data every 10 seconds when modal is open
+  useEffect(() => {
+    const openLessonIds = openModals
+      .filter(modal => modal.isOpen && modal.id && typeof modal.id === 'number')
+      .map(modal => modal.id as number);
+    
+    if (openLessonIds.length === 0) return;
+    
+    const interval = setInterval(() => {
+      openLessonIds.forEach(lessonId => {
+        loadLessonData(lessonId);
+      });
+    }, 10000); // Refresh every 10 seconds
+    
+    return () => clearInterval(interval);
+  }, [openModals, loadLessonData]);
+
   useEffect(() => {
     openModals.forEach(modal => {
       // Validate modal has valid id
