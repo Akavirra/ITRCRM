@@ -9,6 +9,9 @@ interface TelegramInlineKeyboardButton {
   text: string;
   url?: string;
   callback_data?: string;
+  web_app?: {
+    url: string;
+  };
 }
 
 interface TelegramInlineKeyboard {

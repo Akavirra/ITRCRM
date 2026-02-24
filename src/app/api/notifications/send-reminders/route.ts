@@ -5,6 +5,15 @@ import { sendMessage } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 
+interface TelegramInlineKeyboardButton {
+  text: string;
+  url?: string;
+  callback_data?: string;
+  web_app?: {
+    url: string;
+  };
+}
+
 interface LessonData {
   id: number;
   group_id: number;
@@ -149,7 +158,7 @@ export async function POST(request: NextRequest) {
       messageText += `\n<b>👥 Відмітьте присутність:</b>\n`;
       
       // Create inline keyboard for students
-      const keyboard: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } = {
+      const keyboard: { inline_keyboard: Array<Array<{ text: string; callback_data?: string; web_app?: { url: string } }>> } = {
         inline_keyboard: []
       };
       
@@ -172,11 +181,16 @@ export async function POST(request: NextRequest) {
         messageText += `<i>Немає активних учнів у групі</i>\n`;
       }
       
-      // Add button to set topic and notes (combined)
+      // Add button to open web app for lesson details
+      // Note: Replace 'https://itrcrm.vercel.app' with your actual domain
+      const WEB_APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://itrcrm.vercel.app';
+      
       keyboard.inline_keyboard.push([
         {
-          text: '📝📋 Тема та нотатки',
-          callback_data: `set_lesson_${lessonId}`
+          text: '📋 Відкрити форму',
+          web_app: {
+            url: `${WEB_APP_URL}/telegram/lesson/${lessonId}`
+          }
         }
       ]);
       
