@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
   if (today) {
     // Get today's lessons
     const lessons = await getTodayLessons();
+    console.log('[API Lessons today=true] Returning lessons:', lessons.map(l => ({ id: l.id, date: l.lesson_date })));
     return NextResponse.json({ lessons });
   }
   

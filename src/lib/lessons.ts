@@ -195,7 +195,7 @@ export async function getUpcomingLessons(limit: number = 10): Promise<Array<Less
 
 // Get today's lessons for all groups (admin view)
 export async function getTodayLessons(): Promise<Array<Lesson & { group_title: string; course_title: string; teacher_name: string; replacement_teacher_name: string | null }>> {
-  return await all<Lesson & { group_title: string; course_title: string; teacher_name: string; replacement_teacher_name: string | null }>(
+  const lessons = await all<Lesson & { group_title: string; course_title: string; teacher_name: string; replacement_teacher_name: string | null }>(
     `SELECT l.*, g.title as group_title, c.title as course_title, 
             u.name as teacher_name, 
             ru.name as replacement_teacher_name
@@ -208,6 +208,8 @@ export async function getTodayLessons(): Promise<Array<Lesson & { group_title: s
      WHERE l.lesson_date = CURRENT_DATE AND l.status != 'canceled'
      ORDER BY l.start_datetime ASC`
   );
+  console.log('[getTodayLessons] Found lessons:', lessons.map(l => ({ id: l.id, date: l.lesson_date })));
+  return lessons;
 }
 
 // Cancel lesson
