@@ -96,12 +96,14 @@ export default function TelegramLessonPage() {
           setError(data.error || 'Заняття не знайдено' + (data.debug ? ` (ID: ${data.debug.lessonId})` : ''));
         }
       } else if (lessonRes.status === 401) {
-        setError('Доступ заборонено. Ви не прив\'язані до системи. Зверніться до адміністратора для прив\'язки Telegram-акаунту.');
+        const data = await lessonRes.json();
+        setError(`Доступ заборонено: ${data.error || 'Ви не прив\'язані до системи'}`);
       } else if (lessonRes.status === 404) {
-        setError('Заняття не знайдено. Можливо, заняття було видалено або має інший статус.');
+        const data = await lessonRes.json();
+        setError(`Заняття не знайдено: ${data.error || ''} (ID: ${lessonId})`);
       } else {
         const data = await lessonRes.json();
-        setError(data.error || 'Помилка завантаження даних');
+        setError(`Помилка ${lessonRes.status}: ${data.error || 'Невідома помилка'}`);
       }
       
       if (studentsRes.ok) {
