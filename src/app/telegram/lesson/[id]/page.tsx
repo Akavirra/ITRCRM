@@ -81,6 +81,7 @@ export default function TelegramLessonPage() {
     try {
       // Pass Telegram initData for authentication
       const telegramInitData = window.Telegram?.WebApp?.initData || '';
+      console.log('[TelegramLessonPage] initData:', telegramInitData);
       
       const [lessonRes, studentsRes] = await Promise.all([
         fetch(`/api/telegram/lesson/${lessonId}?initData=${encodeURIComponent(telegramInitData)}`),

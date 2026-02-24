@@ -21,13 +21,17 @@ async function verifyTelegramUser(initData: string): Promise<{ id: number; name:
   if (!initData) return null;
   
   try {
+    console.log('[Telegram Verify] initData:', initData.substring(0, 100));
     // Parse initData (format: key1=value1&key2=value2&...)
     const params = new URLSearchParams(initData);
     const userJson = params.get('user');
+    console.log('[Telegram Verify] userJson:', userJson);
     if (!userJson) return null;
     
     const user = JSON.parse(decodeURIComponent(userJson));
     if (!user || !user.id) return null;
+    
+    console.log('[Telegram Verify] User from initData:', user);
     
     // Find user by telegram_id
     const dbUser = await get<{ id: number; name: string }>(
@@ -35,6 +39,7 @@ async function verifyTelegramUser(initData: string): Promise<{ id: number; name:
       [user.id.toString()]
     );
     
+    console.log('[Telegram Verify] DB User:', dbUser);
     return dbUser || null;
   } catch (error) {
     console.error('Error verifying Telegram user:', error);
