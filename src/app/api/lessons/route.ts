@@ -33,5 +33,9 @@ export async function GET(request: NextRequest) {
   
   // Get upcoming lessons
   const lessons = await getUpcomingLessons(limit);
+  console.log('[Lessons API] Returning', lessons.length, 'upcoming lessons');
+  lessons.forEach((lesson, index) => {
+    console.log(`[Lessons API] Lesson ${index + 1}: ID=${lesson.id}, Group=${lesson.group_id}, Date=${lesson.lesson_date}`);
+  });
   return NextResponse.json({ lessons });
 }

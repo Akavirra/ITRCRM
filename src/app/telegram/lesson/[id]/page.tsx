@@ -45,6 +45,7 @@ interface Student {
 
 export default function TelegramLessonPage() {
   const params = useParams();
+  console.log('[TelegramLessonPage] Full params:', JSON.stringify(params));
   const lessonId = parseInt(params.id as string);
   
   console.log('[TelegramLessonPage] params.id:', params.id, 'lessonId:', lessonId);
@@ -177,9 +178,12 @@ export default function TelegramLessonPage() {
   }
   
   if (!lesson) {
+    console.log('[TelegramLessonPage] No lesson data available');
+    console.log('[TelegramLessonPage] Error:', error);
     return (
       <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>
-        <p>Заняття не знайдено</p>
+        <p>{error || 'Заняття не знайдено'}</p>
+        <p style={{ fontSize: '12px', marginTop: '10px' }}>ID: {lessonId}</p>
       </div>
     );
   }

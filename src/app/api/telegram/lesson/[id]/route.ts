@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { get } from '@/db';
+import { get, all } from '@/db';
 
 interface Lesson {
   id: number;
@@ -48,6 +48,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   // Parse lessonId
+  console.log('[Telegram Lesson] Raw params.id:', JSON.stringify(params.id));
   const lessonId = parseInt(params.id, 10);
   
   console.log('[Telegram Lesson] params.id:', params.id, 'parsed lessonId:', lessonId);
@@ -110,7 +111,12 @@ export async function GET(
   if (!lessonWithDetails) {
     console.error('[Telegram Lesson] Lesson not found in database:', lessonId);
     console.error('[Telegram Lesson] SQL query was executed, but returned no results');
-    return NextResponse.json({ error: 'Заняття не знайдено', debug: { lessonId } }, { status: 404 });
+    // Перевірка чи існує таблиця lessons та чи є в ній дані
+    const lessonsCount = await get<{ count: number }>(`SELECT COUNT(*) as count FROM lessons`);
+    const allLessons = await all<{ id: number; group_id: number; lesson_date: string }>(`SELECT id, group_id, lesson_date FROM lessons LIMIT 10`);
+    console.error('[Telegram Lesson] Lessons count:', lessonsCount?.count);
+    console.error('[Telegram Lesson] First 10 lessons:', allLessons);
+    return NextResponse.json({ error: 'Заняття не знайдено', debug: { lessonId, lessonsCount: lessonsCount?.count, allLessons } }, { status: 404 });
   }
   
   console.log('[Telegram Lesson] Found lesson:', lessonWithDetails.group_title, lessonWithDetails.course_title);

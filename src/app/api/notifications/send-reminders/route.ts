@@ -133,14 +133,16 @@ export async function POST(request: NextRequest) {
         inline_keyboard: []
       };
       
-      // Add button to open web app for lesson details
+       // Add button to open web app for lesson details
       const WEB_APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://itrcrm.vercel.app';
+      const lessonUrl = `${WEB_APP_URL}/telegram/lesson/${lessonId}`;
+      console.log('[Send Reminders] Lesson URL:', lessonUrl);
       
       keyboard.inline_keyboard.push([
         {
           text: '📋 Відкрити форму',
           web_app: {
-            url: `${WEB_APP_URL}/telegram/lesson/${lessonId}`
+            url: lessonUrl
           }
         }
       ]);
