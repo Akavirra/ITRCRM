@@ -95,15 +95,10 @@ export default function TelegramLessonPage() {
         } else {
           setError(data.error || 'Заняття не знайдено' + (data.debug ? ` (ID: ${data.debug.lessonId})` : ''));
         }
-      } else if (lessonRes.status === 401) {
-        const data = await lessonRes.json();
-        setError(`Доступ заборонено: ${data.error || 'Ви не прив\'язані до системи'}`);
-      } else if (lessonRes.status === 404) {
-        const data = await lessonRes.json();
-        setError(`Заняття не знайдено: ${data.error || ''} (ID: ${lessonId})`);
       } else {
+        // Show full error details
         const data = await lessonRes.json();
-        setError(`Помилка ${lessonRes.status}: ${data.error || 'Невідома помилка'}`);
+        setError(`Status: ${lessonRes.status}, Error: ${JSON.stringify(data)}`);
       }
       
       if (studentsRes.ok) {
