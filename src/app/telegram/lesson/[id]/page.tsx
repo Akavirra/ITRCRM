@@ -47,6 +47,8 @@ export default function TelegramLessonPage() {
   const params = useParams();
   const lessonId = parseInt(params.id as string);
   
+  console.log('[TelegramLessonPage] params.id:', params.id, 'lessonId:', lessonId);
+  
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);

@@ -50,6 +50,8 @@ export async function GET(
   // Parse lessonId
   const lessonId = parseInt(params.id, 10);
   
+  console.log('[Telegram Lesson] params.id:', params.id, 'parsed lessonId:', lessonId);
+  
   if (isNaN(lessonId)) {
     console.error('[Telegram Lesson] Invalid lesson ID:', params.id);
     return NextResponse.json({ error: 'Невірний ID заняття' }, { status: 400 });
