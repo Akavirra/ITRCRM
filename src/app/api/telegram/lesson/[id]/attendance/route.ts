@@ -127,7 +127,9 @@ export async function POST(
     return NextResponse.json({ error: 'Невірна дія' }, { status: 400 });
   } catch (error) {
     console.error('[Telegram Attendance POST] Error setting attendance:', error);
-    return NextResponse.json({ error: 'Помилка' }, { status: 500 });
+    // Send detailed error message to client for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
