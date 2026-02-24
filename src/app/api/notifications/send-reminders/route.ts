@@ -110,13 +110,15 @@ export async function POST(request: NextRequest) {
         continue;
       }
       
-      // Get active students for this group
-      const students = await all<{ student_id: number; full_name: string }>(
-        `SELECT s.id as student_id, s.full_name 
+      // Get active students for this group with their current attendance status
+      const students = await all<{ student_id: number; full_name: string; status: string | null }>(
+        `SELECT s.id as student_id, s.full_name, a.status
          FROM student_groups sg
          JOIN students s ON sg.student_id = s.id
-         WHERE sg.group_id = $1 AND sg.is_active = TRUE`,
-        [lesson.group_id]
+         LEFT JOIN attendance a ON a.lesson_id = $1 AND a.student_id = s.id
+         WHERE sg.group_id = $2 AND sg.is_active = TRUE
+         ORDER BY s.full_name`,
+        [lessonId, lesson.group_id]
       );
       
       // Format date and time
@@ -164,19 +166,30 @@ export async function POST(request: NextRequest) {
       
       if (students.length > 0) {
         students.forEach((student, index) => {
-          messageText += `${index + 1}. ${student.full_name}\n`;
-          // Add button for each student
-          keyboard.inline_keyboard.push([
-            {
-              text: `✅ ${student.full_name} - Присутній`,
-              callback_data: `attendance_${lessonId}_${student.student_id}_present`
-            },
-            {
-              text: `❌ ${student.full_name} - Відсутній`,
-              callback_data: `attendance_${lessonId}_${student.student_id}_absent`
-            }
-          ]);
+          const currentStatus = student.status === 'present' ? '✅' : student.status === 'absent' ? '❌' : '⬜';
+          messageText += `${index + 1}. ${currentStatus} ${student.full_name}\n`;
+          
+          // Only show buttons for students not yet marked
+          if (!student.status) {
+            // Add button for each student
+            keyboard.inline_keyboard.push([
+              {
+                text: `✅ ${student.full_name}`,
+                callback_data: `attendance_${lessonId}_${student.student_id}_present`
+              },
+              {
+                text: `❌ ${student.full_name}`,
+                callback_data: `attendance_${lessonId}_${student.student_id}_absent`
+              }
+            ]);
+          }
         });
+        
+        // Add info about attendance count
+        const presentCount = students.filter(s => s.status === 'present').length;
+        const absentCount = students.filter(s => s.status === 'absent').length;
+        const unmarkedCount = students.filter(s => !s.status).length;
+        messageText += `\n<b>Підсумок:</b> ✅ ${presentCount} | ❌ ${absentCount} | ⬜ ${unmarkedCount}`;
       } else {
         messageText += `<i>Немає активних учнів у групі</i>\n`;
       }
@@ -185,12 +198,30 @@ export async function POST(request: NextRequest) {
       // Note: Replace 'https://itrcrm.vercel.app' with your actual domain
       const WEB_APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://itrcrm.vercel.app';
       
+      // Add callback URL for attendance buttons
+      const CALLBACK_URL = process.env.NEXT_PUBLIC_APP_URL 
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/api/telegram/callback`
+        : 'https://itrcrm.vercel.app/api/telegram/callback';
+      
+      // Add action buttons for quick actions
       keyboard.inline_keyboard.push([
         {
           text: '📋 Відкрити форму',
           web_app: {
             url: `${WEB_APP_URL}/telegram/lesson/${lessonId}`
           }
+        }
+      ]);
+      
+      // Add quick action buttons
+      keyboard.inline_keyboard.push([
+        {
+          text: '📝 Додати тему',
+          callback_data: `topic_${lessonId}`
+        },
+        {
+          text: '📋 Додати нотатки',
+          callback_data: `notes_${lessonId}`
         }
       ]);
       

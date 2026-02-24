@@ -47,19 +47,28 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Parse lessonId
   const lessonId = parseInt(params.id, 10);
   
   if (isNaN(lessonId)) {
+    console.error('[Telegram Lesson] Invalid lesson ID:', params.id);
     return NextResponse.json({ error: 'Невірний ID заняття' }, { status: 400 });
   }
+  
+  console.log('[Telegram Lesson] Loading lesson:', lessonId);
   
   // Verify Telegram user
   const initData = request.nextUrl.searchParams.get('initData') || '';
   const telegramUser = await verifyTelegramUser(initData);
   
   if (!telegramUser) {
+    console.error('[Telegram Lesson] Unauthorized user, initData:', initData ? 'present' : 'empty');
     return NextResponse.json({ error: 'Доступ заборонено' }, { status: 401 });
   }
+  
+  console.log('[Telegram Lesson] Authorized user:', telegramUser.id, telegramUser.name);
+  
+  console.log('[Telegram Lesson] Querying database for lesson:', lessonId);
   
   // Get lesson with group, course and teacher details
   const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null }>(
@@ -90,7 +99,6 @@ export async function GET(
     JOIN groups g ON l.group_id = g.id
     JOIN courses c ON g.course_id = c.id
     LEFT JOIN users u ON l.teacher_id = u.id
-    LEFT JOIN users g_teacher ON g.teacher_id = g_teacher.id
     LEFT JOIN users topic_user ON l.topic_set_by = topic_user.id
     LEFT JOIN users notes_user ON l.notes_set_by = notes_user.id
     WHERE l.id = $1`,
@@ -98,8 +106,11 @@ export async function GET(
   );
   
   if (!lessonWithDetails) {
+    console.error('[Telegram Lesson] Lesson not found in database:', lessonId);
     return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
   }
+  
+  console.log('[Telegram Lesson] Found lesson:', lessonWithDetails.group_title, lessonWithDetails.course_title);
   
   // Format datetime
   const formatDateTime = (date: any) => {

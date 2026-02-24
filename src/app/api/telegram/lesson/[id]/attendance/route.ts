@@ -41,8 +41,11 @@ export async function GET(
   const telegramUser = await verifyTelegramUser(initData);
   
   if (!telegramUser) {
+    console.error('[Telegram Attendance] Unauthorized - initData:', initData ? 'present' : 'empty');
     return NextResponse.json({ error: 'Доступ заборонено' }, { status: 401 });
   }
+  
+  console.log('[Telegram Attendance] User authorized:', telegramUser.id, 'lessonId:', lessonId);
   
   // Get students with their attendance
   const attendance = await all<{
