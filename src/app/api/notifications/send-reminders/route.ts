@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, forbidden } from '@/lib/api-utils';
-import { get, all } from '@/db';
+import { get, all, run } from '@/db';
 import { sendMessage } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +13,7 @@ interface LessonData {
   end_datetime: string;
   status: string;
   topic: string | null;
+  notes: string | null;
   group_title: string;
   course_title: string;
   teacher_id: number;
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
       const lesson = await get<LessonData>(
         `SELECT 
           l.id, l.group_id, l.lesson_date, l.start_datetime, l.end_datetime, l.status,
-          l.topic,
+          l.topic, l.notes,
           g.title as group_title, c.title as course_title,
           g.teacher_id,
           u.name as teacher_name, u.telegram_id as teacher_telegram_id,
@@ -135,6 +136,14 @@ export async function POST(request: NextRequest) {
       
       if (lesson.topic) {
         messageText += `<b>📝 Тема:</b> ${lesson.topic}\n`;
+      } else {
+        messageText += `<b>📝 Тема:</b> <i>Ще не вказано</i>\n`;
+      }
+      
+      if (lesson.notes) {
+        messageText += `<b>📋 Нотатки:</b> ${lesson.notes}\n`;
+      } else {
+        messageText += `<b>📋 Нотатки:</b> <i>Ще не вказано</i>\n`;
       }
       
       messageText += `\n<b>👥 Відмітьте присутність:</b>\n`;
@@ -163,18 +172,11 @@ export async function POST(request: NextRequest) {
         messageText += `<i>Немає активних учнів у групі</i>\n`;
       }
       
-      // Add button to set topic
+      // Add button to set topic and notes (combined)
       keyboard.inline_keyboard.push([
         {
-          text: '📝 Вказати тему заняття',
-          callback_data: `set_topic_${lessonId}`
-        }
-      ]);
-      
-      keyboard.inline_keyboard.push([
-        {
-          text: '📋 Вказати нотатки',
-          callback_data: `set_notes_${lessonId}`
+          text: '📝📋 Тема та нотатки',
+          callback_data: `set_lesson_${lessonId}`
         }
       ]);
       

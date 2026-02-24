@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { run, get } from '@/db';
-import { sendMessage, answerCallbackQuery, sendMessageWithForceReply } from '@/lib/telegram';
+import { sendMessage, answerCallbackQuery, sendMessageWithForceReply, editMessageText } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 
 // In-memory storage for pending actions (in production, use Redis or DB)
-const pendingActions = new Map<string, { lessonId: number; action: 'topic' | 'notes'; timestamp: number }>();
+const pendingActions = new Map<string, { lessonId: number; action: 'topic' | 'notes' | 'lesson'; timestamp: number; messageId?: number }>();
 
 // Clean up old pending actions (older than 5 minutes)
 function cleanupOldActions() {
@@ -115,6 +115,29 @@ export async function POST(request: NextRequest) {
         
         return NextResponse.json({ ok: true });
       }
+      
+      // New unified handler for setting both topic and notes
+      if (action === 'set' && parts[1] === 'lesson') {
+        const actualLessonId = lessonId;
+        
+        // Request topic input from user (first step)
+        await answerCallbackQuery(callbackQuery.id, '📝 Введіть тему заняття');
+        await sendMessageWithForceReply(
+          telegramId, 
+          `📝 Введіть тему для заняття #${actualLessonId}:\n\n(Відповідь на це повідомлення)`,
+          'Тема заняття...'
+        );
+        
+        // Store pending action with messageId so we can update it later
+        pendingActions.set(`${telegramId}_lesson`, { 
+          lessonId: actualLessonId, 
+          action: 'lesson', 
+          timestamp: Date.now(),
+          messageId: messageId 
+        });
+        
+        return NextResponse.json({ ok: true });
+      }
     }
     
     // Handle text messages (replies to force_reply)
@@ -164,6 +187,96 @@ export async function POST(request: NextRequest) {
           pendingActions.delete(`${telegramId}_notes`);
           
           await sendMessage(telegramId, `✅ Нотатки збережено для заняття #${notesAction.lessonId}:\n\n${text}`);
+          return NextResponse.json({ ok: true });
+        }
+        
+        // Check for pending lesson action (topic + notes)
+        const lessonAction = pendingActions.get(`${telegramId}_lesson`);
+        if (lessonAction && replyToMessage.text?.includes('тему')) {
+          // First step: save topic and ask for notes
+          const user = await get<{ id: number }>(
+            `SELECT id FROM users WHERE telegram_id = $1 LIMIT 1`,
+            [telegramId]
+          );
+          
+          // Save topic to database with who and when set it
+          await run(
+            `UPDATE lessons SET topic = $1, topic_set_by = $2, topic_set_at = NOW(), updated_at = NOW() WHERE id = $3`,
+            [text, user?.id || null, lessonAction.lessonId]
+          );
+          
+          // Update pending action to notes step
+          pendingActions.set(`${telegramId}_lesson_notes`, { 
+            lessonId: lessonAction.lessonId, 
+            action: 'notes', 
+            timestamp: Date.now(),
+            messageId: lessonAction.messageId
+          });
+          
+          // Ask for notes
+          await sendMessageWithForceReply(
+            telegramId, 
+            `📋 Тепер введіть нотатки для заняття #${lessonAction.lessonId}:\n\n(Відповідь на це повідомлення)`,
+            'Нотатки...'
+          );
+          
+          return NextResponse.json({ ok: true });
+        }
+        
+        // Check for pending lesson notes action (second step)
+        const lessonNotesAction = pendingActions.get(`${telegramId}_lesson_notes`);
+        if (lessonNotesAction && replyToMessage.text?.includes('нотатки')) {
+          const user = await get<{ id: number }>(
+            `SELECT id FROM users WHERE telegram_id = $1 LIMIT 1`,
+            [telegramId]
+          );
+          
+          // Save notes to database
+          await run(
+            `UPDATE lessons SET notes = $1, notes_set_by = $2, notes_set_at = NOW(), updated_at = NOW() WHERE id = $3`,
+            [text, user?.id || null, lessonNotesAction.lessonId]
+          );
+          
+          pendingActions.delete(`${telegramId}_lesson_notes`);
+          
+          // Get updated lesson data
+          const lesson = await get<{
+            topic: string | null;
+            notes: string | null;
+            group_title: string;
+            course_title: string;
+            start_datetime: string;
+            end_datetime: string;
+          }>(
+            `SELECT l.topic, l.notes, g.title as group_title, c.title as course_title, 
+                    l.start_datetime, l.end_datetime
+             FROM lessons l
+             JOIN groups g ON l.group_id = g.id
+             JOIN courses c ON g.course_id = c.id
+             WHERE l.id = $1`,
+            [lessonNotesAction.lessonId]
+          );
+          
+          if (lesson && lessonNotesAction.messageId) {
+            // Format the updated message
+            const startTime = new Date(lesson.start_datetime).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+            const endTime = new Date(lesson.end_datetime).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+            const lessonDate = new Date(lesson.start_datetime).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            
+            let updatedMessage = `<b>📚 Заняття оновлено</b>\n\n`;
+            updatedMessage += `<b>Група:</b> ${lesson.group_title}\n`;
+            updatedMessage += `<b>Курс:</b> ${lesson.course_title}\n`;
+            updatedMessage += `<b>🕐 Час:</b> ${startTime} - ${endTime}\n`;
+            updatedMessage += `<b>📅 Дата:</b> ${lessonDate}\n`;
+            updatedMessage += `<b>📝 Тема:</b> ${lesson.topic || '<i>Не вказано</i>'}\n`;
+            updatedMessage += `<b>📋 Нотатки:</b> ${lesson.notes || '<i>Не вказано</i>'}\n`;
+            updatedMessage += `\n<i>Дані оновлено ✅</i>`;
+            
+            // Edit the original message with updated info
+            await editMessageText(telegramId, lessonNotesAction.messageId, updatedMessage);
+          }
+          
+          await sendMessage(telegramId, `✅ Тему та нотатки збережено для заняття #${lessonNotesAction.lessonId}`);
           return NextResponse.json({ ok: true });
         }
       }

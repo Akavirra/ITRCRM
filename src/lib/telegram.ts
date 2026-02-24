@@ -168,3 +168,64 @@ export async function sendMessageWithForceReply(
     return false;
   }
 }
+
+/**
+ * Edit an existing Telegram message text
+ * @param telegramId - The Telegram chat ID
+ * @param messageId - The message ID to edit
+ * @param text - The new text
+ * @param options - Optional keyboard markup
+ * @returns true if successful
+ */
+export async function editMessageText(
+  telegramId: string,
+  messageId: number,
+  text: string,
+  options?: SendMessageOptions
+): Promise<boolean> {
+  if (!TELEGRAM_BOT_TOKEN) {
+    console.error('TELEGRAM_BOT_TOKEN is not configured');
+    return false;
+  }
+
+  if (!telegramId) {
+    console.error('Telegram ID is required');
+    return false;
+  }
+
+  try {
+    const body: Record<string, unknown> = {
+      chat_id: telegramId,
+      message_id: messageId,
+      text: text,
+      parse_mode: options?.parseMode || 'HTML',
+    };
+    
+    if (options?.replyMarkup) {
+      body.reply_markup = options.replyMarkup;
+    }
+    
+    const response = await fetch(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      console.error('Telegram API error:', data.description);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Failed to edit Telegram message:', error);
+    return false;
+  }
+}
