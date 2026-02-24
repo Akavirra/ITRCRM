@@ -5,6 +5,8 @@ const PUBLIC_ROUTES = [
   '/api/auth/login',
   '/api/auth/logout',
   '/api/notifications/telegram',
+  '/api/telegram',
+  '/telegram',
 ]
 
 export function middleware(request: NextRequest) {
