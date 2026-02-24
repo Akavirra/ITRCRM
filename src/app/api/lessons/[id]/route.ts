@@ -73,8 +73,10 @@ export async function GET(
       l.notes_set_by,
       l.notes_set_at,
       u.name as teacher_name,
+      g.title as group_title,
       g.teacher_id as original_teacher_id,
       g.course_id as course_id,
+      c.title as course_title,
       CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
       topic_user.name as topic_set_by_name,
       notes_user.name as notes_set_by_name
@@ -254,7 +256,9 @@ export async function PATCH(
         l.notes_set_by,
         l.notes_set_at,
         u.name as teacher_name,
+        g.title as group_title,
         g.teacher_id as original_teacher_id,
+        c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
         topic_user.name as topic_set_by_name,
         notes_user.name as notes_set_by_name
