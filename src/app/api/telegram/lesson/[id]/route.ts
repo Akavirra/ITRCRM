@@ -18,7 +18,10 @@ interface Lesson {
 
 // Verify Telegram user from initData
 async function verifyTelegramUser(initData: string): Promise<{ id: number; name: string } | null> {
-  if (!initData) return null;
+  if (!initData) {
+    console.log('[Telegram Verify] No initData provided');
+    return null;
+  }
   
   try {
     console.log('[Telegram Verify] initData:', initData.substring(0, 100));
@@ -26,12 +29,18 @@ async function verifyTelegramUser(initData: string): Promise<{ id: number; name:
     const params = new URLSearchParams(initData);
     const userJson = params.get('user');
     console.log('[Telegram Verify] userJson:', userJson);
-    if (!userJson) return null;
+    if (!userJson) {
+      console.log('[Telegram Verify] No user in initData');
+      return null;
+    }
     
     const user = JSON.parse(decodeURIComponent(userJson));
-    if (!user || !user.id) return null;
+    if (!user || !user.id) {
+      console.log('[Telegram Verify] Invalid user data');
+      return null;
+    }
     
-    console.log('[Telegram Verify] User from initData:', user);
+    console.log('[Telegram Verify] User from initData:', user.id, user.first_name, user.last_name);
     
     // Find user by telegram_id
     const dbUser = await get<{ id: number; name: string }>(
@@ -39,8 +48,34 @@ async function verifyTelegramUser(initData: string): Promise<{ id: number; name:
       [user.id.toString()]
     );
     
-    console.log('[Telegram Verify] DB User:', dbUser);
-    return dbUser || null;
+    console.log('[Telegram Verify] DB User found:', dbUser);
+    
+    if (!dbUser) {
+      // Try to find by name as fallback (for testing purposes)
+      const userName = [user.first_name, user.last_name].filter(Boolean).join(' ');
+      console.log('[Telegram Verify] Trying to find user by name:', userName);
+      
+      const dbUserByName = await get<{ id: number; name: string }>(
+        `SELECT id, name FROM users WHERE name ILIKE $1 AND role = 'teacher' LIMIT 1`,
+        [userName]
+      );
+      
+      if (dbUserByName) {
+        console.log('[Telegram Verify] Found user by name, updating telegram_id');
+        // Update the user's telegram_id
+        await run(
+          `UPDATE users SET telegram_id = $1 WHERE id = $2`,
+          [user.id.toString(), dbUserByName.id]
+        );
+        console.log('[Telegram Verify] Updated telegram_id for user:', dbUserByName.id);
+        return dbUserByName;
+      }
+      
+      console.log('[Telegram Verify] User not found in database');
+      return null;
+    }
+    
+    return dbUser;
   } catch (error) {
     console.error('Error verifying Telegram user:', error);
     return null;
