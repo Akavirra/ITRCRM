@@ -72,7 +72,7 @@ export async function GET(
       l.topic_set_at,
       l.notes_set_by,
       l.notes_set_at,
-      u.name as teacher_name,
+      COALESCE(u.name, g_teacher.name) as teacher_name,
       g.title as group_title,
       g.teacher_id as original_teacher_id,
       g.course_id as course_id,
@@ -92,10 +92,37 @@ export async function GET(
   );
   
     // Transform to camelCase format - handle null teacher_id and date conversion
-    const formatDateTime = (date: any) => {
+    const formatDateTime = (date: any): string => {
       if (!date) return '';
-      const dateStr = typeof date === 'string' ? date : new Date(date).toISOString();
-      return dateStr.split(' ')[1]?.substring(0, 5) || '';
+      try {
+        // Handle different date formats from PostgreSQL
+        let dateStr: string;
+        if (typeof date === 'string') {
+          // Handle ISO string or PostgreSQL timestamp
+          dateStr = date;
+        } else if (date instanceof Date) {
+          dateStr = date.toISOString();
+        } else {
+          return '';
+        }
+        
+        // If it's a full ISO string with T, extract time part
+        if (dateStr.includes('T')) {
+          return dateStr.split('T')[1]?.substring(0, 5) || '';
+        }
+        
+        // If it's a space-separated datetime (YYYY-MM-DD HH:MM:SS)
+        const parts = dateStr.split(' ');
+        if (parts.length >= 2) {
+          return parts[1]?.substring(0, 5) || '';
+        }
+        
+        // If it's just a time string (HH:MM:SS)
+        return dateStr.substring(0, 5);
+      } catch (e) {
+        console.error('Error formatting datetime:', e);
+        return '';
+      }
     };
     
     const formatTimestamp = (timestamp: string | null): string | null => {
@@ -255,7 +282,7 @@ export async function PATCH(
         l.topic_set_at,
         l.notes_set_by,
         l.notes_set_at,
-        u.name as teacher_name,
+        COALESCE(u.name, g_teacher.name) as teacher_name,
         g.title as group_title,
         g.teacher_id as original_teacher_id,
         c.title as course_title,
@@ -274,10 +301,37 @@ export async function PATCH(
     );
     
     // Transform to camelCase format - handle null teacher_id and date conversion
-    const formatDateTime = (date: any) => {
+    const formatDateTime = (date: any): string => {
       if (!date) return '';
-      const dateStr = typeof date === 'string' ? date : new Date(date).toISOString();
-      return dateStr.split(' ')[1]?.substring(0, 5) || '';
+      try {
+        // Handle different date formats from PostgreSQL
+        let dateStr: string;
+        if (typeof date === 'string') {
+          // Handle ISO string or PostgreSQL timestamp
+          dateStr = date;
+        } else if (date instanceof Date) {
+          dateStr = date.toISOString();
+        } else {
+          return '';
+        }
+        
+        // If it's a full ISO string with T, extract time part
+        if (dateStr.includes('T')) {
+          return dateStr.split('T')[1]?.substring(0, 5) || '';
+        }
+        
+        // If it's a space-separated datetime (YYYY-MM-DD HH:MM:SS)
+        const parts = dateStr.split(' ');
+        if (parts.length >= 2) {
+          return parts[1]?.substring(0, 5) || '';
+        }
+        
+        // If it's just a time string (HH:MM:SS)
+        return dateStr.substring(0, 5);
+      } catch (e) {
+        console.error('Error formatting datetime:', e);
+        return '';
+      }
     };
     
     const formatTimestamp = (timestamp: string | null): string | null => {
