@@ -89,7 +89,7 @@ export default function LessonModalsManager() {
   const { openTeacherModal } = useTeacherModals();
   const [lessonData, setLessonData] = useState<Record<number, LessonData>>({});
   const [loadingLessons, setLoadingLessons] = useState<Record<number, boolean>>({});
-  const loadingRef = useRef<Record<number, boolean>>({}); // Track loading state without causing re-renders
+  const loadingRef = useRef<Record<string, boolean>>({}); // Track loading state without causing re-renders
   const [isHydrated, setIsHydrated] = useState(false);
   
   // Form state
@@ -133,7 +133,10 @@ export default function LessonModalsManager() {
 
   // Load attendance for lesson
   const loadAttendance = async (lessonId: number) => {
-    if (attendanceLoading[lessonId]) return;
+    // Always fetch fresh data - don't check loading state to ensure we get latest
+    // Use a separate tracking to avoid duplicate requests
+    if (loadingRef.current[`att_${lessonId}`]) return;
+    loadingRef.current[`att_${lessonId}`] = true;
     
     setAttendanceLoading(prev => ({ ...prev, [lessonId]: true }));
     try {
@@ -145,6 +148,7 @@ export default function LessonModalsManager() {
     } catch (error) {
       console.error('Error loading attendance:', error);
     } finally {
+      loadingRef.current[`att_${lessonId}`] = false;
       setAttendanceLoading(prev => ({ ...prev, [lessonId]: false }));
     }
   };
@@ -254,21 +258,44 @@ export default function LessonModalsManager() {
   }, [updateModalState]);
 
   // Auto-refresh lesson data every 10 seconds when modal is open
+  // Use refs to avoid recreating interval
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const loadLessonDataRef = useRef(loadLessonData);
+  
+  // Keep ref in sync
+  useEffect(() => {
+    loadLessonDataRef.current = loadLessonData;
+  }, [loadLessonData]);
+  
   useEffect(() => {
     const openLessonIds = openModals
       .filter(modal => modal.isOpen && modal.id && typeof modal.id === 'number')
       .map(modal => modal.id as number);
     
-    if (openLessonIds.length === 0) return;
+    if (openLessonIds.length === 0) {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+      return;
+    }
     
-    const interval = setInterval(() => {
+    // Don't set up interval if already running
+    if (refreshIntervalRef.current) return;
+    
+    refreshIntervalRef.current = setInterval(() => {
       openLessonIds.forEach(lessonId => {
-        loadLessonData(lessonId);
+        loadLessonDataRef.current(lessonId);
       });
     }, 10000); // Refresh every 10 seconds
     
-    return () => clearInterval(interval);
-  }, [openModals, loadLessonData]);
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, [openModals.length > 0]);
 
   useEffect(() => {
     openModals.forEach(modal => {
@@ -393,11 +420,30 @@ export default function LessonModalsManager() {
   };
 
   // Polling for live updates when modal is open
+  // Use refs to avoid recreating interval on every render
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const openModalsRef = useRef(openModals);
+  
+  // Keep ref in sync
   useEffect(() => {
-    if (openModals.length === 0) return;
+    openModalsRef.current = openModals;
+  }, [openModals]);
+  
+  useEffect(() => {
+    if (openModals.length === 0) {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      return;
+    }
     
-    const pollInterval = setInterval(() => {
-      openModals.forEach(modal => {
+    // Don't set up interval if already running
+    if (pollingIntervalRef.current) return;
+    
+    pollingIntervalRef.current = setInterval(() => {
+      const currentModals = openModalsRef.current;
+      currentModals.forEach(modal => {
         if (modal.isOpen && modal.id) {
           // Silently refresh lesson data
           fetch(`/api/lessons/${modal.id}`)
@@ -418,9 +464,13 @@ export default function LessonModalsManager() {
                 // Update lesson data (always update to get latest status, teacher info, etc.)
                 setLessonData(prev => ({ ...prev, [modal.id]: serverLesson }));
                 
-                // Update modal state for context
+                // CRITICAL FIX: Always update modal state with fresh server data
+                // This ensures time, topicSetBy, notesSetBy etc. are always in sync
                 updateModalState(modal.id, { 
-                  lessonData: serverLesson
+                  lessonData: {
+                    ...modal.lessonData,
+                    ...serverLesson,
+                  }
                 });
                 
                 // Only update local input state if user is not editing
@@ -431,6 +481,9 @@ export default function LessonModalsManager() {
                 if (!editingNotes[modal.id] && localNotes === currentLocalNotes && serverNotes !== currentLocalNotes) {
                   setLessonNotes(prev => ({ ...prev, [modal.id]: serverNotes }));
                 }
+                
+                // Refresh attendance data
+                loadAttendance(modal.id);
               }
             })
             .catch(err => console.error('Polling error:', err));
@@ -438,8 +491,13 @@ export default function LessonModalsManager() {
       });
     }, 3000); // Poll every 3 seconds for more responsive updates
     
-    return () => clearInterval(pollInterval);
-  }, [openModals, lessonTopic, lessonNotes, lessonData, editingTopic, editingNotes, updateModalState]);
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [openModals.length > 0]); // Only re-run if modals open/close
 
   const handleCancelLesson = async (lessonId: number) => {
     setSaving(prev => ({ ...prev, [lessonId]: true }));
@@ -603,19 +661,18 @@ export default function LessonModalsManager() {
         if (!modal.isOpen) return null;
         
         // Use modalData if it exists and has required fields, otherwise fall back to API data
-        // Never use undefined - prefer existing data over unknown
+        // CRITICAL: Prefer API data (lessonData) which is kept fresh by polling over modalData which may be stale
         const apiData = lessonData[modal.id];
         const modalData = modal.lessonData as LessonData | undefined;
         let lesson: LessonData | undefined;
         
-        if (modalData && modalData.groupTitle) {
-          // Prefer modal data from context (passed from schedule page)
-          lesson = modalData;
-        } else if (apiData && apiData.groupTitle) {
-          // Fall back to API data
+        // Always prefer API data as it's kept fresh by polling
+        if (apiData && (apiData.groupTitle || apiData.startTime)) {
           lesson = apiData;
+        } else if (modalData && modalData.groupTitle) {
+          // Fall back to modal data only if API data is not available
+          lesson = modalData;
         }
-        // If neither has data, lesson remains undefined
         
         const isLoading = loadingLessons[modal.id] && !lesson;
         const isSaving = saving[modal.id];
