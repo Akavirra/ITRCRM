@@ -51,14 +51,23 @@ async function verifyTelegramUser(initData: string): Promise<{ id: number; name:
     console.log('[Telegram Verify] DB User found:', dbUser);
     
     if (!dbUser) {
-      // Try to find by name as fallback (for testing purposes)
+      // Try to find by name as fallback - search across all roles (teacher, admin, etc.)
       const userName = [user.first_name, user.last_name].filter(Boolean).join(' ');
       console.log('[Telegram Verify] Trying to find user by name:', userName);
       
-      const dbUserByName = await get<{ id: number; name: string }>(
-        `SELECT id, name FROM users WHERE name ILIKE $1 AND role = 'teacher' LIMIT 1`,
+      // Try exact match first
+      let dbUserByName = await get<{ id: number; name: string }>(
+        `SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1`,
         [userName]
       );
+      
+      // If not found, try partial match (first name only)
+      if (!dbUserByName && user.first_name) {
+        dbUserByName = await get<{ id: number; name: string }>(
+          `SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1`,
+          [`%${user.first_name}%`]
+        );
+      }
       
       if (dbUserByName) {
         console.log('[Telegram Verify] Found user by name, updating telegram_id');
@@ -311,14 +320,49 @@ export async function PATCH(
     
     queryParams.push(lessonId);
     
-    const sql = `UPDATE lessons SET ${updates.join(', ')} WHERE id = $${queryParams.length}`;
+    const sql = `UPDATE lessons SET ${updates.join(', ')} WHERE id = ${queryParams.length}`;
     await run(sql, queryParams);
     
-    // Get updated lesson
-    const updatedLesson = await get<Lesson>(
-      `SELECT * FROM lessons WHERE id = $1`,
+    // Get updated lesson with details
+    const updatedLessonRaw = await get<Lesson & { topic_set_by_name: string | null; notes_set_by_name: string | null }>(
+      `SELECT 
+        l.*, 
+        topic_user.name as topic_set_by_name, 
+        notes_user.name as notes_set_by_name
+      FROM lessons l
+      LEFT JOIN users topic_user ON l.topic_set_by = topic_user.id
+      LEFT JOIN users notes_user ON l.notes_set_by = notes_user.id
+      WHERE l.id = $1`,
       [lessonId]
     );
+    
+    // Transform to camelCase format
+    const formatTimestamp = (timestamp: string | null): string | null => {
+      if (!timestamp) return null;
+      const date = new Date(timestamp);
+      return date.toLocaleString('uk-UA', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+    
+    const updatedLesson = updatedLessonRaw ? {
+      id: updatedLessonRaw.id,
+      groupId: updatedLessonRaw.group_id,
+      lessonDate: updatedLessonRaw.lesson_date,
+      startTime: updatedLessonRaw.start_datetime?.split(' ')[1]?.substring(0, 5) || '',
+      endTime: updatedLessonRaw.end_datetime?.split(' ')[1]?.substring(0, 5) || '',
+      status: updatedLessonRaw.status,
+      topic: updatedLessonRaw.topic,
+      notes: updatedLessonRaw.notes,
+      topicSetBy: updatedLessonRaw.topic_set_by_name,
+      topicSetAt: formatTimestamp(updatedLessonRaw.topic_set_at),
+      notesSetBy: updatedLessonRaw.notes_set_by_name,
+      notesSetAt: formatTimestamp(updatedLessonRaw.notes_set_at),
+    } : null;
     
     return NextResponse.json({
       message: 'Заняття оновлено',
