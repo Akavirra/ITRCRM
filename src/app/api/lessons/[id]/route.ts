@@ -3,6 +3,7 @@ import { getAuthUser, unauthorized, checkGroupAccess, forbidden } from '@/lib/ap
 import { get, run } from '@/db';
 import { parseISO, setHours, setMinutes, format } from 'date-fns';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
+import { formatDateTimeKyiv } from '@/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,14 +128,7 @@ export async function GET(
     
     const formatTimestamp = (timestamp: string | null): string | null => {
       if (!timestamp) return null;
-      const date = new Date(timestamp);
-      return date.toLocaleString('uk-UA', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      return formatDateTimeKyiv(timestamp);
     };
     
     const transformedLesson = lessonWithDetails ? {
@@ -203,14 +197,13 @@ export async function PATCH(
     let updates: string[] = ['updated_at = NOW()'];
     let params: (string | number)[] = [];
     
-    if (topic !== undefined) {
+     if (topic !== undefined) {
       updates.push(`topic = $${params.length + 1}`);
       params.push(topic);
       // Track who set the topic
       updates.push(`topic_set_by = $${params.length + 1}`);
       params.push(user.id);
-      updates.push(`topic_set_at = $${params.length + 1}`);
-      params.push('NOW()');
+      updates.push(`topic_set_at = NOW()`);
     }
     
     if (notes !== undefined) {
@@ -219,8 +212,7 @@ export async function PATCH(
       // Track who set the notes
       updates.push(`notes_set_by = $${params.length + 1}`);
       params.push(user.id);
-      updates.push(`notes_set_at = $${params.length + 1}`);
-      params.push('NOW()');
+      updates.push(`notes_set_at = NOW()`);
     }
     
     if (status !== undefined) {
@@ -336,14 +328,7 @@ export async function PATCH(
     
     const formatTimestamp = (timestamp: string | null): string | null => {
       if (!timestamp) return null;
-      const date = new Date(timestamp);
-      return date.toLocaleString('uk-UA', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      return formatDateTimeKyiv(timestamp);
     };
     
     const updatedLesson = updatedLessonRaw ? {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { get, all, run } from '@/db';
+import { formatDateTimeKyiv, formatDateKyiv, formatTimeKyiv } from '@/lib/date-utils';
 
 interface Lesson {
   id: number;
@@ -205,35 +206,6 @@ export async function GET(
   
   console.log('[Telegram Lesson] Found lesson:', lesson.group_title, lesson.course_title);
   
-  // Format datetime
-  const formatDateTime = (date: any) => {
-    if (!date) return '';
-    const dateStr = typeof date === 'string' ? date : new Date(date).toISOString();
-    return dateStr.split(' ')[1]?.substring(0, 5) || '';
-  };
-  
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('uk-UA', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-  
-  const formatTimestamp = (timestamp: string | null): string | null => {
-    if (!timestamp) return null;
-    const date = new Date(timestamp);
-    return date.toLocaleString('uk-UA', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-  
   const transformedLesson = {
     id: lesson.id,
     groupId: lesson.group_id,
@@ -244,16 +216,16 @@ export async function GET(
     teacherName: lesson.teacher_name || (lesson.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
     originalTeacherId: lesson.original_teacher_id || null,
     isReplaced: lesson.is_replaced,
-    startTime: formatDateTime(lesson.start_datetime),
-    endTime: formatDateTime(lesson.end_datetime),
-    lessonDate: formatDate(lesson.lesson_date),
+    startTime: formatTimeKyiv(lesson.start_datetime),
+    endTime: formatTimeKyiv(lesson.end_datetime),
+    lessonDate: formatDateKyiv(lesson.lesson_date),
     status: lesson.status,
     topic: lesson.topic,
     notes: lesson.notes,
     topicSetBy: lesson.topic_set_by_name,
-    topicSetAt: formatTimestamp(lesson.topic_set_at),
+    topicSetAt: formatDateTimeKyiv(lesson.topic_set_at),
     notesSetBy: lesson.notes_set_by_name,
-    notesSetAt: formatTimestamp(lesson.notes_set_at),
+    notesSetAt: formatDateTimeKyiv(lesson.notes_set_at),
   };
 
   return NextResponse.json({ lesson: transformedLesson });
@@ -354,50 +326,19 @@ export async function PATCH(
       [lesson.id]
     );
     
-     // Format datetime
-     const formatDateTime = (date: any) => {
-       if (!date) return '';
-       const dateStr = typeof date === 'string' ? date : new Date(date).toISOString();
-       return dateStr.split('T')[1]?.substring(0, 5) || '';
-     };
-
-     // Format date
-     const formatDate = (dateStr: any) => {
-       if (!dateStr) return '';
-       const date = new Date(dateStr);
-       return date.toLocaleDateString('uk-UA', {
-         day: '2-digit',
-         month: '2-digit',
-         year: 'numeric'
-       });
-     };
-
-     // Transform to camelCase format
-     const formatTimestamp = (timestamp: string | null): string | null => {
-       if (!timestamp) return null;
-       const date = new Date(timestamp);
-       return date.toLocaleString('uk-UA', {
-         day: '2-digit',
-         month: '2-digit',
-         year: 'numeric',
-         hour: '2-digit',
-         minute: '2-digit'
-       });
-     };
-     
      const updatedLesson = updatedLessonRaw ? {
        id: updatedLessonRaw.id,
        groupId: updatedLessonRaw.group_id,
-       lessonDate: formatDate(updatedLessonRaw.lesson_date),
-       startTime: formatDateTime(updatedLessonRaw.start_datetime),
-       endTime: formatDateTime(updatedLessonRaw.end_datetime),
+       lessonDate: formatDateKyiv(updatedLessonRaw.lesson_date),
+       startTime: formatTimeKyiv(updatedLessonRaw.start_datetime),
+       endTime: formatTimeKyiv(updatedLessonRaw.end_datetime),
        status: updatedLessonRaw.status,
        topic: updatedLessonRaw.topic,
        notes: updatedLessonRaw.notes,
        topicSetBy: updatedLessonRaw.topic_set_by_name,
-       topicSetAt: formatTimestamp(updatedLessonRaw.topic_set_at),
+       topicSetAt: formatDateTimeKyiv(updatedLessonRaw.topic_set_at),
        notesSetBy: updatedLessonRaw.notes_set_by_name,
-       notesSetAt: formatTimestamp(updatedLessonRaw.notes_set_at),
+       notesSetAt: formatDateTimeKyiv(updatedLessonRaw.notes_set_at),
      } : null;
     
     return NextResponse.json({
