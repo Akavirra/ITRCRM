@@ -1,6 +1,6 @@
 import { run, get, all, transaction } from '@/db';
 import { addDays, addMonths, setHours, setMinutes, format, parse, isAfter, isBefore, startOfDay, endOfMonth } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 // Character set for generating random alphanumeric strings (uppercase only)
 const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -108,21 +108,23 @@ export async function generateLessonsForGroup(
     if (!existingDates.has(dateStr)) {
       const [hours, minutes] = group.start_time.split(':').map(Number);
       
-      // Create datetime in the group's timezone
-      // This will be stored as-is in the database (PostgreSQL will keep the local time)
+      // Create datetime in the group's timezone and convert to UTC for storage
+      // This ensures consistent storage in UTC regardless of server timezone
       const groupTimezone = group.timezone || 'Europe/Kyiv';
       
       // Create a date at the start of the day in the group's timezone
       const dateInTz = toZonedTime(currentDate, groupTimezone);
       dateInTz.setHours(hours, minutes, 0, 0);
       
-      // Format as datetime string (without timezone - PostgreSQL will store as-is)
-      // Then when reading, Neon may add timezone offset, which we handle in parseDatabaseDate
-      const startStr = format(dateInTz, "yyyy-MM-dd HH:mm:ss");
+      // Convert to UTC (subtract the timezone offset)
+      const utcDate = fromZonedTime(dateInTz, groupTimezone);
+      
+      // Format as UTC datetime string for database
+      const startStr = format(utcDate, "yyyy-MM-dd HH:mm:ss");
       
       // End time is duration minutes after start
-      const endDateTime = new Date(dateInTz.getTime() + group.duration_minutes * 60 * 1000);
-      const endStr = format(endDateTime, "yyyy-MM-dd HH:mm:ss");
+      const endUtcDate = new Date(utcDate.getTime() + group.duration_minutes * 60 * 1000);
+      const endStr = format(endUtcDate, "yyyy-MM-dd HH:mm:ss");
       
       lessonsToInsert.push([generatePublicId('LSN'), groupId, dateStr, startStr, endStr, 'scheduled', createdBy]);
       generated++;
