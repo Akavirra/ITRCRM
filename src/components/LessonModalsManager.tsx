@@ -1363,20 +1363,34 @@ export default function LessonModalsManager() {
                     Інформація про передачу даних
                   </div>
                   
-                  {(lesson?.topicSetBy || lesson?.notesSetBy) ? (
+                  {(lesson?.topicSetBy || lesson?.notesSetBy || lesson?.topicSetAt || lesson?.notesSetAt) ? (
                     <div style={{ fontSize: '0.8125rem', color: '#374151' }}>
-                      {lesson.topicSetBy && lesson.topicSetAt && (
+                      {(lesson.topicSetBy || lesson.topicSetAt) && (
                         <div style={{ marginBottom: '0.25rem' }}>
-                          <span style={{ color: '#6b7280' }}>Тему передав:</span>{' '}
-                          <span style={{ fontWeight: 500 }}>{lesson.topicSetBy}</span>
-                          <span style={{ color: '#9ca3af', marginLeft: '0.5rem' }}>{lesson.topicSetAt}</span>
+                          {lesson.topicSetBy && (
+                            <>
+                              <span style={{ color: '#6b7280' }}>Тему передав:</span>{' '}
+                              <span style={{ fontWeight: 500 }}>{lesson.topicSetBy}</span>
+                              <span style={{ color: '#9ca3af', marginLeft: '0.5rem' }}>{lesson.topicSetAt}</span>
+                            </>
+                          )}
+                          {!lesson.topicSetBy && lesson.topicSetAt && (
+                            <span style={{ color: '#6b7280' }}>Тему передано: {lesson.topicSetAt}</span>
+                          )}
                         </div>
                       )}
-                      {lesson.notesSetBy && lesson.notesSetAt && (
+                      {(lesson.notesSetBy || lesson.notesSetAt) && (
                         <div>
-                          <span style={{ color: '#6b7280' }}>Нотатки передав:</span>{' '}
-                          <span style={{ fontWeight: 500 }}>{lesson.notesSetBy}</span>
-                          <span style={{ color: '#9ca3af', marginLeft: '0.5rem' }}>{lesson.notesSetAt}</span>
+                          {lesson.notesSetBy && (
+                            <>
+                              <span style={{ color: '#6b7280' }}>Нотатки передав:</span>{' '}
+                              <span style={{ fontWeight: 500 }}>{lesson.notesSetBy}</span>
+                              <span style={{ color: '#9ca3af', marginLeft: '0.5rem' }}>{lesson.notesSetAt}</span>
+                            </>
+                          )}
+                          {!lesson.notesSetBy && lesson.notesSetAt && (
+                            <span style={{ color: '#6b7280' }}>Нотатки передано: {lesson.notesSetAt}</span>
+                          )}
                         </div>
                       )}
                     </div>
