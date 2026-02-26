@@ -39,10 +39,10 @@ interface LessonData {
   status: 'scheduled' | 'done' | 'canceled';
   topic: string | null;
   notes: string | null;
-  topicSetBy?: string | null;
-  topicSetAt?: string | null;
-  notesSetBy?: string | null;
-  notesSetAt?: string | null;
+  topicSetBy: string | null;
+  topicSetAt: string | null;
+  notesSetBy: string | null;
+  notesSetAt: string | null;
 }
 
 function formatDateTime(startTime: string, endTime: string): string {
@@ -244,6 +244,10 @@ export default function LessonModalsManager() {
             status: data.lesson.status,
             topic: data.lesson.topic,
             notes: data.lesson.notes,
+            topicSetBy: data.lesson.topicSetBy,
+            topicSetAt: data.lesson.topicSetAt,
+            notesSetBy: data.lesson.notesSetBy,
+            notesSetAt: data.lesson.notesSetAt,
           }
         });
         setLessonTopic(prev => ({ ...prev, [lessonId]: data.lesson.topic || '' }));
@@ -367,6 +371,8 @@ export default function LessonModalsManager() {
           lessonData: {
             ...lessonData[lessonId],
             topic: newTopic,
+            topicSetBy: data.lesson.topicSetBy,
+            topicSetAt: data.lesson.topicSetAt,
           }
         });
         setEditingTopic(prev => ({ ...prev, [lessonId]: false }));
@@ -408,6 +414,8 @@ export default function LessonModalsManager() {
           lessonData: {
             ...lessonData[lessonId],
             notes: newNotes,
+            notesSetBy: data.lesson.notesSetBy,
+            notesSetAt: data.lesson.notesSetAt,
           }
         });
         setEditingNotes(prev => ({ ...prev, [lessonId]: false }));

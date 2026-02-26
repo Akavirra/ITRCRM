@@ -264,10 +264,32 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const lessonId = parseInt(params.id, 10);
+  // Parse lessonId - support both numeric id and public_id (LSN-XXXXXXXX)
+  const rawId = params.id;
+  let lesson: Lesson | null = null;
   
-  if (isNaN(lessonId)) {
-    return NextResponse.json({ error: 'Невірний ID заняття' }, { status: 400 });
+  // Try to parse as numeric id first
+  const numericId = parseInt(rawId, 10);
+  if (!isNaN(numericId)) {
+    console.log('[Telegram Lesson PATCH] Trying to find lesson by numeric id:', numericId);
+    lesson = (await get<Lesson>(
+      `SELECT * FROM lessons WHERE id = $1`,
+      [numericId]
+    )) || null;
+  }
+  
+  // If not found by numeric id, try to find by public_id
+  if (!lesson && rawId.includes('LSN-')) {
+    console.log('[Telegram Lesson PATCH] Trying to find lesson by public_id:', rawId);
+    lesson = (await get<Lesson>(
+      `SELECT * FROM lessons WHERE public_id = $1`,
+      [rawId]
+    )) || null;
+  }
+  
+  if (!lesson) {
+    console.error('[Telegram Lesson PATCH] Lesson not found by any identifier:', rawId);
+    return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
   }
   
   // Verify Telegram user (skip verification if initData is empty for debugging purposes)
@@ -281,16 +303,6 @@ export async function PATCH(
   // Note: In production, you might want to restrict this
   console.log('[Telegram Lesson PATCH] User verification:', telegramUser ? 'Success' : 'Skipped (no initData)');
   
-  // Check if lesson exists
-  const lesson = await get<Lesson>(
-    `SELECT * FROM lessons WHERE id = $1`,
-    [lessonId]
-  );
-  
-  if (!lesson) {
-    return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
-  }
-  
   try {
     const body = await request.json();
     const { topic, notes } = body;
@@ -299,11 +311,11 @@ export async function PATCH(
     const queryParams: (string | number)[] = [];
     
     if (topic !== undefined) {
-      updates.push(`topic = ${queryParams.length + 1}`);
+      updates.push(`topic = $${queryParams.length + 1}`);
       queryParams.push(topic);
       // Always set topic_set_by and topic_set_at (even if telegramUser is null, we track it)
       if (telegramUser) {
-        updates.push(`topic_set_by = ${queryParams.length + 1}`);
+        updates.push(`topic_set_by = $${queryParams.length + 1}`);
         queryParams.push(telegramUser.id);
       } else {
         updates.push(`topic_set_by = NULL`);
@@ -312,11 +324,11 @@ export async function PATCH(
     }
     
     if (notes !== undefined) {
-      updates.push(`notes = ${queryParams.length + 1}`);
+      updates.push(`notes = $${queryParams.length + 1}`);
       queryParams.push(notes);
       // Always set notes_set_by and notes_set_at (even if telegramUser is null, we track it)
       if (telegramUser) {
-        updates.push(`notes_set_by = ${queryParams.length + 1}`);
+        updates.push(`notes_set_by = $${queryParams.length + 1}`);
         queryParams.push(telegramUser.id);
       } else {
         updates.push(`notes_set_by = NULL`);
@@ -324,9 +336,9 @@ export async function PATCH(
       updates.push(`notes_set_at = NOW()`);
     }
     
-    queryParams.push(lessonId);
+    queryParams.push(lesson.id);
     
-    const sql = `UPDATE lessons SET ${updates.join(', ')} WHERE id = ${queryParams.length}`;
+    const sql = `UPDATE lessons SET ${updates.join(', ')} WHERE id = $${queryParams.length}`;
     await run(sql, queryParams);
     
     // Get updated lesson with details
@@ -339,7 +351,7 @@ export async function PATCH(
       LEFT JOIN users topic_user ON l.topic_set_by = topic_user.id
       LEFT JOIN users notes_user ON l.notes_set_by = notes_user.id
       WHERE l.id = $1`,
-      [lessonId]
+      [lesson.id]
     );
     
     // Transform to camelCase format

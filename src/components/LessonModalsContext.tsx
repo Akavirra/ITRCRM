@@ -23,6 +23,10 @@ interface StoredModal {
     status: 'scheduled' | 'done' | 'canceled';
     topic: string | null;
     notes?: string | null;
+    topicSetBy?: string | null;
+    topicSetAt?: string | null;
+    notesSetBy?: string | null;
+    notesSetAt?: string | null;
   };
 }
 
