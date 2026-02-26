@@ -8,8 +8,6 @@
  * We need to explicitly treat them as UTC by appending 'Z' if not present.
  */
 
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
-
 /**
  * Timezone for all date/time display in the application
  */
