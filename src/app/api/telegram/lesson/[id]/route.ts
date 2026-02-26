@@ -354,33 +354,51 @@ export async function PATCH(
       [lesson.id]
     );
     
-    // Transform to camelCase format
-    const formatTimestamp = (timestamp: string | null): string | null => {
-      if (!timestamp) return null;
-      const date = new Date(timestamp);
-      return date.toLocaleString('uk-UA', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    };
-    
-    const updatedLesson = updatedLessonRaw ? {
-      id: updatedLessonRaw.id,
-      groupId: updatedLessonRaw.group_id,
-      lessonDate: updatedLessonRaw.lesson_date,
-      startTime: updatedLessonRaw.start_datetime?.split(' ')[1]?.substring(0, 5) || '',
-      endTime: updatedLessonRaw.end_datetime?.split(' ')[1]?.substring(0, 5) || '',
-      status: updatedLessonRaw.status,
-      topic: updatedLessonRaw.topic,
-      notes: updatedLessonRaw.notes,
-      topicSetBy: updatedLessonRaw.topic_set_by_name,
-      topicSetAt: formatTimestamp(updatedLessonRaw.topic_set_at),
-      notesSetBy: updatedLessonRaw.notes_set_by_name,
-      notesSetAt: formatTimestamp(updatedLessonRaw.notes_set_at),
-    } : null;
+     // Format datetime
+     const formatDateTime = (date: any) => {
+       if (!date) return '';
+       const dateStr = typeof date === 'string' ? date : new Date(date).toISOString();
+       return dateStr.split('T')[1]?.substring(0, 5) || '';
+     };
+
+     // Format date
+     const formatDate = (dateStr: any) => {
+       if (!dateStr) return '';
+       const date = new Date(dateStr);
+       return date.toLocaleDateString('uk-UA', {
+         day: '2-digit',
+         month: '2-digit',
+         year: 'numeric'
+       });
+     };
+
+     // Transform to camelCase format
+     const formatTimestamp = (timestamp: string | null): string | null => {
+       if (!timestamp) return null;
+       const date = new Date(timestamp);
+       return date.toLocaleString('uk-UA', {
+         day: '2-digit',
+         month: '2-digit',
+         year: 'numeric',
+         hour: '2-digit',
+         minute: '2-digit'
+       });
+     };
+     
+     const updatedLesson = updatedLessonRaw ? {
+       id: updatedLessonRaw.id,
+       groupId: updatedLessonRaw.group_id,
+       lessonDate: formatDate(updatedLessonRaw.lesson_date),
+       startTime: formatDateTime(updatedLessonRaw.start_datetime),
+       endTime: formatDateTime(updatedLessonRaw.end_datetime),
+       status: updatedLessonRaw.status,
+       topic: updatedLessonRaw.topic,
+       notes: updatedLessonRaw.notes,
+       topicSetBy: updatedLessonRaw.topic_set_by_name,
+       topicSetAt: formatTimestamp(updatedLessonRaw.topic_set_at),
+       notesSetBy: updatedLessonRaw.notes_set_by_name,
+       notesSetAt: formatTimestamp(updatedLessonRaw.notes_set_at),
+     } : null;
     
     return NextResponse.json({
       message: 'Заняття оновлено',
