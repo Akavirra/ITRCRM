@@ -26,7 +26,17 @@ export const UKRAINIAN_LOCALE = 'uk-UA';
  * @param dateStr - Date string from database (stored as UTC)
  * @returns Date object in UTC
  */
-function parseDatabaseDate(dateStr: string): Date {
+function parseDatabaseDate(dateInput: string | Date | null | undefined): Date {
+  if (!dateInput) return new Date();
+  
+  // If dateInput is already a Date object, return it
+  if (dateInput instanceof Date) {
+    return dateInput;
+  }
+  
+  // If dateInput is a string, parse it
+  const dateStr = String(dateInput);
+  
   // If already has timezone info (ISO format with Z or offset), parse directly
   if (dateStr.includes('T') && (dateStr.includes('Z') || /[+-]\d{2}:\d{2}$/.test(dateStr))) {
     return new Date(dateStr);
