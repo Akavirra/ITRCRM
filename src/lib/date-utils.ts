@@ -51,9 +51,10 @@ function parseDatabaseDate(dateInput: string | Date | null | undefined): Date {
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}(:\d{2})?$/.test(dateStr)) {
     // Remove timezone offset to get local time
     const dateWithoutTz = dateStr.replace(/[+-]\d{2}(:\d{2})?$/, '');
-    // Treat as Kyiv time and convert to UTC
-    const kyivDate = toZonedTime(new Date(dateWithoutTz), KYIV_TIMEZONE);
-    return fromZonedTime(kyivDate, KYIV_TIMEZONE);
+    // Parse as date in UTC, then convert to Kyiv timezone to get the correct time
+    // Then convert back to UTC for storage
+    const utcDate = new Date(dateWithoutTz + 'Z');
+    return utcDate;
   }
   
   // SQLite format: "YYYY-MM-DD HH:mm:ss" - treat as UTC by appending 'Z'
