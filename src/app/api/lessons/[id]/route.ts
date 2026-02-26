@@ -3,7 +3,7 @@ import { getAuthUser, unauthorized, checkGroupAccess, forbidden } from '@/lib/ap
 import { get, run } from '@/db';
 import { parseISO, setHours, setMinutes, format } from 'date-fns';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
-import { formatDateTimeKyiv } from '@/lib/date-utils';
+import { formatDateTimeKyiv, formatTimeKyiv } from '@/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,39 +93,6 @@ export async function GET(
   );
   
     // Transform to camelCase format - handle null teacher_id and date conversion
-    const formatDateTime = (date: any): string => {
-      if (!date) return '';
-      try {
-        // Handle different date formats from PostgreSQL
-        let dateStr: string;
-        if (typeof date === 'string') {
-          // Handle ISO string or PostgreSQL timestamp
-          dateStr = date;
-        } else if (date instanceof Date) {
-          dateStr = date.toISOString();
-        } else {
-          return '';
-        }
-        
-        // If it's a full ISO string with T, extract time part
-        if (dateStr.includes('T')) {
-          return dateStr.split('T')[1]?.substring(0, 5) || '';
-        }
-        
-        // If it's a space-separated datetime (YYYY-MM-DD HH:MM:SS)
-        const parts = dateStr.split(' ');
-        if (parts.length >= 2) {
-          return parts[1]?.substring(0, 5) || '';
-        }
-        
-        // If it's just a time string (HH:MM:SS)
-        return dateStr.substring(0, 5);
-      } catch (e) {
-        console.error('Error formatting datetime:', e);
-        return '';
-      }
-    };
-    
     const formatTimestamp = (timestamp: string | null): string | null => {
       if (!timestamp) return null;
       return formatDateTimeKyiv(timestamp);
@@ -143,8 +110,8 @@ export async function GET(
       teacherName: lessonWithDetails.teacher_name || (lessonWithDetails.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
       originalTeacherId: lessonWithDetails.original_teacher_id || null,
       isReplaced: lessonWithDetails.is_replaced,
-      startTime: formatDateTime(lessonWithDetails.start_datetime),
-      endTime: formatDateTime(lessonWithDetails.end_datetime),
+      startTime: formatTimeKyiv(lessonWithDetails.start_datetime),
+      endTime: formatTimeKyiv(lessonWithDetails.end_datetime),
       status: lessonWithDetails.status,
       topic: lessonWithDetails.topic,
       notes: lessonWithDetails.notes,
@@ -293,39 +260,6 @@ export async function PATCH(
     );
     
     // Transform to camelCase format - handle null teacher_id and date conversion
-    const formatDateTime = (date: any): string => {
-      if (!date) return '';
-      try {
-        // Handle different date formats from PostgreSQL
-        let dateStr: string;
-        if (typeof date === 'string') {
-          // Handle ISO string or PostgreSQL timestamp
-          dateStr = date;
-        } else if (date instanceof Date) {
-          dateStr = date.toISOString();
-        } else {
-          return '';
-        }
-        
-        // If it's a full ISO string with T, extract time part
-        if (dateStr.includes('T')) {
-          return dateStr.split('T')[1]?.substring(0, 5) || '';
-        }
-        
-        // If it's a space-separated datetime (YYYY-MM-DD HH:MM:SS)
-        const parts = dateStr.split(' ');
-        if (parts.length >= 2) {
-          return parts[1]?.substring(0, 5) || '';
-        }
-        
-        // If it's just a time string (HH:MM:SS)
-        return dateStr.substring(0, 5);
-      } catch (e) {
-        console.error('Error formatting datetime:', e);
-        return '';
-      }
-    };
-    
     const formatTimestamp = (timestamp: string | null): string | null => {
       if (!timestamp) return null;
       return formatDateTimeKyiv(timestamp);
@@ -340,8 +274,8 @@ export async function PATCH(
       teacherName: updatedLessonRaw.teacher_name || (updatedLessonRaw.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
       originalTeacherId: updatedLessonRaw.original_teacher_id || null,
       isReplaced: updatedLessonRaw.is_replaced,
-      startTime: formatDateTime(updatedLessonRaw.start_datetime),
-      endTime: formatDateTime(updatedLessonRaw.end_datetime),
+      startTime: formatTimeKyiv(updatedLessonRaw.start_datetime),
+      endTime: formatTimeKyiv(updatedLessonRaw.end_datetime),
       status: updatedLessonRaw.status,
       topic: updatedLessonRaw.topic,
       notes: updatedLessonRaw.notes,
