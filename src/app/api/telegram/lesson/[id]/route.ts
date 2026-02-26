@@ -326,7 +326,7 @@ export async function PATCH(
     
     queryParams.push(lessonId);
     
-    const sql = `UPDATE lessons SET ${updates.join(', ')} WHERE id = ${queryParams.length}`;
+    const sql = `UPDATE lessons SET ${updates.join(', ')} WHERE id = ${queryParams.length}`;;
     await run(sql, queryParams);
     
     // Get updated lesson with details
