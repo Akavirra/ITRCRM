@@ -8,6 +8,8 @@
  * We need to explicitly treat them as UTC by appending 'Z' if not present.
  */
 
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+
 /**
  * Timezone for all date/time display in the application
  */
@@ -21,9 +23,10 @@ export const UKRAINIAN_LOCALE = 'uk-UA';
 /**
  * Convert a database date string to a proper UTC Date object
  * SQLite stores dates as "YYYY-MM-DD HH:mm:ss" without timezone.
- * This function ensures the date is treated as UTC.
+ * Neon PostgreSQL may return dates with timezone (e.g., "2026-02-26 22:00:00+01").
+ * This function handles both cases properly.
  * 
- * @param dateStr - Date string from database (stored as UTC)
+ * @param dateInput - Date string from database
  * @returns Date object in UTC
  */
 function parseDatabaseDate(dateInput: string | Date | null | undefined): Date {
@@ -37,9 +40,20 @@ function parseDatabaseDate(dateInput: string | Date | null | undefined): Date {
   // If dateInput is a string, parse it
   const dateStr = String(dateInput);
   
-  // If already has timezone info (ISO format with Z or offset), parse directly
-  if (dateStr.includes('T') && (dateStr.includes('Z') || /[+-]\d{2}:\d{2}$/.test(dateStr))) {
+  // If already has timezone info (ISO format with Z), parse directly as UTC
+  if (dateStr.includes('Z')) {
     return new Date(dateStr);
+  }
+  
+  // Check if has space-separated datetime with timezone offset (Neon PostgreSQL format)
+  // e.g., "2026-02-26 22:00:00+01" or "2026-02-26 22:00:00+01:00"
+  // Remove the timezone offset and treat as local time (Kyiv timezone)
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}(:\d{2})?$/.test(dateStr)) {
+    // Remove timezone offset to get local time
+    const dateWithoutTz = dateStr.replace(/[+-]\d{2}(:\d{2})?$/, '');
+    // Treat as Kyiv time and convert to UTC
+    const kyivDate = toZonedTime(new Date(dateWithoutTz), KYIV_TIMEZONE);
+    return fromZonedTime(kyivDate, KYIV_TIMEZONE);
   }
   
   // SQLite format: "YYYY-MM-DD HH:mm:ss" - treat as UTC by appending 'Z'
