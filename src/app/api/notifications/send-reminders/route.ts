@@ -167,9 +167,10 @@ export async function POST(request: NextRequest) {
       const lessonUrl = `${WEB_APP_URL}/telegram/lesson/${lessonId}`;
       console.log('[Send Reminders] Lesson URL:', lessonUrl);
       
+      // Add web app button with proper parameters for initData
       keyboard.inline_keyboard.push([
         {
-          text: '📋 Відкрити форму',
+          text: '📝 Відкрити заняття',
           web_app: {
             url: lessonUrl
           }
