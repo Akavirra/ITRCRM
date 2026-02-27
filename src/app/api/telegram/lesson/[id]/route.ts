@@ -280,6 +280,7 @@ export async function PATCH(
   
   // Verify Telegram user (skip verification if initData is empty for debugging purposes)
   const initData = request.headers.get('x-telegram-init-data') || '';
+  console.log('[Telegram Lesson PATCH] initData received:', initData ? 'YES (' + initData.length + ' chars)' : 'NO');
   let telegramUser = null;
   
   if (initData) {
@@ -287,7 +288,7 @@ export async function PATCH(
   }
   
   // Note: In production, you might want to restrict this
-  console.log('[Telegram Lesson PATCH] User verification:', telegramUser ? 'Success' : 'Skipped (no initData)');
+  console.log('[Telegram Lesson PATCH] User verification result:', telegramUser ? `Found: ${telegramUser.name} (id: ${telegramUser.id})` : 'Not found');
   
   try {
     const body = await request.json();
