@@ -311,9 +311,9 @@ export async function PATCH(
   
   // Verify Telegram user (skip verification if initData is empty for debugging purposes)
   const initData = request.headers.get('x-telegram-init-data') || '';
-  const teacherId = request.nextUrl.searchParams.get('teacher_id') || '';
+  const teacherIdFromBody = request.nextUrl.searchParams.get('teacher_id') || '';
   console.log('[Telegram Lesson PATCH] initData received:', initData ? 'YES (' + initData.length + ' chars)' : 'NO');
-  console.log('[Telegram Lesson PATCH] teacher_id from URL:', teacherId);
+  console.log('[Telegram Lesson PATCH] teacher_id from URL:', teacherIdFromBody);
   let telegramUser = null;
   
   if (initData) {
@@ -325,7 +325,9 @@ export async function PATCH(
   
   try {
     const body = await request.json();
-    const { topic, notes } = body;
+    const { topic, notes, teacher_id } = body;
+    
+    console.log('[Telegram Lesson PATCH] Request body:', { topic, notes, teacher_id });
     
     console.log('[Telegram Lesson PATCH] Received body:', JSON.stringify(body));
     
@@ -362,21 +364,21 @@ export async function PATCH(
           };
           queryParams.push(JSON.stringify(telegramUserInfo));
           console.log('[Telegram Lesson] Storing telegram user info:', telegramUserInfo);
-        } else if (teacherId) {
-          console.log('[Telegram Lesson] Using teacher_id from URL as fallback:', teacherId);
+        } else if (teacher_id) {
+          console.log('[Telegram Lesson] Using teacher_id from body as fallback:', teacher_id);
           updates.push(`topic_set_by = $${queryParams.length + 1}`);
           queryParams.push(null); // Store NULL to avoid foreign key constraint
           
           // Store teacher info in JSON field
           updates.push(`telegram_user_info = $${queryParams.length + 1}`);
           const teacherInfo = {
-            telegram_id: teacherId,
-            source: 'url_parameter'
+            telegram_id: teacher_id,
+            source: 'body_parameter'
           };
           queryParams.push(JSON.stringify(teacherInfo));
-          console.log('[Telegram Lesson] Storing teacher info from URL:', teacherInfo);
+          console.log('[Telegram Lesson] Storing teacher info from body:', teacherInfo);
         } else {
-          console.log('[Telegram Lesson] No user ID found in parsed data and no teacher_id in URL');
+          console.log('[Telegram Lesson] No user ID found in parsed data and no teacher_id in body');
         }
       }
       updates.push(`topic_set_at = NOW()`);
@@ -414,8 +416,8 @@ export async function PATCH(
             queryParams.push(JSON.stringify(telegramUserInfo));
             console.log('[Telegram Lesson] Storing telegram user info for notes:', telegramUserInfo);
           }
-        } else if (teacherId) {
-          console.log('[Telegram Lesson] Using teacher_id from URL as fallback for notes:', teacherId);
+        } else if (teacher_id) {
+          console.log('[Telegram Lesson] Using teacher_id from body as fallback for notes:', teacher_id);
           updates.push(`notes_set_by = $${queryParams.length + 1}`);
           queryParams.push(null); // Store NULL to avoid foreign key constraint
           
@@ -423,14 +425,14 @@ export async function PATCH(
           if (!updates.some(update => update.includes('telegram_user_info'))) {
             updates.push(`telegram_user_info = $${queryParams.length + 1}`);
             const teacherInfo = {
-              telegram_id: teacherId,
-              source: 'url_parameter'
+              telegram_id: teacher_id,
+              source: 'body_parameter'
             };
             queryParams.push(JSON.stringify(teacherInfo));
-            console.log('[Telegram Lesson] Storing teacher info from URL for notes:', teacherInfo);
+            console.log('[Telegram Lesson] Storing teacher info from body for notes:', teacherInfo);
           }
         } else {
-          console.log('[Telegram Lesson] No user ID found in parsed data for notes and no teacher_id in URL');
+          console.log('[Telegram Lesson] No user ID found in parsed data for notes and no teacher_id in body');
         }
       }
       updates.push(`notes_set_at = NOW()`);

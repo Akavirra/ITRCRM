@@ -170,13 +170,13 @@ export default function TelegramLessonPage({ params, searchParams }: { params: {
         }
       }
       
-      const response = await fetch(`/api/telegram/lesson/${lessonId}?teacher_id=${teacherId || ''}`, {
+      const response = await fetch(`/api/telegram/lesson/${lessonId}`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
           'x-telegram-init-data': telegramInitData
         },
-        body: JSON.stringify({ topic, notes })
+        body: JSON.stringify({ topic, notes, teacher_id: teacherId })
       });
       
       if (response.ok) {
@@ -256,6 +256,9 @@ export default function TelegramLessonPage({ params, searchParams }: { params: {
       maxWidth: '100%',
       backgroundColor: '#fff'
     }}>
+      {/* Hidden field for teacher_id */}
+      <input type="hidden" id="teacher_id" value={teacherId || ''} />
+      
       <style>{`
         body { margin: 0; padding: 0; }
         .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; }
