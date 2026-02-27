@@ -114,7 +114,7 @@ export async function GET(
   const numericId = parseInt(rawId, 10);
   if (!isNaN(numericId)) {
     console.log('[Telegram Lesson] Trying to find lesson by numeric id:', numericId);
-    lesson = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null }>(
+    lesson = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null }>(
       `SELECT 
         l.id,
         l.group_id,
@@ -137,9 +137,7 @@ export async function GET(
         c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
         topic_user.name as topic_set_by_name,
-        notes_user.name as notes_set_by_name,
-        topic_user.telegram_id as topic_set_by_telegram_id,
-        notes_user.telegram_id as notes_set_by_telegram_id
+        notes_user.name as notes_set_by_name
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       JOIN courses c ON g.course_id = c.id
@@ -154,7 +152,7 @@ export async function GET(
   // If not found by numeric id, try to find by public_id
   if (!lesson && rawId.includes('LSN-')) {
     console.log('[Telegram Lesson] Trying to find lesson by public_id:', rawId);
-    lesson = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null }>(
+    lesson = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null }>(
       `SELECT 
         l.id,
         l.group_id,
@@ -177,9 +175,7 @@ export async function GET(
         c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
         topic_user.name as topic_set_by_name,
-        notes_user.name as notes_set_by_name,
-        topic_user.telegram_id as topic_set_by_telegram_id,
-        notes_user.telegram_id as notes_set_by_telegram_id
+        notes_user.name as notes_set_by_name
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       JOIN courses c ON g.course_id = c.id
@@ -236,10 +232,8 @@ export async function GET(
     notes: lesson.notes,
     topicSetBy: lesson.topic_set_by_name,
     topicSetAt: formatDateTimeKyiv(lesson.topic_set_at),
-    topicSetByTelegramId: lesson.topic_set_by_telegram_id || null,
     notesSetBy: lesson.notes_set_by_name,
     notesSetAt: formatDateTimeKyiv(lesson.notes_set_at),
-    notesSetByTelegramId: lesson.notes_set_by_telegram_id || null,
   };
 
   return NextResponse.json({ lesson: transformedLesson });
