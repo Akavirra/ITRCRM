@@ -273,29 +273,35 @@ export async function PATCH(
         g.teacher_id as original_teacher_id,
         c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
-        CASE 
-          WHEN l.topic_set_by < 0 THEN 'Telegram User'
-          ELSE topic_user.name 
-        END as topic_set_by_name,
-        CASE 
-          WHEN l.notes_set_by < 0 THEN 'Telegram User'
-          ELSE notes_user.name 
-        END as notes_set_by_name,
-        CASE 
-          WHEN l.topic_set_by < 0 THEN CAST((-l.topic_set_by) AS TEXT)
-          ELSE topic_user.telegram_id 
-        END as topic_set_by_telegram_id,
-        CASE 
-          WHEN l.notes_set_by < 0 THEN CAST((-l.notes_set_by) AS TEXT)
-          ELSE notes_user.telegram_id 
-        END as notes_set_by_telegram_id
+        COALESCE(
+          CASE 
+            WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
+              CASE 
+                WHEN l.telegram_user_info->>'source' = 'url_parameter' THEN 'Telegram User'
+                ELSE COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+              END
+            ELSE topic_user.name 
+          END, 'Unknown'
+        ) as topic_set_by_name,
+        COALESCE(
+          CASE 
+            WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
+              CASE 
+                WHEN l.telegram_user_info->>'source' = 'url_parameter' THEN 'Telegram User'
+                ELSE COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+              END
+            ELSE notes_user.name 
+          END, 'Unknown'
+        ) as notes_set_by_name,
+        COALESCE(l.telegram_user_info->>'telegram_id', topic_user.telegram_id, notes_user.telegram_id) as topic_set_by_telegram_id,
+        COALESCE(l.telegram_user_info->>'telegram_id', topic_user.telegram_id, notes_user.telegram_id) as notes_set_by_telegram_id,
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       JOIN courses c ON g.course_id = c.id
       LEFT JOIN users u ON l.teacher_id = u.id
       LEFT JOIN users g_teacher ON g.teacher_id = g_teacher.id
-      LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
-      LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
+      LEFT JOIN users topic_user ON l.topic_set_by IS NOT NULL AND l.topic_set_by = topic_user.id
+      LEFT JOIN users notes_user ON l.notes_set_by IS NOT NULL AND l.notes_set_by = notes_user.id
       WHERE l.id = $1`,
       [lessonId]
     );

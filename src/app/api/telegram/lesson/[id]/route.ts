@@ -343,14 +343,14 @@ export async function PATCH(
         updates.push(`topic_set_by = $${queryParams.length + 1}`);
         queryParams.push(telegramUser.id);
       } else {
-        // Store negative telegram_id to indicate Telegram user that wasn't found in DB
+        // Store NULL for topic_set_by and use telegram_user_info for tracking
         console.log('[Telegram Lesson] telegramUser is null, trying to parse initData');
         const user = JSON.parse(decodeURIComponent(new URLSearchParams(initData).get('user') || '{}'));
         console.log('[Telegram Lesson] Parsed user from initData:', user);
         if (user.id) {
           console.log('[Telegram Lesson] User ID found:', user.id);
           updates.push(`topic_set_by = $${queryParams.length + 1}`);
-          queryParams.push(-user.id); // Store as negative to distinguish from regular user IDs
+          queryParams.push(null); // Store NULL to avoid foreign key constraint
           
           // Store full Telegram user info in JSON field
           updates.push(`telegram_user_info = $${queryParams.length + 1}`);
@@ -365,7 +365,7 @@ export async function PATCH(
         } else if (teacherId) {
           console.log('[Telegram Lesson] Using teacher_id from URL as fallback:', teacherId);
           updates.push(`topic_set_by = $${queryParams.length + 1}`);
-          queryParams.push(-parseInt(teacherId)); // Store as negative to distinguish from regular user IDs
+          queryParams.push(null); // Store NULL to avoid foreign key constraint
           
           // Store teacher info in JSON field
           updates.push(`telegram_user_info = $${queryParams.length + 1}`);
@@ -393,14 +393,14 @@ export async function PATCH(
         updates.push(`notes_set_by = $${queryParams.length + 1}`);
         queryParams.push(telegramUser.id);
       } else {
-        // Store negative telegram_id to indicate Telegram user that wasn't found in DB
+        // Store NULL for notes_set_by and use telegram_user_info for tracking
         console.log('[Telegram Lesson] telegramUser is null for notes, trying to parse initData');
         const user = JSON.parse(decodeURIComponent(new URLSearchParams(initData).get('user') || '{}'));
         console.log('[Telegram Lesson] Parsed user from initData for notes:', user);
         if (user.id) {
           console.log('[Telegram Lesson] User ID found for notes:', user.id);
           updates.push(`notes_set_by = $${queryParams.length + 1}`);
-          queryParams.push(-user.id); // Store as negative to distinguish from regular user IDs
+          queryParams.push(null); // Store NULL to avoid foreign key constraint
           
           // Only update telegram_user_info if not already updated by topic
           if (!updates.some(update => update.includes('telegram_user_info'))) {
@@ -417,7 +417,7 @@ export async function PATCH(
         } else if (teacherId) {
           console.log('[Telegram Lesson] Using teacher_id from URL as fallback for notes:', teacherId);
           updates.push(`notes_set_by = $${queryParams.length + 1}`);
-          queryParams.push(-parseInt(teacherId)); // Store as negative to distinguish from regular user IDs
+          queryParams.push(null); // Store NULL to avoid foreign key constraint
           
           // Only update telegram_user_info if not already updated by topic
           if (!updates.some(update => update.includes('telegram_user_info'))) {
