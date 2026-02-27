@@ -248,10 +248,8 @@ export default function LessonModalsManager() {
             notes: data.lesson.notes,
             topicSetBy: data.lesson.topicSetBy,
             topicSetAt: data.lesson.topicSetAt,
-            topicSetByTelegramId: data.lesson.topicSetByTelegramId || null,
             notesSetBy: data.lesson.notesSetBy,
             notesSetAt: data.lesson.notesSetAt,
-            notesSetByTelegramId: data.lesson.notesSetByTelegramId || null,
           }
         });
         setLessonTopic(prev => ({ ...prev, [lessonId]: data.lesson.topic || '' }));
@@ -377,7 +375,6 @@ export default function LessonModalsManager() {
             topic: newTopic,
             topicSetBy: data.lesson.topicSetBy,
             topicSetAt: data.lesson.topicSetAt,
-            topicSetByTelegramId: data.lesson.topicSetByTelegramId || null,
           }
         });
         setEditingTopic(prev => ({ ...prev, [lessonId]: false }));
@@ -421,7 +418,6 @@ export default function LessonModalsManager() {
             notes: newNotes,
             notesSetBy: data.lesson.notesSetBy,
             notesSetAt: data.lesson.notesSetAt,
-            notesSetByTelegramId: data.lesson.notesSetByTelegramId || null,
           }
         });
         setEditingNotes(prev => ({ ...prev, [lessonId]: false }));
