@@ -402,29 +402,33 @@ export async function PATCH(
           updates.push(`notes_set_by = $${queryParams.length + 1}`);
           queryParams.push(-user.id); // Store as negative to distinguish from regular user IDs
           
-          // Store full Telegram user info in JSON field
-          updates.push(`telegram_user_info = $${queryParams.length + 1}`);
-          const telegramUserInfo = {
-            telegram_id: user.id,
-            first_name: user.first_name,
-            last_name: user.last_name,
-            username: user.username
-          };
-          queryParams.push(JSON.stringify(telegramUserInfo));
-          console.log('[Telegram Lesson] Storing telegram user info for notes:', telegramUserInfo);
+          // Only update telegram_user_info if not already updated by topic
+          if (!updates.some(update => update.includes('telegram_user_info'))) {
+            updates.push(`telegram_user_info = $${queryParams.length + 1}`);
+            const telegramUserInfo = {
+              telegram_id: user.id,
+              first_name: user.first_name,
+              last_name: user.last_name,
+              username: user.username
+            };
+            queryParams.push(JSON.stringify(telegramUserInfo));
+            console.log('[Telegram Lesson] Storing telegram user info for notes:', telegramUserInfo);
+          }
         } else if (teacherId) {
           console.log('[Telegram Lesson] Using teacher_id from URL as fallback for notes:', teacherId);
           updates.push(`notes_set_by = $${queryParams.length + 1}`);
           queryParams.push(-parseInt(teacherId)); // Store as negative to distinguish from regular user IDs
           
-          // Store teacher info in JSON field
-          updates.push(`telegram_user_info = $${queryParams.length + 1}`);
-          const teacherInfo = {
-            telegram_id: teacherId,
-            source: 'url_parameter'
-          };
-          queryParams.push(JSON.stringify(teacherInfo));
-          console.log('[Telegram Lesson] Storing teacher info from URL for notes:', teacherInfo);
+          // Only update telegram_user_info if not already updated by topic
+          if (!updates.some(update => update.includes('telegram_user_info'))) {
+            updates.push(`telegram_user_info = $${queryParams.length + 1}`);
+            const teacherInfo = {
+              telegram_id: teacherId,
+              source: 'url_parameter'
+            };
+            queryParams.push(JSON.stringify(teacherInfo));
+            console.log('[Telegram Lesson] Storing teacher info from URL for notes:', teacherInfo);
+          }
         } else {
           console.log('[Telegram Lesson] No user ID found in parsed data for notes and no teacher_id in URL');
         }

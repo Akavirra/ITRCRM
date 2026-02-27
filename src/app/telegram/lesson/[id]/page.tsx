@@ -49,7 +49,11 @@ export default function TelegramLessonPage({ params, searchParams }: { params: {
   console.log('[TelegramLessonPage] Page loaded with params:', params);
   console.log('[TelegramLessonPage] Parsed lessonId:', lessonId);
   console.log('[TelegramLessonPage] Teacher ID from URL:', teacherId);
-  console.log('[TelegramLessonPage] URL params:', window.location?.search);
+  
+  // Only access window on client side
+  if (typeof window !== 'undefined') {
+    console.log('[TelegramLessonPage] URL params:', window.location?.search);
+  }
 
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
