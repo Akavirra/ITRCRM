@@ -122,6 +122,14 @@ export async function GET(
       return formatDateTimeKyiv(timestamp);
     };
     
+    console.log('API Debug - Raw lessonWithDetails:', {
+      topic_set_by_name: lessonWithDetails?.topic_set_by_name,
+      notes_set_by_name: lessonWithDetails?.notes_set_by_name,
+      topic_set_by_telegram_id: lessonWithDetails?.topic_set_by_telegram_id,
+      notes_set_by_telegram_id: lessonWithDetails?.notes_set_by_telegram_id,
+      telegram_user_info: lessonWithDetails?.telegram_user_info
+    });
+    
     const transformedLesson = lessonWithDetails ? {
       id: lessonWithDetails.id,
       groupId: lessonWithDetails.group_id,
@@ -147,8 +155,16 @@ export async function GET(
       notesSetByTelegramId: lessonWithDetails.notes_set_by_telegram_id,
       telegramUserInfo: lessonWithDetails.telegram_user_info,
     } : null;
-  
-  return NextResponse.json({ lesson: transformedLesson });
+    
+    console.log('API Debug - Transformed lesson:', {
+      topicSetBy: transformedLesson?.topicSetBy,
+      notesSetBy: transformedLesson?.notesSetBy,
+      topicSetByTelegramId: transformedLesson?.topicSetByTelegramId,
+      notesSetByTelegramId: transformedLesson?.notesSetByTelegramId,
+      telegramUserInfo: transformedLesson?.telegramUserInfo
+    });
+    
+    return NextResponse.json({ lesson: transformedLesson });
 }
 
 // PATCH /api/lessons/[id] - Update a lesson
