@@ -61,8 +61,13 @@ export default function TelegramLessonPage() {
   useEffect(() => {
     // Initialize Telegram WebApp
     if (window.Telegram?.WebApp) {
+      console.log('[TelegramLessonPage] Initializing WebApp...');
       window.Telegram.WebApp.ready();
       window.Telegram.WebApp.expand();
+      
+      console.log('[TelegramLessonPage] WebApp initialized successfully');
+    } else {
+      console.log('[TelegramLessonPage] Telegram WebApp not available');
     }
     
     // Load data directly (we've removed strict Telegram auth check)

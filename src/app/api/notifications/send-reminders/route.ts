@@ -164,7 +164,8 @@ export async function POST(request: NextRequest) {
       
        // Add button to open web app for lesson details
       const WEB_APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://itrcrm.vercel.app';
-      const lessonUrl = `${WEB_APP_URL}/telegram/lesson/${lessonId}`;
+      // Add Telegram WebApp parameters to ensure initData is passed
+      const lessonUrl = `${WEB_APP_URL}/telegram/lesson/${lessonId}?startapp=lesson_${lessonId}`;
       console.log('[Send Reminders] Lesson URL:', lessonUrl);
       
       // Add web app button with proper parameters for initData
