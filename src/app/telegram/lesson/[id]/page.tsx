@@ -43,13 +43,12 @@ interface Student {
   status: 'present' | 'absent' | null;
 }
 
-export default function TelegramLessonPage() {
-  const params = useParams();
-  console.log('[TelegramLessonPage] Full params:', JSON.stringify(params));
-  const lessonId = parseInt(params.id as string);
-  
-  console.log('[TelegramLessonPage] params.id:', params.id, 'lessonId:', lessonId);
-  
+export default function TelegramLessonPage({ params }: { params: { id: string } }) {
+  const lessonId = parseInt(params.id);
+  console.log('[TelegramLessonPage] Page loaded with params:', params);
+  console.log('[TelegramLessonPage] Parsed lessonId:', lessonId);
+  console.log('[TelegramLessonPage] URL params:', window.location?.search);
+
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +58,8 @@ export default function TelegramLessonPage() {
   const [error, setError] = useState('');
   
   useEffect(() => {
+    console.log('[TelegramLessonPage] Component mounted, lessonId:', lessonId);
+    
     // Initialize Telegram WebApp
     if (window.Telegram?.WebApp) {
       console.log('[TelegramLessonPage] Initializing WebApp...');
@@ -72,6 +73,7 @@ export default function TelegramLessonPage() {
     
     // Load data directly (we've removed strict Telegram auth check)
     if (lessonId > 0) {
+      console.log('[TelegramLessonPage] Loading data for lesson:', lessonId);
       loadData();
     }
   }, [lessonId]);
