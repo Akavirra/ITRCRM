@@ -1425,7 +1425,7 @@ export default function LessonModalsManager() {
                             <span style={{ color: '#6b7280' }}>Дані передано:</span>{' '}
                             <span style={{ fontWeight: 500 }}>{dataSetBy}</span>
                             {dataSetByTelegramId && (
-                              <span style={{ color: '#9ca3af' }}> ({dataSetByTelegramId})</span>
+                              <span style={{ color: '#9ca3af' }}> (чий id телеграма був використаний)</span>
                             )}
                             <span style={{ color: '#9ca3af', marginLeft: '0.5rem' }}>{dataSetAt}</span>
                           </span>
