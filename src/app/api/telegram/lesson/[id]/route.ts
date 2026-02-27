@@ -138,13 +138,21 @@ export async function GET(
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
         CASE 
           WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
-            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+            COALESCE(
+              l.telegram_user_info->>'first_name',
+              telegram_info_user.name,
+              'Telegram User'
+            )
           WHEN l.topic_set_by < 0 THEN 'Telegram User'
           ELSE topic_user.name 
         END as topic_set_by_name,
         CASE 
           WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
-            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+            COALESCE(
+              l.telegram_user_info->>'first_name',
+              telegram_info_user.name,
+              'Telegram User'
+            )
           WHEN l.notes_set_by < 0 THEN 'Telegram User'
           ELSE notes_user.name 
         END as notes_set_by_name,
@@ -163,6 +171,9 @@ export async function GET(
       LEFT JOIN users g_teacher ON g.teacher_id = g_teacher.id
       LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
       LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
+      LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL 
+        AND l.telegram_user_info->>'telegram_id' IS NOT NULL 
+        AND CAST(l.telegram_user_info->>'telegram_id' AS INTEGER) = telegram_info_user.id
       WHERE l.id = $1`,
       [numericId]
     );
@@ -195,13 +206,21 @@ export async function GET(
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
         CASE 
           WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
-            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+            COALESCE(
+              l.telegram_user_info->>'first_name',
+              telegram_info_user.name,
+              'Telegram User'
+            )
           WHEN l.topic_set_by < 0 THEN 'Telegram User'
           ELSE topic_user.name 
         END as topic_set_by_name,
         CASE 
           WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
-            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+            COALESCE(
+              l.telegram_user_info->>'first_name',
+              telegram_info_user.name,
+              'Telegram User'
+            )
           WHEN l.notes_set_by < 0 THEN 'Telegram User'
           ELSE notes_user.name 
         END as notes_set_by_name,
@@ -219,6 +238,9 @@ export async function GET(
       LEFT JOIN users u ON l.teacher_id = u.id
       LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
       LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
+      LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL 
+        AND l.telegram_user_info->>'telegram_id' IS NOT NULL 
+        AND CAST(l.telegram_user_info->>'telegram_id' AS INTEGER) = telegram_info_user.id
       WHERE l.public_id = $1`,
       [rawId]
     );
@@ -467,13 +489,21 @@ export async function PATCH(
         l.*, 
         CASE 
           WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
-            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+            COALESCE(
+              l.telegram_user_info->>'first_name',
+              telegram_info_user.name,
+              'Telegram User'
+            )
           WHEN l.topic_set_by < 0 THEN 'Telegram User'
           ELSE topic_user.name 
-        END as topic_set_by_name, 
+        END as topic_set_by_name,
         CASE 
           WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
-            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+            COALESCE(
+              l.telegram_user_info->>'first_name',
+              telegram_info_user.name,
+              'Telegram User'
+            )
           WHEN l.notes_set_by < 0 THEN 'Telegram User'
           ELSE notes_user.name 
         END as notes_set_by_name,
@@ -488,6 +518,9 @@ export async function PATCH(
       FROM lessons l
       LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
       LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
+      LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL 
+        AND l.telegram_user_info->>'telegram_id' IS NOT NULL 
+        AND CAST(l.telegram_user_info->>'telegram_id' AS INTEGER) = telegram_info_user.id
       WHERE l.id = $1`,
       [lesson.id]
     );
