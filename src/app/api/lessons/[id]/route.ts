@@ -289,28 +289,28 @@ export async function PATCH(
         g.teacher_id as original_teacher_id,
         c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
-        COALESCE(
+        topic_set_by_name: COALESCE(
+      CASE 
+        WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
           CASE 
-            WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
-              CASE 
-                WHEN l.telegram_user_info->>'source' = 'url_parameter' THEN 'Telegram User'
-                ELSE COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
-              END
-            ELSE topic_user.name 
-          END, 'Unknown'
-        ) as topic_set_by_name,
-        COALESCE(
+            WHEN l.telegram_user_info->>'source' = 'url_parameter' THEN 'Telegram User'
+            ELSE COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+          END
+        ELSE topic_user.name 
+      END, 'Unknown'
+    ),
+    notes_set_by_name: COALESCE(
+      CASE 
+        WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
           CASE 
-            WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
-              CASE 
-                WHEN l.telegram_user_info->>'source' = 'url_parameter' THEN 'Telegram User'
-                ELSE COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
-              END
-            ELSE notes_user.name 
-          END, 'Unknown'
-        ) as notes_set_by_name,
-        COALESCE(l.telegram_user_info->>'telegram_id', topic_user.telegram_id, notes_user.telegram_id) as topic_set_by_telegram_id,
-        COALESCE(l.telegram_user_info->>'telegram_id', topic_user.telegram_id, notes_user.telegram_id) as notes_set_by_telegram_id,
+            WHEN l.telegram_user_info->>'source' = 'url_parameter' THEN 'Telegram User'
+            ELSE COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+          END
+        ELSE notes_user.name 
+      END, 'Unknown'
+    ),
+    COALESCE(l.telegram_user_info->>'telegram_id', topic_user.telegram_id, notes_user.telegram_id) as topic_set_by_telegram_id,
+    COALESCE(l.telegram_user_info->>'telegram_id', topic_user.telegram_id, notes_user.telegram_id) as notes_set_by_telegram_id,
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       JOIN courses c ON g.course_id = c.id
