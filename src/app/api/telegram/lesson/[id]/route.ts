@@ -314,11 +314,13 @@ export async function PATCH(
     await run(sql, queryParams);
     
     // Get updated lesson with details
-    const updatedLessonRaw = await get<Lesson & { topic_set_by_name: string | null; notes_set_by_name: string | null }>(
+    const updatedLessonRaw = await get<Lesson & { topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null }>(
       `SELECT 
         l.*, 
         topic_user.name as topic_set_by_name, 
-        notes_user.name as notes_set_by_name
+        notes_user.name as notes_set_by_name,
+        topic_user.telegram_id as topic_set_by_telegram_id,
+        notes_user.telegram_id as notes_set_by_telegram_id
       FROM lessons l
       LEFT JOIN users topic_user ON l.topic_set_by = topic_user.id
       LEFT JOIN users notes_user ON l.notes_set_by = notes_user.id
@@ -337,8 +339,10 @@ export async function PATCH(
        notes: updatedLessonRaw.notes,
        topicSetBy: updatedLessonRaw.topic_set_by_name,
        topicSetAt: formatDateTimeKyiv(updatedLessonRaw.topic_set_at),
+       topicSetByTelegramId: updatedLessonRaw.topic_set_by_telegram_id,
        notesSetBy: updatedLessonRaw.notes_set_by_name,
        notesSetAt: formatDateTimeKyiv(updatedLessonRaw.notes_set_at),
+       notesSetByTelegramId: updatedLessonRaw.notes_set_by_telegram_id,
      } : null;
     
     return NextResponse.json({

@@ -57,7 +57,7 @@ export async function GET(
   }
   
   // Get lesson with group, course and teacher details
-  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null }>(
+  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null }>(
     `SELECT 
       l.id,
       l.group_id,
@@ -80,7 +80,9 @@ export async function GET(
       c.title as course_title,
       CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
       topic_user.name as topic_set_by_name,
-      notes_user.name as notes_set_by_name
+      notes_user.name as notes_set_by_name,
+      topic_user.telegram_id as topic_set_by_telegram_id,
+      notes_user.telegram_id as notes_set_by_telegram_id
     FROM lessons l
     JOIN groups g ON l.group_id = g.id
     JOIN courses c ON g.course_id = c.id
@@ -117,8 +119,10 @@ export async function GET(
       notes: lessonWithDetails.notes,
       topicSetBy: lessonWithDetails.topic_set_by_name,
       topicSetAt: formatTimestamp(lessonWithDetails.topic_set_at),
+      topicSetByTelegramId: lessonWithDetails.topic_set_by_telegram_id,
       notesSetBy: lessonWithDetails.notes_set_by_name,
       notesSetAt: formatTimestamp(lessonWithDetails.notes_set_at),
+      notesSetByTelegramId: lessonWithDetails.notes_set_by_telegram_id,
     } : null;
   
   return NextResponse.json({ lesson: transformedLesson });
@@ -225,7 +229,7 @@ export async function PATCH(
     await run(sql, params);
     
     // Get updated lesson with group, course and teacher details
-    const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null }>(
+    const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null }>(
       `SELECT 
         l.id,
         l.group_id,
@@ -247,7 +251,9 @@ export async function PATCH(
         c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
         topic_user.name as topic_set_by_name,
-        notes_user.name as notes_set_by_name
+        notes_user.name as notes_set_by_name,
+        topic_user.telegram_id as topic_set_by_telegram_id,
+        notes_user.telegram_id as notes_set_by_telegram_id
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       JOIN courses c ON g.course_id = c.id
@@ -281,8 +287,10 @@ export async function PATCH(
       notes: updatedLessonRaw.notes,
       topicSetBy: updatedLessonRaw.topic_set_by_name,
       topicSetAt: formatTimestamp(updatedLessonRaw.topic_set_at),
+      topicSetByTelegramId: updatedLessonRaw.topic_set_by_telegram_id,
       notesSetBy: updatedLessonRaw.notes_set_by_name,
       notesSetAt: formatTimestamp(updatedLessonRaw.notes_set_at),
+      notesSetByTelegramId: updatedLessonRaw.notes_set_by_telegram_id,
     } : null;
     
     return NextResponse.json({
