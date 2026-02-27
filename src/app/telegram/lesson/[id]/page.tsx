@@ -82,7 +82,25 @@ export default function TelegramLessonPage() {
     try {
       // Pass Telegram initData for authentication
       const telegramInitData = window.Telegram?.WebApp?.initData || '';
-      console.log('[TelegramLessonPage] initData:', telegramInitData);
+      console.log('[TelegramLessonPage] Full Telegram WebApp object:', window.Telegram);
+      console.log('[TelegramLessonPage] WebApp object:', window.Telegram?.WebApp);
+      console.log('[TelegramLessonPage] initData raw:', telegramInitData);
+      console.log('[TelegramLessonPage] initData length:', telegramInitData.length);
+      
+      if (telegramInitData) {
+        // Try to parse initData to see what's inside
+        try {
+          const params = new URLSearchParams(telegramInitData);
+          const userJson = params.get('user');
+          console.log('[TelegramLessonPage] user from initData:', userJson);
+          if (userJson) {
+            const user = JSON.parse(decodeURIComponent(userJson));
+            console.log('[TelegramLessonPage] Parsed user:', user);
+          }
+        } catch (error) {
+          console.error('[TelegramLessonPage] Error parsing initData:', error);
+        }
+      }
       
       const [lessonRes, studentsRes] = await Promise.all([
         fetch(`/api/telegram/lesson/${lessonId}?initData=${encodeURIComponent(telegramInitData)}`),
@@ -121,6 +139,23 @@ export default function TelegramLessonPage() {
     
     try {
       const telegramInitData = window.Telegram?.WebApp?.initData || '';
+      console.log('[handleSubmit] Telegram WebApp object:', window.Telegram?.WebApp);
+      console.log('[handleSubmit] initData raw:', telegramInitData);
+      console.log('[handleSubmit] initData length:', telegramInitData.length);
+      
+      if (telegramInitData) {
+        try {
+          const params = new URLSearchParams(telegramInitData);
+          const userJson = params.get('user');
+          console.log('[handleSubmit] user from initData:', userJson);
+          if (userJson) {
+            const user = JSON.parse(decodeURIComponent(userJson));
+            console.log('[handleSubmit] Parsed user:', user);
+          }
+        } catch (error) {
+          console.error('[handleSubmit] Error parsing initData:', error);
+        }
+      }
       
       const response = await fetch(`/api/telegram/lesson/${lessonId}`, {
         method: 'PATCH',
