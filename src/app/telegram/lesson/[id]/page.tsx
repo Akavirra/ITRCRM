@@ -43,10 +43,12 @@ interface Student {
   status: 'present' | 'absent' | null;
 }
 
-export default function TelegramLessonPage({ params }: { params: { id: string } }) {
+export default function TelegramLessonPage({ params, searchParams }: { params: { id: string }, searchParams: { teacher_id?: string } }) {
   const lessonId = parseInt(params.id);
+  const teacherId = searchParams.teacher_id;
   console.log('[TelegramLessonPage] Page loaded with params:', params);
   console.log('[TelegramLessonPage] Parsed lessonId:', lessonId);
+  console.log('[TelegramLessonPage] Teacher ID from URL:', teacherId);
   console.log('[TelegramLessonPage] URL params:', window.location?.search);
 
   const [lesson, setLesson] = useState<LessonData | null>(null);
@@ -110,8 +112,8 @@ export default function TelegramLessonPage({ params }: { params: { id: string } 
       }
       
       const [lessonRes, studentsRes] = await Promise.all([
-        fetch(`/api/telegram/lesson/${lessonId}?initData=${encodeURIComponent(telegramInitData)}`),
-        fetch(`/api/telegram/lesson/${lessonId}/attendance?initData=${encodeURIComponent(telegramInitData)}`)
+        fetch(`/api/telegram/lesson/${lessonId}?initData=${encodeURIComponent(telegramInitData)}&teacher_id=${teacherId || ''}`),
+        fetch(`/api/telegram/lesson/${lessonId}/attendance?initData=${encodeURIComponent(telegramInitData)}&teacher_id=${teacherId || ''}`)
       ]);
       
       if (lessonRes.ok) {
@@ -164,7 +166,7 @@ export default function TelegramLessonPage({ params }: { params: { id: string } 
         }
       }
       
-      const response = await fetch(`/api/telegram/lesson/${lessonId}`, {
+      const response = await fetch(`/api/telegram/lesson/${lessonId}?teacher_id=${teacherId || ''}`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
@@ -196,7 +198,7 @@ export default function TelegramLessonPage({ params }: { params: { id: string } 
       
       const telegramInitData = window.Telegram?.WebApp?.initData || '';
       
-      const response = await fetch(`/api/telegram/lesson/${lessonId}/attendance`, {
+      const response = await fetch(`/api/telegram/lesson/${lessonId}/attendance?teacher_id=${teacherId || ''}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

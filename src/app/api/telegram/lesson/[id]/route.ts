@@ -227,7 +227,9 @@ export async function GET(
   
   // Verify Telegram user (skip verification if initData is empty for debugging purposes)
   const initData = request.nextUrl.searchParams.get('initData') || '';
+  const teacherId = request.nextUrl.searchParams.get('teacher_id') || '';
   console.log('[Telegram Lesson] initData received:', initData ? 'Yes' : 'No');
+  console.log('[Telegram Lesson] teacher_id from URL:', teacherId);
   if (initData) {
     console.log('[Telegram Lesson] initData preview:', initData.substring(0, 100));
   }
@@ -309,7 +311,9 @@ export async function PATCH(
   
   // Verify Telegram user (skip verification if initData is empty for debugging purposes)
   const initData = request.headers.get('x-telegram-init-data') || '';
+  const teacherId = request.nextUrl.searchParams.get('teacher_id') || '';
   console.log('[Telegram Lesson PATCH] initData received:', initData ? 'YES (' + initData.length + ' chars)' : 'NO');
+  console.log('[Telegram Lesson PATCH] teacher_id from URL:', teacherId);
   let telegramUser = null;
   
   if (initData) {
@@ -358,8 +362,21 @@ export async function PATCH(
           };
           queryParams.push(JSON.stringify(telegramUserInfo));
           console.log('[Telegram Lesson] Storing telegram user info:', telegramUserInfo);
+        } else if (teacherId) {
+          console.log('[Telegram Lesson] Using teacher_id from URL as fallback:', teacherId);
+          updates.push(`topic_set_by = $${queryParams.length + 1}`);
+          queryParams.push(-parseInt(teacherId)); // Store as negative to distinguish from regular user IDs
+          
+          // Store teacher info in JSON field
+          updates.push(`telegram_user_info = $${queryParams.length + 1}`);
+          const teacherInfo = {
+            telegram_id: teacherId,
+            source: 'url_parameter'
+          };
+          queryParams.push(JSON.stringify(teacherInfo));
+          console.log('[Telegram Lesson] Storing teacher info from URL:', teacherInfo);
         } else {
-          console.log('[Telegram Lesson] No user ID found in parsed data');
+          console.log('[Telegram Lesson] No user ID found in parsed data and no teacher_id in URL');
         }
       }
       updates.push(`topic_set_at = NOW()`);
@@ -395,8 +412,21 @@ export async function PATCH(
           };
           queryParams.push(JSON.stringify(telegramUserInfo));
           console.log('[Telegram Lesson] Storing telegram user info for notes:', telegramUserInfo);
+        } else if (teacherId) {
+          console.log('[Telegram Lesson] Using teacher_id from URL as fallback for notes:', teacherId);
+          updates.push(`notes_set_by = $${queryParams.length + 1}`);
+          queryParams.push(-parseInt(teacherId)); // Store as negative to distinguish from regular user IDs
+          
+          // Store teacher info in JSON field
+          updates.push(`telegram_user_info = $${queryParams.length + 1}`);
+          const teacherInfo = {
+            telegram_id: teacherId,
+            source: 'url_parameter'
+          };
+          queryParams.push(JSON.stringify(teacherInfo));
+          console.log('[Telegram Lesson] Storing teacher info from URL for notes:', teacherInfo);
         } else {
-          console.log('[Telegram Lesson] No user ID found in parsed data for notes');
+          console.log('[Telegram Lesson] No user ID found in parsed data for notes and no teacher_id in URL');
         }
       }
       updates.push(`notes_set_at = NOW()`);
