@@ -362,11 +362,12 @@ export async function PATCH(
           updates.push(`topic_set_by = $${queryParams.length + 1}`);
           queryParams.push(null); // Store NULL to avoid foreign key constraint
           
-          // Store full Telegram user info in JSON field
+          // Store full Telegram user info in JSON field with complete name
           updates.push(`telegram_user_info = $${queryParams.length + 1}`);
+          const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
           const telegramUserInfo = {
             telegram_id: user.id,
-            first_name: user.first_name,
+            first_name: fullName || user.first_name || 'Telegram User',
             last_name: user.last_name,
             username: user.username
           };
@@ -415,9 +416,10 @@ export async function PATCH(
           // Only update telegram_user_info if not already updated by topic
           if (!updates.some(update => update.includes('telegram_user_info'))) {
             updates.push(`telegram_user_info = $${queryParams.length + 1}`);
+            const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
             const telegramUserInfo = {
               telegram_id: user.id,
-              first_name: user.first_name,
+              first_name: fullName || user.first_name || 'Telegram User',
               last_name: user.last_name,
               username: user.username
             };

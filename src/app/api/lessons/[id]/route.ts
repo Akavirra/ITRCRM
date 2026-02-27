@@ -81,11 +81,15 @@ export async function GET(
       c.title as course_title,
       CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
       CASE 
-        WHEN l.topic_set_by < 0 THEN COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+        WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
+          COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+        WHEN l.topic_set_by < 0 THEN 'Telegram User'
         ELSE topic_user.name 
       END as topic_set_by_name,
       CASE 
-        WHEN l.notes_set_by < 0 THEN COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+        WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
+          COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+        WHEN l.notes_set_by < 0 THEN 'Telegram User'
         ELSE notes_user.name 
       END as notes_set_by_name,
       CASE 
@@ -293,20 +297,16 @@ export async function PATCH(
         topic_set_by_name: COALESCE(
       CASE 
         WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
-          CASE 
-            WHEN l.telegram_user_info->>'source' = 'url_parameter' THEN 'Telegram User'
-            ELSE COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
-          END
+          COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+        WHEN l.topic_set_by < 0 THEN 'Telegram User'
         ELSE topic_user.name 
       END, 'Unknown'
     ),
     notes_set_by_name: COALESCE(
       CASE 
         WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
-          CASE 
-            WHEN l.telegram_user_info->>'source' = 'url_parameter' THEN 'Telegram User'
-            ELSE COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
-          END
+          COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+        WHEN l.notes_set_by < 0 THEN 'Telegram User'
         ELSE notes_user.name 
       END, 'Unknown'
     ),
@@ -358,6 +358,7 @@ export async function PATCH(
       notesSetBy: updatedLessonRaw.notes_set_by_name,
       notesSetAt: formatTimestamp(updatedLessonRaw.notes_set_at),
       notesSetByTelegramId: updatedLessonRaw.notes_set_by_telegram_id,
+      telegramUserInfo: (updatedLessonRaw as any).telegram_user_info,
     } : null;
     
     return NextResponse.json({
