@@ -302,11 +302,11 @@ export async function PATCH(
     if (topic !== undefined) {
       // Convert empty string to null to avoid PostgreSQL type inference issues
       const topicValue = topic === '' ? null : topic;
-      updates.push(`topic = ${queryParams.length + 1}`);
+      updates.push(`topic = $${queryParams.length + 1}::text`);
       queryParams.push(topicValue);
       // Only update topic_set_by if telegramUser is found
       if (telegramUser) {
-        updates.push(`topic_set_by = ${queryParams.length + 1}`);
+        updates.push(`topic_set_by = $${queryParams.length + 1}`);
         queryParams.push(telegramUser.id);
       }
       updates.push(`topic_set_at = NOW()`);
@@ -315,11 +315,11 @@ export async function PATCH(
     if (notes !== undefined) {
       // Convert empty string to null to avoid PostgreSQL type inference issues
       const notesValue = notes === '' ? null : notes;
-      updates.push(`notes = ${queryParams.length + 1}`);
+      updates.push(`notes = $${queryParams.length + 1}::text`);
       queryParams.push(notesValue);
       // Only update notes_set_by if telegramUser is found
       if (telegramUser) {
-        updates.push(`notes_set_by = ${queryParams.length + 1}`);
+        updates.push(`notes_set_by = $${queryParams.length + 1}`);
         queryParams.push(telegramUser.id);
       }
       updates.push(`notes_set_at = NOW()`);
@@ -371,4 +371,3 @@ export async function PATCH(
     return NextResponse.json({ error: 'Не вдалося оновити заняття' }, { status: 500 });
   }
 }
-
