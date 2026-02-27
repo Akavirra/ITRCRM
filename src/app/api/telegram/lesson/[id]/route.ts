@@ -328,6 +328,14 @@ export async function PATCH(
     const { topic, notes, teacher_id } = body;
     
     console.log('[Telegram Lesson PATCH] Request body:', { topic, notes, teacher_id });
+    console.log('[Telegram Lesson PATCH] Full body:', JSON.stringify(body));
+    
+    // Debug: check if teacher_id is coming from body
+    if (teacher_id) {
+      console.log('[Telegram Lesson PATCH] teacher_id from body:', teacher_id);
+    } else {
+      console.log('[Telegram Lesson PATCH] No teacher_id in body');
+    }
     
     console.log('[Telegram Lesson PATCH] Received body:', JSON.stringify(body));
     
