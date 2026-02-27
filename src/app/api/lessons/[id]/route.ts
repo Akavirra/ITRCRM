@@ -323,6 +323,15 @@ export async function PATCH(
       [lessonId]
     );
     
+    console.log('API Debug - lessonWithDetails:', updatedLessonRaw);
+  
+  // Debug telegram_user_info field
+  if (updatedLessonRaw?.telegram_user_info) {
+    console.log('API Debug - telegram_user_info found:', updatedLessonRaw.telegram_user_info);
+  } else {
+    console.log('API Debug - telegram_user_info is null/undefined');
+  }
+  
     // Transform to camelCase format - handle null teacher_id and date conversion
     const formatTimestamp = (timestamp: string | null): string | null => {
       if (!timestamp) return null;
