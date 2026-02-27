@@ -57,7 +57,7 @@ export async function GET(
   }
   
   // Get lesson with group, course and teacher details
-  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null }>(
+  const lessonWithDetails = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: any }>(
     `SELECT 
       l.id,
       l.group_id,
@@ -73,6 +73,7 @@ export async function GET(
       l.topic_set_at,
       l.notes_set_by,
       l.notes_set_at,
+      l.telegram_user_info,
       COALESCE(u.name, g_teacher.name) as teacher_name,
       g.title as group_title,
       g.teacher_id as original_teacher_id,
@@ -80,19 +81,19 @@ export async function GET(
       c.title as course_title,
       CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
       CASE 
-        WHEN l.topic_set_by < 0 THEN 'Telegram User'
+        WHEN l.topic_set_by < 0 THEN COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
         ELSE topic_user.name 
       END as topic_set_by_name,
       CASE 
-        WHEN l.notes_set_by < 0 THEN 'Telegram User'
+        WHEN l.notes_set_by < 0 THEN COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
         ELSE notes_user.name 
       END as notes_set_by_name,
       CASE 
-        WHEN l.topic_set_by < 0 THEN CAST((-l.topic_set_by) AS TEXT)
+        WHEN l.topic_set_by < 0 THEN COALESCE(l.telegram_user_info->>'telegram_id', CAST((-l.topic_set_by) AS TEXT))
         ELSE topic_user.telegram_id 
       END as topic_set_by_telegram_id,
       CASE 
-        WHEN l.notes_set_by < 0 THEN CAST((-l.notes_set_by) AS TEXT)
+        WHEN l.notes_set_by < 0 THEN COALESCE(l.telegram_user_info->>'telegram_id', CAST((-l.notes_set_by) AS TEXT))
         ELSE notes_user.telegram_id 
       END as notes_set_by_telegram_id
     FROM lessons l
@@ -137,6 +138,7 @@ export async function GET(
       notesSetBy: lessonWithDetails.notes_set_by_name,
       notesSetAt: formatTimestamp(lessonWithDetails.notes_set_at),
       notesSetByTelegramId: lessonWithDetails.notes_set_by_telegram_id,
+      telegramUserInfo: lessonWithDetails.telegram_user_info,
     } : null;
   
   return NextResponse.json({ lesson: transformedLesson });

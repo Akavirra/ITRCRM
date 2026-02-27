@@ -330,7 +330,7 @@ export async function PATCH(
       updates.push(`topic = $${queryParams.length + 1}::text`);
       queryParams.push(topicValue);
       
-      // Always track who set the topic
+      // Always track who set topic
       if (telegramUser) {
         updates.push(`topic_set_by = $${queryParams.length + 1}`);
         queryParams.push(telegramUser.id);
@@ -340,6 +340,15 @@ export async function PATCH(
         if (user.id) {
           updates.push(`topic_set_by = $${queryParams.length + 1}`);
           queryParams.push(-user.id); // Store as negative to distinguish from regular user IDs
+          
+          // Store full Telegram user info in JSON field
+          updates.push(`telegram_user_info = $${queryParams.length + 1}`);
+          queryParams.push(JSON.stringify({
+            telegram_id: user.id,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            username: user.username
+          }));
         }
       }
       updates.push(`topic_set_at = NOW()`);
@@ -351,7 +360,7 @@ export async function PATCH(
       updates.push(`notes = $${queryParams.length + 1}::text`);
       queryParams.push(notesValue);
       
-      // Always track who set the notes
+      // Always track who set notes
       if (telegramUser) {
         updates.push(`notes_set_by = $${queryParams.length + 1}`);
         queryParams.push(telegramUser.id);

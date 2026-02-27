@@ -236,6 +236,18 @@ async function migrate() {
       }
     }
 
+    // Додаємо колонку для зберігання інформації про Telegram користувача
+    try {
+      await sql`ALTER TABLE lessons ADD COLUMN telegram_user_info JSONB`;
+      console.log('✅ Колонка telegram_user_info додана до lessons');
+    } catch (e) {
+      if (e.message && e.message.includes('already exists')) {
+        console.log('ℹ️ Колонка telegram_user_info вже існує в lessons');
+      } else {
+        throw e;
+      }
+    }
+
     // 7. Attendance table (після lessons, students, users)
     await sql`
       CREATE TABLE IF NOT EXISTS attendance (

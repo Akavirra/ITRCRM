@@ -1427,6 +1427,14 @@ export default function LessonModalsManager() {
                     
                     console.log('Final values:', { dataSetBy, dataSetAt, dataSetByTelegramId });
                     
+                    // Additional debug: Check if we have negative IDs (from Telegram)
+                    console.log('Raw lesson data:', {
+                      topicSetBy: lesson?.topicSetBy,
+                      notesSetBy: lesson?.notesSetBy,
+                      topicSetByTelegramId: lesson?.topicSetByTelegramId,
+                      notesSetByTelegramId: lesson?.notesSetByTelegramId
+                    });
+                    
                     return (
                       <div style={{ fontSize: '0.8125rem', color: '#374151' }}>
                         {dataSetBy && dataSetAt ? (
