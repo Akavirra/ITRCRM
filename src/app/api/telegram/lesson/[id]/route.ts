@@ -173,7 +173,7 @@ export async function GET(
       LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
       LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL 
         AND l.telegram_user_info->>'user_id' IS NOT NULL 
-        AND CAST(l.telegram_user_info->>'user_id' AS INTEGER) = telegram_info_user.id
+        AND l.telegram_user_info->>'user_id' = telegram_info_user.telegram_id
       WHERE l.id = $1`,
       [numericId]
     );
@@ -240,7 +240,7 @@ export async function GET(
       LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
       LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL 
         AND l.telegram_user_info->>'user_id' IS NOT NULL 
-        AND CAST(l.telegram_user_info->>'user_id' AS INTEGER) = telegram_info_user.id
+        AND l.telegram_user_info->>'user_id' = telegram_info_user.telegram_id
       WHERE l.public_id = $1`,
       [rawId]
     );
@@ -541,7 +541,7 @@ export async function PATCH(
       LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
       LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL 
         AND l.telegram_user_info->>'user_id' IS NOT NULL 
-        AND CAST(l.telegram_user_info->>'user_id' AS INTEGER) = telegram_info_user.id
+        AND l.telegram_user_info->>'user_id' = telegram_info_user.telegram_id
       WHERE l.id = $1`,
       [lesson.id]
     );
