@@ -136,16 +136,29 @@ export async function GET(
         g.course_id as course_id,
         c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
-        topic_user.name as topic_set_by_name,
-        notes_user.name as notes_set_by_name,
-        topic_user.telegram_id as topic_set_by_telegram_id,
-        notes_user.telegram_id as notes_set_by_telegram_id
+        CASE 
+          WHEN l.topic_set_by < 0 THEN 'Telegram User'
+          ELSE topic_user.name 
+        END as topic_set_by_name,
+        CASE 
+          WHEN l.notes_set_by < 0 THEN 'Telegram User'
+          ELSE notes_user.name 
+        END as notes_set_by_name,
+        CASE 
+          WHEN l.topic_set_by < 0 THEN CAST((-l.topic_set_by) AS TEXT)
+          ELSE topic_user.telegram_id 
+        END as topic_set_by_telegram_id,
+        CASE 
+          WHEN l.notes_set_by < 0 THEN CAST((-l.notes_set_by) AS TEXT)
+          ELSE notes_user.telegram_id 
+        END as notes_set_by_telegram_id
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       JOIN courses c ON g.course_id = c.id
       LEFT JOIN users u ON l.teacher_id = u.id
-      LEFT JOIN users topic_user ON l.topic_set_by = topic_user.id
-      LEFT JOIN users notes_user ON l.notes_set_by = notes_user.id
+      LEFT JOIN users g_teacher ON g.teacher_id = g_teacher.id
+      LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
+      LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
       WHERE l.id = $1`,
       [numericId]
     );
@@ -176,16 +189,28 @@ export async function GET(
         g.course_id as course_id,
         c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
-        topic_user.name as topic_set_by_name,
-        notes_user.name as notes_set_by_name,
-        topic_user.telegram_id as topic_set_by_telegram_id,
-        notes_user.telegram_id as notes_set_by_telegram_id
+        CASE 
+          WHEN l.topic_set_by < 0 THEN 'Telegram User'
+          ELSE topic_user.name 
+        END as topic_set_by_name,
+        CASE 
+          WHEN l.notes_set_by < 0 THEN 'Telegram User'
+          ELSE notes_user.name 
+        END as notes_set_by_name,
+        CASE 
+          WHEN l.topic_set_by < 0 THEN CAST((-l.topic_set_by) AS TEXT)
+          ELSE topic_user.telegram_id 
+        END as topic_set_by_telegram_id,
+        CASE 
+          WHEN l.notes_set_by < 0 THEN CAST((-l.notes_set_by) AS TEXT)
+          ELSE notes_user.telegram_id 
+        END as notes_set_by_telegram_id
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       JOIN courses c ON g.course_id = c.id
       LEFT JOIN users u ON l.teacher_id = u.id
-      LEFT JOIN users topic_user ON l.topic_set_by = topic_user.id
-      LEFT JOIN users notes_user ON l.notes_set_by = notes_user.id
+      LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
+      LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
       WHERE l.public_id = $1`,
       [rawId]
     );
@@ -304,10 +329,18 @@ export async function PATCH(
       const topicValue = topic === '' ? null : topic;
       updates.push(`topic = $${queryParams.length + 1}::text`);
       queryParams.push(topicValue);
-      // Only update topic_set_by if telegramUser is found
+      
+      // Always track who set the topic
       if (telegramUser) {
         updates.push(`topic_set_by = $${queryParams.length + 1}`);
         queryParams.push(telegramUser.id);
+      } else {
+        // Store negative telegram_id to indicate Telegram user that wasn't found in DB
+        const user = JSON.parse(decodeURIComponent(new URLSearchParams(initData).get('user') || '{}'));
+        if (user.id) {
+          updates.push(`topic_set_by = $${queryParams.length + 1}`);
+          queryParams.push(-user.id); // Store as negative to distinguish from regular user IDs
+        }
       }
       updates.push(`topic_set_at = NOW()`);
     }
@@ -317,10 +350,18 @@ export async function PATCH(
       const notesValue = notes === '' ? null : notes;
       updates.push(`notes = $${queryParams.length + 1}::text`);
       queryParams.push(notesValue);
-      // Only update notes_set_by if telegramUser is found
+      
+      // Always track who set the notes
       if (telegramUser) {
         updates.push(`notes_set_by = $${queryParams.length + 1}`);
         queryParams.push(telegramUser.id);
+      } else {
+        // Store negative telegram_id to indicate Telegram user that wasn't found in DB
+        const user = JSON.parse(decodeURIComponent(new URLSearchParams(initData).get('user') || '{}'));
+        if (user.id) {
+          updates.push(`notes_set_by = $${queryParams.length + 1}`);
+          queryParams.push(-user.id); // Store as negative to distinguish from regular user IDs
+        }
       }
       updates.push(`notes_set_at = NOW()`);
     }
@@ -334,13 +375,25 @@ export async function PATCH(
     const updatedLessonRaw = await get<Lesson & { topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null }>(
       `SELECT 
         l.*, 
-        topic_user.name as topic_set_by_name, 
-        notes_user.name as notes_set_by_name,
-        topic_user.telegram_id as topic_set_by_telegram_id,
-        notes_user.telegram_id as notes_set_by_telegram_id
+        CASE 
+          WHEN l.topic_set_by < 0 THEN 'Telegram User'
+          ELSE topic_user.name 
+        END as topic_set_by_name, 
+        CASE 
+          WHEN l.notes_set_by < 0 THEN 'Telegram User'
+          ELSE notes_user.name 
+        END as notes_set_by_name,
+        CASE 
+          WHEN l.topic_set_by < 0 THEN CAST((-l.topic_set_by) AS TEXT)
+          ELSE topic_user.telegram_id 
+        END as topic_set_by_telegram_id,
+        CASE 
+          WHEN l.notes_set_by < 0 THEN CAST((-l.notes_set_by) AS TEXT)
+          ELSE notes_user.telegram_id 
+        END as notes_set_by_telegram_id
       FROM lessons l
-      LEFT JOIN users topic_user ON l.topic_set_by = topic_user.id
-      LEFT JOIN users notes_user ON l.notes_set_by = notes_user.id
+      LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
+      LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
       WHERE l.id = $1`,
       [lesson.id]
     );
