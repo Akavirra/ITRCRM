@@ -408,10 +408,19 @@ export async function PATCH(
           updates.push(`topic_set_by = $${queryParams.length + 1}`);
           queryParams.push(null); // Store NULL to avoid foreign key constraint
           
-          // Store teacher info in JSON field
+          // Get teacher name from database
+          const teacherFromDb = await get<{ name: string }>(
+            `SELECT name FROM users WHERE id = $1`,
+            [teacher_id]
+          );
+          const teacherName = teacherFromDb?.name || 'Unknown Teacher';
+          console.log('[Telegram Lesson] Found teacher name from DB:', teacherName);
+          
+          // Store teacher info in JSON field with name
           updates.push(`telegram_user_info = $${queryParams.length + 1}`);
           const teacherInfo = {
             user_id: teacher_id,
+            first_name: teacherName,
             source: 'body_parameter'
           };
           queryParams.push(JSON.stringify(teacherInfo));
@@ -463,9 +472,18 @@ export async function PATCH(
           
           // Only update telegram_user_info if not already updated by topic
           if (!updates.some(update => update.includes('telegram_user_info'))) {
+            // Get teacher name from database
+            const teacherFromDb = await get<{ name: string }>(
+              `SELECT name FROM users WHERE id = $1`,
+              [teacher_id]
+            );
+            const teacherName = teacherFromDb?.name || 'Unknown Teacher';
+            console.log('[Telegram Lesson] Found teacher name from DB for notes:', teacherName);
+            
             updates.push(`telegram_user_info = $${queryParams.length + 1}`);
             const teacherInfo = {
-              telegram_id: teacher_id,
+              user_id: teacher_id,
+              first_name: teacherName,
               source: 'body_parameter'
             };
             queryParams.push(JSON.stringify(teacherInfo));
