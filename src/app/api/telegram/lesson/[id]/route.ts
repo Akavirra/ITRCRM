@@ -288,16 +288,12 @@ export async function PATCH(
     const body = await request.json();
     const { topic, notes } = body;
     
-    console.log('[Telegram Lesson PATCH] Received body:', JSON.stringify(body));
-    
     const updates: string[] = ['updated_at = NOW()'];
-    const queryParams: (string | number | null)[] = [];
+    const queryParams: (string | number)[] = [];
     
     if (topic !== undefined) {
-      // Convert empty string to null to avoid PostgreSQL type inference issues
-      const topicValue = topic === '' ? null : topic;
       updates.push(`topic = ${queryParams.length + 1}`);
-      queryParams.push(topicValue);
+      queryParams.push(topic);
       // Only update topic_set_by if telegramUser is found
       if (telegramUser) {
         updates.push(`topic_set_by = ${queryParams.length + 1}`);
@@ -307,10 +303,8 @@ export async function PATCH(
     }
     
     if (notes !== undefined) {
-      // Convert empty string to null to avoid PostgreSQL type inference issues
-      const notesValue = notes === '' ? null : notes;
       updates.push(`notes = ${queryParams.length + 1}`);
-      queryParams.push(notesValue);
+      queryParams.push(notes);
       // Only update notes_set_by if telegramUser is found
       if (telegramUser) {
         updates.push(`notes_set_by = ${queryParams.length + 1}`);
