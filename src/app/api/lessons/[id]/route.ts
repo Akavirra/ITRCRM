@@ -94,6 +94,8 @@ export async function GET(
     [lessonId]
   );
   
+  console.log('API Debug - lessonWithDetails:', lessonWithDetails);
+  
     // Transform to camelCase format - handle null teacher_id and date conversion
     const formatTimestamp = (timestamp: string | null): string | null => {
       if (!timestamp) return null;

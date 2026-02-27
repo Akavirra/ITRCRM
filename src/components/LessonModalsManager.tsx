@@ -1375,11 +1375,18 @@ export default function LessonModalsManager() {
                   
                   {/* Calculate the latest transfer info */}
                   {(() => {
+                    // Debug logging
+                    console.log('Lesson data for debug:', lesson);
+                    console.log('Topic data:', lesson?.topicSetBy, lesson?.topicSetAt, lesson?.topicSetByTelegramId);
+                    console.log('Notes data:', lesson?.notesSetBy, lesson?.notesSetAt, lesson?.notesSetByTelegramId);
+                    
                     const topicDate = lesson?.topicSetAt ? new Date(lesson.topicSetAt.replace(/(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:00')) : null;
                     const notesDate = lesson?.notesSetAt ? new Date(lesson.notesSetAt.replace(/(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:00')) : null;
                     
                     const hasTopicData = lesson?.topicSetBy || lesson?.topicSetAt;
                     const hasNotesData = lesson?.notesSetBy || lesson?.notesSetAt;
+                    
+                    console.log('Has data check:', { hasTopicData, hasNotesData });
                     
                     if (!hasTopicData && !hasNotesData) {
                       return (
@@ -1417,6 +1424,8 @@ export default function LessonModalsManager() {
                       dataSetAt = lesson.notesSetAt;
                       dataSetByTelegramId = lesson.notesSetByTelegramId || null;
                     }
+                    
+                    console.log('Final values:', { dataSetBy, dataSetAt, dataSetByTelegramId });
                     
                     return (
                       <div style={{ fontSize: '0.8125rem', color: '#374151' }}>
