@@ -172,8 +172,8 @@ export async function GET(
       LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
       LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
       LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL 
-        AND l.telegram_user_info->>'telegram_id' IS NOT NULL 
-        AND CAST(l.telegram_user_info->>'telegram_id' AS INTEGER) = telegram_info_user.id
+        AND l.telegram_user_info->>'user_id' IS NOT NULL 
+        AND CAST(l.telegram_user_info->>'user_id' AS INTEGER) = telegram_info_user.id
       WHERE l.id = $1`,
       [numericId]
     );
@@ -239,8 +239,8 @@ export async function GET(
       LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
       LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
       LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL 
-        AND l.telegram_user_info->>'telegram_id' IS NOT NULL 
-        AND CAST(l.telegram_user_info->>'telegram_id' AS INTEGER) = telegram_info_user.id
+        AND l.telegram_user_info->>'user_id' IS NOT NULL 
+        AND CAST(l.telegram_user_info->>'user_id' AS INTEGER) = telegram_info_user.id
       WHERE l.public_id = $1`,
       [rawId]
     );
@@ -411,7 +411,7 @@ export async function PATCH(
           // Store teacher info in JSON field
           updates.push(`telegram_user_info = $${queryParams.length + 1}`);
           const teacherInfo = {
-            telegram_id: teacher_id,
+            user_id: teacher_id,
             source: 'body_parameter'
           };
           queryParams.push(JSON.stringify(teacherInfo));
@@ -519,8 +519,8 @@ export async function PATCH(
       LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
       LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
       LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL 
-        AND l.telegram_user_info->>'telegram_id' IS NOT NULL 
-        AND CAST(l.telegram_user_info->>'telegram_id' AS INTEGER) = telegram_info_user.id
+        AND l.telegram_user_info->>'user_id' IS NOT NULL 
+        AND CAST(l.telegram_user_info->>'user_id' AS INTEGER) = telegram_info_user.id
       WHERE l.id = $1`,
       [lesson.id]
     );
