@@ -227,6 +227,10 @@ export async function GET(
   
   // Verify Telegram user (skip verification if initData is empty for debugging purposes)
   const initData = request.nextUrl.searchParams.get('initData') || '';
+  console.log('[Telegram Lesson] initData received:', initData ? 'Yes' : 'No');
+  if (initData) {
+    console.log('[Telegram Lesson] initData preview:', initData.substring(0, 100));
+  }
   let telegramUser = null;
   
   if (initData) {
@@ -336,8 +340,11 @@ export async function PATCH(
         queryParams.push(telegramUser.id);
       } else {
         // Store negative telegram_id to indicate Telegram user that wasn't found in DB
+        console.log('[Telegram Lesson] telegramUser is null, trying to parse initData');
         const user = JSON.parse(decodeURIComponent(new URLSearchParams(initData).get('user') || '{}'));
+        console.log('[Telegram Lesson] Parsed user from initData:', user);
         if (user.id) {
+          console.log('[Telegram Lesson] User ID found:', user.id);
           updates.push(`topic_set_by = $${queryParams.length + 1}`);
           queryParams.push(-user.id); // Store as negative to distinguish from regular user IDs
           
@@ -351,6 +358,8 @@ export async function PATCH(
           };
           queryParams.push(JSON.stringify(telegramUserInfo));
           console.log('[Telegram Lesson] Storing telegram user info:', telegramUserInfo);
+        } else {
+          console.log('[Telegram Lesson] No user ID found in parsed data');
         }
       }
       updates.push(`topic_set_at = NOW()`);
@@ -368,10 +377,26 @@ export async function PATCH(
         queryParams.push(telegramUser.id);
       } else {
         // Store negative telegram_id to indicate Telegram user that wasn't found in DB
+        console.log('[Telegram Lesson] telegramUser is null for notes, trying to parse initData');
         const user = JSON.parse(decodeURIComponent(new URLSearchParams(initData).get('user') || '{}'));
+        console.log('[Telegram Lesson] Parsed user from initData for notes:', user);
         if (user.id) {
+          console.log('[Telegram Lesson] User ID found for notes:', user.id);
           updates.push(`notes_set_by = $${queryParams.length + 1}`);
           queryParams.push(-user.id); // Store as negative to distinguish from regular user IDs
+          
+          // Store full Telegram user info in JSON field
+          updates.push(`telegram_user_info = $${queryParams.length + 1}`);
+          const telegramUserInfo = {
+            telegram_id: user.id,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            username: user.username
+          };
+          queryParams.push(JSON.stringify(telegramUserInfo));
+          console.log('[Telegram Lesson] Storing telegram user info for notes:', telegramUserInfo);
+        } else {
+          console.log('[Telegram Lesson] No user ID found in parsed data for notes');
         }
       }
       updates.push(`notes_set_at = NOW()`);
