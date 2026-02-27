@@ -137,10 +137,14 @@ export async function GET(
         c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
         CASE 
+          WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
+            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
           WHEN l.topic_set_by < 0 THEN 'Telegram User'
           ELSE topic_user.name 
         END as topic_set_by_name,
         CASE 
+          WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
+            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
           WHEN l.notes_set_by < 0 THEN 'Telegram User'
           ELSE notes_user.name 
         END as notes_set_by_name,
@@ -190,10 +194,14 @@ export async function GET(
         c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
         CASE 
+          WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
+            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
           WHEN l.topic_set_by < 0 THEN 'Telegram User'
           ELSE topic_user.name 
         END as topic_set_by_name,
         CASE 
+          WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
+            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
           WHEN l.notes_set_by < 0 THEN 'Telegram User'
           ELSE notes_user.name 
         END as notes_set_by_name,
@@ -458,10 +466,14 @@ export async function PATCH(
       `SELECT 
         l.*, 
         CASE 
+          WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
+            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
           WHEN l.topic_set_by < 0 THEN 'Telegram User'
           ELSE topic_user.name 
         END as topic_set_by_name, 
         CASE 
+          WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
+            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
           WHEN l.notes_set_by < 0 THEN 'Telegram User'
           ELSE notes_user.name 
         END as notes_set_by_name,
