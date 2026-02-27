@@ -109,6 +109,13 @@ export async function GET(
   
   console.log('API Debug - lessonWithDetails:', lessonWithDetails);
   
+  // Debug telegram_user_info field
+  if (lessonWithDetails?.telegram_user_info) {
+    console.log('API Debug - telegram_user_info found:', lessonWithDetails.telegram_user_info);
+  } else {
+    console.log('API Debug - telegram_user_info is null/undefined');
+  }
+  
     // Transform to camelCase format - handle null teacher_id and date conversion
     const formatTimestamp = (timestamp: string | null): string | null => {
       if (!timestamp) return null;

@@ -343,12 +343,14 @@ export async function PATCH(
           
           // Store full Telegram user info in JSON field
           updates.push(`telegram_user_info = $${queryParams.length + 1}`);
-          queryParams.push(JSON.stringify({
+          const telegramUserInfo = {
             telegram_id: user.id,
             first_name: user.first_name,
             last_name: user.last_name,
             username: user.username
-          }));
+          };
+          queryParams.push(JSON.stringify(telegramUserInfo));
+          console.log('[Telegram Lesson] Storing telegram user info:', telegramUserInfo);
         }
       }
       updates.push(`topic_set_at = NOW()`);
