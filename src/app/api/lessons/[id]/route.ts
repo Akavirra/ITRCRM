@@ -326,8 +326,8 @@ export async function PATCH(
     console.log('API Debug - lessonWithDetails:', updatedLessonRaw);
   
   // Debug telegram_user_info field
-  if (updatedLessonRaw?.telegram_user_info) {
-    console.log('API Debug - telegram_user_info found:', updatedLessonRaw.telegram_user_info);
+  if ((updatedLessonRaw as any)?.telegram_user_info) {
+    console.log('API Debug - telegram_user_info found:', (updatedLessonRaw as any).telegram_user_info);
   } else {
     console.log('API Debug - telegram_user_info is null/undefined');
   }
