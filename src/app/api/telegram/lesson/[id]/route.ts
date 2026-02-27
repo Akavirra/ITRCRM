@@ -51,41 +51,49 @@ async function verifyTelegramUser(initData: string): Promise<{ id: number; name:
     
     console.log('[Telegram Verify] DB User found:', dbUser);
     
-    if (!dbUser) {
-      // Try to find by name as fallback - search across all roles (teacher, admin, etc.)
-      const userName = [user.first_name, user.last_name].filter(Boolean).join(' ');
-      console.log('[Telegram Verify] Trying to find user by name:', userName);
-      
-      // Try exact match first
-      let dbUserByName = await get<{ id: number; name: string }>(
-        `SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1`,
-        [userName]
-      );
-      
-      // If not found, try partial match (first name only)
-      if (!dbUserByName && user.first_name) {
-        dbUserByName = await get<{ id: number; name: string }>(
-          `SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1`,
-          [`%${user.first_name}%`]
-        );
-      }
-      
-      if (dbUserByName) {
-        console.log('[Telegram Verify] Found user by name, updating telegram_id');
-        // Update the user's telegram_id
-        await run(
-          `UPDATE users SET telegram_id = $1 WHERE id = $2`,
-          [user.id.toString(), dbUserByName.id]
-        );
-        console.log('[Telegram Verify] Updated telegram_id for user:', dbUserByName.id);
-        return dbUserByName;
-      }
-      
-      console.log('[Telegram Verify] User not found in database');
-      return null;
+    if (dbUser) {
+      return dbUser;
     }
     
-    return dbUser;
+    // Try to find user by name - search across all roles (teacher, admin, etc.)
+    const userName = [user.first_name, user.last_name].filter(Boolean).join(' ');
+    console.log('[Telegram Verify] Trying to find user by name:', userName);
+    
+    // Try exact match first
+    let dbUserByName = await get<{ id: number; name: string }>(
+      `SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1`,
+      [userName]
+    );
+    
+    // If not found, try partial match (first name only)
+    if (!dbUserByName && user.first_name) {
+      dbUserByName = await get<{ id: number; name: string }>(
+        `SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1`,
+        [`%${user.first_name}%`]
+      );
+    }
+    
+    // If still not found, try with last name
+    if (!dbUserByName && user.last_name) {
+      dbUserByName = await get<{ id: number; name: string }>(
+        `SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1`,
+        [`%${user.last_name}%`]
+      );
+    }
+    
+    if (dbUserByName) {
+      console.log('[Telegram Verify] Found user by name, updating telegram_id');
+      // Update the user's telegram_id for future use
+      await run(
+        `UPDATE users SET telegram_id = $1 WHERE id = $2`,
+        [user.id.toString(), dbUserByName.id]
+      );
+      console.log('[Telegram Verify] Updated telegram_id for user:', dbUserByName.id);
+      return dbUserByName;
+    }
+    
+    console.log('[Telegram Verify] User not found in database');
+    return null;
   } catch (error) {
     console.error('Error verifying Telegram user:', error);
     return null;
