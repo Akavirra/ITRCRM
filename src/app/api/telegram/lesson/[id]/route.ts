@@ -297,27 +297,23 @@ export async function PATCH(
     const queryParams: (string | number)[] = [];
     
     if (topic !== undefined) {
-      updates.push(`topic = $${queryParams.length + 1}`);
+      updates.push(`topic = ${queryParams.length + 1}`);
       queryParams.push(topic);
-      // Always set topic_set_by and topic_set_at (even if telegramUser is null, we track it)
+      // Only update topic_set_by if telegramUser is found
       if (telegramUser) {
-        updates.push(`topic_set_by = $${queryParams.length + 1}`);
+        updates.push(`topic_set_by = ${queryParams.length + 1}`);
         queryParams.push(telegramUser.id);
-      } else {
-        updates.push(`topic_set_by = NULL`);
       }
       updates.push(`topic_set_at = NOW()`);
     }
     
     if (notes !== undefined) {
-      updates.push(`notes = $${queryParams.length + 1}`);
+      updates.push(`notes = ${queryParams.length + 1}`);
       queryParams.push(notes);
-      // Always set notes_set_by and notes_set_at (even if telegramUser is null, we track it)
+      // Only update notes_set_by if telegramUser is found
       if (telegramUser) {
-        updates.push(`notes_set_by = $${queryParams.length + 1}`);
+        updates.push(`notes_set_by = ${queryParams.length + 1}`);
         queryParams.push(telegramUser.id);
-      } else {
-        updates.push(`notes_set_by = NULL`);
       }
       updates.push(`notes_set_at = NOW()`);
     }
