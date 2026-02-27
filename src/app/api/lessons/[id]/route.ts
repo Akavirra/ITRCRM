@@ -284,6 +284,7 @@ export async function PATCH(
         l.topic_set_at,
         l.notes_set_by,
         l.notes_set_at,
+        l.telegram_user_info,
         COALESCE(u.name, g_teacher.name) as teacher_name,
         g.title as group_title,
         g.teacher_id as original_teacher_id,
