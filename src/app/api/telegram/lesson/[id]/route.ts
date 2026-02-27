@@ -502,7 +502,10 @@ export async function PATCH(
     await run(sql, queryParams);
     
     // Get updated lesson with details
-    const updatedLessonRaw = await get<Lesson & { topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null }>(
+    console.log('[Telegram Lesson] Querying lesson with id:', lesson.id);
+    console.log('[Telegram Lesson] SQL query params:', queryParams);
+    
+    const updatedLessonRaw = await get<Lesson & { topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: any }>(
       `SELECT 
         l.*, 
         CASE 
@@ -542,6 +545,11 @@ export async function PATCH(
       WHERE l.id = $1`,
       [lesson.id]
     );
+    
+    console.log('[Telegram Lesson] Updated lesson raw:', updatedLessonRaw);
+    console.log('[Telegram Lesson] telegram_user_info:', updatedLessonRaw?.telegram_user_info);
+    console.log('[Telegram Lesson] topic_set_by_name:', updatedLessonRaw?.topic_set_by_name);
+    console.log('[Telegram Lesson] notes_set_by_name:', updatedLessonRaw?.notes_set_by_name);
     
      const updatedLesson = updatedLessonRaw ? {
        id: updatedLessonRaw.id,
