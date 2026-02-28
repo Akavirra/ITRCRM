@@ -65,6 +65,19 @@ export default function TeacherAppPage() {
     return win.Telegram?.WebApp || null;
   };
 
+  // Fallback: get initData from URL hash if WebApp SDK is not available
+  const getInitDataFromUrl = (): string | null => {
+    const hash = window.location.hash;
+    if (!hash) return null;
+    
+    // Parse tgWebAppData from hash: #tgWebAppData=xxx&tgWebAppVersion=yyy
+    const match = hash.match(/tgWebAppData=([^&]+)/);
+    if (match) {
+      return decodeURIComponent(match[1]);
+    }
+    return null;
+  };
+
   // Get all dates in the current week
   const getWeekDates = (): string[] => {
     const today = new Date();
@@ -126,10 +139,25 @@ export default function TeacherAppPage() {
           }
         }
         
-        if (!tg) {
-          debug += 'ERROR: Telegram.WebApp not found after all retries\n';
+        // Get initData from WebApp or from URL as fallback
+        let initData: string | null = null;
+        
+        if (tg && tg.initData) {
+          initData = tg.initData;
+          debug += `WebApp found! initData length: ${initData.length}\n`;
+        } else {
+          // Fallback: try to get initData from URL hash
+          const urlInitData = getInitDataFromUrl();
+          if (urlInitData) {
+            initData = urlInitData;
+            debug += `Using fallback initData from URL, length: ${initData.length}\n`;
+          }
+        }
+        
+        if (!initData) {
+          debug += 'ERROR: No initData available from WebApp or URL\n';
           debug += `window.Telegram exists: ${!!(window as unknown as {Telegram?: unknown}).Telegram}\n`;
-          debug += `window.Telegram object: ${JSON.stringify((window as unknown as {Telegram?: unknown}).Telegram)?.substring(0, 100)}\n`;
+          debug += `URL hash: ${window.location.hash?.substring(0, 50)}...\n`;
           setDebugInfo(debug);
           setError(isTelegramWebView 
             ? 'Telegram WebApp не ініціалізовано. Спробуйте оновити сторінку.' 
@@ -138,16 +166,7 @@ export default function TeacherAppPage() {
           return;
         }
         
-        debug += `WebApp found! initData length: ${tg.initData?.length || 0}\n`;
-        debug += `initDataUnsafe.user: ${tg.initDataUnsafe?.user ? 'YES' : 'NO'}\n`;
-        
-        if (!tg.initData || tg.initData.length === 0) {
-          debug += 'ERROR: initData is empty\n';
-          setDebugInfo(debug);
-          setError('Помилка: initData порожній. Відкрийте через кнопку в Telegram.');
-          setLoading(false);
-          return;
-        }
+        debug += `initDataUnsafe check: ${tg?.initDataUnsafe?.user ? 'YES' : 'NO (fallback mode)'}\n`;
         
         setDebugInfo(debug);
 
@@ -155,7 +174,7 @@ export default function TeacherAppPage() {
         const authResponse = await fetch('/api/teacher-app/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ initData: tg.initData })
+          body: JSON.stringify({ initData: initData })
         });
 
         if (!authResponse.ok) {
@@ -169,7 +188,7 @@ export default function TeacherAppPage() {
 
         // Fetch schedule
         const scheduleResponse = await fetch('/api/teacher-app/schedule', {
-          headers: { 'X-Telegram-Init-Data': tg.initData }
+          headers: { 'X-Telegram-Init-Data': initData }
         });
 
         if (!scheduleResponse.ok) {
