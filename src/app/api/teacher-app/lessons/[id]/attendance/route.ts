@@ -185,13 +185,15 @@ export async function POST(
     );
 
     // Automatically mark lesson as conducted if it has attendance records
-    // and update reported fields
+    // and update reported fields (both new and old schema for compatibility)
     await query(
       `UPDATE lessons 
        SET status = 'done',
            reported_by = $1,
            reported_at = NOW(),
            reported_via = 'telegram',
+           topic_set_by = $1,
+           topic_set_at = NOW(),
            updated_at = NOW()
        WHERE id = $2
        AND status = 'scheduled'`,
