@@ -238,23 +238,71 @@ export default function TeacherAppPage() {
   }
 
   if (error) {
+    const isTelegramWebView = /Telegram/i.test(navigator.userAgent) || 
+                              /WebView/i.test(navigator.userAgent) ||
+                              /TDesktop/i.test(navigator.userAgent);
+    
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
-        <p style={{ color: 'var(--tg-text-color)', marginBottom: '16px' }}>
-          {error}
-        </p>
-        {debugInfo && (
-          <pre style={{ 
-            fontSize: '11px', 
-            textAlign: 'left', 
-            background: '#f3f4f6', 
-            padding: '10px', 
-            borderRadius: '8px',
-            overflow: 'auto',
-            maxHeight: '200px'
+        <div style={{ 
+          background: '#fef3c7', 
+          border: '2px solid #f59e0b', 
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '20px'
+        }}>
+          <p style={{ 
+            color: '#92400e', 
+            fontSize: '18px', 
+            fontWeight: 600,
+            marginBottom: '12px'
           }}>
-            {debugInfo}
-          </pre>
+            ⚠️ Помилка відкриття
+          </p>
+          <p style={{ color: '#92400e', marginBottom: '16px' }}>
+            {isTelegramWebView 
+              ? 'Telegram WebApp не ініціалізовано. Спробуйте оновити сторінку.'
+              : 'Ця сторінка працює тільки в Telegram додатку.'
+            }
+          </p>
+          {!isTelegramWebView && (
+            <div style={{ textAlign: 'left', color: '#78350f', fontSize: '14px' }}>
+              <p style={{ fontWeight: 600, marginBottom: '8px' }}>Як відкрити кабінет викладача:</p>
+              <ol style={{ paddingLeft: '20px', margin: 0 }}>
+                <li style={{ marginBottom: '6px' }}>Відкрийте Telegram додаток на телефоні або комп'ютері</li>
+                <li style={{ marginBottom: '6px' }}>Знайдіть свій бот (@your_bot)</li>
+                <li style={{ marginBottom: '6px' }}>Натисніть кнопку "📋 Кабінет викладача" в меню бота</li>
+                <li>Або відкрийте через кнопку в повідомленні про нагадування</li>
+              </ol>
+              <p style={{ marginTop: '12px', fontSize: '13px', color: '#92400e' }}>
+                ❌ Не копіюйте посилання в браузер — воно працює тільки в Telegram!
+              </p>
+            </div>
+          )}
+        </div>
+        
+        {debugInfo && (
+          <details style={{ textAlign: 'left' }}>
+            <summary style={{ 
+              cursor: 'pointer', 
+              color: '#6b7280', 
+              fontSize: '13px',
+              padding: '10px'
+            }}>
+              Технічна інформація для діагностики
+            </summary>
+            <pre style={{ 
+              fontSize: '11px', 
+              textAlign: 'left', 
+              background: '#f3f4f6', 
+              padding: '10px', 
+              borderRadius: '8px',
+              overflow: 'auto',
+              maxHeight: '200px'
+            }}>
+              {debugInfo}
+            </pre>
+          </details>
         )}
       </div>
     );
