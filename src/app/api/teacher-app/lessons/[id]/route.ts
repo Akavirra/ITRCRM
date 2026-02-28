@@ -117,12 +117,14 @@ export async function GET(
         l.status, l.topic, l.notes, l.reported_by, l.reported_at, l.reported_via,
         g.title as group_title, c.title as course_title,
         ltr.replacement_teacher_id,
-        ru.name as replacement_teacher_name
+        ru.name as replacement_teacher_name,
+        reporter.name as reported_by_name
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       JOIN courses c ON g.course_id = c.id
       LEFT JOIN lesson_teacher_replacements ltr ON l.id = ltr.lesson_id
       LEFT JOIN users ru ON ltr.replacement_teacher_id = ru.id
+      LEFT JOIN users reporter ON l.reported_by = reporter.id
       WHERE l.id = $1
       AND (
         g.teacher_id = $2

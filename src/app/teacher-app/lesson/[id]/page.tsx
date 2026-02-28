@@ -15,6 +15,7 @@ interface Lesson {
   topic: string | null;
   notes: string | null;
   reported_by: number | null;
+  reported_by_name: string | null;
   reported_at: string | null;
   reported_via: string | null;
   group_title: string;
@@ -493,26 +494,21 @@ export default function LessonDetailPage() {
         )}
       </div>
 
-      {/* Finish button */}
-      {lesson.status !== 'canceled' && (
-        <button
-          onClick={finishLesson}
-          disabled={saving}
-          style={{
-            width: '100%',
-            padding: '14px',
-            borderRadius: '10px',
-            border: 'none',
-            background: 'var(--tg-button-color)',
-            color: 'var(--tg-button-text-color)',
-            fontSize: '15px',
-            fontWeight: 600,
-            cursor: saving ? 'not-allowed' : 'pointer',
-            opacity: saving ? 0.7 : 1
-          }}
-        >
-          {saving ? '⏳ Збереження...' : '✅ Завершити заняття'}
-        </button>
+      {/* Report info */}
+      {lesson.reported_at && (
+        <div style={{ 
+          background: '#f0fdf4', 
+          borderRadius: '8px', 
+          padding: '12px', 
+          marginBottom: '20px',
+          fontSize: '13px',
+          color: '#166534'
+        }}>
+          ✅ <strong>Дані збережено:</strong><br/>
+          {new Date(lesson.reported_at).toLocaleString('uk-UA')}
+          {lesson.reported_via === 'telegram' && ' через Telegram'}
+          {lesson.reported_by_name && <><br/>Викладач: {lesson.reported_by_name}</>}
+        </div>
       )}
     </div>
   );
