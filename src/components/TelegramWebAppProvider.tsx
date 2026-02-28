@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 
 // Telegram WebApp types
 interface TelegramUser {
@@ -96,34 +96,29 @@ const checkIsTelegramWebView = (): boolean => {
   const telegramPatterns = [
     /telegram/i,
     /webview/i,
-    /tdesktop/i,  // Telegram Desktop
-    /macintosh.*mobile/i, // iOS Telegram
-    /android.*mobile/i,   // Android Telegram
+    /tdesktop/i,
   ];
   
   // Also check for Telegram-specific URL parameters
   const urlParams = new URLSearchParams(window.location.search);
   const hasTelegramParams = urlParams.has('tgWebAppData') || 
                             urlParams.has('tgWebAppVersion') ||
-                            urlParams.has('tgwa_data'); // Alternative param
+                            urlParams.has('tgwa_data');
   
   return telegramPatterns.some(pattern => pattern.test(userAgent)) || hasTelegramParams;
 };
 
-// Parse initData from URL (Telegram passes it as URL parameter)
+// Parse initData from URL
 const parseInitDataFromUrl = (): string | null => {
   if (typeof window === 'undefined') return null;
   
   const urlParams = new URLSearchParams(window.location.search);
-  
-  // Try different parameter names Telegram might use
   const possibleParams = ['tgWebAppData', 'tgwa_data', 'initData'];
   
   for (const param of possibleParams) {
     const value = urlParams.get(param);
     if (value) {
       try {
-        // May be URL encoded
         return decodeURIComponent(value);
       } catch {
         return value;
@@ -131,7 +126,6 @@ const parseInitDataFromUrl = (): string | null => {
     }
   }
   
-  // Also check hash
   const hash = window.location.hash;
   if (hash) {
     const match = hash.match(/tgWebAppData=([^&]+)/);
@@ -147,25 +141,20 @@ const parseInitDataFromUrl = (): string | null => {
   return null;
 };
 
-// Telegram script URL
 const TELEGRAM_SCRIPT_URL = 'https://telegram.org/js/telegram-web-app.js';
 
-// Load Telegram WebApp script
 const loadTelegramScript = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    // Check if already loaded
+  return new Promise((resolve) => {
     const win = window as unknown as { Telegram?: { WebApp?: TelegramWebApp } };
     if (win.Telegram?.WebApp) {
       resolve();
       return;
     }
 
-    // Check if script is already being loaded
     const existingScript = document.querySelector('script[src*="telegram-web-app"]');
     if (existingScript) {
-      // Wait for existing script to load
       existingScript.addEventListener('load', () => resolve());
-      existingScript.addEventListener('error', () => reject(new Error('Failed to load Telegram WebApp script')));
+      existingScript.addEventListener('error', () => resolve()); // Resolve even on error
       return;
     }
 
@@ -173,7 +162,10 @@ const loadTelegramScript = (): Promise<void> => {
     script.src = TELEGRAM_SCRIPT_URL;
     script.async = true;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Telegram WebApp script'));
+    script.onerror = () => {
+      console.warn('Failed to load Telegram WebApp script');
+      resolve(); // Don't reject, just continue
+    };
     document.head.appendChild(script);
   });
 };
@@ -201,106 +193,110 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
-  const initializeWebApp = useCallback(async (maxRetries: number = 20, delay: number = 300) => {
+  const initializedRef = useRef(false);
+
+  const initializeWebApp = useCallback(async () => {
+    // Prevent multiple initializations
+    if (initializedRef.current) {
+      return;
+    }
+    initializedRef.current = true;
+    
     setIsLoading(true);
     setError(null);
-    
+
     const win = window as unknown as { Telegram?: { WebApp?: TelegramWebApp } };
+    const startTime = Date.now();
+    const MAX_TIME = 5000; // 5 seconds max
     
-    let attempts = 0;
-    
-    while (attempts < maxRetries) {
-      attempts++;
-      setRetryCount(attempts);
-      
-      try {
-        // Try to load the script
-        await loadTelegramScript();
-        
-        // Small delay to ensure full initialization
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const tg = win.Telegram?.WebApp;
-        
-        if (tg) {
-          // Initialize the WebApp
-          tg.ready();
-          tg.expand();
-          
-          // Get initData
-          let data: string | null = tg.initData || null;
-          
-          // If no initData from SDK, try URL fallback
-          if (!data) {
-            data = parseInitDataFromUrl();
-          }
-          
-          if (data) {
-            setWebApp(tg);
-            setInitData(data);
-            setIsInWebView(true);
-            setColorScheme(tg.colorScheme || 'light');
-            
-            if (tg.themeParams) {
-              setThemeParams(tg.themeParams);
-            }
-            
-            if (tg.initDataUnsafe?.user) {
-              setUser(tg.initDataUnsafe.user);
-            }
-            
-            setIsReady(true);
-            setIsLoading(false);
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn(`Attempt ${attempts}: WebApp initialization failed`, err);
-      }
-      
-      // Wait before next retry
-      if (attempts < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, delay));
+    // Quick check for existing Telegram
+    const tg = win.Telegram?.WebApp;
+    if (tg) {
+      if (tg.initData) {
+        setWebApp(tg);
+        setInitData(tg.initData);
+        setIsInWebView(true);
+        setColorScheme(tg.colorScheme || 'light');
+        if (tg.themeParams) setThemeParams(tg.themeParams);
+        if (tg.initDataUnsafe?.user) setUser(tg.initDataUnsafe.user);
+        tg.ready();
+        tg.expand();
+        setIsReady(true);
+        setIsLoading(false);
+        return;
       }
     }
-    
-    // If we get here, check if we're in Telegram WebView by user agent
-    const inWebView = checkIsTelegramWebView();
-    setIsInWebView(inWebView);
-    
-    // Try URL fallback one more time
+
+    // Try URL fallback first (fast)
     const urlData = parseInitDataFromUrl();
     if (urlData) {
       setInitData(urlData);
+      setIsInWebView(true);
       setIsReady(true);
       setIsLoading(false);
       return;
     }
+
+    // Try to load script and get Telegram
+    await loadTelegramScript();
     
-    // Final fallback - check if there's any Telegram context
-    if (!inWebView && !urlData) {
-      setError('Ця сторінка працює тільки в Telegram Mini App');
-    } else if (inWebView) {
-      setError('Telegram WebApp не ініціалізовано. Спробуйте оновити сторінку.');
+    const tg2 = win.Telegram?.WebApp;
+    if (tg2 && tg2.initData) {
+      setWebApp(tg2);
+      setInitData(tg2.initData);
+      setIsInWebView(true);
+      setColorScheme(tg2.colorScheme || 'light');
+      if (tg2.themeParams) setThemeParams(tg2.themeParams);
+      if (tg2.initDataUnsafe?.user) setUser(tg2.initDataUnsafe.user);
+      tg2.ready();
+      tg2.expand();
+      setIsReady(true);
+      setIsLoading(false);
+      return;
+    }
+
+    // Check if we're in Telegram
+    const inWebView = checkIsTelegramWebView();
+    setIsInWebView(inWebView);
+    
+    // If in WebView but no initData, still allow to proceed
+    // The auth will handle the error
+    if (inWebView) {
+      setIsReady(true); // Allow to proceed, auth will fail
+      setError('Telegram WebApp loaded but no initData');
+    } else {
+      setError('Not running in Telegram Mini App');
     }
     
     setIsLoading(false);
   }, []);
 
-  const refreshWebApp = useCallback(async () => {
-    await initializeWebApp();
+  const refreshWebApp = useCallback(() => {
+    initializedRef.current = false;
+    return initializeWebApp();
   }, [initializeWebApp]);
 
   useEffect(() => {
+    // Timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.warn('Telegram WebApp initialization timeout');
+        setIsLoading(false);
+        setIsReady(true); // Allow app to proceed
+      }
+    }, 5000);
+
     initializeWebApp();
-  }, [initializeWebApp]);
+
+    return () => clearTimeout(timeoutId);
+  }, [initializeWebApp, isLoading]);
 
   // Apply theme based on color scheme
   useEffect(() => {
-    if (webApp && colorScheme) {
+    if (colorScheme) {
       document.documentElement.classList.toggle('dark', colorScheme === 'dark');
     }
-  }, [colorScheme, webApp]);
+  }, [colorScheme]);
 
   const value: TelegramWebAppContextType = {
     isReady,
