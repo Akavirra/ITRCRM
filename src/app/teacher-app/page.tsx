@@ -103,11 +103,19 @@ export default function TeacherAppPage() {
       try {
         // Debug info
         let debug = 'Checking Telegram WebApp...\n';
+        debug += `User Agent: ${navigator.userAgent.substring(0, 50)}...\n`;
+        debug += `URL: ${window.location.href.substring(0, 60)}...\n`;
         
-        // Wait for Telegram WebApp to be ready
+        // Check if we're in Telegram WebView
+        const isTelegramWebView = /Telegram/i.test(navigator.userAgent) || 
+                                  /WebView/i.test(navigator.userAgent) ||
+                                  /TDesktop/i.test(navigator.userAgent);
+        debug += `Is Telegram WebView: ${isTelegramWebView}\n`;
+        
+        // Wait for Telegram WebApp to be ready - longer wait for script to load from layout
         let tg: TelegramWebAppExtended | null = null;
         let retries = 0;
-        const maxRetries = 15;
+        const maxRetries = 30; // Wait up to 6 seconds
         
         while (!tg && retries < maxRetries) {
           tg = getWebApp();
@@ -121,8 +129,11 @@ export default function TeacherAppPage() {
         if (!tg) {
           debug += 'ERROR: Telegram.WebApp not found after all retries\n';
           debug += `window.Telegram exists: ${!!(window as unknown as {Telegram?: unknown}).Telegram}\n`;
+          debug += `window.Telegram object: ${JSON.stringify((window as unknown as {Telegram?: unknown}).Telegram)?.substring(0, 100)}\n`;
           setDebugInfo(debug);
-          setError('Ця сторінка працює тільки в Telegram Mini App');
+          setError(isTelegramWebView 
+            ? 'Telegram WebApp не ініціалізовано. Спробуйте оновити сторінку.' 
+            : 'Ця сторінка працює тільки в Telegram Mini App');
           setLoading(false);
           return;
         }
@@ -133,7 +144,7 @@ export default function TeacherAppPage() {
         if (!tg.initData || tg.initData.length === 0) {
           debug += 'ERROR: initData is empty\n';
           setDebugInfo(debug);
-          setError('Ця сторінка працює тільки в Telegram Mini App (no initData)');
+          setError('Помилка: initData порожній. Відкрийте через кнопку в Telegram.');
           setLoading(false);
           return;
         }

@@ -1,7 +1,6 @@
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
-import Script from 'next/script';
 
 // Extended Telegram WebApp interface for this component
 interface TelegramWebAppExtended {
@@ -33,48 +32,58 @@ interface TelegramWebAppExtended {
 
 export default function TeacherAppLayout({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
 
   useEffect(() => {
-    // Initialize Telegram WebApp when script loads
-    const initTelegram = () => {
-      const tg = (window as unknown as { Telegram?: { WebApp?: TelegramWebAppExtended } }).Telegram?.WebApp;
-      
-      if (tg) {
-        // Initialize WebApp
-        tg.ready();
-        tg.expand();
+    // Load Telegram WebApp script dynamically
+    const loadTelegramScript = () => {
+      return new Promise<void>((resolve, reject) => {
+        // Check if already loaded
+        if ((window as unknown as { Telegram?: { WebApp?: unknown } }).Telegram?.WebApp) {
+          resolve();
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://telegram.org/js/telegram-web-app.js';
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load Telegram WebApp script'));
+        document.head.appendChild(script);
+      });
+    };
+
+    const initTelegram = async () => {
+      try {
+        await loadTelegramScript();
+        setScriptLoaded(true);
+
+        // Small delay to ensure WebApp is initialized
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const tg = (window as unknown as { Telegram?: { WebApp?: TelegramWebAppExtended } }).Telegram?.WebApp;
         
-        // Set theme based on Telegram settings
-        const isDark = tg.colorScheme === 'dark';
-        document.documentElement.classList.toggle('dark', isDark);
-        
-        setIsReady(true);
+        if (tg) {
+          // Initialize WebApp
+          tg.ready();
+          tg.expand();
+          
+          // Set theme based on Telegram settings
+          const isDark = tg.colorScheme === 'dark';
+          document.documentElement.classList.toggle('dark', isDark);
+          
+          setIsReady(true);
+        }
+      } catch (err) {
+        console.error('Failed to load Telegram WebApp:', err);
       }
     };
 
-    // If Telegram is already loaded
-    const tg = (window as unknown as { Telegram?: { WebApp?: TelegramWebAppExtended } }).Telegram?.WebApp;
-    if (tg) {
-      initTelegram();
-    } else {
-      // Wait for script to load
-      window.addEventListener('telegram-webapp-loaded', initTelegram);
-    }
-
-    return () => {
-      window.removeEventListener('telegram-webapp-loaded', initTelegram);
-    };
+    initTelegram();
   }, []);
 
   return (
     <>
-      <Script
-        src="https://telegram.org/js/telegram-web-app.js"
-        strategy="beforeInteractive"
-        onLoad={() => {
-          window.dispatchEvent(new Event('telegram-webapp-loaded'));
-        }}
-      />
       <div className="teacher-app-layout">
         <main>{children}</main>
       </div>
