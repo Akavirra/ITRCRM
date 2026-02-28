@@ -167,19 +167,39 @@ export default function TeacherAppPage() {
         }
         
         debug += `initDataUnsafe check: ${tg?.initDataUnsafe?.user ? 'YES' : 'NO (fallback mode)'}\n`;
+        debug += `initData first 100 chars: ${initData?.substring(0, 100)}...\n`;
         
         setDebugInfo(debug);
 
         // Authenticate
-        const authResponse = await fetch('/api/teacher-app/auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ initData: initData })
-        });
+        debug += '\nSending auth request...\n';
+        let authResponse;
+        try {
+          authResponse = await fetch('/api/teacher-app/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initData: initData })
+          });
+          debug += `Auth response status: ${authResponse.status}\n`;
+        } catch (fetchErr) {
+          debug += `Auth fetch error: ${fetchErr}\n`;
+          setDebugInfo(debug);
+          setError('Помилка мережі при авторизації');
+          setLoading(false);
+          return;
+        }
 
         if (!authResponse.ok) {
-          const errorData = await authResponse.json();
-          setError(errorData.error || 'Помилка авторизації');
+          let errorText = 'Помилка авторизації';
+          try {
+            const errorData = await authResponse.json();
+            errorText = errorData.error || `HTTP ${authResponse.status}: ${authResponse.statusText}`;
+            debug += `Auth error: ${JSON.stringify(errorData)}\n`;
+          } catch (e) {
+            errorText = `HTTP ${authResponse.status}: ${authResponse.statusText}`;
+          }
+          setDebugInfo(debug);
+          setError(errorText);
           setLoading(false);
           return;
         }
@@ -207,6 +227,7 @@ export default function TeacherAppPage() {
         setLoading(false);
       } catch (err) {
         console.error('Init error:', err);
+        setDebugInfo(prev => prev + `\nCatch error: ${err}\n`);
         setError('Помилка завантаження даних');
         setLoading(false);
       }
