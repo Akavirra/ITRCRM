@@ -166,7 +166,8 @@ export default function TeacherAppPage() {
       
       // Set selected date to today or first lesson date
       const today = new Date().toISOString().split('T')[0];
-      const hasLessonsToday = data.lessons.some(l => l.lesson_date === today);
+      // Extract date part from lesson_date (format: "2026-02-23T20:00:00.000Z")
+      const hasLessonsToday = data.lessons.some(l => l.lesson_date.split('T')[0] === today);
       setSelectedDate(hasLessonsToday ? today : data.weekStart);
       
       setLoading(false);
@@ -175,8 +176,8 @@ export default function TeacherAppPage() {
     initApp();
   }, [initData, initLoading, initError, isInWebView, retryCount]);
 
-  // Filter lessons for selected date
-  const dayLessons = lessons.filter(l => l.lesson_date === selectedDate);
+  // Filter lessons for selected date (extract date part from ISO datetime)
+  const dayLessons = lessons.filter(l => l.lesson_date.split('T')[0] === selectedDate);
 
   // Format time from datetime
   const formatTime = (datetime: string): string => {
@@ -359,6 +360,11 @@ export default function TeacherAppPage() {
             color: 'var(--tg-hint-color)'
           }}>
             <p>📅 Немає занять на цей день</p>
+            {lessons.length > 0 && (
+              <p style={{ fontSize: '12px', marginTop: '8px' }}>
+                Усього занять на тиждень: {lessons.length}
+              </p>
+            )}
           </div>
         ) : (
           dayLessons.map(lesson => (
