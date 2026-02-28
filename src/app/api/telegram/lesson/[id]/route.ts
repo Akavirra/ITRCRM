@@ -408,9 +408,9 @@ export async function PATCH(
           updates.push(`topic_set_by = $${queryParams.length + 1}`);
           queryParams.push(null); // Store NULL to avoid foreign key constraint
           
-          // Get teacher name from database
+          // Get teacher name from database by telegram_id
           const teacherFromDb = await get<{ name: string }>(
-            `SELECT name FROM users WHERE id = $1`,
+            `SELECT name FROM users WHERE telegram_id = $1`,
             [teacher_id]
           );
           const teacherName = teacherFromDb?.name || 'Unknown Teacher';

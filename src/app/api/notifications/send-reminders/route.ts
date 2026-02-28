@@ -151,32 +151,36 @@ export async function POST(request: NextRequest) {
         minute: '2-digit'
       });
       
-      // Build simple message - ONLY required information
-      let messageText = `<b>Нагадування про заняття</b>\n\n`;
+      // Build message with student count
+      let messageText = `📚 <b>Нагадування про заняття</b>\n\n`;
+      messageText += `<b>Час:</b> сьогодні о ${startTime}\n`;
       messageText += `<b>Група:</b> ${lesson.group_title}\n`;
-      messageText += `<b>Дата:</b> ${lessonDate}\n`;
-      messageText += `<b>Час:</b> ${startTime}\n`;
+      messageText += `<b>Курс:</b> ${lesson.course_title}\n\n`;
       
-      // Create inline keyboard with ONLY "Open form" button
-      const keyboard: { inline_keyboard: Array<Array<{ text: string; callback_data?: string; web_app?: { url: string } }>> } = {
-        inline_keyboard: []
-      };
+      // Get student count for the group
+      const studentCount = await get<{ count: number }>(
+        `SELECT COUNT(*) as count FROM student_groups sg 
+         JOIN students s ON sg.student_id = s.id 
+         WHERE sg.group_id = $1 AND sg.is_active = TRUE AND s.is_active = TRUE`,
+        [lesson.group_id]
+      );
       
-       // Add button to open web app for lesson details
+      messageText += `👥 <b>Студентів:</b> ${studentCount?.count || 0}`;
+
+      // Create inline keyboard with Mini App button
       const WEB_APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://itrcrm.vercel.app';
-      // Add teacher ID to URL for user tracking
-      const lessonUrl = `${WEB_APP_URL}/telegram/lesson/${lessonId}?startapp=lesson_${lessonId}&teacher_id=${teacherTelegramId}`;
-      console.log('[Send Reminders] Lesson URL:', lessonUrl);
+      const miniAppUrl = `${WEB_APP_URL}/teacher-app`;
       
-      // Add web app button with proper parameters for initData
-      keyboard.inline_keyboard.push([
-        {
-          text: '📝 Відкрити заняття',
-          web_app: {
-            url: lessonUrl
-          }
-        }
-      ]);
+      const keyboard: { inline_keyboard: Array<Array<{ text: string; web_app: { url: string } }>> } = {
+        inline_keyboard: [
+          [
+            {
+              text: '� Відкрити кабінет',
+              web_app: { url: miniAppUrl }
+            }
+          ]
+        ]
+      };
       
       // Send message with inline keyboard
       const success = await sendMessage(teacherTelegramId, messageText, {
