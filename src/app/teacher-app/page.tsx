@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 
 interface Teacher {
   id: number;
@@ -34,23 +35,11 @@ interface ScheduleData {
   lessons: Lesson[];
 }
 
-// Extended Telegram WebApp interface
-interface TelegramWebAppExtended {
-  initData: string;
-  initDataUnsafe: {
-    user?: {
-      id: number;
-      first_name: string;
-      last_name?: string;
-      username?: string;
-    };
-  };
-  colorScheme: 'light' | 'dark';
-  showPopup: (params: { title?: string; message: string; buttons?: Array<{ id?: string; type?: 'default' | 'ok' | 'close' | 'cancel'; text: string }> }) => Promise<string>;
-}
-
 export default function TeacherAppPage() {
   const router = useRouter();
+  const { initData, isLoading: initLoading, error: initError, refresh } = useTelegramInitData();
+  const { isInWebView, retryCount } = useTelegramWebApp();
+  
   const [authChecked, setAuthChecked] = useState(false);
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -58,25 +47,6 @@ export default function TeacherAppPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
-
-  // Get Telegram WebApp instance
-  const getWebApp = (): TelegramWebAppExtended | null => {
-    const win = window as unknown as { Telegram?: { WebApp?: TelegramWebAppExtended } };
-    return win.Telegram?.WebApp || null;
-  };
-
-  // Fallback: get initData from URL hash if WebApp SDK is not available
-  const getInitDataFromUrl = (): string | null => {
-    const hash = window.location.hash;
-    if (!hash) return null;
-    
-    // Parse tgWebAppData from hash: #tgWebAppData=xxx&tgWebAppVersion=yyy
-    const match = hash.match(/tgWebAppData=([^&]+)/);
-    if (match) {
-      return decodeURIComponent(match[1]);
-    }
-    return null;
-  };
 
   // Get all dates in the current week
   const getWeekDates = (): string[] => {
@@ -113,128 +83,97 @@ export default function TeacherAppPage() {
   // Authenticate and fetch schedule
   useEffect(() => {
     const initApp = async () => {
-      try {
-        // Debug info
-        let debug = 'Checking Telegram WebApp...\n';
-        debug += `User Agent: ${navigator.userAgent.substring(0, 50)}...\n`;
-        debug += `URL: ${window.location.href.substring(0, 60)}...\n`;
-        
-        // Check if we're in Telegram WebView
-        const isTelegramWebView = /Telegram/i.test(navigator.userAgent) || 
-                                  /WebView/i.test(navigator.userAgent) ||
-                                  /TDesktop/i.test(navigator.userAgent);
-        debug += `Is Telegram WebView: ${isTelegramWebView}\n`;
-        
-        // Wait for Telegram WebApp to be ready - longer wait for script to load from layout
-        let tg: TelegramWebAppExtended | null = null;
-        let retries = 0;
-        const maxRetries = 30; // Wait up to 6 seconds
-        
-        while (!tg && retries < maxRetries) {
-          tg = getWebApp();
-          if (!tg) {
-            retries++;
-            debug += `Attempt ${retries}: WebApp not found\n`;
-            await new Promise(resolve => setTimeout(resolve, 200));
-          }
-        }
-        
-        // Get initData from WebApp or from URL as fallback
-        let initData: string | null = null;
-        
-        if (tg && tg.initData) {
-          initData = tg.initData;
-          debug += `WebApp found! initData length: ${initData.length}\n`;
-        } else {
-          // Fallback: try to get initData from URL hash
-          const urlInitData = getInitDataFromUrl();
-          if (urlInitData) {
-            initData = urlInitData;
-            debug += `Using fallback initData from URL, length: ${initData.length}\n`;
-          }
-        }
-        
-        if (!initData) {
-          debug += 'ERROR: No initData available from WebApp or URL\n';
-          debug += `window.Telegram exists: ${!!(window as unknown as {Telegram?: unknown}).Telegram}\n`;
-          debug += `URL hash: ${window.location.hash?.substring(0, 50)}...\n`;
-          setDebugInfo(debug);
-          setError(isTelegramWebView 
-            ? 'Telegram WebApp не ініціалізовано. Спробуйте оновити сторінку.' 
-            : 'Ця сторінка працює тільки в Telegram Mini App');
-          setLoading(false);
-          return;
-        }
-        
-        debug += `initDataUnsafe check: ${tg?.initDataUnsafe?.user ? 'YES' : 'NO (fallback mode)'}\n`;
-        debug += `initData first 100 chars: ${initData?.substring(0, 100)}...\n`;
-        
-        setDebugInfo(debug);
-
-        // Authenticate
-        debug += '\nSending auth request...\n';
-        let authResponse;
-        try {
-          authResponse = await fetch('/api/teacher-app/auth', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ initData: initData })
-          });
-          debug += `Auth response status: ${authResponse.status}\n`;
-        } catch (fetchErr) {
-          debug += `Auth fetch error: ${fetchErr}\n`;
-          setDebugInfo(debug);
-          setError('Помилка мережі при авторизації');
-          setLoading(false);
-          return;
-        }
-
-        if (!authResponse.ok) {
-          let errorText = 'Помилка авторизації';
-          try {
-            const errorData = await authResponse.json();
-            errorText = errorData.error || `HTTP ${authResponse.status}: ${authResponse.statusText}`;
-            debug += `Auth error: ${JSON.stringify(errorData)}\n`;
-          } catch (e) {
-            errorText = `HTTP ${authResponse.status}: ${authResponse.statusText}`;
-          }
-          setDebugInfo(debug);
-          setError(errorText);
-          setLoading(false);
-          return;
-        }
-
-        setAuthChecked(true);
-
-        // Fetch schedule
-        const scheduleResponse = await fetch('/api/teacher-app/schedule', {
-          headers: { 'X-Telegram-Init-Data': initData }
-        });
-
-        if (!scheduleResponse.ok) {
-          throw new Error('Не вдалося завантажити розклад');
-        }
-
-        const data: ScheduleData = await scheduleResponse.json();
-        setTeacher(data.teacher);
-        setLessons(data.lessons);
-        
-        // Set selected date to today or first lesson date
-        const today = new Date().toISOString().split('T')[0];
-        const hasLessonsToday = data.lessons.some(l => l.lesson_date === today);
-        setSelectedDate(hasLessonsToday ? today : data.weekStart);
-        
-        setLoading(false);
-      } catch (err) {
-        console.error('Init error:', err);
-        setDebugInfo(prev => prev + `\nCatch error: ${err}\n`);
-        setError('Помилка завантаження даних');
-        setLoading(false);
+      // Wait for Telegram init data
+      if (initLoading) {
+        return;
       }
+
+      // Debug info
+      let debug = 'Checking Telegram WebApp...\n';
+      debug += `User Agent: ${navigator.userAgent.substring(0, 50)}...\n`;
+      debug += `URL: ${window.location.href.substring(0, 60)}...\n`;
+      debug += `Is Telegram WebView: ${isInWebView}\n`;
+      debug += `Retry count: ${retryCount}\n`;
+      
+      // Check if we have initData
+      if (!initData) {
+        debug += 'ERROR: No initData available\n';
+        debug += `Init error: ${initError || 'unknown'}\n`;
+        debug += `window.Telegram exists: ${!!(window as unknown as {Telegram?: unknown}).Telegram}\n`;
+        debug += `URL hash: ${window.location.hash?.substring(0, 50)}...\n`;
+        setDebugInfo(debug);
+        
+        if (!isInWebView) {
+          setError('Ця сторінка працює тільки в Telegram Mini App');
+        } else {
+          setError(initError || 'Telegram WebApp не ініціалізовано. Спробуйте оновити сторінку.');
+        }
+        setLoading(false);
+        return;
+      }
+      
+      debug += `initData available, length: ${initData.length}\n`;
+      debug += `initData first 100 chars: ${initData.substring(0, 100)}...\n`;
+      setDebugInfo(debug);
+
+      // Authenticate
+      debug += '\nSending auth request...\n';
+      let authResponse;
+      try {
+        authResponse = await fetch('/api/teacher-app/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData: initData })
+        });
+        debug += `Auth response status: ${authResponse.status}\n`;
+      } catch (fetchErr) {
+        debug += `Auth fetch error: ${fetchErr}\n`;
+        setDebugInfo(debug);
+        setError('Помилка мережі при авторизації');
+        setLoading(false);
+        return;
+      }
+
+      if (!authResponse.ok) {
+        let errorText = 'Помилка авторизації';
+        try {
+          const errorData = await authResponse.json();
+          errorText = errorData.error || `HTTP ${authResponse.status}: ${authResponse.statusText}`;
+          debug += `Auth error: ${JSON.stringify(errorData)}\n`;
+        } catch (e) {
+          errorText = `HTTP ${authResponse.status}: ${authResponse.statusText}`;
+        }
+        setDebugInfo(debug);
+        setError(errorText);
+        setLoading(false);
+        return;
+      }
+
+      setAuthChecked(true);
+
+      // Fetch schedule
+      const scheduleResponse = await fetch('/api/teacher-app/schedule', {
+        headers: { 'X-Telegram-Init-Data': initData }
+      });
+
+      if (!scheduleResponse.ok) {
+        throw new Error('Не вдалося завантажити розклад');
+      }
+
+      const data: ScheduleData = await scheduleResponse.json();
+      setTeacher(data.teacher);
+      setLessons(data.lessons);
+      
+      // Set selected date to today or first lesson date
+      const today = new Date().toISOString().split('T')[0];
+      const hasLessonsToday = data.lessons.some(l => l.lesson_date === today);
+      setSelectedDate(hasLessonsToday ? today : data.weekStart);
+      
+      setLoading(false);
     };
 
     initApp();
-  }, []);
+  }, [initData, initLoading, initError, isInWebView, retryCount]);
 
   // Filter lessons for selected date
   const dayLessons = lessons.filter(l => l.lesson_date === selectedDate);
@@ -278,10 +217,6 @@ export default function TeacherAppPage() {
   }
 
   if (error) {
-    const isTelegramWebView = /Telegram/i.test(navigator.userAgent) || 
-                              /WebView/i.test(navigator.userAgent) ||
-                              /TDesktop/i.test(navigator.userAgent);
-    
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
         <div style={{ 
@@ -300,12 +235,12 @@ export default function TeacherAppPage() {
             ⚠️ Помилка відкриття
           </p>
           <p style={{ color: '#92400e', marginBottom: '16px' }}>
-            {isTelegramWebView 
-              ? 'Telegram WebApp не ініціалізовано. Спробуйте оновити сторінку.'
-              : 'Ця сторінка працює тільки в Telegram додатку.'
+            {!isInWebView 
+              ? 'Ця сторінка працює тільки в Telegram додатку.'
+              : 'Telegram WebApp не ініціалізовано. Спробуйте оновити сторінку.'
             }
           </p>
-          {!isTelegramWebView && (
+          {!isInWebView && (
             <div style={{ textAlign: 'left', color: '#78350f', fontSize: '14px' }}>
               <p style={{ fontWeight: 600, marginBottom: '8px' }}>Як відкрити кабінет викладача:</p>
               <ol style={{ paddingLeft: '20px', margin: 0 }}>
@@ -319,6 +254,23 @@ export default function TeacherAppPage() {
               </p>
             </div>
           )}
+          
+          {/* Retry button */}
+          <button 
+            onClick={() => refresh()}
+            style={{
+              marginTop: '16px',
+              padding: '10px 20px',
+              background: '#f59e0b',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 500
+            }}
+          >
+            🔄 Оновити
+          </button>
         </div>
         
         {debugInfo && (

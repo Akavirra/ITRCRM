@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 
 interface Lesson {
   id: number;
@@ -33,35 +34,13 @@ interface LessonData {
   students: Student[];
 }
 
-// Extended Telegram WebApp interface
-interface TelegramWebAppExtended {
-  initData: string;
-  initDataUnsafe: {
-    user?: {
-      id: number;
-      first_name: string;
-    };
-  };
-  BackButton: {
-    show: () => void;
-    hide: () => void;
-    onClick: (callback: () => void) => void;
-  };
-  MainButton: {
-    setText: (text: string) => void;
-    show: () => void;
-    hide: () => void;
-    enable: () => void;
-    disable: () => void;
-    onClick: (callback: () => void) => void;
-  };
-  showPopup: (params: { title?: string; message: string; buttons?: Array<{ id?: string; type?: 'default' | 'ok' | 'close' | 'cancel'; text: string }> }) => Promise<string>;
-}
-
 export default function LessonDetailPage() {
   const params = useParams();
   const router = useRouter();
   const lessonId = params.id as string;
+  
+  const { initData, isLoading: initLoading, error: initError } = useTelegramInitData();
+  const { webApp, isInWebView } = useTelegramWebApp();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -73,37 +52,25 @@ export default function LessonDetailPage() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get Telegram WebApp instance
-  const getWebApp = (): TelegramWebAppExtended | null => {
-    const tg = (window as unknown as { Telegram?: { WebApp?: TelegramWebAppExtended } }).Telegram?.WebApp;
-    return tg || null;
-  };
-
   // Fetch lesson data
   useEffect(() => {
     const fetchLesson = async () => {
-      try {
-        // Wait for Telegram WebApp to be ready (retry up to 10 times with 300ms delay)
-        let tg: TelegramWebAppExtended | null = null;
-        let retries = 0;
-        const maxRetries = 10;
-        
-        while (!tg && retries < maxRetries) {
-          tg = getWebApp();
-          if (!tg) {
-            retries++;
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-        }
-        
-        if (!tg || !tg.initData) {
-          setError('Ця сторінка працює тільки в Telegram Mini App');
-          setLoading(false);
-          return;
-        }
+      // Wait for init data
+      if (initLoading) {
+        return;
+      }
 
+      if (!initData) {
+        setError(!isInWebView 
+          ? 'Ця сторінка працює тільки в Telegram Mini App' 
+          : 'Telegram WebApp не ініціалізовано');
+        setLoading(false);
+        return;
+      }
+
+      try {
         const response = await fetch(`/api/teacher-app/lessons/${lessonId}`, {
-          headers: { 'X-Telegram-Init-Data': tg.initData }
+          headers: { 'X-Telegram-Init-Data': initData }
         });
 
         if (!response.ok) {
@@ -117,14 +84,18 @@ export default function LessonDetailPage() {
         setNotes(data.lesson.notes || '');
         setLoading(false);
 
-        // Setup back button
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-          router.push('/teacher-app');
-        });
+        // Setup back button if available
+        if (webApp?.BackButton) {
+          webApp.BackButton.show();
+          webApp.BackButton.onClick(() => {
+            router.push('/teacher-app');
+          });
+        }
 
         return () => {
-          tg.BackButton.hide();
+          if (webApp?.BackButton) {
+            webApp.BackButton.hide();
+          }
         };
       } catch (err) {
         console.error('Fetch error:', err);
@@ -134,7 +105,7 @@ export default function LessonDetailPage() {
     };
 
     fetchLesson();
-  }, [lessonId, router]);
+  }, [lessonId, router, initData, initLoading, initError, isInWebView, webApp]);
 
   // Format time
   const formatTime = (datetime: string): string => {
@@ -150,8 +121,7 @@ export default function LessonDetailPage() {
 
   // Update attendance
   const updateAttendance = async (studentId: number, status: 'present' | 'absent' | 'sick') => {
-    const tg = getWebApp();
-    if (!tg) return;
+    if (!initData) return;
 
     // Optimistic update
     setStudents(prev => prev.map(s => 
@@ -163,7 +133,7 @@ export default function LessonDetailPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': tg.initData 
+          'X-Telegram-Init-Data': initData 
         },
         body: JSON.stringify({ studentId, status })
       });
@@ -180,7 +150,7 @@ export default function LessonDetailPage() {
       console.error('Attendance error:', err);
       // Revert on error
       const response = await fetch(`/api/teacher-app/lessons/${lessonId}`, {
-        headers: { 'X-Telegram-Init-Data': tg.initData }
+        headers: { 'X-Telegram-Init-Data': initData }
       });
       const data: LessonData = await response.json();
       setStudents(data.students);
@@ -189,8 +159,7 @@ export default function LessonDetailPage() {
 
   // Save topic/notes
   const saveLessonDetails = async () => {
-    const tg = getWebApp();
-    if (!tg) return;
+    if (!initData) return;
 
     setSaving(true);
 
@@ -199,7 +168,7 @@ export default function LessonDetailPage() {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': tg.initData 
+          'X-Telegram-Init-Data': initData 
         },
         body: JSON.stringify({ topic, notes })
       });
@@ -233,15 +202,14 @@ export default function LessonDetailPage() {
 
   // Finish lesson
   const finishLesson = async () => {
-    const tg = getWebApp();
-    if (!tg) return;
+    if (!initData || !webApp) return;
 
     // Check if all students have attendance marked
     const unmarkedStudents = students.filter(s => !s.attendance_status);
     if (unmarkedStudents.length > 0) {
-      await tg.showPopup({
+      await webApp.showPopup({
         title: 'Увага',
-        message: `${unmarkedStudents.length} студентів без відмітки. Продовжити?`,
+        message: `${unmarkedStudents.length} студентів без віджки. Продовжити?`,
         buttons: [
           { id: 'cancel', type: 'default', text: 'Повернутися' },
           { id: 'continue', type: 'ok', text: 'Продовжити' }
@@ -256,7 +224,7 @@ export default function LessonDetailPage() {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': tg.initData 
+          'X-Telegram-Init-Data': initData 
         },
         body: JSON.stringify({ topic, notes, status: 'done' })
       });
@@ -278,7 +246,7 @@ export default function LessonDetailPage() {
         });
       }
 
-      await tg.showPopup({
+      await webApp.showPopup({
         title: 'Готово!',
         message: 'Заняття успішно завершено та збережено.',
         buttons: [{ type: 'ok', text: 'OK' }]
