@@ -178,6 +178,40 @@ async function migrate() {
         throw e;
       }
     }
+    
+    // Додаємо колонки для звітності
+    try {
+      await sql`ALTER TABLE lessons ADD COLUMN reported_by INTEGER REFERENCES users(id) ON DELETE SET NULL`;
+      console.log('✅ Колонка reported_by додана до lessons');
+    } catch (e) {
+      if (e.message && e.message.includes('already exists')) {
+        console.log('ℹ️ Колонка reported_by вже існує в lessons');
+      } else {
+        throw e;
+      }
+    }
+    
+    try {
+      await sql`ALTER TABLE lessons ADD COLUMN reported_at TIMESTAMPTZ`;
+      console.log('✅ Колонка reported_at додана до lessons');
+    } catch (e) {
+      if (e.message && e.message.includes('already exists')) {
+        console.log('ℹ️ Колонка reported_at вже існує в lessons');
+      } else {
+        throw e;
+      }
+    }
+    
+    try {
+      await sql`ALTER TABLE lessons ADD COLUMN reported_via TEXT CHECK(reported_via IN ('telegram', 'web', NULL))`;
+      console.log('✅ Колонка reported_via додана до lessons');
+    } catch (e) {
+      if (e.message && e.message.includes('already exists')) {
+        console.log('ℹ️ Колонка reported_via вже існує в lessons');
+      } else {
+        throw e;
+      }
+    }
 
     // Додаємо колонку notes для нотаток до заняття
     try {
