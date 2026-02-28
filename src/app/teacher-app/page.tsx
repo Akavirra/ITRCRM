@@ -57,11 +57,12 @@ export default function TeacherAppPage() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   // Get Telegram WebApp instance
   const getWebApp = (): TelegramWebAppExtended | null => {
-    const tg = (window as unknown as { Telegram?: { WebApp?: TelegramWebAppExtended } }).Telegram?.WebApp;
-    return tg || null;
+    const win = window as unknown as { Telegram?: { WebApp?: TelegramWebAppExtended } };
+    return win.Telegram?.WebApp || null;
   };
 
   // Get all dates in the current week
@@ -100,24 +101,44 @@ export default function TeacherAppPage() {
   useEffect(() => {
     const initApp = async () => {
       try {
-        // Wait for Telegram WebApp to be ready (retry up to 10 times with 300ms delay)
+        // Debug info
+        let debug = 'Checking Telegram WebApp...\n';
+        
+        // Wait for Telegram WebApp to be ready
         let tg: TelegramWebAppExtended | null = null;
         let retries = 0;
-        const maxRetries = 10;
+        const maxRetries = 15;
         
         while (!tg && retries < maxRetries) {
           tg = getWebApp();
           if (!tg) {
             retries++;
-            await new Promise(resolve => setTimeout(resolve, 300));
+            debug += `Attempt ${retries}: WebApp not found\n`;
+            await new Promise(resolve => setTimeout(resolve, 200));
           }
         }
         
-        if (!tg || !tg.initData) {
+        if (!tg) {
+          debug += 'ERROR: Telegram.WebApp not found after all retries\n';
+          debug += `window.Telegram exists: ${!!(window as unknown as {Telegram?: unknown}).Telegram}\n`;
+          setDebugInfo(debug);
           setError('Ця сторінка працює тільки в Telegram Mini App');
           setLoading(false);
           return;
         }
+        
+        debug += `WebApp found! initData length: ${tg.initData?.length || 0}\n`;
+        debug += `initDataUnsafe.user: ${tg.initDataUnsafe?.user ? 'YES' : 'NO'}\n`;
+        
+        if (!tg.initData || tg.initData.length === 0) {
+          debug += 'ERROR: initData is empty\n';
+          setDebugInfo(debug);
+          setError('Ця сторінка працює тільки в Telegram Mini App (no initData)');
+          setLoading(false);
+          return;
+        }
+        
+        setDebugInfo(debug);
 
         // Authenticate
         const authResponse = await fetch('/api/teacher-app/auth', {
@@ -211,6 +232,19 @@ export default function TeacherAppPage() {
         <p style={{ color: 'var(--tg-text-color)', marginBottom: '16px' }}>
           {error}
         </p>
+        {debugInfo && (
+          <pre style={{ 
+            fontSize: '11px', 
+            textAlign: 'left', 
+            background: '#f3f4f6', 
+            padding: '10px', 
+            borderRadius: '8px',
+            overflow: 'auto',
+            maxHeight: '200px'
+          }}>
+            {debugInfo}
+          </pre>
+        )}
       </div>
     );
   }

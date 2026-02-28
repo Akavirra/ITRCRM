@@ -70,7 +70,7 @@ export default function TeacherAppLayout({ children }: { children: ReactNode }) 
     <>
       <Script
         src="https://telegram.org/js/telegram-web-app.js"
-        strategy="afterInteractive"
+        strategy="beforeInteractive"
         onLoad={() => {
           window.dispatchEvent(new Event('telegram-webapp-loaded'));
         }}
