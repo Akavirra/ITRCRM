@@ -100,7 +100,18 @@ export default function TeacherAppPage() {
   useEffect(() => {
     const initApp = async () => {
       try {
-        const tg = getWebApp();
+        // Wait for Telegram WebApp to be ready (retry up to 10 times with 300ms delay)
+        let tg: TelegramWebAppExtended | null = null;
+        let retries = 0;
+        const maxRetries = 10;
+        
+        while (!tg && retries < maxRetries) {
+          tg = getWebApp();
+          if (!tg) {
+            retries++;
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        }
         
         if (!tg || !tg.initData) {
           setError('Ця сторінка працює тільки в Telegram Mini App');
