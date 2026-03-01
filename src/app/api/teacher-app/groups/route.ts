@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
        FROM groups g
        JOIN courses c ON g.course_id = c.id
        WHERE g.teacher_id = $1
-         AND g.is_deleted = FALSE
+         AND g.status != 'archived'
        ORDER BY g.weekly_day, g.start_time`,
       [teacher.id]
     );
@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
        FROM groups g
        LEFT JOIN student_groups sg ON g.id = sg.group_id AND sg.is_active = TRUE
        LEFT JOIN lessons l ON g.id = l.group_id
-       WHERE g.teacher_id = $1 AND g.is_deleted = FALSE`,
+       WHERE g.teacher_id = $1 AND g.status != 'archived'`,
       [teacher.id]
     );
 
