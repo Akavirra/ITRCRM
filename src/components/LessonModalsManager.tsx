@@ -102,6 +102,9 @@ export default function LessonModalsManager() {
   const [savingNotes, setSavingNotes] = useState<Record<number, boolean>>({});
   const [editingTopic, setEditingTopic] = useState<Record<number, boolean>>({});
   const [editingNotes, setEditingNotes] = useState<Record<number, boolean>>({});
+  // Refs for editing state - used by polling to avoid stale closures
+  const editingTopicRef = useRef<Record<number, boolean>>({});
+  const editingNotesRef = useRef<Record<number, boolean>>({});
   const [showActionsMenu, setShowActionsMenu] = useState<Record<number, boolean>>({});
   const [teachers, setTeachers] = useState<Record<number, Teacher[]>>({});
   const [showTeacherSelect, setShowTeacherSelect] = useState<Record<number, boolean>>({});
@@ -345,11 +348,13 @@ export default function LessonModalsManager() {
 
   // Start editing topic
   const startEditingTopic = (lessonId: number) => {
+    editingTopicRef.current[lessonId] = true;
     setEditingTopic(prev => ({ ...prev, [lessonId]: true }));
   };
 
   // Cancel editing topic
   const cancelEditingTopic = (lessonId: number) => {
+    editingTopicRef.current[lessonId] = false;
     setLessonTopic(prev => ({ ...prev, [lessonId]: lessonData[lessonId]?.topic || '' }));
     setEditingTopic(prev => ({ ...prev, [lessonId]: false }));
   };
@@ -386,6 +391,7 @@ export default function LessonModalsManager() {
       console.error('Failed to save topic:', error);
       alert('Не вдалося зберегти тему');
     } finally {
+      editingTopicRef.current[lessonId] = false;
       setSavingTopic(prev => ({ ...prev, [lessonId]: false }));
       setEditingTopic(prev => ({ ...prev, [lessonId]: false }));
     }
@@ -393,11 +399,13 @@ export default function LessonModalsManager() {
 
   // Start editing notes
   const startEditingNotes = (lessonId: number) => {
+    editingNotesRef.current[lessonId] = true;
     setEditingNotes(prev => ({ ...prev, [lessonId]: true }));
   };
 
   // Cancel editing notes
   const cancelEditingNotes = (lessonId: number) => {
+    editingNotesRef.current[lessonId] = false;
     setLessonNotes(prev => ({ ...prev, [lessonId]: lessonData[lessonId]?.notes || '' }));
     setEditingNotes(prev => ({ ...prev, [lessonId]: false }));
   };
@@ -434,6 +442,7 @@ export default function LessonModalsManager() {
       console.error('Failed to save notes:', error);
       alert('Не вдалося зберегти нотатки');
     } finally {
+      editingNotesRef.current[lessonId] = false;
       setSavingNotes(prev => ({ ...prev, [lessonId]: false }));
       setEditingNotes(prev => ({ ...prev, [lessonId]: false }));
     }
@@ -486,7 +495,7 @@ export default function LessonModalsManager() {
                 
                 // Only update modal state with fresh server data if user is NOT editing topic/notes
                 // This prevents overwriting user's unsaved changes
-                const isEditing = editingTopic[modal.id] || editingNotes[modal.id];
+                const isEditing = editingTopicRef.current[modal.id] || editingNotesRef.current[modal.id];
                 
                 if (!isEditing) {
                   updateModalState(modal.id, { 
@@ -499,10 +508,10 @@ export default function LessonModalsManager() {
                 
                 // Only update local input state if user is not editing
                 // (values match what was last known from server)
-                if (!editingTopic[modal.id] && localTopic === currentLocalTopic && serverTopic !== currentLocalTopic) {
+                if (!editingTopicRef.current[modal.id] && localTopic === currentLocalTopic && serverTopic !== currentLocalTopic) {
                   setLessonTopic(prev => ({ ...prev, [modal.id]: serverTopic }));
                 }
-                if (!editingNotes[modal.id] && localNotes === currentLocalNotes && serverNotes !== currentLocalNotes) {
+                if (!editingNotesRef.current[modal.id] && localNotes === currentLocalNotes && serverNotes !== currentLocalNotes) {
                   setLessonNotes(prev => ({ ...prev, [modal.id]: serverNotes }));
                 }
                 
