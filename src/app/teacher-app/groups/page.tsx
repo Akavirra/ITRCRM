@@ -5,9 +5,9 @@ import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWeb
 
 interface Student {
   id: number;
-  full_name: string;
-  phone: string | null;
-  email: string | null;
+  name: string;
+  surname: string;
+  birth_date: string | null;
   join_date: string;
   is_active: boolean;
 }
@@ -225,7 +225,21 @@ export default function TeacherGroupsPage() {
                       <p style={{ color: 'var(--tg-hint-color)', fontSize: '13px', margin: 0 }}>Немає учнів у групі</p>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {group.students.map(student => (
+                        {group.students.map(student => {
+                          // Calculate age from birth_date
+                          const getAge = (birthDate: string | null): string => {
+                            if (!birthDate) return 'вік не вказано';
+                            const today = new Date();
+                            const birth = new Date(birthDate);
+                            let age = today.getFullYear() - birth.getFullYear();
+                            const monthDiff = today.getMonth() - birth.getMonth();
+                            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                              age--;
+                            }
+                            return `${age} років`;
+                          };
+                          
+                          return (
                           <div 
                             key={student.id}
                             style={{ 
@@ -239,19 +253,18 @@ export default function TeacherGroupsPage() {
                             }}
                           >
                             <div className="tg-avatar" style={{ width: '36px', height: '36px', fontSize: '14px' }}>
-                              {student.full_name?.split(' ').map(n => n[0]).join('') || '?'}
+                              {student.name?.[0] || ''}{student.surname?.[0] || ''}
                             </div>
                             <div style={{ flex: 1 }}>
                               <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--tg-text-color)' }}>
-                                {student.full_name}
+                                {student.name} {student.surname}
                               </div>
-                              <div style={{ fontSize: '12px', color: 'var(--tg-text-secondary)', display: 'flex', gap: '12px' }}>
-                                {student.phone && <span>📱 {student.phone}</span>}
-                                {student.email && <span>📧 {student.email}</span>}
+                              <div style={{ fontSize: '12px', color: 'var(--tg-text-secondary)' }}>
+                                🎂 {getAge(student.birth_date)}
                               </div>
                             </div>
                           </div>
-                        ))}
+                        );})}
                       </div>
                     )}
                   </div>

@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
        FROM groups g
        JOIN courses c ON g.course_id = c.id
        WHERE g.teacher_id = $1
-         AND g.status != 'archived'
+         AND g.status = 'active'
        ORDER BY g.weekly_day, g.start_time`,
       [teacher.id]
     );
@@ -157,15 +157,15 @@ export async function GET(request: NextRequest) {
         const students = await query(
           `SELECT 
             s.id,
-            s.full_name,
-            s.phone,
-            s.email,
+            s.name,
+            s.surname,
+            s.birth_date,
             sg.join_date,
             sg.is_active
            FROM students s
            JOIN student_groups sg ON s.id = sg.student_id
            WHERE sg.group_id = $1 AND sg.is_active = TRUE
-           ORDER BY s.full_name`,
+           ORDER BY s.surname, s.name`,
           [groupId]
         );
 
