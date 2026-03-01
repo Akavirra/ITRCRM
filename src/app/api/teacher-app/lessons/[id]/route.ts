@@ -268,9 +268,7 @@ export async function PATCH(
       values.push(teacher.id);
       paramIndex++;
       
-      updates.push(`reported_at = ${paramIndex}`);
-      values.push('NOW()');
-      paramIndex++;
+      updates.push(`reported_at = NOW()`);
       
       updates.push(`reported_via = ${paramIndex}`);
       values.push('telegram');
@@ -282,9 +280,7 @@ export async function PATCH(
         values.push(teacher.id);
         paramIndex++;
         
-        updates.push(`topic_set_at = ${paramIndex}`);
-        values.push('NOW()');
-        paramIndex++;
+        updates.push(`topic_set_at = NOW()`);
       }
       
       if (notes !== undefined) {
@@ -292,9 +288,7 @@ export async function PATCH(
         values.push(teacher.id);
         paramIndex++;
         
-        updates.push(`notes_set_at = ${paramIndex}`);
-        values.push('NOW()');
-        paramIndex++;
+        updates.push(`notes_set_at = NOW()`);
       }
     }
 
