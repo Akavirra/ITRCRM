@@ -19,6 +19,8 @@ export async function POST(request: NextRequest) {
   }
   
   try {
+    console.log('[generate-all] Starting lesson generation for all groups');
+    
     // Default to 1 month ahead (current month + next month)
     const monthsAhead = 1;
     const today = new Date();
@@ -28,6 +30,8 @@ export async function POST(request: NextRequest) {
     const monthsLabel = `${format(currentMonthStart, 'MMMM yyyy', { locale: uk })} - ${format(targetMonthEnd, 'MMMM yyyy', { locale: uk })}`;
     
     const results = await generateLessonsForAllGroups(8, user.id, monthsAhead);
+    
+    console.log('[generate-all] Generation completed, results:', results);
     
     const totalGenerated = results.reduce((sum, r) => sum + r.generated, 0);
     const totalSkipped = results.reduce((sum, r) => sum + r.skipped, 0);
@@ -40,7 +44,7 @@ export async function POST(request: NextRequest) {
       results,
     });
   } catch (error) {
-    console.error('Generate all lessons error:', error);
+    console.error('[generate-all] Error:', error);
     return NextResponse.json(
       { error: 'Не вдалося згенерувати заняття' },
       { status: 500 }

@@ -38,7 +38,11 @@ export async function POST(
     const body = await request.json();
     const weeksAhead = body.weeksAhead || 8;
     
+    console.log('[generate-lessons] Starting for group:', groupId, 'weeksAhead:', weeksAhead);
+    
     const result = await generateLessonsForGroup(groupId, weeksAhead, user.id);
+    
+    console.log('[generate-lessons] Completed for group:', groupId, 'result:', result);
     
     return NextResponse.json({
       message: 'Заняття успішно згенеровано',
@@ -46,9 +50,9 @@ export async function POST(
       skipped: result.skipped,
     });
   } catch (error) {
-    console.error('Generate lessons error:', error);
+    console.error('[generate-lessons] Error:', error);
     return NextResponse.json(
-      { error: ERROR_MESSAGES.generateFailed },
+      { error: error instanceof Error ? error.message : ERROR_MESSAGES.generateFailed },
       { status: 500 }
     );
   }

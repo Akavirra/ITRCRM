@@ -53,6 +53,8 @@ export async function generateLessonsForGroup(
   createdBy: number,
   monthsAhead: number = 1
 ): Promise<{ generated: number; skipped: number }> {
+  console.log('[generateLessonsForGroup] Starting for group:', groupId, 'weeksAhead:', weeksAhead, 'monthsAhead:', monthsAhead);
+  
   const group = await get<Group>(
     `SELECT id, weekly_day, start_time, duration_minutes, timezone, start_date, end_date 
      FROM groups WHERE id = $1`,
@@ -60,7 +62,16 @@ export async function generateLessonsForGroup(
   );
   
   if (!group) {
+    console.error('[generateLessonsForGroup] Group not found:', groupId);
     throw new Error('Group not found');
+  }
+  
+  console.log('[generateLessonsForGroup] Group data:', JSON.stringify(group));
+
+  // Validate required fields
+  if (!group.start_time) {
+    console.error('[generateLessonsForGroup] Missing start_time for group:', groupId);
+    throw new Error('Missing start_time for group');
   }
   
   const today = startOfDay(new Date());
@@ -73,11 +84,14 @@ export async function generateLessonsForGroup(
   // Use the earlier of group end date or target end date
   const finalEndDate = group.end_date && isBefore(endDate, targetEndDate) ? endDate : targetEndDate;
   
+  console.log('[generateLessonsForGroup] Date range - today:', today, 'finalEndDate:', finalEndDate);
+  
   // Get existing lessons for this group
   const existingLessons = await all<{ lesson_date: string }>(
     `SELECT lesson_date FROM lessons WHERE group_id = $1`,
     [groupId]
   );
+  console.log('[generateLessonsForGroup] Existing lessons count:', existingLessons.length);
   // Convert dates to yyyy-MM-dd format for proper comparison
   // (PostgreSQL returns DATE as ISO string with time component)
   const existingDates = new Set(existingLessons.map(l => {
@@ -89,9 +103,24 @@ export async function generateLessonsForGroup(
   let skipped = 0;
   
   // Start from group start date or today, whichever is later
-  let currentDate = new Date(group.start_date);
-  if (isBefore(currentDate, today)) {
+  // Handle null/undefined start_date
+  let currentDate: Date;
+  if (!group.start_date) {
+    console.log('[generateLessonsForGroup] No start_date, using today');
     currentDate = today;
+  } else {
+    currentDate = new Date(group.start_date);
+    if (isBefore(currentDate, today)) {
+      currentDate = today;
+    }
+  }
+  
+  console.log('[generateLessonsForGroup] Starting from:', currentDate, 'weekly_day:', group.weekly_day);
+  
+  // Validate weekly_day
+  if (!group.weekly_day || group.weekly_day < 1 || group.weekly_day > 7) {
+    console.error('[generateLessonsForGroup] Invalid weekly_day:', group.weekly_day);
+    throw new Error('Invalid weekly_day for group: ' + group.weekly_day);
   }
   
   // Find the first occurrence of the weekly_day
@@ -137,6 +166,7 @@ export async function generateLessonsForGroup(
   
   // Insert all lessons in a transaction
   if (lessonsToInsert.length > 0) {
+    console.log('[generateLessonsForGroup] Inserting', lessonsToInsert.length, 'lessons');
     await transaction(async () => {
       for (const lesson of lessonsToInsert) {
         await run(
@@ -148,6 +178,8 @@ export async function generateLessonsForGroup(
     });
   }
   
+  console.log('[generateLessonsForGroup] Completed. Generated:', generated, 'Skipped:', skipped);
+  
   return { generated, skipped };
 }
 
@@ -158,16 +190,26 @@ export async function generateLessonsForAllGroups(
   monthsAhead: number = 1
 ): Promise<{ groupId: number; generated: number; skipped: number }[]> {
   const groups = await all<{ id: number }>(
-    `SELECT id FROM groups WHERE is_active = TRUE`
+    `SELECT id FROM groups WHERE is_active = TRUE OR status = 'active'`
   );
+  
+  console.log('[generateLessonsForAllGroups] Found groups:', groups.length);
   
   const results: { groupId: number; generated: number; skipped: number }[] = [];
   
   for (const group of groups) {
-    const result = await generateLessonsForGroup(group.id, weeksAhead, createdBy, monthsAhead);
-    results.push({ groupId: group.id, ...result });
+    try {
+      console.log('[generateLessonsForAllGroups] Processing group:', group.id);
+      const result = await generateLessonsForGroup(group.id, weeksAhead, createdBy, monthsAhead);
+      results.push({ groupId: group.id, ...result });
+    } catch (error) {
+      console.error(`[generateLessonsForAllGroups] Error processing group ${group.id}:`, error);
+      // Continue with other groups instead of failing completely
+      results.push({ groupId: group.id, generated: 0, skipped: 0 });
+    }
   }
   
+  console.log('[generateLessonsForAllGroups] Completed. Results:', results);
   return results;
 }
 

@@ -172,14 +172,18 @@ export default function SchedulePage() {
         headers: { 'Content-Type': 'application/json' },
       });
       
+      const data = await res.json();
+      
       if (res.ok) {
-        const data = await res.json();
         alert(`Згенеровано ${data.totalGenerated} занять (${data.monthsLabel}), пропущено ${data.totalSkipped}`);
         fetchSchedule();
         setShowGenerateModal(false);
+      } else {
+        alert(data.error || 'Не вдалося згенерувати заняття');
       }
     } catch (error) {
       console.error('Failed to generate lessons:', error);
+      alert('Сталася помилка при генерації занять');
     } finally {
       setGenerating(false);
     }
