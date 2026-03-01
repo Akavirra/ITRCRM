@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
     const totalGenerated = results.reduce((sum, r) => sum + r.generated, 0);
     const totalSkipped = results.reduce((sum, r) => sum + r.skipped, 0);
     
+    console.log('[generate-all] Returning response. Total generated:', totalGenerated, 'Total skipped:', totalSkipped);
+    
     return NextResponse.json({
       message: 'Заняття успішно згенеровано',
       totalGenerated,
