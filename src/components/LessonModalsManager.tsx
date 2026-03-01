@@ -366,10 +366,13 @@ export default function LessonModalsManager() {
     
     setSavingTopic(prev => ({ ...prev, [lessonId]: true }));
     try {
+      // If lesson is not done yet, automatically mark it as done when topic is added
+      const statusUpdate = currentLessonData?.status !== 'done' ? { status: 'done' } : {};
+      
       const res = await fetch(`/api/lessons/${lessonId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: newTopic }),
+        body: JSON.stringify({ topic: newTopic, ...statusUpdate }),
       });
       
       if (res.ok) {
@@ -379,6 +382,7 @@ export default function LessonModalsManager() {
           lessonData: {
             ...currentLessonData,
             topic: newTopic,
+            status: data.lesson.status,
             topicSetBy: data.lesson.topicSetBy,
             topicSetAt: data.lesson.topicSetAt,
           }
@@ -417,10 +421,13 @@ export default function LessonModalsManager() {
     
     setSavingNotes(prev => ({ ...prev, [lessonId]: true }));
     try {
+      // If lesson is not done yet, automatically mark it as done when notes are added
+      const statusUpdate = currentLessonData?.status !== 'done' ? { status: 'done' } : {};
+      
       const res = await fetch(`/api/lessons/${lessonId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: newNotes }),
+        body: JSON.stringify({ notes: newNotes, ...statusUpdate }),
       });
       
       if (res.ok) {
@@ -430,6 +437,7 @@ export default function LessonModalsManager() {
           lessonData: {
             ...currentLessonData,
             notes: newNotes,
+            status: data.lesson.status,
             notesSetBy: data.lesson.notesSetBy,
             notesSetAt: data.lesson.notesSetAt,
           }
