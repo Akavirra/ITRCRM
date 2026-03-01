@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
             s.id,
             s.full_name,
             s.phone,
-            s.telegram_username,
+            s.email,
             sg.join_date,
             sg.is_active
            FROM students s

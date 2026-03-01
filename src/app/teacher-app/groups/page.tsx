@@ -7,7 +7,7 @@ interface Student {
   id: number;
   full_name: string;
   phone: string | null;
-  telegram_username: string | null;
+  email: string | null;
   join_date: string;
   is_active: boolean;
 }
@@ -247,7 +247,7 @@ export default function TeacherGroupsPage() {
                               </div>
                               <div style={{ fontSize: '12px', color: 'var(--tg-text-secondary)', display: 'flex', gap: '12px' }}>
                                 {student.phone && <span>📱 {student.phone}</span>}
-                                {student.telegram_username && <span>✈️ @{student.telegram_username}</span>}
+                                {student.email && <span>📧 {student.email}</span>}
                               </div>
                             </div>
                           </div>
