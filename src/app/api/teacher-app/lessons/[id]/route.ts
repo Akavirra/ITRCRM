@@ -259,24 +259,24 @@ export async function PATCH(
 
     // If setting topic/notes or explicitly marking as conducted
     if (status === 'done' || topic !== undefined || notes !== undefined) {
-      updates.push(`status = ${paramIndex}`);
+      updates.push("status = $" + paramIndex);
       values.push('done');
       paramIndex++;
       
       // New schema columns
-      updates.push(`reported_by = ${paramIndex}`);
+      updates.push("reported_by = $" + paramIndex);
       values.push(teacher.id);
       paramIndex++;
       
       updates.push(`reported_at = NOW()`);
       
-      updates.push(`reported_via = ${paramIndex}`);
+      updates.push("reported_via = $" + paramIndex);
       values.push('telegram');
       paramIndex++;
       
       // Old schema columns for backwards compatibility
       if (topic !== undefined) {
-        updates.push(`topic_set_by = ${paramIndex}`);
+        updates.push("topic_set_by = $" + paramIndex);
         values.push(teacher.id);
         paramIndex++;
         
@@ -284,7 +284,7 @@ export async function PATCH(
       }
       
       if (notes !== undefined) {
-        updates.push(`notes_set_by = ${paramIndex}`);
+        updates.push("notes_set_by = $" + paramIndex);
         values.push(teacher.id);
         paramIndex++;
         
