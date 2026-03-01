@@ -152,6 +152,7 @@ export async function GET(request: NextRequest) {
     // Get students for each group
     const groupsWithStudents = await Promise.all(
       (groups || []).map(async (group) => {
+        const weeklyDay = group.weekly_day as number;
         const students = await query(
           `SELECT 
             s.id,
@@ -170,8 +171,8 @@ export async function GET(request: NextRequest) {
 
         return {
           ...group,
-          day_name: DAY_NAMES[group.weekly_day] || 'Невідомо',
-          day_short: DAY_SHORT_NAMES[group.weekly_day] || '?',
+          day_name: DAY_NAMES[weeklyDay] || 'Невідомо',
+          day_short: DAY_SHORT_NAMES[weeklyDay] || '?',
           students: students || [],
         };
       })
