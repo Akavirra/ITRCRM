@@ -281,7 +281,7 @@ export async function PATCH(
       [lessonId]
     );
     
-    const sql = `UPDATE lessons SET ${updates.join(', ')} WHERE id = ${params.length}`;
+    const sql = "UPDATE lessons SET " + updates.join(', ') + " WHERE id = $" + params.length;
     await run(sql, params);
     
     // Log changes if topic or notes were updated
