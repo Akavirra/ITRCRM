@@ -151,8 +151,9 @@ export async function GET(request: NextRequest) {
 
     // Get students for each group
     const groupsWithStudents = await Promise.all(
-      (groups || []).map(async (group) => {
+      (groups || [] as Array<Record<string, unknown>>).map(async (group) => {
         const weeklyDay = group.weekly_day as number;
+        const groupId = group.id as number;
         const students = await query(
           `SELECT 
             s.id,
@@ -166,7 +167,7 @@ export async function GET(request: NextRequest) {
            JOIN student_groups sg ON s.id = sg.student_id
            WHERE sg.group_id = $1 AND sg.is_active = TRUE
            ORDER BY s.surname, s.name`,
-          [group.id]
+          [groupId]
         );
 
         return {
