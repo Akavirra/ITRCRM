@@ -24,8 +24,11 @@ export async function POST(request: NextRequest) {
     // Default to 1 month ahead (current month + next month)
     const monthsAhead = 1;
     const today = new Date();
+    console.log('[generate-all] Today:', today.toISOString());
+    
     const currentMonthStart = startOfMonth(today);
     const targetMonthEnd = endOfMonth(addMonths(today, monthsAhead));
+    console.log('[generate-all] Date range:', currentMonthStart.toISOString(), 'to', targetMonthEnd.toISOString());
     
     const monthsLabel = `${format(currentMonthStart, 'MMMM yyyy', { locale: uk })} - ${format(targetMonthEnd, 'MMMM yyyy', { locale: uk })}`;
     

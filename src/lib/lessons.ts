@@ -53,7 +53,8 @@ export async function generateLessonsForGroup(
   createdBy: number,
   monthsAhead: number = 1
 ): Promise<{ generated: number; skipped: number }> {
-  console.log('[generateLessonsForGroup] Starting for group:', groupId, 'weeksAhead:', weeksAhead, 'monthsAhead:', monthsAhead);
+  console.log('[generateLessonsForGroup] ================= START ================');
+  console.log('[generateLessonsForGroup] Function called with groupId:', groupId);
   
   try {
     const group = await get<Group>(
