@@ -122,16 +122,18 @@ export async function generateLessonsForGroup(
     
     console.log('[generateLessonsForGroup] Starting from:', currentDate, 'weekly_day:', group.weekly_day);
     
-    // Validate weekly_day
-    if (!group.weekly_day || group.weekly_day < 1 || group.weekly_day > 7) {
-      console.error('[generateLessonsForGroup] Invalid weekly_day:', group.weekly_day);
+    // Validate weekly_day and adjust for JavaScript (0-6) vs database (1-7)
+    const jsWeeklyDay = group.weekly_day === 7 ? 0 : group.weekly_day;
+    
+    if (!jsWeeklyDay || jsWeeklyDay < 0 || jsWeeklyDay > 6) {
+      console.error('[generateLessonsForGroup] Invalid weekly_day:', group.weekly_day, '-> jsWeeklyDay:', jsWeeklyDay);
       throw new Error('Invalid weekly_day for group: ' + group.weekly_day);
     }
     
-    console.log('[generateLessonsForGroup] Finding first occurrence of day', group.weekly_day);
+    console.log('[generateLessonsForGroup] Finding first occurrence of day', group.weekly_day, '(JS day:', jsWeeklyDay, ')');
     
     // Find the first occurrence of the weekly_day
-    while (currentDate.getDay() !== group.weekly_day) {
+    while (currentDate.getDay() !== jsWeeklyDay) {
       currentDate = addDays(currentDate, 1);
     }
     
