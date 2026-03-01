@@ -226,6 +226,20 @@ export async function generateLessonsForAllGroups(
   for (const group of groups) {
     try {
       console.log('[generateLessonsForAllGroups] Processing group:', group.id);
+      
+      // Check if this group already has lessons
+      const existingLessons = await all<{ id: number }>(
+        `SELECT id FROM lessons WHERE group_id = $1 LIMIT 1`,
+        [group.id]
+      );
+      
+      // Skip groups that already have lessons
+      if (existingLessons.length > 0) {
+        console.log('[generateLessonsForAllGroups] Skipping group', group.id, '- already has lessons');
+        results.push({ groupId: group.id, generated: 0, skipped: 0 });
+        continue;
+      }
+      
       const result = await generateLessonsForGroup(group.id, weeksAhead, createdBy, monthsAhead);
       results.push({ groupId: group.id, ...result });
     } catch (error) {
