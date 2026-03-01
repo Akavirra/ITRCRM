@@ -272,8 +272,8 @@ export default function LessonDetailPage() {
 
   if (error || !lesson) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <p style={{ color: 'var(--tg-text-color)', marginBottom: '16px' }}>
+      <div style={{ padding: 'var(--space-lg)', textAlign: 'center' }}>
+        <p style={{ color: 'var(--tg-text-color)', marginBottom: 'var(--space-md)', fontSize: '15px' }}>
           {error || 'Заняття не знайдено'}
         </p>
         <button onClick={() => router.push('/teacher-app')} className="tg-button">
@@ -286,40 +286,34 @@ export default function LessonDetailPage() {
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <span style={{ fontSize: '14px', color: 'var(--tg-hint-color)' }}>
+      <div style={{ marginBottom: 'var(--space-xl)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
+          <span style={{ fontSize: '14px', color: 'var(--tg-text-secondary)' }}>
             {formatDate(lesson.lesson_date)}
           </span>
-          <span style={{ 
-            padding: '4px 10px', 
-            borderRadius: '12px', 
-            fontSize: '12px',
-            background: lesson.status === 'done' ? '#dcfce7' : '#dbeafe',
-            color: lesson.status === 'done' ? '#166534' : '#1e40af'
-          }}>
+          <span className={`tg-badge ${lesson.status === 'done' ? 'tg-badge-done' : 'tg-badge-scheduled'}`}>
             {lesson.status === 'done' ? '✅ Проведено' : '📋 Заплановано'}
           </span>
         </div>
-        <h1 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '4px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: 'var(--space-xs)', color: 'var(--tg-text-color)', letterSpacing: '-0.02em' }}>
           {formatTime(lesson.start_datetime)} - {formatTime(lesson.end_datetime)}
         </h1>
-        <p style={{ fontSize: '16px', color: 'var(--tg-text-color)', marginBottom: '4px' }}>
+        <p style={{ fontSize: '16px', color: 'var(--tg-text-color)', marginBottom: 'var(--space-xs)', fontWeight: 500 }}>
           {lesson.group_title}
         </p>
-        <p style={{ fontSize: '14px', color: 'var(--tg-hint-color)' }}>
+        <p style={{ fontSize: '14px', color: 'var(--tg-text-secondary)' }}>
           {lesson.course_title}
         </p>
       </div>
 
       {/* Topic */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <span style={{ fontSize: '14px', fontWeight: 500 }}>📝 Тема заняття</span>
+      <div style={{ marginBottom: 'var(--space-xl)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
+          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)' }}>📝 Тема заняття</span>
           {!editingTopic && (
             <button 
               onClick={() => setEditingTopic(true)}
-              style={{ fontSize: '12px', color: 'var(--tg-link-color)', background: 'none', border: 'none', cursor: 'pointer' }}
+              style={{ fontSize: '13px', color: 'var(--tg-link-color)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
             >
               ✏️ Редагувати
             </button>
@@ -332,19 +326,10 @@ export default function LessonDetailPage() {
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="Введіть тему заняття..."
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid var(--tg-hint-color)',
-                background: 'var(--tg-bg-color)',
-                color: 'var(--tg-text-color)',
-                fontSize: '14px',
-                marginBottom: '8px'
-              }}
+              className="tg-input"
             />
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={saveLessonDetails} disabled={saving} className="tg-button">
+            <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
+              <button onClick={saveLessonDetails} disabled={saving} className="tg-button" style={{ flex: 1 }}>
                 {saving ? 'Збереження...' : '💾 Зберегти'}
               </button>
               <button 
@@ -366,13 +351,13 @@ export default function LessonDetailPage() {
       </div>
 
       {/* Notes */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <span style={{ fontSize: '14px', fontWeight: 500 }}>📋 Нотатка</span>
+      <div style={{ marginBottom: 'var(--space-xl)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
+          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)' }}>📋 Нотатка</span>
           {!editingNotes && (
             <button 
               onClick={() => setEditingNotes(true)}
-              style={{ fontSize: '12px', color: 'var(--tg-link-color)', background: 'none', border: 'none', cursor: 'pointer' }}
+              style={{ fontSize: '13px', color: 'var(--tg-link-color)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
             >
               ✏️ Редагувати
             </button>
@@ -385,20 +370,11 @@ export default function LessonDetailPage() {
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Введіть нотатку..."
               rows={3}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid var(--tg-hint-color)',
-                background: 'var(--tg-bg-color)',
-                color: 'var(--tg-text-color)',
-                fontSize: '14px',
-                marginBottom: '8px',
-                resize: 'vertical'
-              }}
+              className="tg-input"
+              style={{ resize: 'vertical', minHeight: '100px' }}
             />
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={saveLessonDetails} disabled={saving} className="tg-button">
+            <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
+              <button onClick={saveLessonDetails} disabled={saving} className="tg-button" style={{ flex: 1 }}>
                 {saving ? 'Збереження...' : '💾 Зберегти'}
               </button>
               <button 
@@ -421,89 +397,53 @@ export default function LessonDetailPage() {
 
       {/* Report info */}
       {lesson.reported_at && (
-        <div style={{ 
-          background: '#f0fdf4', 
-          borderRadius: '8px', 
-          padding: '12px', 
-          marginBottom: '20px',
-          fontSize: '13px',
-          color: '#166534'
-        }}>
+        <div className="tg-report-saved" style={{ marginBottom: 'var(--space-xl)' }}>
           ✅ Дані збережено: {new Date(lesson.reported_at).toLocaleString('uk-UA')}
           {lesson.reported_via === 'telegram' && ' через Telegram'}
         </div>
       )}
 
       {/* Students attendance */}
-      <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px' }}>
+      <div style={{ marginBottom: 'var(--space-xl)' }}>
+        <h2 style={{ fontSize: '17px', fontWeight: 600, marginBottom: 'var(--space-md)', color: 'var(--tg-text-color)' }}>
           👥 Відвідуваність ({students.length} студентів)
         </h2>
         
         {students.length === 0 ? (
-          <p style={{ color: 'var(--tg-hint-color)', fontStyle: 'italic' }}>
+          <p style={{ color: 'var(--tg-hint-color)', fontStyle: 'italic', fontSize: '14px' }}>
             Немає студентів у групі
           </p>
         ) : (
-          students.map(student => (
-            <div 
-              key={student.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '12px',
-                borderRadius: '8px',
-                background: 'rgba(0,0,0,0.03)',
-                marginBottom: '8px'
-              }}
-            >
-              <span style={{ fontSize: '14px' }}>{student.full_name}</span>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button
-                  onClick={() => updateAttendance(student.id, 'present')}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    background: student.attendance_status === 'present' ? '#22c55e' : '#e5e7eb',
-                    color: student.attendance_status === 'present' ? 'white' : '#374151'
-                  }}
-                >
-                  ✅ Присутній
-                </button>
-                <button
-                  onClick={() => updateAttendance(student.id, 'absent')}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    background: student.attendance_status === 'absent' ? '#ef4444' : '#e5e7eb',
-                    color: student.attendance_status === 'absent' ? 'white' : '#374151'
-                  }}
-                >
-                  ❌ Відсутній
-                </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            {students.map(student => (
+              <div 
+                key={student.id}
+                className="tg-list-item"
+              >
+                <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--tg-text-color)' }}>{student.full_name}</span>
+                <div className="tg-actions">
+                  <button
+                    onClick={() => updateAttendance(student.id, 'present')}
+                    className={`tg-action-btn tg-action-btn-success ${student.attendance_status === 'present' ? 'active' : ''}`}
+                  >
+                    ✅ Присутній
+                  </button>
+                  <button
+                    onClick={() => updateAttendance(student.id, 'absent')}
+                    className={`tg-action-btn tg-action-btn-danger ${student.attendance_status === 'absent' ? 'active' : ''}`}
+                  >
+                    ❌ Відсутній
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 
       {/* Report info */}
       {lesson.reported_at && (
-        <div style={{ 
-          background: '#f0fdf4', 
-          borderRadius: '8px', 
-          padding: '12px', 
-          marginBottom: '20px',
-          fontSize: '13px',
-          color: '#166534'
-        }}>
+        <div className="tg-success-message" style={{ marginBottom: 'var(--space-lg)' }}>
           ✅ <strong>Дані збережено:</strong><br/>
           {new Date(lesson.reported_at).toLocaleString('uk-UA')}
           {lesson.reported_via === 'telegram' && ' через Telegram'}

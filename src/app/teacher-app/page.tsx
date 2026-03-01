@@ -219,30 +219,19 @@ export default function TeacherAppPage() {
 
   if (error) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <div style={{ 
-          background: '#fef3c7', 
-          border: '2px solid #f59e0b', 
-          borderRadius: '12px',
-          padding: '20px',
-          marginBottom: '20px'
-        }}>
-          <p style={{ 
-            color: '#92400e', 
-            fontSize: '18px', 
-            fontWeight: 600,
-            marginBottom: '12px'
-          }}>
+      <div style={{ padding: '20px' }}>
+        <div className="tg-error">
+          <p className="tg-error-title">
             ⚠️ Помилка відкриття
           </p>
-          <p style={{ color: '#92400e', marginBottom: '16px' }}>
+          <p className="tg-error-text">
             {!isInWebView 
               ? 'Ця сторінка працює тільки в Telegram додатку.'
               : 'Telegram WebApp не ініціалізовано. Спробуйте оновити сторінку.'
             }
           </p>
           {!isInWebView && (
-            <div style={{ textAlign: 'left', color: '#78350f', fontSize: '14px' }}>
+            <div style={{ textAlign: 'left', marginTop: '16px', fontSize: '14px' }}>
               <p style={{ fontWeight: 600, marginBottom: '8px' }}>Як відкрити кабінет викладача:</p>
               <ol style={{ paddingLeft: '20px', margin: 0 }}>
                 <li style={{ marginBottom: '6px' }}>Відкрийте Telegram додаток на телефоні або комп'ютері</li>
@@ -250,7 +239,7 @@ export default function TeacherAppPage() {
                 <li style={{ marginBottom: '6px' }}>Натисніть кнопку "📋 Кабінет викладача" в меню бота</li>
                 <li>Або відкрийте через кнопку в повідомленні про нагадування</li>
               </ol>
-              <p style={{ marginTop: '12px', fontSize: '13px', color: '#92400e' }}>
+              <p style={{ marginTop: '12px', fontSize: '13px', opacity: 0.8 }}>
                 ❌ Не копіюйте посилання в браузер — воно працює тільки в Telegram!
               </p>
             </div>
@@ -259,15 +248,10 @@ export default function TeacherAppPage() {
           {/* Retry button */}
           <button 
             onClick={() => refresh()}
+            className="tg-button"
             style={{
               marginTop: '16px',
-              padding: '10px 20px',
-              background: '#f59e0b',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 500
+              width: '100%'
             }}
           >
             🔄 Оновити
@@ -275,23 +259,23 @@ export default function TeacherAppPage() {
         </div>
         
         {debugInfo && (
-          <details style={{ textAlign: 'left' }}>
+          <details style={{ marginTop: '16px', padding: '12px', background: 'var(--tg-surface)', borderRadius: 'var(--radius-md)' }}>
             <summary style={{ 
               cursor: 'pointer', 
-              color: '#6b7280', 
-              fontSize: '13px',
-              padding: '10px'
+              color: 'var(--tg-hint-color)', 
+              fontSize: '13px'
             }}>
               Технічна інформація для діагностики
             </summary>
             <pre style={{ 
               fontSize: '11px', 
               textAlign: 'left', 
-              background: '#f3f4f6', 
+              background: 'var(--tg-bg-color)', 
               padding: '10px', 
-              borderRadius: '8px',
+              borderRadius: 'var(--radius-sm)',
               overflow: 'auto',
-              maxHeight: '200px'
+              maxHeight: '200px',
+              marginTop: '8px'
             }}>
               {debugInfo}
             </pre>
@@ -306,46 +290,24 @@ export default function TeacherAppPage() {
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ 
-          fontSize: '20px', 
-          fontWeight: 600, 
-          marginBottom: '4px',
-          color: 'var(--tg-text-color)'
-        }}>
+      <div className="tg-header">
+        <h1 className="tg-header-title">
           👋 Вітаю, {teacher?.name}
         </h1>
-        <p className="tg-hint">Розклад занять на цей тиждень</p>
+        <p className="tg-header-subtitle">Розклад занять на цей тиждень</p>
       </div>
 
       {/* Day Selector */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '8px', 
-        overflowX: 'auto',
-        marginBottom: '20px',
-        paddingBottom: '8px'
-      }}>
+      <div className="tg-day-selector">
         {weekDates.map(date => (
           <button
             key={date}
             onClick={() => setSelectedDate(date)}
-            style={{
-              padding: '10px 14px',
-              borderRadius: '10px',
-              background: selectedDate === date ? 'var(--tg-button-color)' : 'transparent',
-              color: selectedDate === date ? 'var(--tg-button-text-color)' : 'var(--tg-text-color)',
-              fontSize: '13px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              minWidth: '60px',
-              textAlign: 'center',
-              border: selectedDate === date ? '1px solid var(--tg-button-color)' : '1px solid var(--tg-hint-color)'
-            }}
+            className={`tg-day-btn ${selectedDate === date ? 'active' : ''}`}
           >
-            <div>{formatDate(date)}</div>
+            <div style={{ fontWeight: 500 }}>{formatDate(date)}</div>
             {isToday(date) && (
-              <div style={{ fontSize: '10px', opacity: 0.8 }}>Сьогодні</div>
+              <div className="tg-day-btn-today">Сьогодні</div>
             )}
           </button>
         ))}
@@ -354,14 +316,11 @@ export default function TeacherAppPage() {
       {/* Lessons List */}
       <div>
         {dayLessons.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '40px 20px',
-            color: 'var(--tg-hint-color)'
-          }}>
-            <p>📅 Немає занять на цей день</p>
+          <div className="tg-empty">
+            <div className="tg-empty-icon">📅</div>
+            <p>Немає занять на цей день</p>
             {lessons.length > 0 && (
-              <p style={{ fontSize: '12px', marginTop: '8px' }}>
+              <p style={{ fontSize: '12px', marginTop: '8px', color: 'var(--tg-text-secondary)' }}>
                 Усього занять на тиждень: {lessons.length}
               </p>
             )}
@@ -371,29 +330,11 @@ export default function TeacherAppPage() {
             <div
               key={lesson.id}
               onClick={() => router.push(`/teacher-app/lesson/${lesson.id}`)}
-              className="lesson-card"
-              style={{
-                background: 'var(--tg-bg-color)',
-                borderRadius: '12px',
-                padding: '16px',
-                marginBottom: '12px',
-                cursor: 'pointer',
-                transition: 'transform 0.1s'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'scale(1.01)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
+              className="tg-lesson-card"
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <div>
-                  <span style={{ 
-                    fontSize: '18px', 
-                    fontWeight: 600,
-                    color: 'var(--tg-text-color)'
-                  }}>
+                  <span className="tg-lesson-time">
                     {formatTime(lesson.start_datetime)} - {formatTime(lesson.end_datetime)}
                   </span>
                 </div>
@@ -403,32 +344,28 @@ export default function TeacherAppPage() {
               </div>
 
               <div style={{ marginBottom: '6px' }}>
-                <span style={{ 
-                  fontSize: '15px', 
-                  fontWeight: 500,
-                  color: 'var(--tg-text-color)'
-                }}>
+                <span className="tg-lesson-group">
                   {lesson.group_title}
                 </span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="tg-hint" style={{ fontSize: '13px' }}>
+                <span className="tg-lesson-course">
                   {lesson.course_title}
                 </span>
-                <span className="tg-hint" style={{ fontSize: '13px' }}>
+                <span style={{ fontSize: '13px', color: 'var(--tg-text-secondary)' }}>
                   👥 {lesson.student_count} студентів
                 </span>
               </div>
 
               {lesson.topic && (
-                <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--tg-text-color)' }}>
+                <div className="tg-lesson-topic">
                   📝 {lesson.topic}
                 </div>
               )}
 
               {lesson.reported_at && (
-                <div style={{ marginTop: '8px', fontSize: '12px', color: '#22c55e' }}>
+                <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--tg-success)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   ✅ Звіт від {new Date(lesson.reported_at).toLocaleDateString('uk-UA')}
                 </div>
               )}
