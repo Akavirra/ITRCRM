@@ -295,15 +295,21 @@ export default function LessonDetailPage() {
             {lesson.status === 'done' ? '✅ Проведено' : '📋 Заплановано'}
           </span>
         </div>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: 'var(--space-xs)', color: 'var(--tg-text-color)', letterSpacing: '-0.02em' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: 'var(--space-md)', color: 'var(--tg-text-color)', letterSpacing: '-0.02em' }}>
           {formatTime(lesson.start_datetime)} - {formatTime(lesson.end_datetime)}
         </h1>
-        <p style={{ fontSize: '16px', color: 'var(--tg-text-color)', marginBottom: 'var(--space-xs)', fontWeight: 500 }}>
-          {lesson.group_title}
-        </p>
-        <p style={{ fontSize: '14px', color: 'var(--tg-text-secondary)' }}>
-          {lesson.course_title}
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+            <span style={{ fontSize: '15px', color: 'var(--tg-text-color)', fontWeight: 500 }}>
+              {lesson.group_title}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+            <span style={{ fontSize: '13px', color: 'var(--tg-text-secondary)' }}>
+              📚 {lesson.course_title}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Topic */}
@@ -344,9 +350,16 @@ export default function LessonDetailPage() {
             </div>
           </div>
         ) : (
-          <p style={{ fontSize: '14px', color: topic ? 'var(--tg-text-color)' : 'var(--tg-hint-color)', fontStyle: topic ? 'normal' : 'italic' }}>
-            {topic || 'Тема не вказана'}
-          </p>
+          <div style={{ 
+            background: 'var(--tg-primary-bg)', 
+            padding: 'var(--space-md)', 
+            borderRadius: 'var(--radius-md)',
+            borderLeft: '3px solid var(--tg-link-color)'
+          }}>
+            <p style={{ fontSize: '14px', color: topic ? 'var(--tg-text-color)' : 'var(--tg-hint-color)', fontStyle: topic ? 'normal' : 'italic' }}>
+              {topic || 'Тема не вказана'}
+            </p>
+          </div>
         )}
       </div>
 
@@ -417,14 +430,16 @@ export default function LessonDetailPage() {
                   <button
                     onClick={() => updateAttendance(student.id, 'present')}
                     className={`tg-action-btn tg-action-btn-success ${student.attendance_status === 'present' ? 'active' : ''}`}
+                    title="Присутній"
                   >
-                    ✅ Присутній
+                    ✓
                   </button>
                   <button
                     onClick={() => updateAttendance(student.id, 'absent')}
                     className={`tg-action-btn tg-action-btn-danger ${student.attendance_status === 'absent' ? 'active' : ''}`}
+                    title="Відсутній"
                   >
-                    ❌ Відсутній
+                    ✗
                   </button>
                 </div>
               </div>

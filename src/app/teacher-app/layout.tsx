@@ -378,14 +378,18 @@ const globalStyles = `
   }
 
   .tg-action-btn {
-    flex: 1;
-    padding: 10px 16px;
-    border-radius: var(--radius-md);
-    font-size: 13px;
-    font-weight: 500;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: var(--radius-full);
+    font-size: 16px;
+    font-weight: 600;
     cursor: pointer;
     border: none;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .tg-action-btn-success {
@@ -396,6 +400,7 @@ const globalStyles = `
   .tg-action-btn-success:hover {
     background: var(--tg-success);
     color: white;
+    transform: scale(1.1);
   }
 
   .tg-action-btn-success.active {
@@ -411,6 +416,7 @@ const globalStyles = `
   .tg-action-btn-danger:hover {
     background: var(--tg-danger);
     color: white;
+    transform: scale(1.1);
   }
 
   .tg-action-btn-danger.active {
