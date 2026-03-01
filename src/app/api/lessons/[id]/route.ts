@@ -4,6 +4,7 @@ import { get, run } from '@/db';
 import { parseISO, setHours, setMinutes, format } from 'date-fns';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
 import { formatDateTimeKyiv, formatTimeKyiv } from '@/lib/date-utils';
+import { logLessonChange, getLessonChangeHistory } from '@/lib/lessons';
 
 export const dynamic = 'force-dynamic';
 
@@ -168,7 +169,13 @@ export async function GET(
       telegramUserInfo: transformedLesson?.telegramUserInfo
     });
     
-    return NextResponse.json({ lesson: transformedLesson });
+    // Get change history
+    const changeHistory = await getLessonChangeHistory(lessonId);
+    
+    return NextResponse.json({ 
+      lesson: transformedLesson,
+      changeHistory: changeHistory || []
+    });
 }
 
 // PATCH /api/lessons/[id] - Update a lesson
@@ -268,8 +275,39 @@ export async function PATCH(
     
     params.push(lessonId);
     
-    const sql = `UPDATE lessons SET ${updates.join(', ')} WHERE id = $${params.length}`;
+    // Get old values for logging before update
+    const oldLesson = await get<{ topic: string | null; notes: string | null }>(
+      `SELECT topic, notes FROM lessons WHERE id = $1`,
+      [lessonId]
+    );
+    
+    const sql = `UPDATE lessons SET ${updates.join(', ')} WHERE id = ${params.length}`;
     await run(sql, params);
+    
+    // Log changes if topic or notes were updated
+    if (topic !== undefined && oldLesson) {
+      await logLessonChange(
+        lessonId,
+        'topic',
+        oldLesson.topic,
+        topic,
+        user.id,
+        user.name,
+        'admin'
+      );
+    }
+    
+    if (notes !== undefined && oldLesson) {
+      await logLessonChange(
+        lessonId,
+        'notes',
+        oldLesson.notes,
+        notes,
+        user.id,
+        user.name,
+        'admin'
+      );
+    }
     
     // Get updated lesson with group, course and teacher details
     const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null }>(

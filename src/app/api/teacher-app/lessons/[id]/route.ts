@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/db/neon';
 import crypto from 'crypto';
+import { logLessonChange, getLessonChangeHistory } from '@/lib/lessons';
 
 export const dynamic = 'force-dynamic';
 
@@ -240,6 +241,12 @@ export async function PATCH(
     const body = await request.json();
     const { topic, notes, status } = body;
 
+    // Get old values for logging
+    const oldLesson = await queryOne(
+      `SELECT topic, notes FROM lessons WHERE id = $1`,
+      [lessonId]
+    ) as { topic: string | null; notes: string | null } | null;
+
     // Build update query
     const updates: string[] = [];
     const values: (string | number | null)[] = [];
@@ -310,6 +317,33 @@ export async function PATCH(
     `;
 
     const result = await queryOne(updateQuery, values);
+
+    // Log changes if topic or notes were updated
+    if (topic !== undefined && oldLesson) {
+      await logLessonChange(
+        lessonId,
+        'topic',
+        oldLesson.topic,
+        topic,
+        teacher.id,
+        teacher.name,
+        'telegram',
+        telegramId
+      );
+    }
+
+    if (notes !== undefined && oldLesson) {
+      await logLessonChange(
+        lessonId,
+        'notes',
+        oldLesson.notes,
+        notes,
+        teacher.id,
+        teacher.name,
+        'telegram',
+        telegramId
+      );
+    }
 
     return NextResponse.json({
       success: true,

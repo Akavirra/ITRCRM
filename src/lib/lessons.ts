@@ -343,3 +343,48 @@ export async function markLessonDone(lessonId: number): Promise<void> {
     [lessonId]
   );
 }
+
+// Log lesson change to history table
+export async function logLessonChange(
+  lessonId: number,
+  fieldName: 'topic' | 'notes',
+  oldValue: string | null,
+  newValue: string | null,
+  changedBy: number | null,
+  changedByName: string | null,
+  changedVia: 'admin' | 'telegram' = 'admin',
+  changedByTelegramId: string | null = null
+): Promise<void> {
+  // Only log if there's an actual change
+  if (oldValue === newValue) return;
+  
+  await run(
+    `INSERT INTO lesson_change_logs 
+     (lesson_id, field_name, old_value, new_value, changed_by, changed_by_name, changed_by_telegram_id, changed_via)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [lessonId, fieldName, oldValue || null, newValue || null, changedBy, changedByName, changedByTelegramId, changedVia]
+  );
+}
+
+// Get lesson change history
+export async function getLessonChangeHistory(
+  lessonId: number
+): Promise<Array<{
+  id: number;
+  lesson_id: number;
+  field_name: string;
+  old_value: string | null;
+  new_value: string | null;
+  changed_by: number | null;
+  changed_by_name: string | null;
+  changed_by_telegram_id: string | null;
+  changed_via: string;
+  created_at: string;
+}>> {
+  return await all(
+    `SELECT * FROM lesson_change_logs 
+     WHERE lesson_id = $1 
+     ORDER BY created_at DESC`,
+    [lessonId]
+  );
+}
