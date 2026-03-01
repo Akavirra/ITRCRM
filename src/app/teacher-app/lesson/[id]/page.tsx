@@ -286,29 +286,49 @@ export default function LessonDetailPage() {
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom: 'var(--space-xl)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
-          <span style={{ fontSize: '14px', color: 'var(--tg-text-secondary)' }}>
-            {formatDate(lesson.lesson_date)}
-          </span>
-          <span className={`tg-badge ${lesson.status === 'done' ? 'tg-badge-done' : 'tg-badge-scheduled'}`}>
-            {lesson.status === 'done' ? '✅ Проведено' : '📋 Заплановано'}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-xl)' }}>
+        <div>
+          <button 
+            onClick={() => router.push('/teacher-app')}
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              cursor: 'pointer',
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-xs)',
+              color: 'var(--tg-link-color)',
+              fontSize: '14px',
+              marginBottom: 'var(--space-sm)'
+            }}
+          >
+            ← До розкладу
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+            <span style={{ fontSize: '14px', color: 'var(--tg-text-secondary)' }}>
+              {formatDate(lesson.lesson_date)}
+            </span>
+            <span className={`tg-badge ${lesson.status === 'done' ? 'tg-badge-done' : 'tg-badge-scheduled'}`}>
+              {lesson.status === 'done' ? '✅ Проведено' : '📋 Заплановано'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: 'var(--space-md)', color: 'var(--tg-text-color)', letterSpacing: '-0.02em' }}>
+        🕐 {formatTime(lesson.start_datetime)} - {formatTime(lesson.end_datetime)}
+      </h1>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+          <span style={{ fontSize: '15px', color: 'var(--tg-text-color)', fontWeight: 500 }}>
+            👥 {lesson.group_title}
           </span>
         </div>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: 'var(--space-md)', color: 'var(--tg-text-color)', letterSpacing: '-0.02em' }}>
-          🕐 {formatTime(lesson.start_datetime)} - {formatTime(lesson.end_datetime)}
-        </h1>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-            <span style={{ fontSize: '15px', color: 'var(--tg-text-color)', fontWeight: 500 }}>
-              👥 {lesson.group_title}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-            <span style={{ fontSize: '13px', color: 'var(--tg-text-secondary)' }}>
-              📚 {lesson.course_title}
-            </span>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+          <span style={{ fontSize: '13px', color: 'var(--tg-text-secondary)' }}>
+            📚 {lesson.course_title}
+          </span>
         </div>
       </div>
 
