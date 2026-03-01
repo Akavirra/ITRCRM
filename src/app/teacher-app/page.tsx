@@ -311,7 +311,8 @@ export default function TeacherAppPage() {
               key={date}
               onClick={() => setSelectedDate(date)}
               style={{
-                padding: '10px 4px',
+                padding: '12px 4px',
+                minHeight: '70px',
                 borderRadius: 'var(--radius-md)',
                 background: selectedDate === date ? 'var(--tg-button-color)' : 'var(--tg-surface)',
                 color: selectedDate === date ? 'var(--tg-button-text-color)' : 'var(--tg-text-color)',
@@ -323,19 +324,16 @@ export default function TeacherAppPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: '2px',
                 position: 'relative'
               }}
             >
-              <div style={{ fontWeight: 600 }}>{formatDate(date)}</div>
-              {isToday(date) && (
-                <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase' }}>Сьогодні</div>
-              )}
               {dayLessonsCount > 0 && (
                 <div style={{ 
                   position: 'absolute', 
-                  top: '4px', 
-                  right: '4px',
+                  top: '6px', 
+                  right: '6px',
                   background: selectedDate === date ? 'rgba(255,255,255,0.3)' : 'var(--tg-primary-bg)',
                   color: selectedDate === date ? 'white' : 'var(--tg-link-color)',
                   fontSize: '10px',
@@ -345,6 +343,10 @@ export default function TeacherAppPage() {
                 }}>
                   {dayLessonsCount}
                 </div>
+              )}
+              <div style={{ fontWeight: 600 }}>{formatDate(date)}</div>
+              {isToday(date) && (
+                <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase' }}>Сьогодні</div>
               )}
             </button>
           );
