@@ -378,6 +378,8 @@ export default function LessonModalsManager() {
       if (res.ok) {
         const data = await res.json();
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
+        // Also update local topic state
+        setLessonTopic(prev => ({ ...prev, [lessonId]: newTopic }));
         updateModalState(lessonId, { 
           lessonData: {
             ...currentLessonData,
@@ -433,6 +435,8 @@ export default function LessonModalsManager() {
       if (res.ok) {
         const data = await res.json();
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
+        // Also update local notes state
+        setLessonNotes(prev => ({ ...prev, [lessonId]: newNotes }));
         updateModalState(lessonId, { 
           lessonData: {
             ...currentLessonData,
