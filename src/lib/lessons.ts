@@ -381,10 +381,16 @@ export async function getLessonChangeHistory(
   changed_via: string;
   created_at: string;
 }>> {
-  return await all(
+  const history = await all(
     `SELECT * FROM lesson_change_logs 
      WHERE lesson_id = $1 
      ORDER BY created_at DESC`,
     [lessonId]
   );
+  
+  // Format created_at to Ukrainian date/time format
+  return history.map((entry: any) => ({
+    ...entry,
+    created_at: format(new Date(entry.created_at), 'dd.MM.yyyy HH:mm')
+  }));
 }
