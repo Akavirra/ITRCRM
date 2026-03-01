@@ -125,7 +125,7 @@ export async function generateLessonsForGroup(
     // Validate weekly_day and adjust for JavaScript (0-6) vs database (1-7)
     const jsWeeklyDay = group.weekly_day === 7 ? 0 : group.weekly_day;
     
-    if (!jsWeeklyDay || jsWeeklyDay < 0 || jsWeeklyDay > 6) {
+    if (jsWeeklyDay === undefined || jsWeeklyDay === null || jsWeeklyDay < 0 || jsWeeklyDay > 6) {
       console.error('[generateLessonsForGroup] Invalid weekly_day:', group.weekly_day, '-> jsWeeklyDay:', jsWeeklyDay);
       throw new Error('Invalid weekly_day for group: ' + group.weekly_day);
     }
