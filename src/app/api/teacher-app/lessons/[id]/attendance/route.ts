@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/db/neon';
 import crypto from 'crypto';
+import { logLessonChange } from '@/lib/lessons';
 
 export const dynamic = 'force-dynamic';
 
@@ -182,6 +183,18 @@ export async function POST(
          updated_at = NOW(), 
          updated_by = $4`,
       [lessonId, studentId, dbStatus, teacher.id]
+    );
+    
+    // Log attendance change from Telegram
+    await logLessonChange(
+      lessonId,
+      'attendance',
+      null,
+      `Відвідуваність відмічено (Telegram): ${dbStatus}`,
+      -teacher.id,
+      teacher.name,
+      'telegram',
+      telegramId
     );
 
     // Automatically mark lesson as conducted if it has attendance records

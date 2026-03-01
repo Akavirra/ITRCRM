@@ -347,7 +347,7 @@ export async function markLessonDone(lessonId: number): Promise<void> {
 // Log lesson change to history table
 export async function logLessonChange(
   lessonId: number,
-  fieldName: 'topic' | 'notes',
+  fieldName: 'topic' | 'notes' | 'attendance',
   oldValue: string | null,
   newValue: string | null,
   changedBy: number | null,
@@ -355,8 +355,8 @@ export async function logLessonChange(
   changedVia: 'admin' | 'telegram' = 'admin',
   changedByTelegramId: string | null = null
 ): Promise<void> {
-  // Only log if there's an actual change
-  if (oldValue === newValue) return;
+  // Only log if there's an actual change (skip for attendance which always has a change)
+  if (fieldName !== 'attendance' && oldValue === newValue) return;
   
   await run(
     `INSERT INTO lesson_change_logs 

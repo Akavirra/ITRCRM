@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, forbidden, checkGroupAccess } from '@/lib/api-utils';
 import { getAttendanceForLessonWithStudents, setAttendance, setAttendanceForAll, clearAttendanceForLesson, copyAttendanceFromPreviousLesson } from '@/lib/attendance';
-import { get } from '@/db';
+import { get, run } from '@/db';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
+import { logLessonChange } from '@/lib/lessons';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,7 +104,6 @@ export async function POST(
         
         // Automatically set lesson status to 'done' when attendance is marked
         if (lessonInfo && lessonInfo.status === 'scheduled') {
-          const { run } = await import('@/db');
           await run(`UPDATE lessons SET status = 'done', updated_at = NOW() WHERE id = $1`, [lessonId]);
           
           // Add history entry for lesson conducted
@@ -118,6 +118,17 @@ export async function POST(
           }
         }
         
+        // Log attendance change
+        await logLessonChange(
+          lessonId,
+          'attendance',
+          null,
+          'Відвідуваність відмічено',
+          user.id,
+          user.name,
+          'admin'
+        );
+        
         return NextResponse.json({ message: 'Відвідуваність успішно встановлена' });
         
       case 'setAll':
@@ -128,14 +139,50 @@ export async function POST(
           );
         }
         await setAttendanceForAll(lessonId, status, user.id);
+        
+        // Log attendance change
+        await logLessonChange(
+          lessonId,
+          'attendance',
+          null,
+          `Відвідуваність для всіх: ${status}`,
+          user.id,
+          user.name,
+          'admin'
+        );
+        
         return NextResponse.json({ message: 'Відвідуваність для всіх успішно встановлена' });
         
       case 'clear':
         await clearAttendanceForLesson(lessonId);
+        
+        // Log attendance change
+        await logLessonChange(
+          lessonId,
+          'attendance',
+          null,
+          'Відвідуваність очищена',
+          user.id,
+          user.name,
+          'admin'
+        );
+        
         return NextResponse.json({ message: 'Відвідуваність успішно очищена' });
         
       case 'copyPrevious':
         const result = await copyAttendanceFromPreviousLesson(lessonId, user.id);
+        
+        // Log attendance change
+        await logLessonChange(
+          lessonId,
+          'attendance',
+          null,
+          `Скопійовано ${result.copied} записів з попереднього заняття`,
+          user.id,
+          user.name,
+          'admin'
+        );
+        
         return NextResponse.json({ 
           message: 'Відвідуваність успішно скопійована',
           copied: result.copied 

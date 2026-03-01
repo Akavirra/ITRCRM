@@ -1453,6 +1453,11 @@ export default function LessonModalsManager() {
                               <span style={{ fontWeight: 500, color: '#059669' }}>Нотатки:</span> {entry.old_value || '(пусто)'} → {entry.new_value || '(пусто)'}
                             </div>
                           )}
+                          {entry.field_name === 'attendance' && (
+                            <div>
+                              <span style={{ fontWeight: 500, color: '#059669' }}>Відвідуваність:</span> {entry.new_value}
+                            </div>
+                          )}
                           <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
                             <span>{entry.changed_by_name || 'Невідомо'}</span>
                             {entry.changed_by_telegram_id && (
