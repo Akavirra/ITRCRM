@@ -296,12 +296,12 @@ export default function LessonDetailPage() {
           </span>
         </div>
         <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: 'var(--space-md)', color: 'var(--tg-text-color)', letterSpacing: '-0.02em' }}>
-          {formatTime(lesson.start_datetime)} - {formatTime(lesson.end_datetime)}
+          🕐 {formatTime(lesson.start_datetime)} - {formatTime(lesson.end_datetime)}
         </h1>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
             <span style={{ fontSize: '15px', color: 'var(--tg-text-color)', fontWeight: 500 }}>
-              {lesson.group_title}
+              👥 {lesson.group_title}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
