@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import { TelegramWebAppProvider, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
+import TeacherAppNavbar from '@/components/TeacherAppNavbar';
 
 // Inner component that uses the context
 function TeacherAppContent({ children }: { children: ReactNode }) {
@@ -60,6 +61,7 @@ function TeacherAppContent({ children }: { children: ReactNode }) {
   return (
     <div className="teacher-app-layout">
       <main>{children}</main>
+      <TeacherAppNavbar />
       <style jsx global>{globalStyles}</style>
     </div>
   );
@@ -151,6 +153,7 @@ const globalStyles = `
 
   .teacher-app-layout main {
     padding: var(--space-lg);
+    padding-bottom: calc(var(--space-xl) + 70px);
     max-width: 100%;
     min-height: 100vh;
   }
@@ -591,6 +594,54 @@ const globalStyles = `
     display: flex;
     align-items: center;
     gap: var(--space-sm);
+  }
+
+  /* Navbar styles */
+  .teacher-navbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--tg-surface);
+    border-top: 1px solid var(--tg-border);
+    padding: 8px 16px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: space-around;
+    z-index: 100;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  .teacher-navbar-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: var(--tg-text-secondary);
+    transition: all 0.2s ease;
+    min-width: 70px;
+  }
+
+  .teacher-navbar-item:hover {
+    background: var(--tg-primary-bg);
+  }
+
+  .teacher-navbar-item.active {
+    color: var(--tg-link-color);
+    background: var(--tg-primary-bg);
+  }
+
+  .teacher-navbar-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  .teacher-navbar-label {
+    font-size: 11px;
+    font-weight: 500;
   }
 `;
 
