@@ -486,23 +486,13 @@ export default function LessonModalsManager() {
                 
                 // Only update modal state with fresh server data if user is NOT editing topic/notes
                 // This prevents overwriting user's unsaved changes
-                if (!editingTopic[modal.id] && !editingNotes[modal.id]) {
+                const isEditing = editingTopic[modal.id] || editingNotes[modal.id];
+                
+                if (!isEditing) {
                   updateModalState(modal.id, { 
                     lessonData: {
                       ...modal.lessonData,
                       ...serverLesson,
-                    }
-                  });
-                } else {
-                  // Still update non-editable fields (status, times, etc.)
-                  updateModalState(modal.id, { 
-                    lessonData: {
-                      ...modal.lessonData,
-                      status: serverLesson.status,
-                      startTime: serverLesson.startTime,
-                      endTime: serverLesson.endTime,
-                      teacherId: serverLesson.teacherId,
-                      teacherName: serverLesson.teacherName,
                     }
                   });
                 }
