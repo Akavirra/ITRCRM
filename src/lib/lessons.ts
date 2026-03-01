@@ -91,9 +91,9 @@ export async function generateLessonsForGroup(
     
     console.log('[generateLessonsForGroup] Date range - today:', today, 'finalEndDate:', finalEndDate);
     
-    // Get existing lessons for this group
+    // Get existing lessons for this group (only scheduled and done, not canceled)
     const existingLessons = await all<{ lesson_date: string }>(
-      `SELECT lesson_date FROM lessons WHERE group_id = $1`,
+      `SELECT lesson_date FROM lessons WHERE group_id = $1 AND status != 'canceled'`,
       [groupId]
     );
     console.log('[generateLessonsForGroup] Existing lessons count:', existingLessons.length);
