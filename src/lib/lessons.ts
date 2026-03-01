@@ -208,11 +208,13 @@ export async function generateLessonsForAllGroups(
   createdBy: number,
   monthsAhead: number = 1
 ): Promise<{ groupId: number; generated: number; skipped: number }[]> {
+  console.log('[generateLessonsForAllGroups] Starting function');
+  
   const groups = await all<{ id: number }>(
     `SELECT id FROM groups WHERE is_active = TRUE OR status = 'active'`
   );
   
-  console.log('[generateLessonsForAllGroups] Found groups:', groups.length);
+  console.log('[generateLessonsForAllGroups] Found groups:', groups.length, 'groups:', groups);
   
   const results: { groupId: number; generated: number; skipped: number }[] = [];
   
