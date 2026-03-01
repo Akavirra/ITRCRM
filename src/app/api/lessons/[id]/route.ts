@@ -295,23 +295,23 @@ export async function PATCH(
         c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
         COALESCE(
-        CASE 
-          WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
-            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
-          WHEN l.topic_set_by < 0 THEN 'Telegram User'
-          ELSE topic_user.name 
-        END, 'Unknown'
-      ) AS topic_set_by_name,
-      COALESCE(
-        CASE 
-          WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
-            COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
-          WHEN l.notes_set_by < 0 THEN 'Telegram User'
-          ELSE notes_user.name 
-        END, 'Unknown'
-      ) AS notes_set_by_name,
-    COALESCE(l.telegram_user_info->>'telegram_id', topic_user.telegram_id, notes_user.telegram_id) as topic_set_by_telegram_id,
-    COALESCE(l.telegram_user_info->>'telegram_id', topic_user.telegram_id, notes_user.telegram_id) as notes_set_by_telegram_id,
+          CASE 
+            WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
+              COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+            WHEN l.topic_set_by < 0 THEN 'Telegram User'
+            ELSE topic_user.name 
+          END, 'Unknown'
+        ) AS topic_set_by_name,
+        COALESCE(
+          CASE 
+            WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
+              COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
+            WHEN l.notes_set_by < 0 THEN 'Telegram User'
+            ELSE notes_user.name 
+          END, 'Unknown'
+        ) AS notes_set_by_name,
+        COALESCE(l.telegram_user_info->>'telegram_id', topic_user.telegram_id, notes_user.telegram_id) as topic_set_by_telegram_id,
+        COALESCE(l.telegram_user_info->>'telegram_id', topic_user.telegram_id, notes_user.telegram_id) as notes_set_by_telegram_id
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       JOIN courses c ON g.course_id = c.id
