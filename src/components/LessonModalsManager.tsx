@@ -47,6 +47,19 @@ interface LessonData {
   notesSetByTelegramId: string | null;
 }
 
+interface ChangeHistoryEntry {
+  id: number;
+  lesson_id: number;
+  field_name: string;
+  old_value: string | null;
+  new_value: string | null;
+  changed_by: number | null;
+  changed_by_name: string | null;
+  changed_by_telegram_id: string | null;
+  changed_via: string;
+  created_at: string;
+}
+
 function formatDateTime(startTime: string, endTime: string): string {
   return `${startTime} - ${endTime}`;
 }
@@ -97,6 +110,7 @@ export default function LessonModalsManager() {
   // Form state
   const [lessonTopic, setLessonTopic] = useState<Record<number, string>>({});
   const [lessonNotes, setLessonNotes] = useState<Record<number, string>>({});
+  const [changeHistory, setChangeHistory] = useState<Record<number, ChangeHistoryEntry[]>>({});
   const [saving, setSaving] = useState<Record<number, boolean>>({});
   const [savingTopic, setSavingTopic] = useState<Record<number, boolean>>({});
   const [savingNotes, setSavingNotes] = useState<Record<number, boolean>>({});
@@ -257,6 +271,11 @@ export default function LessonModalsManager() {
         });
         setLessonTopic(prev => ({ ...prev, [lessonId]: data.lesson.topic || '' }));
         setLessonNotes(prev => ({ ...prev, [lessonId]: data.lesson.notes || '' }));
+        
+        // Update change history if available
+        if (data.changeHistory) {
+          setChangeHistory(prev => ({ ...prev, [lessonId]: data.changeHistory }));
+        }
       }
     } catch (error) {
       console.error('Error loading lesson:', error);
@@ -1408,68 +1427,108 @@ export default function LessonModalsManager() {
                     Інформація про передачу даних
                   </div>
                   
-                  {/* Calculate the latest transfer info */}
-                  {(() => {
-                    const topicDate = lesson?.topicSetAt ? new Date(lesson.topicSetAt.replace(/(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:00')) : null;
-                    const notesDate = lesson?.notesSetAt ? new Date(lesson.notesSetAt.replace(/(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:00')) : null;
-                    
-                    const hasTopicData = lesson?.topicSetBy || lesson?.topicSetAt;
-                    const hasNotesData = lesson?.notesSetBy || lesson?.notesSetAt;
-                    
-                    if (!hasTopicData && !hasNotesData) {
-                      return (
-                        <div style={{ 
-                          fontSize: '0.8125rem', 
-                          color: '#9ca3af',
-                          fontStyle: 'italic',
-                        }}>
-                          Дані ще не надані
-                        </div>
-                      );
-                    }
-                    
-                    // Determine which one is more recent or use whichever is available
-                    let dataSetBy: string | null = null;
-                    let dataSetAt: string | null = null;
-                    let dataSetByTelegramId: string | null = null;
-                    
-                    if (topicDate && notesDate) {
-                      if (topicDate >= notesDate) {
-                        dataSetBy = lesson.topicSetBy;
-                        dataSetAt = lesson.topicSetAt;
-                        dataSetByTelegramId = lesson.topicSetByTelegramId || null;
-                      } else {
-                        dataSetBy = lesson.notesSetBy;
-                        dataSetAt = lesson.notesSetAt;
-                        dataSetByTelegramId = lesson.notesSetByTelegramId || null;
-                      }
-                    } else if (topicDate) {
-                      dataSetBy = lesson.topicSetBy;
-                      dataSetAt = lesson.topicSetAt;
-                      dataSetByTelegramId = lesson.topicSetByTelegramId || null;
-                    } else if (notesDate) {
-                      dataSetBy = lesson.notesSetBy;
-                      dataSetAt = lesson.notesSetAt;
-                      dataSetByTelegramId = lesson.notesSetByTelegramId || null;
-                    }
-                    
-                    return (
-                      <div style={{ fontSize: '0.8125rem', color: '#374151' }}>
-                        {dataSetBy && dataSetAt ? (
-                          <span>
-                            <span style={{ color: '#6b7280' }}>Дані передано:</span>{' '}
-                            <span style={{ fontWeight: 500 }}>{dataSetBy}</span>
-                            {dataSetByTelegramId && (
-                              <span style={{ color: '#9ca3af' }}> (чий id телеграма був використаний)</span>
+                  {/* Show change history if available, otherwise fall back to legacy fields */}
+                  {changeHistory[lessonId] && changeHistory[lessonId].length > 0 ? (
+                    <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                      {changeHistory[lessonId].map((entry, idx) => (
+                        <div 
+                          key={entry.id || idx} 
+                          style={{ 
+                            fontSize: '0.8125rem', 
+                            color: '#374151',
+                            padding: '0.5rem',
+                            marginBottom: '0.5rem',
+                            backgroundColor: idx === 0 ? '#f0fdf4' : '#f9fafb',
+                            borderRadius: '0.375rem',
+                            border: '1px solid '#e5e7eb'
+                          }}
+                        >
+                          {entry.changedField === 'topic' && (
+                            <div>
+                              <span style={{ fontWeight: 500, color: '#059669' }}>Тема:</span> {entry.oldValue || '(пусто)'} → {entry.newValue || '(пусто)'}
+                            </div>
+                          )}
+                          {entry.changedField === 'notes' && (
+                            <div>
+                              <span style={{ fontWeight: 500, color: '#059669' }}>Нотатки:</span> {entry.oldValue || '(пусто)'} → {entry.newValue || '(пусто)'}
+                            </div>
+                          )}
+                          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                            <span>{entry.changedByName || 'Невідомо'}</span>
+                            {entry.changedByTelegramId && (
+                              <span style={{ color: '#9ca3af' }}> (Telegram)</span>
                             )}
-                            <span style={{ color: '#9ca3af', marginLeft: '0.5rem' }}>{dataSetAt}</span>
-                          </span>
-                        ) : dataSetAt ? (
-                          <span style={{ color: '#6b7280' }}>Дані передано: {dataSetAt}</span>
-                        ) : null}
-                      </div>
-                    );
-                  })()}
+                            <span style={{ marginLeft: '0.5rem' }}>{entry.changedAt}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    /* Legacy display - single entry */
+                    <div style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                      {(() => {
+                        const topicDate = lesson?.topicSetAt ? new Date(lesson.topicSetAt.replace(/(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:00')) : null;
+                        const notesDate = lesson?.notesSetAt ? new Date(lesson.notesSetAt.replace(/(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:00')) : null;
+                        
+                        const hasTopicData = lesson?.topicSetBy || lesson?.topicSetAt;
+                        const hasNotesData = lesson?.notesSetBy || lesson?.notesSetAt;
+                        
+                        if (!hasTopicData && !hasNotesData) {
+                          return (
+                            <div style={{ 
+                              fontSize: '0.8125rem', 
+                              color: '#9ca3af',
+                              fontStyle: 'italic',
+                            }}>
+                              Дані ще не надані
+                            </div>
+                          );
+                        }
+                        
+                        // Determine which one is more recent or use whichever is available
+                        let dataSetBy: string | null = null;
+                        let dataSetAt: string | null = null;
+                        let dataSetByTelegramId: string | null = null;
+                        
+                        if (topicDate && notesDate) {
+                          if (topicDate >= notesDate) {
+                            dataSetBy = lesson.topicSetBy;
+                            dataSetAt = lesson.topicSetAt;
+                            dataSetByTelegramId = lesson.topicSetByTelegramId || null;
+                          } else {
+                            dataSetBy = lesson.notesSetBy;
+                            dataSetAt = lesson.notesSetAt;
+                            dataSetByTelegramId = lesson.notesSetByTelegramId || null;
+                          }
+                        } else if (topicDate) {
+                          dataSetBy = lesson.topicSetBy;
+                          dataSetAt = lesson.topicSetAt;
+                          dataSetByTelegramId = lesson.topicSetByTelegramId || null;
+                        } else if (notesDate) {
+                          dataSetBy = lesson.notesSetBy;
+                          dataSetAt = lesson.notesSetAt;
+                          dataSetByTelegramId = lesson.notesSetByTelegramId || null;
+                        }
+                        
+                        return (
+                          <div>
+                            {dataSetBy && dataSetAt ? (
+                              <span>
+                                <span style={{ color: '#6b7280' }}>Дані передано:</span>{' '}
+                                <span style={{ fontWeight: 500 }}>{dataSetBy}</span>
+                                {dataSetByTelegramId && (
+                                  <span style={{ color: '#9ca3af' }}> (чий id телеграма був використаний)</span>
+                                )}
+                                <span style={{ color: '#9ca3af', marginLeft: '0.5rem' }}>{dataSetAt}</span>
+                              </span>
+                            ) : dataSetAt ? (
+                              <span style={{ color: '#6b7280' }}>Дані передано: {dataSetAt}</span>
+                            ) : null}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
