@@ -297,17 +297,36 @@ export default function TeacherAppPage() {
         <p className="tg-header-subtitle">Розклад занять на цей тиждень</p>
       </div>
 
-      {/* Day Selector */}
-      <div className="tg-day-selector">
+      {/* Day Selector - Grid for all days visible */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(7, 1fr)', 
+        gap: 'var(--space-xs)', 
+        marginBottom: 'var(--space-lg)'
+      }}>
         {weekDates.map(date => (
           <button
             key={date}
             onClick={() => setSelectedDate(date)}
-            className={`tg-day-btn ${selectedDate === date ? 'active' : ''}`}
+            style={{
+              padding: '10px 4px',
+              borderRadius: 'var(--radius-md)',
+              background: selectedDate === date ? 'var(--tg-button-color)' : 'var(--tg-surface)',
+              color: selectedDate === date ? 'var(--tg-button-text-color)' : 'var(--tg-text-color)',
+              fontSize: '12px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              border: selectedDate === date ? 'none' : '1px solid var(--tg-border)',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '2px'
+            }}
           >
-            <div style={{ fontWeight: 500 }}>{formatDate(date)}</div>
+            <div style={{ fontWeight: 600 }}>{formatDate(date)}</div>
             {isToday(date) && (
-              <div className="tg-day-btn-today">Сьогодні</div>
+              <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase' }}>Сьогодні</div>
             )}
           </button>
         ))}
