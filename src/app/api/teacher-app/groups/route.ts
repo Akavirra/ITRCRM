@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
 
     // Get students for each group
     const groupsWithStudents = await Promise.all(
-      (groups || [] as Array<Record<string, unknown>>).map(async (group) => {
+      (groups || [] as Array<Record<string, unknown>>).map(async (group: Record<string, unknown>) => {
         const weeklyDay = group.weekly_day as number;
         const groupId = group.id as number;
         const students = await query(
