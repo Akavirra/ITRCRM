@@ -357,6 +357,7 @@ export default function LessonModalsManager() {
   // Save topic
   const saveTopic = async (lessonId: number) => {
     const newTopic = lessonTopic[lessonId];
+    const currentLessonData = lessonData[lessonId];
     
     setSavingTopic(prev => ({ ...prev, [lessonId]: true }));
     try {
@@ -371,18 +372,22 @@ export default function LessonModalsManager() {
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
         updateModalState(lessonId, { 
           lessonData: {
-            ...lessonData[lessonId],
+            ...currentLessonData,
             topic: newTopic,
             topicSetBy: data.lesson.topicSetBy,
             topicSetAt: data.lesson.topicSetAt,
           }
         });
-        setEditingTopic(prev => ({ ...prev, [lessonId]: false }));
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || 'Не вдалося зберегти тему');
       }
     } catch (error) {
       console.error('Failed to save topic:', error);
+      alert('Не вдалося зберегти тему');
     } finally {
       setSavingTopic(prev => ({ ...prev, [lessonId]: false }));
+      setEditingTopic(prev => ({ ...prev, [lessonId]: false }));
     }
   };
 
@@ -400,6 +405,7 @@ export default function LessonModalsManager() {
   // Save notes
   const saveNotes = async (lessonId: number) => {
     const newNotes = lessonNotes[lessonId];
+    const currentLessonData = lessonData[lessonId];
     
     setSavingNotes(prev => ({ ...prev, [lessonId]: true }));
     try {
@@ -414,18 +420,22 @@ export default function LessonModalsManager() {
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
         updateModalState(lessonId, { 
           lessonData: {
-            ...lessonData[lessonId],
+            ...currentLessonData,
             notes: newNotes,
             notesSetBy: data.lesson.notesSetBy,
             notesSetAt: data.lesson.notesSetAt,
           }
         });
-        setEditingNotes(prev => ({ ...prev, [lessonId]: false }));
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || 'Не вдалося зберегти нотатки');
       }
     } catch (error) {
       console.error('Failed to save notes:', error);
+      alert('Не вдалося зберегти нотатки');
     } finally {
       setSavingNotes(prev => ({ ...prev, [lessonId]: false }));
+      setEditingNotes(prev => ({ ...prev, [lessonId]: false }));
     }
   };
 
