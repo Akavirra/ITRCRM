@@ -138,6 +138,7 @@ export async function generateLessonsForGroup(
     const lessonsToInsert: Array<[string, number, string, string, string, string, number]> = [];
     
     console.log('[generateLessonsForGroup] Starting loop, finalEndDate:', finalEndDate);
+    console.log('[generateLessonsForGroup] currentDate:', currentDate, 'isAfter check:', isAfter(currentDate, finalEndDate));
     
     let lessonCount = 0;
     while (!isAfter(currentDate, finalEndDate)) {
