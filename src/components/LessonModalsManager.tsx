@@ -484,14 +484,28 @@ export default function LessonModalsManager() {
                 // Update lesson data (always update to get latest status, teacher info, etc.)
                 setLessonData(prev => ({ ...prev, [modal.id]: serverLesson }));
                 
-                // CRITICAL FIX: Always update modal state with fresh server data
-                // This ensures time, topicSetBy, notesSetBy etc. are always in sync
-                updateModalState(modal.id, { 
-                  lessonData: {
-                    ...modal.lessonData,
-                    ...serverLesson,
-                  }
-                });
+                // Only update modal state with fresh server data if user is NOT editing topic/notes
+                // This prevents overwriting user's unsaved changes
+                if (!editingTopic[modal.id] && !editingNotes[modal.id]) {
+                  updateModalState(modal.id, { 
+                    lessonData: {
+                      ...modal.lessonData,
+                      ...serverLesson,
+                    }
+                  });
+                } else {
+                  // Still update non-editable fields (status, times, etc.)
+                  updateModalState(modal.id, { 
+                    lessonData: {
+                      ...modal.lessonData,
+                      status: serverLesson.status,
+                      startTime: serverLesson.startTime,
+                      endTime: serverLesson.endTime,
+                      teacherId: serverLesson.teacherId,
+                      teacherName: serverLesson.teacherName,
+                    }
+                  });
+                }
                 
                 // Only update local input state if user is not editing
                 // (values match what was last known from server)
