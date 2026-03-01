@@ -1428,9 +1428,9 @@ export default function LessonModalsManager() {
                   </div>
                   
                   {/* Show change history if available, otherwise fall back to legacy fields */}
-                  {changeHistory[lessonId] && changeHistory[lessonId].length > 0 ? (
+                  {changeHistory[modal.id] && changeHistory[modal.id].length > 0 ? (
                     <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                      {changeHistory[lessonId].map((entry, idx) => (
+                      {changeHistory[modal.id].map((entry, idx) => (
                         <div 
                           key={entry.id || idx} 
                           style={{ 
@@ -1440,25 +1440,25 @@ export default function LessonModalsManager() {
                             marginBottom: '0.5rem',
                             backgroundColor: idx === 0 ? '#f0fdf4' : '#f9fafb',
                             borderRadius: '0.375rem',
-                            border: '1px solid '#e5e7eb'
+                            border: '1px solid #e5e7eb'
                           }}
                         >
-                          {entry.changedField === 'topic' && (
+                          {entry.field_name === 'topic' && (
                             <div>
-                              <span style={{ fontWeight: 500, color: '#059669' }}>Тема:</span> {entry.oldValue || '(пусто)'} → {entry.newValue || '(пусто)'}
+                              <span style={{ fontWeight: 500, color: '#059669' }}>Тема:</span> {entry.old_value || '(пусто)'} → {entry.new_value || '(пусто)'}
                             </div>
                           )}
-                          {entry.changedField === 'notes' && (
+                          {entry.field_name === 'notes' && (
                             <div>
-                              <span style={{ fontWeight: 500, color: '#059669' }}>Нотатки:</span> {entry.oldValue || '(пусто)'} → {entry.newValue || '(пусто)'}
+                              <span style={{ fontWeight: 500, color: '#059669' }}>Нотатки:</span> {entry.old_value || '(пусто)'} → {entry.new_value || '(пусто)'}
                             </div>
                           )}
                           <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                            <span>{entry.changedByName || 'Невідомо'}</span>
-                            {entry.changedByTelegramId && (
+                            <span>{entry.changed_by_name || 'Невідомо'}</span>
+                            {entry.changed_by_telegram_id && (
                               <span style={{ color: '#9ca3af' }}> (Telegram)</span>
                             )}
-                            <span style={{ marginLeft: '0.5rem' }}>{entry.changedAt}</span>
+                            <span style={{ marginLeft: '0.5rem' }}>{entry.created_at}</span>
                           </div>
                         </div>
                       ))}
