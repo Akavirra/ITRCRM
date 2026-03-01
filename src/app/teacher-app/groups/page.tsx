@@ -5,8 +5,7 @@ import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWeb
 
 interface Student {
   id: number;
-  name: string;
-  surname: string;
+  full_name: string;
   birth_date: string | null;
   join_date: string;
   is_active: boolean;
@@ -253,11 +252,11 @@ export default function TeacherGroupsPage() {
                             }}
                           >
                             <div className="tg-avatar" style={{ width: '36px', height: '36px', fontSize: '14px' }}>
-                              {student.name?.[0] || ''}{student.surname?.[0] || ''}
+                              {student.full_name?.split(' ').map(n => n[0]).join('') || '?'}
                             </div>
                             <div style={{ flex: 1 }}>
                               <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--tg-text-color)' }}>
-                                {student.name} {student.surname}
+                                {student.full_name}
                               </div>
                               <div style={{ fontSize: '12px', color: 'var(--tg-text-secondary)' }}>
                                 🎂 {getAge(student.birth_date)}
