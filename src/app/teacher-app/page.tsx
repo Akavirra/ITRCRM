@@ -304,32 +304,51 @@ export default function TeacherAppPage() {
         gap: 'var(--space-xs)', 
         marginBottom: 'var(--space-lg)'
       }}>
-        {weekDates.map(date => (
-          <button
-            key={date}
-            onClick={() => setSelectedDate(date)}
-            style={{
-              padding: '10px 4px',
-              borderRadius: 'var(--radius-md)',
-              background: selectedDate === date ? 'var(--tg-button-color)' : 'var(--tg-surface)',
-              color: selectedDate === date ? 'var(--tg-button-text-color)' : 'var(--tg-text-color)',
-              fontSize: '12px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              border: selectedDate === date ? 'none' : '1px solid var(--tg-border)',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '2px'
-            }}
-          >
-            <div style={{ fontWeight: 600 }}>{formatDate(date)}</div>
-            {isToday(date) && (
-              <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase' }}>Сьогодні</div>
-            )}
-          </button>
-        ))}
+        {weekDates.map(date => {
+          const dayLessonsCount = lessons.filter(l => l.lesson_date.split('T')[0] === date).length;
+          return (
+            <button
+              key={date}
+              onClick={() => setSelectedDate(date)}
+              style={{
+                padding: '10px 4px',
+                borderRadius: 'var(--radius-md)',
+                background: selectedDate === date ? 'var(--tg-button-color)' : 'var(--tg-surface)',
+                color: selectedDate === date ? 'var(--tg-button-text-color)' : 'var(--tg-text-color)',
+                fontSize: '12px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                border: selectedDate === date ? 'none' : '1px solid var(--tg-border)',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '2px',
+                position: 'relative'
+              }}
+            >
+              <div style={{ fontWeight: 600 }}>{formatDate(date)}</div>
+              {isToday(date) && (
+                <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase' }}>Сьогодні</div>
+              )}
+              {dayLessonsCount > 0 && (
+                <div style={{ 
+                  position: 'absolute', 
+                  top: '4px', 
+                  right: '4px',
+                  background: selectedDate === date ? 'rgba(255,255,255,0.3)' : 'var(--tg-primary-bg)',
+                  color: selectedDate === date ? 'white' : 'var(--tg-link-color)',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  padding: '2px 5px',
+                  borderRadius: 'var(--radius-full)'
+                }}>
+                  {dayLessonsCount}
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Lessons List */}
