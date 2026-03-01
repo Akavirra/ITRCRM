@@ -229,24 +229,8 @@ export async function generateLessonsForAllGroups(
     try {
       console.log('[generateLessonsForAllGroups] Processing group:', group.id);
       
-      // Check if this group already has lessons
-      const existingLessons = await all<{ id: number }>(
-        `SELECT id FROM lessons WHERE group_id = $1 LIMIT 1`,
-        [group.id]
-      );
-      
-      // Skip groups that already have lessons
-      if (existingLessons.length > 0) {
-        console.log('[generateLessonsForAllGroups] Skipping group', group.id, '- already has lessons');
-        // Count how many lessons this group already has
-        const lessonCount = await all<{ id: number }>(
-          `SELECT id FROM lessons WHERE group_id = $1`,
-          [group.id]
-        );
-        results.push({ groupId: group.id, generated: 0, skipped: lessonCount.length });
-        continue;
-      }
-      
+      // Generate lessons - the generateLessonsForGroup function already handles
+      // checking for existing lessons on specific dates and skips them appropriately
       const result = await generateLessonsForGroup(group.id, weeksAhead, createdBy, monthsAhead);
       results.push({ groupId: group.id, ...result });
     } catch (error) {
