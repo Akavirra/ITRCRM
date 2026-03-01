@@ -395,14 +395,6 @@ export default function LessonDetailPage() {
         )}
       </div>
 
-      {/* Report info */}
-      {lesson.reported_at && (
-        <div className="tg-report-saved" style={{ marginBottom: 'var(--space-xl)' }}>
-          ✅ Дані збережено: {new Date(lesson.reported_at).toLocaleString('uk-UA')}
-          {lesson.reported_via === 'telegram' && ' через Telegram'}
-        </div>
-      )}
-
       {/* Students attendance */}
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <h2 style={{ fontSize: '17px', fontWeight: 600, marginBottom: 'var(--space-md)', color: 'var(--tg-text-color)' }}>
@@ -441,7 +433,7 @@ export default function LessonDetailPage() {
         )}
       </div>
 
-      {/* Report info */}
+      {/* Report info - shown only after lesson is completed */}
       {lesson.reported_at && (
         <div className="tg-success-message" style={{ marginBottom: 'var(--space-lg)' }}>
           ✅ <strong>Дані збережено:</strong><br/>
