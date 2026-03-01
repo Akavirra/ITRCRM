@@ -157,8 +157,7 @@ export async function GET(request: NextRequest) {
         const students = await query(
           `SELECT 
             s.id,
-            s.name,
-            s.surname,
+            s.full_name,
             s.phone,
             s.telegram_username,
             sg.join_date,
@@ -166,7 +165,7 @@ export async function GET(request: NextRequest) {
            FROM students s
            JOIN student_groups sg ON s.id = sg.student_id
            WHERE sg.group_id = $1 AND sg.is_active = TRUE
-           ORDER BY s.surname, s.name`,
+           ORDER BY s.full_name`,
           [groupId]
         );
 
