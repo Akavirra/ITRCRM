@@ -238,7 +238,12 @@ export async function generateLessonsForAllGroups(
       // Skip groups that already have lessons
       if (existingLessons.length > 0) {
         console.log('[generateLessonsForAllGroups] Skipping group', group.id, '- already has lessons');
-        results.push({ groupId: group.id, generated: 0, skipped: 0 });
+        // Count how many lessons this group already has
+        const lessonCount = await all<{ id: number }>(
+          `SELECT id FROM lessons WHERE group_id = $1`,
+          [group.id]
+        );
+        results.push({ groupId: group.id, generated: 0, skipped: lessonCount.length });
         continue;
       }
       
