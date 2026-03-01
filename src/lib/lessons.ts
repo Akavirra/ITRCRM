@@ -57,11 +57,14 @@ export async function generateLessonsForGroup(
   console.log('[generateLessonsForGroup] Function called with groupId:', groupId);
   
   try {
+    console.log('[generateLessonsForGroup] About to query database for group data...');
+    
     const group = await get<Group>(
       `SELECT id, weekly_day, start_time, duration_minutes, timezone, start_date, end_date 
        FROM groups WHERE id = $1`,
       [groupId]
     );
+    console.log('[generateLessonsForGroup] Group query completed, group:', group);
     
     if (!group) {
       console.error('[generateLessonsForGroup] Group not found:', groupId);
