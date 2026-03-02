@@ -77,12 +77,7 @@ export default function CreateLessonModal({ isOpen, onClose, onSuccess, initialD
     try {
       const res = await fetch('/api/students?limit=50');
       const data = await res.json();
-      // Transform API response to match component interface (full_name -> name)
-      setStudents((data.students || []).map((s: any) => ({
-        id: s.id,
-        name: s.full_name,
-        phone: s.phone
-      })));
+      setStudents(data.students || []);
     } catch (err) {
       console.error('Failed to load students:', err);
     } finally {
@@ -135,12 +130,7 @@ export default function CreateLessonModal({ isOpen, onClose, onSuccess, initialD
     try {
       const res = await fetch(`/api/students?search=${encodeURIComponent(search)}&limit=50`);
       const data = await res.json();
-      // Transform API response to match component interface (full_name -> name)
-      setStudents((data.students || []).map((s: any) => ({
-        id: s.id,
-        name: s.full_name,
-        phone: s.phone
-      })));
+      setStudents(data.students || []);
     } catch (err) {
       console.error('Failed to load students:', err);
     } finally {

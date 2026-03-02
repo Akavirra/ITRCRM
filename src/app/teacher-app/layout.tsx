@@ -6,7 +6,7 @@ import TeacherAppNavbar from '@/components/TeacherAppNavbar';
 
 // Inner component that uses the context
 function TeacherAppContent({ children }: { children: ReactNode }) {
-  const { isLoading, isReady, error, colorScheme, mounted } = useTelegramWebApp();
+  const { isLoading, isReady, error, colorScheme } = useTelegramWebApp();
 
   useEffect(() => {
     // Apply Telegram theme colors to CSS variables
@@ -47,9 +47,7 @@ function TeacherAppContent({ children }: { children: ReactNode }) {
     }
   }, [colorScheme]);
 
-  // During SSR and initial hydration, always render the loading state
-  // This prevents hydration mismatch errors
-  if (!mounted || isLoading) {
+  if (isLoading) {
     return (
       <div className="teacher-app-layout has-navbar">
         <div className="tg-loading">
