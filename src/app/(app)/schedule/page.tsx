@@ -8,8 +8,9 @@ import { useGroupModals } from '@/components/GroupModalsContext';
 import { useCourseModals } from '@/components/CourseModalsContext';
 import { format, addWeeks, subWeeks, startOfWeek, addDays, parseISO, startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
 import { uk } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar, Clock, User, Users, BookOpen, Check, X, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Clock, User, Users, BookOpen, Check, X, RefreshCw, Plus } from 'lucide-react';
 import PageLoading from '@/components/PageLoading';
+import CreateLessonModal from '@/components/CreateLessonModal';
 
 interface User {
   id: number;
@@ -70,6 +71,9 @@ export default function SchedulePage() {
   // Generate modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generating, setGenerating] = useState(false);
+  
+  // Create lesson modal state
+  const [showCreateLessonModal, setShowCreateLessonModal] = useState(false);
 
   const fetchSchedule = useCallback(async () => {
     setIsNavigating(true);
@@ -273,14 +277,26 @@ export default function SchedulePage() {
         </h1>
         
         {(user?.role === 'admin' || user?.role === 'teacher') && (
-          <button
-            onClick={() => setShowGenerateModal(true)}
-            className="btn btn-primary"
-            style={{ gap: '0.5rem' }}
-          >
-            <RefreshCw size={14} />
-            Згенерувати
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => setShowCreateLessonModal(true)}
+                className="btn btn-primary"
+                style={{ gap: '0.5rem' }}
+              >
+                <Plus size={14} />
+                Створити
+              </button>
+            )}
+            <button
+              onClick={() => setShowGenerateModal(true)}
+              className="btn btn-secondary"
+              style={{ gap: '0.5rem' }}
+            >
+              <RefreshCw size={14} />
+              Згенерувати
+            </button>
+          </div>
         )}
       </div>
 
@@ -750,6 +766,13 @@ export default function SchedulePage() {
           </div>
         </div>
       )}
+
+      {/* Create Lesson Modal */}
+      <CreateLessonModal
+        isOpen={showCreateLessonModal}
+        onClose={() => setShowCreateLessonModal(false)}
+        onSuccess={() => fetchSchedule()}
+      />
     </Layout>
   );
 }

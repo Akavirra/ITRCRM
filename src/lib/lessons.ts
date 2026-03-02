@@ -394,3 +394,102 @@ export async function getLessonChangeHistory(
     created_at: format(new Date(entry.created_at), 'dd.MM.yyyy HH:mm')
   }));
 }
+
+// Create a single lesson (for admin manual scheduling)
+export async function createSingleLesson(
+  lessonData: {
+    groupId: number;
+    lessonDate: string; // YYYY-MM-DD
+    startTime: string; // HH:MM
+    durationMinutes: number;
+    teacherId?: number;
+  },
+  createdBy: number
+): Promise<{ id: number; publicId: string }> {
+  const { groupId, lessonDate, startTime, durationMinutes, teacherId } = lessonData;
+  
+  // Get group details
+  const group = await get<{
+    id: number;
+    title: string;
+    course_id: number;
+    teacher_id: number;
+    timezone: string;
+  }>(
+    `SELECT id, title, course_id, teacher_id, timezone FROM groups WHERE id = $1`,
+    [groupId]
+  );
+  
+  if (!group) {
+    throw new Error('Групу не знайдено');
+  }
+  
+  // Parse time
+  const [hours, minutes] = startTime.split(':').map(Number);
+  const timezone = group.timezone || 'Europe/Kyiv';
+  
+  // Create datetime in the group's timezone
+  const dateInTz = toZonedTime(new Date(lessonDate), timezone);
+  dateInTz.setHours(hours, minutes, 0, 0);
+  
+  // Convert to UTC
+  const utcDate = fromZonedTime(dateInTz, timezone);
+  const startStr = format(utcDate, 'yyyy-MM-dd HH:mm:ss');
+  
+  // End time
+  const endUtcDate = new Date(utcDate.getTime() + durationMinutes * 60 * 1000);
+  const endStr = format(endUtcDate, 'yyyy-MM-dd HH:mm:ss');
+  
+  // Generate public ID
+  const publicId = generatePublicId('LSN');
+  
+  // Insert lesson
+  const result = await get<{ id: number }>(
+    `INSERT INTO lessons (public_id, group_id, lesson_date, start_datetime, end_datetime, status, created_by, teacher_id)
+     VALUES ($1, $2, $3, $4, $5, 'scheduled', $6, $7)
+     RETURNING id`,
+    [publicId, groupId, lessonDate, startStr, endStr, createdBy, teacherId || group.teacher_id]
+  );
+  
+  return {
+    id: result?.id || 0,
+    publicId
+  };
+}
+
+// Create an individual (ad-hoc) group for selected students
+export async function createIndividualGroup(
+  groupData: {
+    title: string;
+    courseId: number;
+    teacherId: number;
+    studentIds: number[];
+  },
+  createdBy: number
+): Promise<{ id: number }> {
+  const { title, courseId, teacherId, studentIds } = groupData;
+  
+  const publicId = generatePublicId('GRP');
+  
+  const groupIdResult = await get<{ id: number }>(
+    `INSERT INTO groups (public_id, title, course_id, teacher_id, status, is_active, weekly_day, start_time, duration_minutes, created_by)
+     VALUES ($1, $2, $3, $4, 'active', TRUE, 1, '00:00', 60, $5)
+     RETURNING id`,
+    [publicId, title, courseId, teacherId, createdBy]
+  );
+  
+  const groupId = groupIdResult?.id || 0;
+  
+  // Add students to group
+  if (studentIds.length > 0) {
+    for (const studentId of studentIds) {
+      await run(
+        `INSERT INTO group_students (group_id, student_id)
+         VALUES ($1, $2)`,
+        [groupId, studentId]
+      );
+    }
+  }
+  
+  return { id: groupId };
+}
