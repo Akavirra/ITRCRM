@@ -284,17 +284,19 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
     
     // Timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
-      if (isLoading) {
-        console.warn('Telegram WebApp initialization timeout');
-        setIsLoading(false);
-        setIsReady(true); // Allow app to proceed
-      }
+      setIsLoading((prev) => {
+        if (prev) {
+          console.warn('Telegram WebApp initialization timeout');
+          setIsReady(true); // Allow app to proceed
+        }
+        return false;
+      });
     }, 5000);
 
     initializeWebApp();
 
     return () => clearTimeout(timeoutId);
-  }, [initializeWebApp, isLoading]);
+  }, [initializeWebApp]);
 
   // Apply theme based on color scheme
   useEffect(() => {
