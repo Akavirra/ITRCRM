@@ -68,9 +68,22 @@ export default function CreateLessonModal({ isOpen, onClose, onSuccess, initialD
       loadGroups();
       loadCourses();
       loadTeachers();
-      loadStudents('');
+      loadAllStudents();
     }
   }, [isOpen]);
+  
+  const loadAllStudents = async () => {
+    setStudentsLoading(true);
+    try {
+      const res = await fetch('/api/students?limit=50');
+      const data = await res.json();
+      setStudents(data.students || []);
+    } catch (err) {
+      console.error('Failed to load students:', err);
+    } finally {
+      setStudentsLoading(false);
+    }
+  };
   
   const loadGroups = async () => {
     try {
@@ -112,10 +125,10 @@ export default function CreateLessonModal({ isOpen, onClose, onSuccess, initialD
     }
   };
   
-  const loadStudents = async (search: string) => {
+  const loadStudents = async (search: string = '') => {
     setStudentsLoading(true);
     try {
-      const res = await fetch(`/api/students?search=${encodeURIComponent(search)}&limit=20`);
+      const res = await fetch(`/api/students?search=${encodeURIComponent(search)}&limit=50`);
       const data = await res.json();
       setStudents(data.students || []);
     } catch (err) {
