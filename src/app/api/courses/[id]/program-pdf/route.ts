@@ -5,8 +5,6 @@ import { getAuthUser } from '@/lib/api-utils';
 import { getCourseById } from '@/lib/courses';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
-import fs from 'fs';
-import path from 'path';
 import { KYIV_TIMEZONE, UKRAINIAN_LOCALE } from '@/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
@@ -267,9 +265,14 @@ export async function GET(
     const programText = course.program?.trim() || '';
     const courseTitle = course.title || 'Без назви';
     
-    // Load Unicode font that supports Cyrillic
-    const fontPath = path.join(process.cwd(), 'assets', 'fonts', 'Roboto-Regular.ttf');
-    const fontBytes = fs.readFileSync(fontPath);
+    // Load Unicode font that supports Cyrillic from public folder via fetch
+    // This works on Vercel serverless functions (fs does not)
+    const fontUrl = new URL('/fonts/Roboto-Regular.ttf', request.url).toString();
+    const fontResponse = await fetch(fontUrl);
+    if (!fontResponse.ok) {
+      throw new Error(`Failed to load font: ${fontResponse.status} ${fontResponse.statusText}`);
+    }
+    const fontBytes = new Uint8Array(await fontResponse.arrayBuffer());
     
     // Create PDF document and register fontkit
     const pdfDoc = await PDFDocument.create();
