@@ -26,6 +26,7 @@ interface PageTransitionProviderProps {
 export const PageTransitionProvider = ({ children }: PageTransitionProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const prevPathRef = useRef<string | null>(null);
 
@@ -39,6 +40,9 @@ export const PageTransitionProvider = ({ children }: PageTransitionProviderProps
 
   // Initial load - показуємо лоадер тільки при першому завантаженні сайту
   useEffect(() => {
+    // Set mounted to true after hydration
+    setMounted(true);
+    
     // Затримка для показу лоадера при першому завантаженні
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -54,7 +58,7 @@ export const PageTransitionProvider = ({ children }: PageTransitionProviderProps
   }, [pathname]);
 
   const contextValue: PageTransitionContextType = {
-    isLoading,
+    isLoading: !mounted || isLoading,
     startLoading,
     stopLoading,
   };
