@@ -265,9 +265,8 @@ export async function GET(
     const programText = course.program?.trim() || '';
     const courseTitle = course.title || 'Без назви';
     
-    // Load Unicode font that supports Cyrillic from public folder via fetch
-    // This works on Vercel serverless functions (fs does not)
-    const fontUrl = new URL('/fonts/Roboto-Regular.ttf', request.url).toString();
+    // Load Roboto font from Google Fonts CDN (works in serverless, smaller bundle)
+    const fontUrl = 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.woff2';
     const fontResponse = await fetch(fontUrl);
     if (!fontResponse.ok) {
       throw new Error(`Failed to load font: ${fontResponse.status} ${fontResponse.statusText}`);

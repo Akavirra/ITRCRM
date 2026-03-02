@@ -1,0 +1,11 @@
+# Ігноруємо непотрібні файли для зменшення розміру деплою
+scripts/
+assets/fonts/
+public/fonts/
+*.md
+.env.example
+.env.local.example
+.gitattributes
+.gitignore
+.next/
+node_modules/
