@@ -113,7 +113,7 @@ export async function POST(
 
     // Verify teacher has access to this lesson
     const lessonAccess = await queryOne(
-      `SELECT l.id, l.group_id, l.status
+      `SELECT l.id, l.group_id, l.status, l.lesson_date
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
       LEFT JOIN lesson_teacher_replacements ltr ON l.id = ltr.lesson_id
@@ -129,6 +129,19 @@ export async function POST(
       return NextResponse.json(
         { error: 'Lesson not found or access denied' },
         { status: 404 }
+      );
+    }
+
+    // Check if lesson is in the past (before today)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const lessonDate = new Date(lessonAccess.lesson_date);
+    lessonDate.setHours(0, 0, 0, 0);
+    
+    if (lessonDate < today) {
+      return NextResponse.json(
+        { error: 'Неможливо редагувати відвідуваність занять минулих днів. Ви можете редагувати лише сьогоднішні та майбутні заняття.' },
+        { status: 403 }
       );
     }
 

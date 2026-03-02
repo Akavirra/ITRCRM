@@ -52,6 +52,18 @@ export default function LessonDetailPage() {
   const [editingTopic, setEditingTopic] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPastLesson, setIsPastLesson] = useState(false);
+
+  // Check if lesson is from a past day
+  useEffect(() => {
+    if (lesson?.lesson_date) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const lessonDate = new Date(lesson.lesson_date);
+      lessonDate.setHours(0, 0, 0, 0);
+      setIsPastLesson(lessonDate < today);
+    }
+  }, [lesson?.lesson_date]);
 
   // Fetch lesson data
   useEffect(() => {
@@ -124,6 +136,12 @@ export default function LessonDetailPage() {
   const updateAttendance = async (studentId: number, status: 'present' | 'absent' | 'sick') => {
     if (!initData) return;
 
+    // Prevent updating attendance for past lessons
+    if (isPastLesson) {
+      alert('Неможливо редагувати відвідуваність занять минулих днів.');
+      return;
+    }
+
     // Optimistic update
     setStudents(prev => prev.map(s => 
       s.id === studentId ? { ...s, attendance_status: status === 'sick' ? 'absent' : status } : s
@@ -161,6 +179,12 @@ export default function LessonDetailPage() {
   // Save topic/notes
   const saveLessonDetails = async () => {
     if (!initData) return;
+
+    // Prevent saving for past lessons
+    if (isPastLesson) {
+      alert('Неможливо редагувати заняття минулих днів.');
+      return;
+    }
 
     setSaving(true);
 
@@ -204,6 +228,12 @@ export default function LessonDetailPage() {
   // Finish lesson
   const finishLesson = async () => {
     if (!initData || !webApp) return;
+
+    // Prevent finishing past lessons
+    if (isPastLesson) {
+      alert('Неможливо редагувати заняття минулих днів.');
+      return;
+    }
 
     // Check if all students have attendance marked
     const unmarkedStudents = students.filter(s => !s.attendance_status);
@@ -332,11 +362,26 @@ export default function LessonDetailPage() {
         </div>
       </div>
 
+      {/* Past lesson warning */}
+      {isPastLesson && (
+        <div style={{ 
+          background: '#fff3cd', 
+          color: '#856404',
+          padding: 'var(--space-md)', 
+          borderRadius: 'var(--radius-md)',
+          marginBottom: 'var(--space-xl)',
+          fontSize: '14px',
+          border: '1px solid #ffeeba'
+        }}>
+          ⚠️ Це заняття з минулого дня. Редагування теми, приміток та відвідуваності недоступне.
+        </div>
+      )}
+
       {/* Topic */}
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
           <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)' }}>📝 Тема заняття</span>
-          {!editingTopic && (
+          {!editingTopic && !isPastLesson && (
             <button 
               onClick={() => setEditingTopic(true)}
               style={{ fontSize: '13px', color: 'var(--tg-link-color)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
@@ -387,7 +432,7 @@ export default function LessonDetailPage() {
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
           <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)' }}>📋 Нотатка</span>
-          {!editingNotes && (
+          {!editingNotes && !isPastLesson && (
             <button 
               onClick={() => setEditingNotes(true)}
               style={{ fontSize: '13px', color: 'var(--tg-link-color)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
@@ -451,6 +496,7 @@ export default function LessonDetailPage() {
                     onClick={() => updateAttendance(student.id, 'present')}
                     className={`tg-action-btn tg-action-btn-success ${student.attendance_status === 'present' ? 'active' : ''}`}
                     title="Присутній"
+                    disabled={isPastLesson}
                   >
                     ✓
                   </button>
@@ -458,6 +504,7 @@ export default function LessonDetailPage() {
                     onClick={() => updateAttendance(student.id, 'absent')}
                     className={`tg-action-btn tg-action-btn-danger ${student.attendance_status === 'absent' ? 'active' : ''}`}
                     title="Відсутній"
+                    disabled={isPastLesson}
                   >
                     ✗
                   </button>
