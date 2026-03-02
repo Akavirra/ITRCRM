@@ -2,7 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   trailingSlash: false,
-  output: 'standalone',
   async headers() {
     const isDev = process.env.NODE_ENV === 'development';
     return [
