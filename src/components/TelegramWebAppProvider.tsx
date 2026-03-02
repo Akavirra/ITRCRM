@@ -82,6 +82,7 @@ interface TelegramWebAppContextType {
   error: string | null;
   retryCount: number;
   refreshWebApp: () => Promise<void>;
+  mounted?: boolean;
 }
 
 const TelegramWebAppContext = createContext<TelegramWebAppContextType | null>(null);
@@ -192,6 +193,7 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
   });
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
   const initializedRef = useRef(false);
 
@@ -277,6 +279,9 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
   }, [initializeWebApp]);
 
   useEffect(() => {
+    // Set mounted to true after hydration
+    setMounted(true);
+    
     // Timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
       if (isLoading) {
@@ -298,7 +303,7 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
     }
   }, [colorScheme]);
 
-  const value: TelegramWebAppContextType = {
+  const value: TelegramWebAppContextType & { mounted: boolean } = {
     isReady,
     isLoading,
     isInWebView,
@@ -310,6 +315,7 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
     error,
     retryCount,
     refreshWebApp,
+    mounted,
   };
 
   return (
@@ -320,8 +326,8 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
 }
 
 // Hook to use Telegram WebApp context
-export function useTelegramWebApp(): TelegramWebAppContextType {
-  const context = useContext(TelegramWebAppContext);
+export function useTelegramWebApp() {
+  const context = useContext(TelegramWebAppContext) as TelegramWebAppContextType & { mounted: boolean };
   
   if (!context) {
     throw new Error('useTelegramWebApp must be used within a TelegramWebAppProvider');
@@ -331,12 +337,7 @@ export function useTelegramWebApp(): TelegramWebAppContextType {
 }
 
 // Hook to get initData with automatic loading handling
-export function useTelegramInitData(): {
-  initData: string | null;
-  isLoading: boolean;
-  error: string | null;
-  refresh: () => Promise<void>;
-} {
+export function useTelegramInitData() {
   const { initData, isLoading, error, refreshWebApp } = useTelegramWebApp();
   
   return {
