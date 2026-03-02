@@ -49,7 +49,7 @@ function TeacherAppContent({ children }: { children: ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="teacher-app-layout">
+      <div className="teacher-app-layout has-navbar">
         <div className="tg-loading">
           <div className="tg-spinner"></div>
         </div>
@@ -59,7 +59,7 @@ function TeacherAppContent({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="teacher-app-layout">
+    <div className="teacher-app-layout has-navbar">
       <main>{children}</main>
       <TeacherAppNavbar />
       <style jsx global>{globalStyles}</style>

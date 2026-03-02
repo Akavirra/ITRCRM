@@ -83,7 +83,7 @@ export default function TeacherAppNavbar({ teacherName }: NavbarProps) {
 
         /* Main content padding for navbar */
         .teacher-app-layout.has-navbar main {
-          padding-bottom: calc(var(--space-xl) + 60px);
+          padding-bottom: calc(var(--space-xl) + 80px);
         }
       `}</style>
 
