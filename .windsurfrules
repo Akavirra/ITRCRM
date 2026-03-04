@@ -1,0 +1,34 @@
+# ITRCRM Project Rules & Context
+
+## Project Overview
+- **Name:** ITRCRM (CRM system for robotics school)
+- **Production URL:** https://itrcrm.vercel.app
+- **Repository:** GitHub (Akavirra/ITRCRM)
+- **Deployment:** Auto-deploy to Vercel on every push.
+
+## Tech Stack & Infrastructure
+- **Framework:** Next.js 14 (App Router preferred) with TypeScript.
+- **Database:** Neon PostgreSQL (Region: Frankfurt).
+- **DB Driver:** `@neondatabase/serverless` (Always use this for connections).
+- **Authentication:** Custom JWT + Session-based (DB-stored). Passwords: `bcryptjs`.
+- **Media Storage:** Cloudinary (Photos, Flyers). Use Cloudinary SDK for uploads.
+- **Integrations:** Telegram Bot API for teacher notifications.
+- **Utilities:** `date-fns` (dates), `pdf-lib` & `pdfkit` (PDF generation), `lucide-react` (icons), `motion` (animations).
+
+## UI/UX Design System (Vibe)
+- **Style:** "Flat", "Airy", "Light".
+- **Visuals:** Use light colors, plenty of white space (padding/margins), and rounded corners (large border-radius).
+- **Responsiveness:** **Mobile First** is a strict requirement. Always check how components look on small screens.
+- **Animations:** Use `motion` (framer-motion) for smooth, subtle transitions.
+
+## Coding Standards
+- **Language:** Code in English (variables, functions, files), but **Comments MUST be in Ukrainian**.
+- **Architecture:** - Keep it clean: Extract logic into custom hooks or small, reusable components.
+  - Follow the "Single Responsibility" principle.
+- **TypeScript:** Strict typing is mandatory. No `any` type allowed.
+- **Security:** Ensure JWT checks on protected routes and API endpoints.
+
+## Agent Behavior (Cascade)
+- Always assume the project is running in a serverless environment (Vercel).
+- When writing DB queries, optimize for the Neon serverless driver.
+- Before suggesting a new library, check if the functionality can be achieved with existing tools (`date-fns`, `motion`, etc.).

@@ -1,0 +1,1 @@
+ALTER TABLE attendance ALTER COLUMN updated_by DROP NOT NULL;

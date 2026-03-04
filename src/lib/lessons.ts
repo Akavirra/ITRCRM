@@ -1,0 +1,510 @@
+import { run, get, all, transaction } from '@/db';
+import { addDays, addMonths, setHours, setMinutes, format, parse, isAfter, isBefore, startOfDay, endOfMonth } from 'date-fns';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+
+// Character set for generating random alphanumeric strings (uppercase only)
+const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const MIN_RANDOM_LENGTH = 8;
+const MAX_RANDOM_LENGTH = 10;
+
+function generateRandomString(length: number): string {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  let result = '';
+  
+  for (let i = 0; i < length; i++) {
+    const index = bytes[i] % CHARSET.length;
+    result += CHARSET[index];
+  }
+  
+  return result;
+}
+
+function generatePublicId(prefix: string): string {
+  const length = MIN_RANDOM_LENGTH + Math.floor(Math.random() * (MAX_RANDOM_LENGTH - MIN_RANDOM_LENGTH + 1));
+  const randomPart = generateRandomString(length);
+  return `${prefix}-${randomPart}`;
+}
+
+interface Group {
+  id: number;
+  weekly_day: number; // 0-6 (Sunday-Saturday)
+  start_time: string; // HH:MM
+  duration_minutes: number;
+  timezone: string;
+  start_date: string;
+  end_date: string | null;
+}
+
+interface Lesson {
+  id: number;
+  public_id: string;
+  group_id: number;
+  lesson_date: string;
+  start_datetime: string;
+  end_datetime: string;
+  status: string;
+}
+
+// Generate lessons for a group
+export async function generateLessonsForGroup(
+  groupId: number,
+  weeksAhead: number = 8,
+  createdBy: number,
+  monthsAhead: number = 1
+): Promise<{ generated: number; skipped: number }> {
+  console.log('[generateLessonsForGroup] ================= START ================');
+  console.log('[generateLessonsForGroup] Function called with groupId:', groupId);
+  
+  try {
+    console.log('[generateLessonsForGroup] About to query database for group data...');
+    
+    const group = await get<Group>(
+      `SELECT id, weekly_day, start_time, duration_minutes, timezone, start_date, end_date 
+       FROM groups WHERE id = $1`,
+      [groupId]
+    );
+    console.log('[generateLessonsForGroup] Group query completed, group:', group);
+    
+    if (!group) {
+      console.error('[generateLessonsForGroup] Group not found:', groupId);
+      throw new Error('Group not found');
+    }
+    
+    console.log('[generateLessonsForGroup] Group data:', JSON.stringify(group));
+
+    // Validate required fields
+    if (!group.start_time) {
+      console.error('[generateLessonsForGroup] Missing start_time for group:', groupId);
+      throw new Error('Missing start_time for group');
+    }
+    
+    const today = startOfDay(new Date());
+    
+    // Calculate target end date based on monthsAhead
+    // monthsAhead = 1 means current month + next month (end of next month)
+    const targetEndDate = endOfMonth(addMonths(today, monthsAhead));
+    const endDate = group.end_date ? new Date(group.end_date) : targetEndDate;
+    
+    // Use the earlier of group end date or target end date
+    const finalEndDate = group.end_date && isBefore(endDate, targetEndDate) ? endDate : targetEndDate;
+    
+    console.log('[generateLessonsForGroup] Date range - today:', today, 'finalEndDate:', finalEndDate);
+    
+    // Get existing lessons for this group (only scheduled and done, not canceled)
+    const existingLessons = await all<{ lesson_date: string }>(
+      `SELECT lesson_date FROM lessons WHERE group_id = $1 AND status != 'canceled'`,
+      [groupId]
+    );
+    console.log('[generateLessonsForGroup] Existing lessons count:', existingLessons.length);
+    // Convert dates to yyyy-MM-dd format for proper comparison
+    // (PostgreSQL returns DATE as ISO string with time component)
+    const existingDates = new Set(existingLessons.map(l => {
+      const date = new Date(l.lesson_date);
+      return format(date, 'yyyy-MM-dd');
+    }));
+    
+    let generated = 0;
+    let skipped = 0;
+    
+    // Start from group start date or today, whichever is later
+    // Handle null/undefined start_date
+    let currentDate: Date;
+    if (!group.start_date) {
+      console.log('[generateLessonsForGroup] No start_date, using today');
+      currentDate = today;
+    } else {
+      currentDate = new Date(group.start_date);
+      if (isBefore(currentDate, today)) {
+        currentDate = today;
+      }
+    }
+    
+    console.log('[generateLessonsForGroup] Starting from:', currentDate, 'weekly_day:', group.weekly_day);
+    
+    // Validate weekly_day and adjust for JavaScript (0-6) vs database (1-7)
+    const jsWeeklyDay = group.weekly_day === 7 ? 0 : group.weekly_day;
+    
+    if (jsWeeklyDay === undefined || jsWeeklyDay === null || jsWeeklyDay < 0 || jsWeeklyDay > 6) {
+      console.error('[generateLessonsForGroup] Invalid weekly_day:', group.weekly_day, '-> jsWeeklyDay:', jsWeeklyDay);
+      throw new Error('Invalid weekly_day for group: ' + group.weekly_day);
+    }
+    
+    console.log('[generateLessonsForGroup] Finding first occurrence of day', group.weekly_day, '(JS day:', jsWeeklyDay, ')');
+    
+    // Find the first occurrence of the weekly_day
+    while (currentDate.getDay() !== jsWeeklyDay) {
+      currentDate = addDays(currentDate, 1);
+    }
+    
+    console.log('[generateLessonsForGroup] First lesson date:', currentDate);
+    
+    // Generate lessons
+    const lessonsToInsert: Array<[string, number, string, string, string, string, number]> = [];
+    
+    console.log('[generateLessonsForGroup] Starting loop, finalEndDate:', finalEndDate);
+    console.log('[generateLessonsForGroup] currentDate:', currentDate, 'isAfter check:', isAfter(currentDate, finalEndDate));
+    
+    let lessonCount = 0;
+    while (!isAfter(currentDate, finalEndDate)) {
+      lessonCount++;
+      if (lessonCount <= 5) {
+        console.log('[generateLessonsForGroup] Processing lesson', lessonCount, 'date:', currentDate);
+      }
+      
+      const dateStr = format(currentDate, 'yyyy-MM-dd');
+      
+      if (!existingDates.has(dateStr)) {
+        const [hours, minutes] = group.start_time.split(':').map(Number);
+        
+        // Create datetime in the group's timezone and convert to UTC for storage
+        // This ensures consistent storage in UTC regardless of server timezone
+        const groupTimezone = group.timezone || 'Europe/Kyiv';
+        
+        // Create a date with the correct local time in the group's timezone
+        const localDate = new Date(currentDate);
+        localDate.setHours(hours, minutes, 0, 0);
+        
+        // Convert to the group's timezone and then to UTC
+        const utcDate = fromZonedTime(localDate, groupTimezone);
+        
+        // Format as UTC datetime string for database
+        const startStr = format(utcDate, "yyyy-MM-dd HH:mm:ss");
+        
+        // End time is duration minutes after start
+        const endUtcDate = new Date(utcDate.getTime() + group.duration_minutes * 60 * 1000);
+        const endStr = format(endUtcDate, "yyyy-MM-dd HH:mm:ss");
+        
+        lessonsToInsert.push([generatePublicId('LSN'), groupId, dateStr, startStr, endStr, 'scheduled', createdBy]);
+        generated++;
+      } else {
+        skipped++;
+      }
+      
+      currentDate = addDays(currentDate, 7);
+    }
+    
+    console.log('[generateLessonsForGroup] Generated', generated, 'lessons, skipped', skipped, 'total lessons processed:', lessonCount);
+    
+    // Insert all lessons in a transaction
+    if (lessonsToInsert.length > 0) {
+      console.log('[generateLessonsForGroup] Inserting', lessonsToInsert.length, 'lessons');
+      await transaction(async () => {
+        for (const lesson of lessonsToInsert) {
+          await run(
+            `INSERT INTO lessons (public_id, group_id, lesson_date, start_datetime, end_datetime, status, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            lesson
+          );
+        }
+      });
+    }
+    
+    console.log('[generateLessonsForGroup] Completed. Generated:', generated, 'Skipped:', skipped);
+    
+    return { generated, skipped };
+  } catch (error) {
+    console.error('[generateLessonsForGroup] Error:', error);
+    throw error;
+  }
+}
+
+// Generate lessons for all active groups
+export async function generateLessonsForAllGroups(
+  weeksAhead: number = 8,
+  createdBy: number,
+  monthsAhead: number = 1
+): Promise<{ groupId: number; generated: number; skipped: number }[]> {
+  console.log('[generateLessonsForAllGroups] Starting function');
+  
+  const groups = await all<{ id: number }>(
+    `SELECT id FROM groups WHERE is_active = TRUE OR status = 'active'`
+  );
+  
+  console.log('[generateLessonsForAllGroups] Found groups:', groups.length, 'groups:', groups);
+  
+  const results: { groupId: number; generated: number; skipped: number }[] = [];
+  
+  for (const group of groups) {
+    try {
+      console.log('[generateLessonsForAllGroups] Processing group:', group.id);
+      
+      // Generate lessons - the generateLessonsForGroup function already handles
+      // checking for existing lessons on specific dates and skips them appropriately
+      const result = await generateLessonsForGroup(group.id, weeksAhead, createdBy, monthsAhead);
+      results.push({ groupId: group.id, ...result });
+    } catch (error) {
+      console.error(`[generateLessonsForAllGroups] Error processing group ${group.id}:`, error);
+      // Continue with other groups instead of failing completely
+      results.push({ groupId: group.id, generated: 0, skipped: 0 });
+    }
+  }
+  
+  console.log('[generateLessonsForAllGroups] Completed. Results:', results);
+  return results;
+}
+
+// Get lessons for a group within a date range
+export async function getLessonsForGroup(
+  groupId: number,
+  startDate?: string,
+  endDate?: string
+): Promise<Lesson[]> {
+  let sql = `SELECT * FROM lessons WHERE group_id = $1`;
+  const params: (string | number)[] = [groupId];
+  let paramIndex = 2;
+  
+  if (startDate) {
+    sql += ` AND lesson_date >= $${paramIndex++}`;
+    params.push(startDate);
+  }
+  
+  if (endDate) {
+    sql += ` AND lesson_date <= $${paramIndex++}`;
+    params.push(endDate);
+  }
+  
+  sql += ` ORDER BY lesson_date ASC`;
+  
+  return await all<Lesson>(sql, params);
+}
+
+// Get upcoming lessons for a teacher
+export async function getUpcomingLessonsForTeacher(
+  teacherId: number,
+  limit: number = 10
+): Promise<Array<Lesson & { group_title: string; course_title: string }>> {
+  return await all<Lesson & { group_title: string; course_title: string }>(
+    `SELECT l.*, g.title as group_title, c.title as course_title
+     FROM lessons l
+     JOIN groups g ON l.group_id = g.id
+     JOIN courses c ON g.course_id = c.id
+     WHERE g.teacher_id = $1 AND l.lesson_date >= CURRENT_DATE AND l.status != 'canceled'
+     ORDER BY l.lesson_date ASC
+     LIMIT $2`,
+    [teacherId, limit]
+  );
+}
+
+// Get upcoming lessons for all groups (admin view) - supports both group and individual lessons
+export async function getUpcomingLessons(limit: number = 10): Promise<Array<Lesson & { group_title: string | null; course_title: string | null; teacher_name: string | null }>> {
+  return await all<Lesson & { group_title: string | null; course_title: string | null; teacher_name: string | null }>(
+    `SELECT l.*, g.title as group_title, c.title as course_title, COALESCE(u.name, l_teacher.name) as teacher_name
+     FROM lessons l
+     LEFT JOIN groups g ON l.group_id = g.id
+     LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
+     LEFT JOIN users u ON g.teacher_id = u.id
+     LEFT JOIN users l_teacher ON l.teacher_id = l_teacher.id
+     WHERE l.lesson_date >= CURRENT_DATE AND l.status != 'canceled'
+     ORDER BY l.lesson_date ASC
+     LIMIT $1`,
+    [limit]
+  );
+}
+
+// Get today's lessons for all groups (admin view) - supports both group and individual lessons
+export async function getTodayLessons(): Promise<Array<Lesson & { group_title: string | null; course_title: string | null; teacher_name: string | null; replacement_teacher_name: string | null }>> {
+  const lessons = await all<Lesson & { group_title: string | null; course_title: string | null; teacher_name: string | null; replacement_teacher_name: string | null }>(
+    `SELECT l.*, g.title as group_title, c.title as course_title, 
+            COALESCE(u.name, l_teacher.name) as teacher_name, 
+            ru.name as replacement_teacher_name
+     FROM lessons l
+     LEFT JOIN groups g ON l.group_id = g.id
+     LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
+     LEFT JOIN users u ON g.teacher_id = u.id
+     LEFT JOIN users l_teacher ON l.teacher_id = l_teacher.id
+     LEFT JOIN lesson_teacher_replacements ltr ON l.id = ltr.lesson_id
+     LEFT JOIN users ru ON ltr.replacement_teacher_id = ru.id
+     WHERE l.lesson_date = CURRENT_DATE AND l.status != 'canceled'
+     ORDER BY l.start_datetime ASC`
+  );
+  console.log('[getTodayLessons] Found lessons:', lessons.map(l => ({ id: l.id, date: l.lesson_date })));
+  return lessons;
+}
+
+// Cancel lesson
+export async function cancelLesson(lessonId: number): Promise<void> {
+  await run(
+    `UPDATE lessons SET status = 'canceled', updated_at = NOW() WHERE id = $1`,
+    [lessonId]
+  );
+}
+
+// Update lesson topic
+export async function updateLessonTopic(lessonId: number, topic: string): Promise<void> {
+  await run(
+    `UPDATE lessons SET topic = $1, updated_at = NOW() WHERE id = $2`,
+    [topic, lessonId]
+  );
+}
+
+// Mark lesson as done
+export async function markLessonDone(lessonId: number): Promise<void> {
+  await run(
+    `UPDATE lessons SET status = 'done', updated_at = NOW() WHERE id = $1`,
+    [lessonId]
+  );
+}
+
+// Log lesson change to history table
+export async function logLessonChange(
+  lessonId: number,
+  fieldName: 'topic' | 'notes' | 'attendance',
+  oldValue: string | null,
+  newValue: string | null,
+  changedBy: number | null,
+  changedByName: string | null,
+  changedVia: 'admin' | 'telegram' = 'admin',
+  changedByTelegramId: string | null = null
+): Promise<void> {
+  // Only log if there's an actual change (skip for attendance which always has a change)
+  if (fieldName !== 'attendance' && oldValue === newValue) return;
+  
+  await run(
+    `INSERT INTO lesson_change_logs 
+     (lesson_id, field_name, old_value, new_value, changed_by, changed_by_name, changed_by_telegram_id, changed_via)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [lessonId, fieldName, oldValue || null, newValue || null, changedBy, changedByName, changedByTelegramId, changedVia]
+  );
+}
+
+// Get lesson change history
+export async function getLessonChangeHistory(
+  lessonId: number
+): Promise<Array<{
+  id: number;
+  lesson_id: number;
+  field_name: string;
+  old_value: string | null;
+  new_value: string | null;
+  changed_by: number | null;
+  changed_by_name: string | null;
+  changed_by_telegram_id: string | null;
+  changed_via: string;
+  created_at: string;
+}>> {
+  const history = await all(
+    `SELECT * FROM lesson_change_logs 
+     WHERE lesson_id = $1 
+     ORDER BY created_at DESC`,
+    [lessonId]
+  );
+  
+  // Format created_at to Ukrainian date/time format
+  return history.map((entry: any) => ({
+    ...entry,
+    created_at: format(new Date(entry.created_at), 'dd.MM.yyyy HH:mm')
+  }));
+}
+
+// Create a single lesson (for admin manual scheduling)
+export async function createSingleLesson(
+  lessonData: {
+    groupId?: number | null;  // Optional - can be null for individual lessons
+    courseId?: number | null;  // Optional - for individual lessons
+    lessonDate: string; // YYYY-MM-DD
+    startTime: string; // HH:MM
+    durationMinutes: number;
+    teacherId?: number;
+  },
+  createdBy: number
+): Promise<{ id: number; publicId: string }> {
+  const { groupId, courseId, lessonDate, startTime, durationMinutes, teacherId } = lessonData;
+  
+  // Get group details (if group is provided)
+  let group = null;
+  let timezone = 'Europe/Kyiv';
+  
+  if (groupId) {
+    group = await get<{
+      id: number;
+      title: string;
+      course_id: number;
+      teacher_id: number;
+      timezone: string;
+    }>(
+      `SELECT id, title, course_id, teacher_id, timezone FROM groups WHERE id = $1`,
+      [groupId]
+    );
+    
+    if (!group) {
+      throw new Error('Групу не знайдено');
+    }
+    
+    timezone = group.timezone || 'Europe/Kyiv';
+  }
+  
+  // Parse time
+  const [hours, minutes] = startTime.split(':').map(Number);
+  
+  // Create datetime in the timezone (default to Kyiv if no group)
+  const localDate = new Date(lessonDate);
+  localDate.setHours(hours, minutes, 0, 0);
+  
+  // Convert to the group's timezone and then to UTC
+  const utcDate = fromZonedTime(localDate, timezone);
+  const startStr = format(utcDate, 'yyyy-MM-dd HH:mm:ss');
+  
+  // End time
+  const endUtcDate = new Date(utcDate.getTime() + durationMinutes * 60 * 1000);
+  const endStr = format(endUtcDate, 'yyyy-MM-dd HH:mm:ss');
+  
+  // Generate public ID
+  const publicId = generatePublicId('LSN');
+  
+  // Determine teacher ID: use provided teacherId, or group teacher, or null
+  const finalTeacherId = teacherId || (group ? group.teacher_id : null);
+  
+  // Determine course ID: use provided courseId, or get from group, or null
+  const finalCourseId = courseId || (group ? group.course_id : null);
+  
+  // Insert lesson (groupId can be null for individual lessons)
+  const result = await get<{ id: number }>(
+    `INSERT INTO lessons (public_id, group_id, course_id, lesson_date, start_datetime, end_datetime, status, created_by, teacher_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     RETURNING id`,
+    [publicId, groupId || null, finalCourseId, lessonDate, startStr, endStr, 'scheduled', createdBy, finalTeacherId]
+  );
+  
+  return {
+    id: result?.id || 0,
+    publicId
+  };
+}
+
+// Create an individual (ad-hoc) group for selected students
+export async function createIndividualGroup(
+  groupData: {
+    title: string;
+    courseId: number;
+    teacherId: number;
+    studentIds: number[];
+    createdBy?: number;
+  }
+): Promise<{ id: number }> {
+  const { title, courseId, teacherId, studentIds, createdBy } = groupData;
+  
+  const publicId = generatePublicId('GRP');
+  
+  const groupIdResult = await get<{ id: number }>(
+    `INSERT INTO groups (public_id, title, course_id, teacher_id, status, is_active, weekly_day, start_time, duration_minutes, created_by)
+     VALUES ($1, $2, $3, $4, 'active', TRUE, 1, '00:00', 60, $5)
+     RETURNING id`,
+    [publicId, title, courseId, teacherId, createdBy || null]
+  );
+  
+  const groupId = groupIdResult?.id || 0;
+  
+  // Add students to group
+  if (studentIds.length > 0) {
+    for (const studentId of studentIds) {
+      await run(
+        `INSERT INTO student_groups (group_id, student_id)
+         VALUES ($1, $2)`,
+        [groupId, studentId]
+      );
+    }
+  }
+  
+  return { id: groupId };
+}
