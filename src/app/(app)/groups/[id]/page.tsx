@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { uk } from '@/i18n/uk';
-import { formatShortDateKyiv, formatDateKyiv } from '@/lib/date-utils';
+import { formatShortDateKyiv, formatDateKyiv, formatTimeKyiv } from '@/lib/date-utils';
 import { useStudentModals } from '@/components/StudentModalsContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
 import GroupHistoryPanel from '@/components/GroupHistoryPanel';
@@ -366,6 +366,10 @@ export default function GroupDetailsPage() {
     return formatShortDateKyiv(dateStr);
   };
 
+  const formatTime = (dateTimeStr: string) => {
+    return formatTimeKyiv(dateTimeStr);
+  };
+
   const getLessonStatusLabel = (status: string) => {
     switch (status) {
       case 'done':
@@ -700,8 +704,8 @@ export default function GroupDetailsPage() {
                           courseId: group?.course_id || 0,
                           teacherId: group?.teacher_id || 0,
                           teacherName: group?.teacher_name || '',
-                          startTime: lesson.start_datetime ? lesson.start_datetime.split(' ')[1].substring(0, 5) : '',
-                          endTime: lesson.end_datetime ? lesson.end_datetime.split(' ')[1].substring(0, 5) : '',
+                          startTime: lesson.start_datetime ? formatTime(lesson.start_datetime) : '',
+                          endTime: lesson.end_datetime ? formatTime(lesson.end_datetime) : '',
                           status: lesson.status,
                           topic: lesson.topic,
                         })}
@@ -1192,8 +1196,8 @@ export default function GroupDetailsPage() {
                                 courseId: group?.course_id || 0,
                                 teacherId: group?.teacher_id || 0,
                                 teacherName: group?.teacher_name || '',
-                                startTime: lesson.start_datetime ? lesson.start_datetime.split(' ')[1].substring(0, 5) : '',
-                                endTime: lesson.end_datetime ? lesson.end_datetime.split(' ')[1].substring(0, 5) : '',
+                                startTime: lesson.start_datetime ? formatTime(lesson.start_datetime) : '',
+                                endTime: lesson.end_datetime ? formatTime(lesson.end_datetime) : '',
                                 status: lesson.status,
                                 topic: lesson.topic,
                               })}
