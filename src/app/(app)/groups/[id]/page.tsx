@@ -1196,8 +1196,8 @@ export default function GroupDetailsPage() {
                                 courseId: group?.course_id || 0,
                                 teacherId: group?.teacher_id || 0,
                                 teacherName: group?.teacher_name || '',
-                                startTime: lesson.start_datetime ? formatTime(lesson.start_datetime) : '',
-                                endTime: lesson.end_datetime ? formatTime(lesson.end_datetime) : '',
+                                startTime: lesson.start_datetime ? lesson.start_datetime.split(' ')[1].substring(0, 5) : '',
+                                endTime: lesson.end_datetime ? lesson.end_datetime.split(' ')[1].substring(0, 5) : '',
                                 status: lesson.status,
                                 topic: lesson.topic,
                               })}
