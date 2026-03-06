@@ -120,7 +120,7 @@ const kyivTimeOptions: Intl.DateTimeFormatOptions = {
  * @returns Formatted date string in dd.MM.yyyy format
  */
 export function formatDateKyiv(dateStr: string | null | undefined): string {
-  if (!dateStr) return '';
+  if (!dateStr || typeof dateStr !== 'string') return '';
   const date = parseDatabaseDate(dateStr);
   return date.toLocaleDateString(UKRAINIAN_LOCALE, kyivDateOptions);
 }
@@ -131,7 +131,7 @@ export function formatDateKyiv(dateStr: string | null | undefined): string {
  * @returns Formatted date string in dd.MM.yy format
  */
 export function formatShortDateKyiv(dateStr: string | null | undefined): string {
-  if (!dateStr) return '';
+  if (!dateStr || typeof dateStr !== 'string') return '';
   const date = parseDatabaseDate(dateStr);
   return date.toLocaleDateString(UKRAINIAN_LOCALE, kyivShortDateOptions);
 }
@@ -142,7 +142,7 @@ export function formatShortDateKyiv(dateStr: string | null | undefined): string 
  * @returns Formatted datetime string in dd.MM.yyyy, HH:mm format
  */
 export function formatDateTimeKyiv(dateStr: string | null | undefined): string {
-  if (!dateStr) return '';
+  if (!dateStr || typeof dateStr !== 'string') return '';
   const date = parseDatabaseDate(dateStr);
   return date.toLocaleString(UKRAINIAN_LOCALE, kyivDateTimeOptions);
 }
@@ -153,7 +153,7 @@ export function formatDateTimeKyiv(dateStr: string | null | undefined): string {
  * @returns Formatted date string with short month name
  */
 export function formatDateShortMonthKyiv(dateStr: string | null | undefined): string {
-  if (!dateStr) return '';
+  if (!dateStr || typeof dateStr !== 'string') return '';
   const date = parseDatabaseDate(dateStr);
   return date.toLocaleDateString(UKRAINIAN_LOCALE, kyivShortMonthDateOptions);
 }
@@ -166,7 +166,7 @@ export function formatDateShortMonthKyiv(dateStr: string | null | undefined): st
  * @returns Formatted time string in HH:mm format
  */
 export function formatTimeKyiv(dateStr: string | null | undefined): string {
-  if (!dateStr) return '';
+  if (!dateStr || typeof dateStr !== 'string') return '';
   
   // If the datetime string ends with Z (UTC), extract time directly without timezone conversion
   // because the database stores local Kyiv time with UTC marker
