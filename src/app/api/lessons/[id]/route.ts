@@ -229,19 +229,19 @@ export async function PATCH(
     queryParams.push(lessonId);
     
     if (topic !== undefined) {
-      updates.push(`topic = ${queryParams.length}`);
+      updates.push(`topic = ${queryParams.length + 1}`);
       queryParams.push(topic);
       // Track who set the topic
-      updates.push(`topic_set_by = ${queryParams.length}`);
+      updates.push(`topic_set_by = ${queryParams.length + 1}`);
       queryParams.push(user.id);
       updates.push(`topic_set_at = NOW()`);
     }
     
     if (notes !== undefined) {
-      updates.push(`notes = ${queryParams.length}`);
+      updates.push(`notes = ${queryParams.length + 1}`);
       queryParams.push(notes);
       // Track who set the notes
-      updates.push(`notes_set_by = ${queryParams.length}`);
+      updates.push(`notes_set_by = ${queryParams.length + 1}`);
       queryParams.push(user.id);
       updates.push(`notes_set_at = NOW()`);
     }
@@ -262,7 +262,7 @@ export async function PATCH(
         );
       }
       
-      updates.push(`status = ${queryParams.length}`);
+      updates.push(`status = ${queryParams.length + 1}`);
       queryParams.push(status);
     }
     
@@ -275,11 +275,11 @@ export async function PATCH(
       const startDateTime = setMinutes(setHours(newDate, hours), minutes);
       const endDateTime = new Date(startDateTime.getTime() + 90 * 60 * 1000); // Default 90 min
       
-      updates.push(`lesson_date = ${queryParams.length}`);
+      updates.push(`lesson_date = ${queryParams.length + 1}`);
       queryParams.push(format(newDate, 'yyyy-MM-dd'));
-      updates.push(`start_datetime = ${queryParams.length}`);
+      updates.push(`start_datetime = ${queryParams.length + 1}`);
       queryParams.push(format(startDateTime, 'yyyy-MM-dd HH:mm:ss'));
-      updates.push(`end_datetime = ${queryParams.length}`);
+      updates.push(`end_datetime = ${queryParams.length + 1}`);
       queryParams.push(format(endDateTime, 'yyyy-MM-dd HH:mm:ss'));
     }
     
@@ -292,7 +292,7 @@ export async function PATCH(
       [lessonId]
     );
     
-    const sql = "UPDATE lessons SET " + updates.join(', ') + " WHERE id = $" + queryParams.length;
+    const sql = "UPDATE lessons SET " + updates.join(', ') + " WHERE id = $1";
     await run(sql, queryParams);
     
     // Log changes if topic or notes were updated
