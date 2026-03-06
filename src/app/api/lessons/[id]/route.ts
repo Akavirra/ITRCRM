@@ -222,23 +222,26 @@ export async function PATCH(
     const body = await request.json();
     const { topic, notes, status, lesson_date, start_time, set_by_telegram } = body;
     
-    let updates: string[] = ['updated_at = NOW()'];
+    let updates: string[] = [];
     let queryParams: (string | number)[] = [];
     
-     if (topic !== undefined) {
-      updates.push(`topic = ${queryParams.length + 1}`);
+    // Always add id as first parameter to help PostgreSQL determine parameter types
+    queryParams.push(lessonId);
+    
+    if (topic !== undefined) {
+      updates.push(`topic = ${queryParams.length}`);
       queryParams.push(topic);
       // Track who set the topic
-      updates.push(`topic_set_by = ${queryParams.length + 1}`);
+      updates.push(`topic_set_by = ${queryParams.length}`);
       queryParams.push(user.id);
       updates.push(`topic_set_at = NOW()`);
     }
     
     if (notes !== undefined) {
-      updates.push(`notes = ${queryParams.length + 1}`);
+      updates.push(`notes = ${queryParams.length}`);
       queryParams.push(notes);
       // Track who set the notes
-      updates.push(`notes_set_by = ${queryParams.length + 1}`);
+      updates.push(`notes_set_by = ${queryParams.length}`);
       queryParams.push(user.id);
       updates.push(`notes_set_at = NOW()`);
     }
@@ -259,7 +262,7 @@ export async function PATCH(
         );
       }
       
-      updates.push(`status = ${queryParams.length + 1}`);
+      updates.push(`status = ${queryParams.length}`);
       queryParams.push(status);
     }
     
@@ -272,15 +275,16 @@ export async function PATCH(
       const startDateTime = setMinutes(setHours(newDate, hours), minutes);
       const endDateTime = new Date(startDateTime.getTime() + 90 * 60 * 1000); // Default 90 min
       
-      updates.push(`lesson_date = ${queryParams.length + 1}`);
+      updates.push(`lesson_date = ${queryParams.length}`);
       queryParams.push(format(newDate, 'yyyy-MM-dd'));
-      updates.push(`start_datetime = ${queryParams.length + 1}`);
+      updates.push(`start_datetime = ${queryParams.length}`);
       queryParams.push(format(startDateTime, 'yyyy-MM-dd HH:mm:ss'));
-      updates.push(`end_datetime = ${queryParams.length + 1}`);
+      updates.push(`end_datetime = ${queryParams.length}`);
       queryParams.push(format(endDateTime, 'yyyy-MM-dd HH:mm:ss'));
     }
     
-    queryParams.push(lessonId);
+    // Always update updated_at
+    updates.push('updated_at = NOW()');
     
     // Get old values for logging before update
     const oldLesson = await get<{ topic: string | null; notes: string | null }>(
