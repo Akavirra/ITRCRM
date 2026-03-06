@@ -29,33 +29,34 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const user = await getAuthUser(request);
-  
-  if (!user) {
-    return unauthorized();
-  }
-  
-  const lessonId = parseInt(params.id, 10);
-  
-  if (isNaN(lessonId)) {
-    return NextResponse.json({ error: 'Невірний ID заняття' }, { status: 400 });
-  }
-  
-  const lesson = await get<Lesson>(
-    `SELECT * FROM lessons WHERE id = $1`,
-    [lessonId]
-  );
-  
-  if (!lesson) {
-    return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
-  }
-  
-  // Check access
-  const hasAccess = await checkGroupAccess(user, lesson.group_id);
-  
-  if (!hasAccess) {
-    return forbidden();
-  }
+  try {
+    const user = await getAuthUser(request);
+    
+    if (!user) {
+      return unauthorized();
+    }
+    
+    const lessonId = parseInt(params.id, 10);
+    
+    if (isNaN(lessonId)) {
+      return NextResponse.json({ error: 'Невірний ID заняття' }, { status: 400 });
+    }
+    
+    const lesson = await get<Lesson>(
+      `SELECT * FROM lessons WHERE id = $1`,
+      [lessonId]
+    );
+    
+    if (!lesson) {
+      return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
+    }
+    
+    // Check access
+    const hasAccess = await checkGroupAccess(user, lesson.group_id);
+    
+    if (!hasAccess) {
+      return forbidden();
+    }
   
   // Get lesson with group, course and teacher details
   // Use LEFT JOIN to support individual lessons (without group)
@@ -178,6 +179,10 @@ export async function GET(
       lesson: transformedLesson,
       changeHistory: changeHistory || []
     });
+  } catch (error) {
+    console.error('Get lesson error:', error);
+    return NextResponse.json({ error: 'Не вдалося отримати заняття' }, { status: 500 });
+  }
 }
 
 // PATCH /api/lessons/[id] - Update a lesson
@@ -185,56 +190,56 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const user = await getAuthUser(request);
-  
-  if (!user) {
-    return unauthorized();
-  }
-  
-  const lessonId = parseInt(params.id, 10);
-  
-  if (isNaN(lessonId)) {
-    return NextResponse.json({ error: 'Невірний ID заняття' }, { status: 400 });
-  }
-  
-  const lesson = await get<Lesson>(
-    `SELECT * FROM lessons WHERE id = $1`,
-    [lessonId]
-  );
-  
-  if (!lesson) {
-    return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
-  }
-  
-  // Check access
-  const hasAccess = await checkGroupAccess(user, lesson.group_id);
-  
-  if (!hasAccess) {
-    return forbidden();
-  }
-  
   try {
+    const user = await getAuthUser(request);
+    
+    if (!user) {
+      return unauthorized();
+    }
+    
+    const lessonId = parseInt(params.id, 10);
+    
+    if (isNaN(lessonId)) {
+      return NextResponse.json({ error: 'Невірний ID заняття' }, { status: 400 });
+    }
+    
+    const lesson = await get<Lesson>(
+      `SELECT * FROM lessons WHERE id = $1`,
+      [lessonId]
+    );
+    
+    if (!lesson) {
+      return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
+    }
+    
+    // Check access
+    const hasAccess = await checkGroupAccess(user, lesson.group_id);
+    
+    if (!hasAccess) {
+      return forbidden();
+    }
+    
     const body = await request.json();
     const { topic, notes, status, lesson_date, start_time, set_by_telegram } = body;
     
     let updates: string[] = ['updated_at = NOW()'];
-    let params: (string | number)[] = [];
+    let queryParams: (string | number)[] = [];
     
      if (topic !== undefined) {
-      updates.push(`topic = $${params.length + 1}`);
-      params.push(topic);
+      updates.push(`topic = ${queryParams.length + 1}`);
+      queryParams.push(topic);
       // Track who set the topic
-      updates.push(`topic_set_by = $${params.length + 1}`);
-      params.push(user.id);
+      updates.push(`topic_set_by = ${queryParams.length + 1}`);
+      queryParams.push(user.id);
       updates.push(`topic_set_at = NOW()`);
     }
     
     if (notes !== undefined) {
-      updates.push(`notes = $${params.length + 1}`);
-      params.push(notes);
+      updates.push(`notes = ${queryParams.length + 1}`);
+      queryParams.push(notes);
       // Track who set the notes
-      updates.push(`notes_set_by = $${params.length + 1}`);
-      params.push(user.id);
+      updates.push(`notes_set_by = ${queryParams.length + 1}`);
+      queryParams.push(user.id);
       updates.push(`notes_set_at = NOW()`);
     }
     
@@ -254,8 +259,8 @@ export async function PATCH(
         );
       }
       
-      updates.push(`status = $${params.length + 1}`);
-      params.push(status);
+      updates.push(`status = ${queryParams.length + 1}`);
+      queryParams.push(status);
     }
     
     // If changing date/time, recalculate datetime fields
@@ -267,15 +272,15 @@ export async function PATCH(
       const startDateTime = setMinutes(setHours(newDate, hours), minutes);
       const endDateTime = new Date(startDateTime.getTime() + 90 * 60 * 1000); // Default 90 min
       
-      updates.push(`lesson_date = $${params.length + 1}`);
-      params.push(format(newDate, 'yyyy-MM-dd'));
-      updates.push(`start_datetime = $${params.length + 1}`);
-      params.push(format(startDateTime, 'yyyy-MM-dd HH:mm:ss'));
-      updates.push(`end_datetime = $${params.length + 1}`);
-      params.push(format(endDateTime, 'yyyy-MM-dd HH:mm:ss'));
+      updates.push(`lesson_date = ${queryParams.length + 1}`);
+      queryParams.push(format(newDate, 'yyyy-MM-dd'));
+      updates.push(`start_datetime = ${queryParams.length + 1}`);
+      queryParams.push(format(startDateTime, 'yyyy-MM-dd HH:mm:ss'));
+      updates.push(`end_datetime = ${queryParams.length + 1}`);
+      queryParams.push(format(endDateTime, 'yyyy-MM-dd HH:mm:ss'));
     }
     
-    params.push(lessonId);
+    queryParams.push(lessonId);
     
     // Get old values for logging before update
     const oldLesson = await get<{ topic: string | null; notes: string | null }>(
@@ -283,8 +288,8 @@ export async function PATCH(
       [lessonId]
     );
     
-    const sql = "UPDATE lessons SET " + updates.join(', ') + " WHERE id = $" + params.length;
-    await run(sql, params);
+    const sql = "UPDATE lessons SET " + updates.join(', ') + " WHERE id = $" + queryParams.length;
+    await run(sql, queryParams);
     
     // Log changes if topic or notes were updated
     if (topic !== undefined && oldLesson) {
