@@ -45,6 +45,8 @@ interface LessonData {
   notesSetBy: string | null;
   notesSetAt: string | null;
   notesSetByTelegramId: string | null;
+  originalDate?: string | null;
+  isRescheduled?: boolean;
 }
 
 interface ChangeHistoryEntry {
@@ -125,6 +127,10 @@ export default function LessonModalsManager() {
   const [selectedTeacherId, setSelectedTeacherId] = useState<Record<number, number | null>>({});
   const [replacementReason, setReplacementReason] = useState<Record<number, string>>({});
   const [teachersLoading, setTeachersLoading] = useState<Record<number, boolean>>({});
+  
+  // Reschedule state
+  const [showRescheduleForm, setShowRescheduleForm] = useState<Record<number, boolean>>({});
+  const [rescheduleData, setRescheduleData] = useState<Record<number, { newDate: string, newStartTime: string, newEndTime: string }>>({});
   
   // Attendance state
   const [attendance, setAttendance] = useState<Record<number, AttendanceRecord[]>>({});
@@ -717,6 +723,41 @@ export default function LessonModalsManager() {
     }
   };
 
+  const handleReschedule = async (lessonId: number) => {
+    const data = rescheduleData[lessonId];
+    if (!data || !data.newDate || !data.newStartTime || !data.newEndTime) {
+      alert('Вкажіть дату та час');
+      return;
+    }
+    
+    setSaving(prev => ({ ...prev, [lessonId]: true }));
+    try {
+      const res = await fetch(`/api/lessons/${lessonId}/reschedule`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      
+      if (res.ok) {
+        const result = await res.json();
+        setLessonData(prev => ({ ...prev, [lessonId]: result.lesson }));
+        setShowRescheduleForm(prev => ({ ...prev, [lessonId]: false }));
+        // Dispatch event to notify schedule page to refresh
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('itrobot-lesson-updated'));
+        }
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || 'Не вдалося перенести заняття');
+      }
+    } catch (error) {
+      console.error('Failed to reschedule:', error);
+      alert('Не вдалося перенести заняття');
+    } finally {
+      setSaving(prev => ({ ...prev, [lessonId]: false }));
+    }
+  };
+
   if (!isHydrated || openModals.length === 0) return null;
 
   return (
@@ -814,6 +855,43 @@ export default function LessonModalsManager() {
                           <button
                             onClick={() => {
                               setShowActionsMenu(prev => ({ ...prev, [modal.id]: false }));
+                              // Default to today if lesson date isn't directly available
+                              const defaultDate = new Date().toISOString().split('T')[0];
+                              setRescheduleData(prev => ({
+                                ...prev,
+                                [modal.id]: {
+                                  newDate: defaultDate,
+                                  newStartTime: lesson.startTime || '10:00',
+                                  newEndTime: lesson.endTime || '11:30'
+                                }
+                              }));
+                              setShowRescheduleForm(prev => ({ ...prev, [modal.id]: true }));
+                              setShowTeacherSelect(prev => ({ ...prev, [modal.id]: false }));
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              width: '100%',
+                              padding: '0.625rem 0.75rem',
+                              fontSize: '0.8125rem',
+                              color: '#3b82f6',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <Calendar size={14} />
+                            Перенести заняття
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              setShowActionsMenu(prev => ({ ...prev, [modal.id]: false }));
+                              setShowRescheduleForm(prev => ({ ...prev, [modal.id]: false }));
                               loadTeachers(modal.id);
                               setShowTeacherSelect(prev => ({ ...prev, [modal.id]: true }));
                             }}
@@ -1101,12 +1179,93 @@ export default function LessonModalsManager() {
                   </button>
                 ) : null}
                 
+                {showRescheduleForm[modal.id] ? (
+                  <div style={{ 
+                    marginBottom: '1rem', 
+                    padding: '1rem', 
+                    background: '#f0fdf4', 
+                    borderRadius: '0.5rem',
+                    border: '1px solid #bbf7d0'
+                  }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#166534', marginBottom: '0.5rem' }}>
+                      Перенесення заняття
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.6875rem', color: '#166534', marginBottom: '0.25rem' }}>Дата</label>
+                        <input
+                          type="date"
+                          value={rescheduleData[modal.id]?.newDate || ''}
+                          onChange={(e) => setRescheduleData(prev => ({ ...prev, [modal.id]: { ...prev[modal.id], newDate: e.target.value } }))}
+                          style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #86efac', borderRadius: '0.375rem' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: 'block', fontSize: '0.6875rem', color: '#166534', marginBottom: '0.25rem' }}>Початок</label>
+                          <input
+                            type="time"
+                            value={rescheduleData[modal.id]?.newStartTime || ''}
+                            onChange={(e) => setRescheduleData(prev => ({ ...prev, [modal.id]: { ...prev[modal.id], newStartTime: e.target.value } }))}
+                            style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #86efac', borderRadius: '0.375rem' }}
+                          />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: 'block', fontSize: '0.6875rem', color: '#166534', marginBottom: '0.25rem' }}>Кінець</label>
+                          <input
+                            type="time"
+                            value={rescheduleData[modal.id]?.newEndTime || ''}
+                            onChange={(e) => setRescheduleData(prev => ({ ...prev, [modal.id]: { ...prev[modal.id], newEndTime: e.target.value } }))}
+                            style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #86efac', borderRadius: '0.375rem' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        onClick={() => handleReschedule(modal.id)}
+                        disabled={isSaving}
+                        className="btn btn-primary"
+                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.8125rem', padding: '0.375rem', background: '#16a34a', borderColor: '#16a34a' }}
+                      >
+                        {isSaving ? 'Збереження...' : 'Перенести'}
+                      </button>
+                      <button
+                        onClick={() => setShowRescheduleForm(prev => ({ ...prev, [modal.id]: false }))}
+                        className="btn"
+                        style={{ flex: 1, justifyContent: 'center', background: 'white', border: '1px solid #86efac', color: '#166534', fontSize: '0.8125rem', padding: '0.375rem' }}
+                      >
+                        Скасувати
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>Час</div>
                   <div style={{ fontSize: '0.875rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                     <Clock size={14} />
                     {formatDateTime(lesson.startTime, lesson.endTime)}
                   </div>
+                  {lesson.isRescheduled && lesson.originalDate && (
+                    <div style={{
+                      marginTop: '0.25rem',
+                      fontSize: '0.75rem',
+                      color: '#7c3aed',
+                      background: '#f5f3ff',
+                      border: '1px solid #ddd6fe',
+                      borderRadius: '0.25rem',
+                      padding: '0.25rem 0.5rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                    }}>
+                      <RefreshCw size={10} />
+                      Перенесено з {lesson.originalDate}
+                    </div>
+                  )}
                 </div>
                 
                 {/* Topic field */}

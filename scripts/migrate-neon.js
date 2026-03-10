@@ -166,6 +166,18 @@ async function migrate() {
     await sql`CREATE INDEX IF NOT EXISTS idx_lessons_date ON lessons(lesson_date)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_lessons_status ON lessons(status)`;
 
+    // Додаємо колонку original_date для зберігання оригінальної дати при перенесенні заняття
+    try {
+      await sql`ALTER TABLE lessons ADD COLUMN original_date DATE`;
+      console.log('✅ Колонка original_date додана до lessons');
+    } catch (e) {
+      if (e.message && e.message.includes('already exists')) {
+        console.log('ℹ️ Колонка original_date вже існує в lessons');
+      } else {
+        throw e;
+      }
+    }
+
     // Додаємо колонку teacher_id для заміни викладача
     try {
       await sql`ALTER TABLE lessons ADD COLUMN teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL`;

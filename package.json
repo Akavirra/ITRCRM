@@ -14,6 +14,7 @@
     "db:seed:neon": "node scripts/seed-neon.js",
     "db:reset": "node scripts/reset.js",
     "db:add-lesson-tracking": "node scripts/add-lesson-tracking-fields.js",
+    "db:add-lesson-original-date": "node scripts/add-lesson-original-date.js",
     "test": "jest"
   },
   "dependencies": {

@@ -11,6 +11,7 @@ interface LessonRow {
   group_id: number | null;
   course_id: number | null;
   lesson_date: string;
+  original_date: string | null;
   start_datetime: string;
   end_datetime: string;
   topic: string | null;
@@ -70,6 +71,7 @@ export async function GET(request: NextRequest) {
       l.course_id as lesson_course_id,
       COALESCE(l.course_id, g.course_id) as course_id,
       l.lesson_date,
+      l.original_date,
       l.start_datetime,
       l.end_datetime,
       l.topic,
@@ -160,6 +162,8 @@ export async function GET(request: NextRequest) {
         endTime: calculateEndTime(lesson.start_time || '00:00', lesson.duration_minutes || 60),
         status: lesson.status,
         topic: lesson.topic,
+        originalDate: lesson.original_date ? new Date(lesson.original_date).toISOString().split('T')[0] : null,
+        isRescheduled: !!lesson.original_date,
       })),
     });
   }

@@ -41,6 +41,7 @@ interface Lesson {
   public_id: string;
   group_id: number;
   lesson_date: string;
+  original_date?: string | null;
   start_datetime: string;
   end_datetime: string;
   status: string;
@@ -92,17 +93,22 @@ export async function generateLessonsForGroup(
     console.log('[generateLessonsForGroup] Date range - today:', today, 'finalEndDate:', finalEndDate);
     
     // Get existing lessons for this group (only scheduled and done, not canceled)
-    const existingLessons = await all<{ lesson_date: string }>(
-      `SELECT lesson_date FROM lessons WHERE group_id = $1 AND status != 'canceled'`,
+    const existingLessons = await all<{ lesson_date: string, original_date: string | null }>(
+      `SELECT lesson_date, original_date FROM lessons WHERE group_id = $1 AND status != 'canceled'`,
       [groupId]
     );
     console.log('[generateLessonsForGroup] Existing lessons count:', existingLessons.length);
     // Convert dates to yyyy-MM-dd format for proper comparison
     // (PostgreSQL returns DATE as ISO string with time component)
-    const existingDates = new Set(existingLessons.map(l => {
+    const existingDates = new Set();
+    existingLessons.forEach(l => {
       const date = new Date(l.lesson_date);
-      return format(date, 'yyyy-MM-dd');
-    }));
+      existingDates.add(format(date, 'yyyy-MM-dd'));
+      if (l.original_date) {
+        const origDate = new Date(l.original_date);
+        existingDates.add(format(origDate, 'yyyy-MM-dd'));
+      }
+    });
     
     let generated = 0;
     let skipped = 0;
@@ -343,6 +349,53 @@ export async function markLessonDone(lessonId: number): Promise<void> {
   await run(
     `UPDATE lessons SET status = 'done', updated_at = NOW() WHERE id = $1`,
     [lessonId]
+  );
+}
+
+// Reschedule lesson
+export async function rescheduleLesson(
+  lessonId: number,
+  newDate: string,
+  newStartTime: string,
+  newEndTime: string,
+  timezone: string = 'Europe/Kyiv'
+): Promise<void> {
+  // First get the current lesson to see if original_date is already set
+  const currentLesson = await get<{ lesson_date: string, original_date: string | null }>(
+    `SELECT lesson_date, original_date FROM lessons WHERE id = $1`,
+    [lessonId]
+  );
+  
+  if (!currentLesson) {
+    throw new Error('Lesson not found');
+  }
+  
+  // Set original_date only if it's the first time rescheduling
+  const originalDate = currentLesson.original_date || format(new Date(currentLesson.lesson_date), 'yyyy-MM-dd');
+
+  // Parse new start time
+  const [startHours, startMinutes] = newStartTime.split(':').map(Number);
+  const startLocal = new Date(newDate);
+  startLocal.setHours(startHours, startMinutes, 0, 0);
+  const startUtc = fromZonedTime(startLocal, timezone);
+  const startStr = format(startUtc, 'yyyy-MM-dd HH:mm:ss');
+  
+  // Parse new end time
+  const [endHours, endMinutes] = newEndTime.split(':').map(Number);
+  const endLocal = new Date(newDate);
+  endLocal.setHours(endHours, endMinutes, 0, 0);
+  const endUtc = fromZonedTime(endLocal, timezone);
+  const endStr = format(endUtc, 'yyyy-MM-dd HH:mm:ss');
+
+  await run(
+    `UPDATE lessons 
+     SET lesson_date = $1, 
+         start_datetime = $2, 
+         end_datetime = $3, 
+         original_date = $4,
+         updated_at = NOW() 
+     WHERE id = $5`,
+    [newDate, startStr, endStr, originalDate, lessonId]
   );
 }
 
