@@ -68,8 +68,8 @@ export async function GET(
       l.lesson_date,
       l.start_datetime,
       l.end_datetime,
-      TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
-      TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
+      TO_CHAR(l.start_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as start_time_formatted,
+      TO_CHAR(l.end_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as end_time_formatted,
       l.topic,
       l.notes,
       l.status,
@@ -86,11 +86,11 @@ export async function GET(
       COALESCE(l.course_id, g.course_id) as course_id,
       c.title as course_title,
       CASE WHEN l.teacher_id IS NOT NULL AND l.group_id IS NOT NULL AND l.teacher_id != g.teacher_id THEN TRUE ELSE FALSE END as is_replaced,
-      CASE 
+      CASE
         WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
           COALESCE(l.telegram_user_info->>'first_name', 'Telegram User')
         WHEN l.topic_set_by < 0 THEN 'Telegram User'
-        ELSE topic_user.name 
+        ELSE topic_user.name
       END as topic_set_by_name,
       CASE 
         WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
@@ -331,8 +331,8 @@ export async function PATCH(
         l.lesson_date,
         l.start_datetime,
         l.end_datetime,
-        TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
-        TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
+        TO_CHAR(l.start_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as start_time_formatted,
+        TO_CHAR(l.end_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as end_time_formatted,
         l.topic,
         l.notes,
         l.status,

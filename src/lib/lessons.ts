@@ -1,6 +1,6 @@
 import { run, get, all, transaction } from '@/db';
 import { addDays, addMonths, setHours, setMinutes, format, parse, isAfter, isBefore, startOfDay, endOfMonth } from 'date-fns';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 // Character set for generating random alphanumeric strings (uppercase only)
 const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -174,12 +174,12 @@ export async function generateLessonsForGroup(
         // Convert to the group's timezone and then to UTC
         const utcDate = fromZonedTime(localDate, groupTimezone);
         
-        // Format as UTC datetime string for database
-        const startStr = format(utcDate, "yyyy-MM-dd HH:mm:ss");
-        
+        // Format as UTC datetime string for database (always UTC regardless of server timezone)
+        const startStr = formatInTimeZone(utcDate, 'UTC', "yyyy-MM-dd HH:mm:ss");
+
         // End time is duration minutes after start
         const endUtcDate = new Date(utcDate.getTime() + group.duration_minutes * 60 * 1000);
-        const endStr = format(endUtcDate, "yyyy-MM-dd HH:mm:ss");
+        const endStr = formatInTimeZone(endUtcDate, 'UTC', "yyyy-MM-dd HH:mm:ss");
         
         lessonsToInsert.push([generatePublicId('LSN'), groupId, dateStr, startStr, endStr, 'scheduled', createdBy]);
         generated++;
@@ -378,14 +378,14 @@ export async function rescheduleLesson(
   const startLocal = new Date(newDate);
   startLocal.setHours(startHours, startMinutes, 0, 0);
   const startUtc = fromZonedTime(startLocal, timezone);
-  const startStr = format(startUtc, 'yyyy-MM-dd HH:mm:ss');
-  
+  const startStr = formatInTimeZone(startUtc, 'UTC', 'yyyy-MM-dd HH:mm:ss');
+
   // Parse new end time
   const [endHours, endMinutes] = newEndTime.split(':').map(Number);
   const endLocal = new Date(newDate);
   endLocal.setHours(endHours, endMinutes, 0, 0);
   const endUtc = fromZonedTime(endLocal, timezone);
-  const endStr = format(endUtc, 'yyyy-MM-dd HH:mm:ss');
+  const endStr = formatInTimeZone(endUtc, 'UTC', 'yyyy-MM-dd HH:mm:ss');
 
   await run(
     `UPDATE lessons 
@@ -496,11 +496,11 @@ export async function createSingleLesson(
   
   // Convert to the group's timezone and then to UTC
   const utcDate = fromZonedTime(localDate, timezone);
-  const startStr = format(utcDate, 'yyyy-MM-dd HH:mm:ss');
-  
+  const startStr = formatInTimeZone(utcDate, 'UTC', 'yyyy-MM-dd HH:mm:ss');
+
   // End time
   const endUtcDate = new Date(utcDate.getTime() + durationMinutes * 60 * 1000);
-  const endStr = format(endUtcDate, 'yyyy-MM-dd HH:mm:ss');
+  const endStr = formatInTimeZone(endUtcDate, 'UTC', 'yyyy-MM-dd HH:mm:ss');
   
   // Generate public ID
   const publicId = generatePublicId('LSN');
