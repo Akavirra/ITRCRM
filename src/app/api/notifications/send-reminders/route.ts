@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
         lesson = await get<LessonData>(
           `SELECT 
             l.id, l.group_id, l.lesson_date, l.start_datetime, l.end_datetime, l.status,
-            TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
-            TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
+            TO_CHAR(l.start_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as start_time_formatted,
+            TO_CHAR(l.end_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as end_time_formatted,
             l.topic, l.notes,
             g.title as group_title, c.title as course_title,
             g.teacher_id,
@@ -103,8 +103,8 @@ export async function POST(request: NextRequest) {
         lesson = await get<LessonData>(
           `SELECT 
             l.id, l.group_id, l.lesson_date, l.start_datetime, l.end_datetime, l.status,
-            TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
-            TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
+            TO_CHAR(l.start_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as start_time_formatted,
+            TO_CHAR(l.end_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as end_time_formatted,
             l.topic, l.notes,
             g.title as group_title, c.title as course_title,
             g.teacher_id,

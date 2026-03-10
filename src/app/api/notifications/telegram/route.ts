@@ -253,8 +253,8 @@ export async function POST(request: NextRequest) {
           }>(
             `SELECT l.topic, l.notes, g.title as group_title, c.title as course_title, 
                     l.start_datetime, l.end_datetime,
-                    TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
-                    TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted
+                    TO_CHAR(l.start_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as start_time_formatted,
+                    TO_CHAR(l.end_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as end_time_formatted
              FROM lessons l
              JOIN groups g ON l.group_id = g.id
              JOIN courses c ON g.course_id = c.id

@@ -159,30 +159,19 @@ export function formatDateShortMonthKyiv(dateStr: string | Date | null | undefin
 }
 
 /**
- * Format time only from a datetime string
- * Note: If the datetime is in UTC format (ends with Z), we extract the time directly without timezone conversion
- * because the database already stores Kyiv time with UTC marker
- * @param dateStr - Datetime string from database
- * @returns Formatted time string in HH:mm format
+ * Format time only from a datetime string, converting from UTC to Kyiv timezone.
+ * All datetimes in the database are stored as true UTC.
+ * @param dateStr - Datetime string from database (UTC)
+ * @returns Formatted time string in HH:mm format (Kyiv timezone)
  */
 export function formatTimeKyiv(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return '';
-  
-  // If Date object, use Intl formatter directly
+
+  // If Date object, use Intl formatter directly (converts UTC → Kyiv)
   if (dateStr instanceof Date) {
     return dateStr.toLocaleTimeString(UKRAINIAN_LOCALE, kyivTimeOptions);
   }
-  
-  // If the datetime string ends with Z (UTC), extract time directly without timezone conversion
-  // because the database stores local Kyiv time with UTC marker
-  if (dateStr.endsWith('Z')) {
-    // Extract time directly from ISO string (e.g., "2026-03-02T20:00:00.000Z" -> "20:00")
-    const match = dateStr.match(/T(\d{2}):(\d{2}):/);
-    if (match) {
-      return `${match[1]}:${match[2]}`;
-    }
-  }
-  
+
   const date = parseDatabaseDate(dateStr);
   return date.toLocaleTimeString(UKRAINIAN_LOCALE, kyivTimeOptions);
 }
