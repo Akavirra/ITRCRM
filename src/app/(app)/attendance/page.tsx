@@ -162,6 +162,7 @@ export default function AttendancePage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroup, setSelectedGroup] = useState('');
   const [search, setSearch] = useState('');
+  const [allTime, setAllTime] = useState(false);
   const [loading, setLoading] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
@@ -202,7 +203,9 @@ export default function AttendancePage() {
         }
       } else {
         // summary — lesson records
-        const params = new URLSearchParams({ view: 'lessonRecords', year: String(year), month: String(month) });
+        const params = new URLSearchParams({ view: 'lessonRecords' });
+        if (!allTime) { params.set('year', String(year)); params.set('month', String(month)); }
+        else { params.set('allTime', 'true'); }
         if (selectedGroup) params.set('groupId', selectedGroup);
         if (search) params.set('search', search);
         const res = await fetch(`/api/attendance?${params}`);
@@ -211,7 +214,7 @@ export default function AttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [year, month, viewMode, selectedGroup, search]);
+  }, [year, month, viewMode, selectedGroup, search, allTime]);
 
   useEffect(() => {
     clearTimeout(searchTimeout.current);
@@ -295,11 +298,14 @@ export default function AttendancePage() {
 
         {/* Month navigation */}
         <div className="card" style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', borderRadius: '0.875rem' }}>
-          <button onClick={prevMonth} style={{ width: 36, height: 36, border: '1px solid #e5e7eb', borderRadius: '50%', backgroundColor: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.125rem', color: '#374151' }}>‹</button>
+          <button onClick={() => { setAllTime(false); prevMonth(); }} disabled={allTime} style={{ width: 36, height: 36, border: '1px solid #e5e7eb', borderRadius: '50%', backgroundColor: 'white', cursor: allTime ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.125rem', color: allTime ? '#d1d5db' : '#374151', opacity: allTime ? 0.5 : 1 }}>‹</button>
           <span style={{ fontWeight: 700, fontSize: '1.125rem', color: '#111827', minWidth: 200, textAlign: 'center' }}>
-            {MONTH_UK[month]} {year}
+            {allTime ? 'За весь час' : `${MONTH_UK[month]} ${year}`}
           </span>
-          <button onClick={nextMonth} disabled={isCurrentMonth} style={{ width: 36, height: 36, border: '1px solid #e5e7eb', borderRadius: '50%', backgroundColor: 'white', cursor: isCurrentMonth ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.125rem', color: isCurrentMonth ? '#d1d5db' : '#374151', opacity: isCurrentMonth ? 0.5 : 1 }}>›</button>
+          <button onClick={() => { setAllTime(false); nextMonth(); }} disabled={isCurrentMonth || allTime} style={{ width: 36, height: 36, border: '1px solid #e5e7eb', borderRadius: '50%', backgroundColor: 'white', cursor: (isCurrentMonth || allTime) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.125rem', color: (isCurrentMonth || allTime) ? '#d1d5db' : '#374151', opacity: (isCurrentMonth || allTime) ? 0.5 : 1 }}>›</button>
+          <button onClick={() => setAllTime(!allTime)} style={{ marginLeft: '0.5rem', padding: '0.375rem 0.875rem', border: `1px solid ${allTime ? '#1565c0' : '#e5e7eb'}`, borderRadius: '0.5rem', backgroundColor: allTime ? '#1565c0' : 'white', color: allTime ? 'white' : '#374151', fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+            За весь час
+          </button>
         </div>
 
         {/* KPI cards */}

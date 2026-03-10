@@ -40,7 +40,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (view === 'lessonRecords') {
-      const records = await getGlobalMonthlyLessonRecords(year, month, { groupId, search });
+      const allTime = searchParams.get('allTime') === 'true';
+      const records = await getGlobalMonthlyLessonRecords(
+        allTime ? null : year,
+        allTime ? null : month,
+        { groupId, search }
+      );
       return NextResponse.json({ records });
     }
 

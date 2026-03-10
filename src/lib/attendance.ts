@@ -1098,13 +1098,18 @@ export interface MonthlyLessonRecord {
 }
 
 export async function getGlobalMonthlyLessonRecords(
-  year: number,
-  month: number,
+  year: number | null,
+  month: number | null,
   options: { groupId?: number; search?: string } = {}
 ): Promise<MonthlyLessonRecord[]> {
   const { groupId, search } = options;
-  const params: (number | string)[] = [year, month];
-  let idx = 3;
+  const params: (number | string)[] = [];
+  let idx = 1;
+  let dateFilter = '';
+  if (year !== null && month !== null) {
+    dateFilter = ` AND EXTRACT(YEAR FROM l.lesson_date) = $${idx++} AND EXTRACT(MONTH FROM l.lesson_date) = $${idx++}`;
+    params.push(year, month);
+  }
   let where = '';
   if (groupId) { where += ` AND l.group_id = $${idx++}`; params.push(groupId); }
   if (search) { where += ` AND s.full_name ILIKE $${idx++}`; params.push(`%${search}%`); }
@@ -1126,8 +1131,8 @@ export async function getGlobalMonthlyLessonRecords(
      JOIN students s ON sg.student_id = s.id AND s.is_active = TRUE
      LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = s.id
      WHERE l.status != 'canceled'
-       AND EXTRACT(YEAR FROM l.lesson_date) = $1
-       AND EXTRACT(MONTH FROM l.lesson_date) = $2
+       AND l.lesson_date <= CURRENT_DATE
+       ${dateFilter}
        ${where}
      ORDER BY l.lesson_date DESC, g.title, s.full_name`,
     params
@@ -1136,8 +1141,13 @@ export async function getGlobalMonthlyLessonRecords(
   // Individual lesson records (only if not filtered by group)
   let indivRecords: MonthlyLessonRecord[] = [];
   if (!groupId) {
-    const iParams: (number | string)[] = [year, month];
-    let iIdx = 3;
+    const iParams: (number | string)[] = [];
+    let iIdx = 1;
+    let iDateFilter = '';
+    if (year !== null && month !== null) {
+      iDateFilter = ` AND EXTRACT(YEAR FROM l.lesson_date) = $${iIdx++} AND EXTRACT(MONTH FROM l.lesson_date) = $${iIdx++}`;
+      iParams.push(year, month);
+    }
     let iWhere = '';
     if (search) { iWhere += ` AND s.full_name ILIKE $${iIdx++}`; iParams.push(`%${search}%`); }
 
@@ -1155,8 +1165,8 @@ export async function getGlobalMonthlyLessonRecords(
        JOIN attendance a ON a.lesson_id = l.id
        JOIN students s ON a.student_id = s.id
        WHERE l.group_id IS NULL AND l.status != 'canceled'
-         AND EXTRACT(YEAR FROM l.lesson_date) = $1
-         AND EXTRACT(MONTH FROM l.lesson_date) = $2
+         AND l.lesson_date <= CURRENT_DATE
+         ${iDateFilter}
          ${iWhere}
        ORDER BY l.lesson_date DESC, s.full_name`,
       iParams
