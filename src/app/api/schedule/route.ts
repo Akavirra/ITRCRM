@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, getAccessibleGroupIds } from '@/lib/api-utils';
 import { get, all } from '@/db';
-import { format, addDays, startOfWeek, parseISO, isWithinInterval } from 'date-fns';
+import { format, addDays, startOfWeek, parseISO } from 'date-fns';
 import { uk } from 'date-fns/locale';
 
 export const dynamic = 'force-dynamic';
@@ -23,8 +23,8 @@ interface LessonRow {
   original_teacher_id: number | null;
   is_replaced: boolean;
   weekly_day: number | null;
-  start_time: string | null;
-  duration_minutes: number | null;
+  start_time_formatted: string | null;
+  end_time_formatted: string | null;
 }
 
 // GET /api/schedule - Get schedule for a week
@@ -84,8 +84,16 @@ export async function GET(request: NextRequest) {
       g.teacher_id as original_teacher_id,
       CASE WHEN l.teacher_id IS NOT NULL AND l.group_id IS NOT NULL AND l.teacher_id != g.teacher_id THEN TRUE ELSE FALSE END as is_replaced,
       COALESCE(g.weekly_day::integer, 1) as weekly_day,
-      COALESCE(l.start_datetime::time, g.start_time::time, '00:00'::time) as start_time,
-      COALESCE(g.duration_minutes, 60) as duration_minutes
+      COALESCE(
+        TO_CHAR(l.start_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI'),
+        TO_CHAR(g.start_time::time, 'HH24:MI'),
+        '00:00'
+      ) as start_time_formatted,
+      COALESCE(
+        TO_CHAR(l.end_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI'),
+        TO_CHAR((g.start_time::time + (COALESCE(g.duration_minutes, 60) || ' minutes')::interval), 'HH24:MI'),
+        '01:00'
+      ) as end_time_formatted
     FROM lessons l
     LEFT JOIN groups g ON l.group_id = g.id
     LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
@@ -158,8 +166,8 @@ export async function GET(request: NextRequest) {
         teacherName: lesson.teacher_name || 'Немає викладача',
         originalTeacherId: lesson.original_teacher_id,
         isReplaced: lesson.is_replaced,
-        startTime: lesson.start_time ? lesson.start_time.split(':').slice(0, 2).join(':') : '00:00',
-        endTime: calculateEndTime(lesson.start_time || '00:00', lesson.duration_minutes || 60),
+        startTime: lesson.start_time_formatted || '00:00',
+        endTime: lesson.end_time_formatted || '00:00',
         status: lesson.status,
         topic: lesson.topic,
         originalDate: lesson.original_date ? new Date(lesson.original_date).toISOString().split('T')[0] : null,
@@ -189,13 +197,3 @@ function getDayNameUk(day: number): string {
   return names[day] || '';
 }
 
-function calculateEndTime(startTime: string, durationMinutes: number): string {
-  // Handle time with seconds (e.g., "14:30:00") by taking only first two parts
-  const timeParts = startTime.split(':');
-  const hours = parseInt(timeParts[0], 10);
-  const minutes = parseInt(timeParts[1], 10);
-  const totalMinutes = hours * 60 + minutes + durationMinutes;
-  const endHours = Math.floor(totalMinutes / 60) % 24;
-  const endMinutes = totalMinutes % 60;
-  return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
-}
