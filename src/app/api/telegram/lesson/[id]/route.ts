@@ -121,8 +121,8 @@ export async function GET(
         l.lesson_date,
         l.start_datetime,
         l.end_datetime,
-        TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
-        TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
+        TO_CHAR(l.start_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as start_time_formatted,
+        TO_CHAR(l.end_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as end_time_formatted,
         l.topic,
         l.notes,
         l.status,
@@ -138,7 +138,7 @@ export async function GET(
         g.course_id as course_id,
         c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
-        CASE 
+        CASE
           WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
             COALESCE(
               l.telegram_user_info->>'first_name',
@@ -146,9 +146,9 @@ export async function GET(
               'Telegram User'
             )
           WHEN l.topic_set_by < 0 THEN 'Telegram User'
-          ELSE topic_user.name 
+          ELSE topic_user.name
         END as topic_set_by_name,
-        CASE 
+        CASE
           WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
             COALESCE(
               l.telegram_user_info->>'first_name',
@@ -156,15 +156,15 @@ export async function GET(
               'Telegram User'
             )
           WHEN l.notes_set_by < 0 THEN 'Telegram User'
-          ELSE notes_user.name 
+          ELSE notes_user.name
         END as notes_set_by_name,
-        CASE 
+        CASE
           WHEN l.topic_set_by < 0 THEN CAST((-l.topic_set_by) AS TEXT)
-          ELSE topic_user.telegram_id 
+          ELSE topic_user.telegram_id
         END as topic_set_by_telegram_id,
-        CASE 
+        CASE
           WHEN l.notes_set_by < 0 THEN CAST((-l.notes_set_by) AS TEXT)
-          ELSE notes_user.telegram_id 
+          ELSE notes_user.telegram_id
         END as notes_set_by_telegram_id
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
@@ -173,8 +173,8 @@ export async function GET(
       LEFT JOIN users g_teacher ON g.teacher_id = g_teacher.id
       LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
       LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
-      LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL 
-        AND l.telegram_user_info->>'user_id' IS NOT NULL 
+      LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL
+        AND l.telegram_user_info->>'user_id' IS NOT NULL
         AND l.telegram_user_info->>'user_id' = telegram_info_user.telegram_id
       WHERE l.id = $1`,
       [numericId]
@@ -191,8 +191,8 @@ export async function GET(
         l.lesson_date,
         l.start_datetime,
         l.end_datetime,
-        TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
-        TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
+        TO_CHAR(l.start_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as start_time_formatted,
+        TO_CHAR(l.end_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as end_time_formatted,
         l.topic,
         l.notes,
         l.status,
@@ -208,7 +208,7 @@ export async function GET(
         g.course_id as course_id,
         c.title as course_title,
         CASE WHEN l.teacher_id IS NOT NULL THEN TRUE ELSE FALSE END as is_replaced,
-        CASE 
+        CASE
           WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
             COALESCE(
               l.telegram_user_info->>'first_name',
@@ -216,9 +216,9 @@ export async function GET(
               'Telegram User'
             )
           WHEN l.topic_set_by < 0 THEN 'Telegram User'
-          ELSE topic_user.name 
+          ELSE topic_user.name
         END as topic_set_by_name,
-        CASE 
+        CASE
           WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
             COALESCE(
               l.telegram_user_info->>'first_name',
@@ -226,15 +226,15 @@ export async function GET(
               'Telegram User'
             )
           WHEN l.notes_set_by < 0 THEN 'Telegram User'
-          ELSE notes_user.name 
+          ELSE notes_user.name
         END as notes_set_by_name,
-        CASE 
+        CASE
           WHEN l.topic_set_by < 0 THEN CAST((-l.topic_set_by) AS TEXT)
-          ELSE topic_user.telegram_id 
+          ELSE topic_user.telegram_id
         END as topic_set_by_telegram_id,
-        CASE 
+        CASE
           WHEN l.notes_set_by < 0 THEN CAST((-l.notes_set_by) AS TEXT)
-          ELSE notes_user.telegram_id 
+          ELSE notes_user.telegram_id
         END as notes_set_by_telegram_id
       FROM lessons l
       JOIN groups g ON l.group_id = g.id
@@ -242,8 +242,8 @@ export async function GET(
       LEFT JOIN users u ON l.teacher_id = u.id
       LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
       LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
-      LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL 
-        AND l.telegram_user_info->>'user_id' IS NOT NULL 
+      LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL
+        AND l.telegram_user_info->>'user_id' IS NOT NULL
         AND l.telegram_user_info->>'user_id' = telegram_info_user.telegram_id
       WHERE l.public_id = $1`,
       [rawId]
@@ -510,11 +510,11 @@ export async function PATCH(
     console.log('[Telegram Lesson] SQL query params:', queryParams);
     
     const updatedLessonRaw = await get<Lesson & { topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: any; start_time_formatted: string | null; end_time_formatted: string | null }>(
-      `SELECT 
-        l.*, 
-        TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
-        TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
-        CASE 
+      `SELECT
+        l.*,
+        TO_CHAR(l.start_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as start_time_formatted,
+        TO_CHAR(l.end_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as end_time_formatted,
+        CASE
           WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
             COALESCE(
               l.telegram_user_info->>'first_name',
@@ -522,9 +522,9 @@ export async function PATCH(
               'Telegram User'
             )
           WHEN l.topic_set_by < 0 THEN 'Telegram User'
-          ELSE topic_user.name 
+          ELSE topic_user.name
         END as topic_set_by_name,
-        CASE 
+        CASE
           WHEN l.notes_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
             COALESCE(
               l.telegram_user_info->>'first_name',
@@ -532,21 +532,22 @@ export async function PATCH(
               'Telegram User'
             )
           WHEN l.notes_set_by < 0 THEN 'Telegram User'
-          ELSE notes_user.name 
+          ELSE notes_user.name
         END as notes_set_by_name,
-        CASE 
+        CASE
           WHEN l.topic_set_by < 0 THEN CAST((-l.topic_set_by) AS TEXT)
-          ELSE topic_user.telegram_id 
+          ELSE topic_user.telegram_id
         END as topic_set_by_telegram_id,
-        CASE 
+        CASE
           WHEN l.notes_set_by < 0 THEN CAST((-l.notes_set_by) AS TEXT)
-          ELSE notes_user.telegram_id 
+          ELSE notes_user.telegram_id
         END as notes_set_by_telegram_id
       FROM lessons l
+      LEFT JOIN groups g ON l.group_id = g.id
       LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
       LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
-      LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL 
-        AND l.telegram_user_info->>'user_id' IS NOT NULL 
+      LEFT JOIN users telegram_info_user ON l.telegram_user_info IS NOT NULL
+        AND l.telegram_user_info->>'user_id' IS NOT NULL
         AND l.telegram_user_info->>'user_id' = telegram_info_user.telegram_id
       WHERE l.id = $1`,
       [lesson.id]
