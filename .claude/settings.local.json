@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"original_date\\\\|is_rescheduled\\\\|reschedule\" \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/scripts/\"* 2>/dev/null)",
+      "Bash(cd \"C:/CProjects/ITRoboticsCRM/ITRobotCRM\" && node scripts/add-lesson-original-date.js)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(node scripts/fix-group-lesson-times.js)",
+      "Bash(find /c/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/api -type f -name \"*.ts\" | xargs grep -L \"export const dynamic\" | head -50)",
+      "Bash(find /c/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/api -name \"*.ts\" -type f | while read f; do if ! grep -q \"export const dynamic = 'force-dynamic'\" \"$f\"; then echo \"$f\"; fi; done)",
+      "Bash(for f:*)",
+      "Bash(grep -n \"error:.*'\" /c/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/api/teacher-app/lessons/\\\\[id\\\\]/route.ts | grep -E \"[A-Z][a-z]\")",
+      "Bash(git commit:*)",
+      "Bash(wc -l \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/students/[id]/page.tsx\")",
+      "Bash(ls \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/\")",
+      "Bash(cd \"C:/CProjects/ITRoboticsCRM/ITRobotCRM\" && npx tsc --noEmit 2>&1 | head -60)",
+      "Bash(cd \"C:/CProjects/ITRoboticsCRM/ITRobotCRM\" && npx tsc --noEmit 2>&1 | grep -v \"migrate.ts\")"
+    ]
+  }
+}
