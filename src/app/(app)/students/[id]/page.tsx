@@ -9,6 +9,7 @@ import { uk } from '@/i18n/uk';
 import { formatDateTimeKyiv, formatDateKyiv } from '@/lib/date-utils';
 import DraggableModal from '@/components/DraggableModal';
 import { useStudentModals } from '@/components/StudentModalsContext';
+import StudentAttendancePanel from '@/components/StudentAttendancePanel';
 
 interface User {
   id: number;
@@ -2263,6 +2264,8 @@ export default function StudentProfilePage() {
               )}
             </div>
 
+            {/* Attendance Panel */}
+            <StudentAttendancePanel studentId={student.id} />
 
           </div>
         </div>

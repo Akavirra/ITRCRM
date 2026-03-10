@@ -2,16 +2,17 @@
 
 import { usePathname } from 'next/navigation';
 import { t } from '@/i18n/t';
-import { 
-  Home, 
-  BookOpen, 
-  Users, 
-  User, 
-  GraduationCap, 
-  Calendar, 
-  BarChart3, 
+import {
+  Home,
+  BookOpen,
+  Users,
+  User,
+  GraduationCap,
+  Calendar,
+  BarChart3,
   Settings,
-  LogOut
+  LogOut,
+  ClipboardList
 } from 'lucide-react';
 import TransitionLink from '@/components/TransitionLink';
 
@@ -35,6 +36,7 @@ const menuItems = [
   { href: '/groups', labelKey: 'nav.groups', icon: Users },
   { href: '/students', labelKey: 'nav.students', icon: User },
   { href: '/teachers', labelKey: 'nav.teachers', icon: GraduationCap },
+  { href: '/attendance', labelKey: 'nav.attendance', icon: ClipboardList },
   { href: '/reports', labelKey: 'nav.reports', icon: BarChart3 },
 ];
 

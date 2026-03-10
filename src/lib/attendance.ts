@@ -285,6 +285,264 @@ export async function getStudentAttendanceStats(
   };
 }
 
+// Get paginated lesson attendance history for a student
+export async function getStudentAttendanceLessons(
+  studentId: number,
+  options: {
+    limit?: number;
+    offset?: number;
+    groupId?: number;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {}
+): Promise<{
+  lessons: Array<{
+    lesson_id: number;
+    lesson_date: string;
+    start_datetime: string | null;
+    group_id: number | null;
+    group_title: string | null;
+    course_title: string | null;
+    topic: string | null;
+    status: AttendanceStatus | null;
+  }>;
+  total: number;
+}> {
+  const { limit = 50, offset = 0, groupId, status, startDate, endDate } = options;
+  const params: (number | string)[] = [studentId];
+  let idx = 2;
+  let where = '';
+
+  if (groupId) { where += ` AND l.group_id = $${idx++}`; params.push(groupId); }
+  if (status) { where += ` AND a.status = $${idx++}`; params.push(status); }
+  if (startDate) { where += ` AND l.lesson_date >= $${idx++}`; params.push(startDate); }
+  if (endDate) { where += ` AND l.lesson_date <= $${idx++}`; params.push(endDate); }
+
+  params.push(limit, offset);
+  const limitIdx = idx; const offsetIdx = idx + 1;
+
+  const rows = await all<{
+    lesson_id: number;
+    lesson_date: string;
+    start_datetime: string | null;
+    group_id: number | null;
+    group_title: string | null;
+    course_title: string | null;
+    topic: string | null;
+    status: AttendanceStatus | null;
+    total_count: number;
+  }>(
+    `SELECT
+      l.id as lesson_id,
+      l.lesson_date,
+      l.start_datetime,
+      l.group_id,
+      g.title as group_title,
+      c.title as course_title,
+      l.topic,
+      a.status,
+      COUNT(*) OVER() as total_count
+     FROM lessons l
+     LEFT JOIN groups g ON l.group_id = g.id
+     LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
+     LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = $1
+     WHERE l.status != 'canceled'
+       AND (
+         l.group_id IN (SELECT group_id FROM student_groups WHERE student_id = $1 AND is_active = TRUE)
+         OR EXISTS (SELECT 1 FROM attendance a2 WHERE a2.lesson_id = l.id AND a2.student_id = $1)
+       )
+       ${where}
+     ORDER BY l.lesson_date DESC, l.start_datetime DESC
+     LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+    params
+  );
+
+  return {
+    lessons: rows.map(({ total_count: _, ...r }) => r),
+    total: rows[0]?.total_count ?? 0,
+  };
+}
+
+// Get per-group attendance breakdown for a student
+export async function getStudentAttendanceByGroup(studentId: number): Promise<Array<{
+  group_id: number;
+  group_title: string;
+  course_title: string | null;
+  total: number;
+  present: number;
+  absent: number;
+  makeup_planned: number;
+  makeup_done: number;
+  attendance_rate: number;
+}>> {
+  const rows = await all<{
+    group_id: number;
+    group_title: string;
+    course_title: string | null;
+    total: number;
+    present: number;
+    absent: number;
+    makeup_planned: number;
+    makeup_done: number;
+  }>(
+    `SELECT
+      g.id as group_id,
+      g.title as group_title,
+      c.title as course_title,
+      COUNT(l.id) as total,
+      SUM(CASE WHEN a.status = 'present'       THEN 1 ELSE 0 END) as present,
+      SUM(CASE WHEN a.status = 'absent'         THEN 1 ELSE 0 END) as absent,
+      SUM(CASE WHEN a.status = 'makeup_planned' THEN 1 ELSE 0 END) as makeup_planned,
+      SUM(CASE WHEN a.status = 'makeup_done'    THEN 1 ELSE 0 END) as makeup_done
+     FROM student_groups sg
+     JOIN groups g ON sg.group_id = g.id
+     LEFT JOIN courses c ON g.course_id = c.id
+     JOIN lessons l ON l.group_id = g.id AND l.status != 'canceled'
+     LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = $1
+     WHERE sg.student_id = $1
+     GROUP BY g.id, g.title, c.title
+     ORDER BY g.title`,
+    [studentId]
+  );
+
+  return rows.map(r => ({
+    ...r,
+    attendance_rate: r.total > 0 ? Math.round((r.present / r.total) * 100) : 0,
+  }));
+}
+
+// Get global attendance stats per student (for the /attendance page)
+export async function getGlobalAttendanceStats(options: {
+  groupId?: number;
+  search?: string;
+  sortBy?: 'name' | 'rate' | 'absent';
+  sortDir?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+} = {}): Promise<{
+  rows: Array<{
+    student_id: number;
+    student_name: string;
+    group_id: number | null;
+    group_title: string | null;
+    total: number;
+    present: number;
+    absent: number;
+    makeup_planned: number;
+    makeup_done: number;
+    attendance_rate: number;
+  }>;
+  total: number;
+}> {
+  const { groupId, search, sortBy = 'name', sortDir = 'asc', limit = 50, offset = 0 } = options;
+  const params: (number | string)[] = [];
+  let idx = 1;
+  let where = 's.is_active = TRUE';
+
+  if (groupId) { where += ` AND sg.group_id = $${idx++}`; params.push(groupId); }
+  if (search) { where += ` AND s.full_name ILIKE $${idx++}`; params.push(`%${search}%`); }
+
+  const orderMap = {
+    name: 's.full_name',
+    rate: 'attendance_rate',
+    absent: 'absent',
+  };
+  const orderCol = orderMap[sortBy] ?? 's.full_name';
+  const orderDir = sortDir === 'desc' ? 'DESC' : 'ASC';
+
+  params.push(limit, offset);
+  const limitIdx = idx; const offsetIdx = idx + 1;
+
+  const rows = await all<{
+    student_id: number;
+    student_name: string;
+    group_id: number | null;
+    group_title: string | null;
+    total: number;
+    present: number;
+    absent: number;
+    makeup_planned: number;
+    makeup_done: number;
+    attendance_rate: number;
+    total_count: number;
+  }>(
+    `SELECT
+      s.id as student_id,
+      s.full_name as student_name,
+      g.id as group_id,
+      g.title as group_title,
+      COUNT(l.id) as total,
+      SUM(CASE WHEN a.status = 'present'       THEN 1 ELSE 0 END) as present,
+      SUM(CASE WHEN a.status = 'absent'         THEN 1 ELSE 0 END) as absent,
+      SUM(CASE WHEN a.status = 'makeup_planned' THEN 1 ELSE 0 END) as makeup_planned,
+      SUM(CASE WHEN a.status = 'makeup_done'    THEN 1 ELSE 0 END) as makeup_done,
+      CASE WHEN COUNT(l.id) > 0
+        THEN ROUND(SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) * 100.0 / COUNT(l.id))
+        ELSE 0 END as attendance_rate,
+      COUNT(*) OVER() as total_count
+     FROM students s
+     JOIN student_groups sg ON sg.student_id = s.id AND sg.is_active = TRUE
+     JOIN groups g ON sg.group_id = g.id
+     JOIN lessons l ON l.group_id = g.id AND l.status != 'canceled'
+     LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = s.id
+     WHERE ${where}
+     GROUP BY s.id, s.full_name, g.id, g.title
+     ORDER BY ${orderCol} ${orderDir}
+     LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+    params
+  );
+
+  return {
+    rows: rows.map(({ total_count: _, ...r }) => r),
+    total: rows[0]?.total_count ?? 0,
+  };
+}
+
+// Get global KPI totals for the attendance page header
+export async function getGlobalAttendanceTotals(): Promise<{
+  total_lessons: number;
+  total_records: number;
+  present: number;
+  absent: number;
+  makeup_planned: number;
+  makeup_done: number;
+  overall_rate: number;
+  students_count: number;
+}> {
+  const result = await get<{
+    total_lessons: number;
+    total_records: number;
+    present: number;
+    absent: number;
+    makeup_planned: number;
+    makeup_done: number;
+    students_count: number;
+  }>(
+    `SELECT
+      COUNT(DISTINCT l.id) as total_lessons,
+      COUNT(a.id) as total_records,
+      SUM(CASE WHEN a.status = 'present'       THEN 1 ELSE 0 END) as present,
+      SUM(CASE WHEN a.status = 'absent'         THEN 1 ELSE 0 END) as absent,
+      SUM(CASE WHEN a.status = 'makeup_planned' THEN 1 ELSE 0 END) as makeup_planned,
+      SUM(CASE WHEN a.status = 'makeup_done'    THEN 1 ELSE 0 END) as makeup_done,
+      COUNT(DISTINCT a.student_id) as students_count
+     FROM lessons l
+     LEFT JOIN attendance a ON a.lesson_id = l.id
+     WHERE l.status != 'canceled'`,
+    []
+  );
+
+  if (!result) {
+    return { total_lessons: 0, total_records: 0, present: 0, absent: 0, makeup_planned: 0, makeup_done: 0, overall_rate: 0, students_count: 0 };
+  }
+
+  return {
+    ...result,
+    overall_rate: result.total_records > 0 ? Math.round((result.present / result.total_records) * 100) : 0,
+  };
+}
+
 // Get attendance statistics for a group
 export async function getGroupAttendanceStats(
   groupId: number,
