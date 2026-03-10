@@ -7,6 +7,7 @@ import {
   getGlobalMonthlyTotals,
   getGroupMonthlyRegister,
   getGlobalMonthlyGroupedStats,
+  getGlobalMonthlyLessonRecords,
 } from '@/lib/attendance';
 
 export const dynamic = 'force-dynamic';
@@ -36,6 +37,11 @@ export async function GET(request: NextRequest) {
     if (view === 'groupedMonthly') {
       const data = await getGlobalMonthlyGroupedStats(year, month, { groupId, search });
       return NextResponse.json(data);
+    }
+
+    if (view === 'lessonRecords') {
+      const records = await getGlobalMonthlyLessonRecords(year, month, { groupId, search });
+      return NextResponse.json({ records });
     }
 
     if (view === 'register' && groupId) {
