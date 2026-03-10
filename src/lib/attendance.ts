@@ -602,3 +602,594 @@ export async function getGroupAttendanceStats(
     attendance_rate: r.total > 0 ? Math.round((r.present / r.total) * 100) : 0
   }));
 }
+
+// ─── Monthly view types ────────────────────────────────────────────────────
+
+export interface MonthlyLessonItem {
+  lesson_id: number;
+  lesson_date: string;
+  start_datetime: string | null;
+  topic: string | null;
+  lesson_status: string;
+  attendance_status: AttendanceStatus | null;
+}
+
+export interface MonthlyGroupAttendance {
+  group_id: number | null;
+  group_title: string | null;
+  course_title: string | null;
+  weekly_day: number | null;
+  start_time: string | null;
+  lessons: MonthlyLessonItem[];
+  total: number;
+  present: number;
+  absent: number;
+  not_marked: number;
+  makeup: number;
+  rate: number;
+}
+
+// Get all lessons for a student in a specific month, grouped by group
+export async function getStudentMonthlyAttendance(
+  studentId: number,
+  year: number,
+  month: number
+): Promise<MonthlyGroupAttendance[]> {
+  const rows = await all<{
+    lesson_id: number;
+    lesson_date: string;
+    start_datetime: string | null;
+    topic: string | null;
+    lesson_status: string;
+    group_id: number | null;
+    group_title: string | null;
+    course_title: string | null;
+    weekly_day: number | null;
+    start_time: string | null;
+    attendance_status: AttendanceStatus | null;
+  }>(
+    `SELECT
+      l.id as lesson_id,
+      l.lesson_date,
+      l.start_datetime,
+      l.topic,
+      l.status as lesson_status,
+      l.group_id,
+      g.title as group_title,
+      c.title as course_title,
+      g.weekly_day,
+      g.start_time,
+      a.status as attendance_status
+     FROM lessons l
+     LEFT JOIN groups g ON l.group_id = g.id
+     LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
+     LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = $1
+     WHERE l.status != 'canceled'
+       AND EXTRACT(YEAR FROM l.lesson_date) = $2
+       AND EXTRACT(MONTH FROM l.lesson_date) = $3
+       AND (
+         l.group_id IN (
+           SELECT group_id FROM student_groups
+           WHERE student_id = $1 AND is_active = TRUE
+         )
+         OR EXISTS (
+           SELECT 1 FROM attendance a2
+           WHERE a2.lesson_id = l.id AND a2.student_id = $1
+         )
+       )
+     ORDER BY l.group_id NULLS LAST, l.lesson_date`,
+    [studentId, year, month]
+  );
+
+  const groupsMap = new Map<number | null, MonthlyGroupAttendance>();
+
+  for (const row of rows) {
+    const key = row.group_id ?? null;
+    if (!groupsMap.has(key)) {
+      groupsMap.set(key, {
+        group_id: row.group_id,
+        group_title: row.group_title,
+        course_title: row.course_title,
+        weekly_day: row.weekly_day,
+        start_time: row.start_time,
+        lessons: [],
+        total: 0,
+        present: 0,
+        absent: 0,
+        not_marked: 0,
+        makeup: 0,
+        rate: 0,
+      });
+    }
+    const g = groupsMap.get(key)!;
+    g.lessons.push({
+      lesson_id: row.lesson_id,
+      lesson_date: row.lesson_date,
+      start_datetime: row.start_datetime,
+      topic: row.topic,
+      lesson_status: row.lesson_status,
+      attendance_status: row.attendance_status,
+    });
+    g.total++;
+    if (row.attendance_status === 'present') g.present++;
+    else if (row.attendance_status === 'absent') g.absent++;
+    else if (row.attendance_status === 'makeup_planned' || row.attendance_status === 'makeup_done') g.makeup++;
+    else g.not_marked++;
+  }
+
+  Array.from(groupsMap.values()).forEach(g => {
+    g.rate = g.total > 0 ? Math.round((g.present / g.total) * 100) : 0;
+  });
+
+  return Array.from(groupsMap.values());
+}
+
+// ─── Global monthly stats ──────────────────────────────────────────────────
+
+export interface GlobalMonthlyRow {
+  student_id: number;
+  student_name: string;
+  group_id: number;
+  group_title: string;
+  course_title: string | null;
+  total: number;
+  present: number;
+  absent: number;
+  makeup_planned: number;
+  makeup_done: number;
+  not_marked: number;
+  attendance_rate: number;
+}
+
+export async function getGlobalMonthlyStats(
+  year: number,
+  month: number,
+  options: { groupId?: number; search?: string } = {}
+): Promise<GlobalMonthlyRow[]> {
+  const { groupId, search } = options;
+  const params: (number | string)[] = [year, month];
+  let idx = 3;
+  let where = 's.is_active = TRUE';
+
+  if (groupId) { where += ` AND sg.group_id = $${idx++}`; params.push(groupId); }
+  if (search) { where += ` AND s.full_name ILIKE $${idx++}`; params.push(`%${search}%`); }
+
+  // Group lessons
+  const groupRows = await all<{
+    student_id: number;
+    student_name: string;
+    group_id: number;
+    group_title: string;
+    course_title: string | null;
+    total: number;
+    present: number;
+    absent: number;
+    makeup_planned: number;
+    makeup_done: number;
+    not_marked: number;
+  }>(
+    `SELECT
+      s.id as student_id,
+      s.full_name as student_name,
+      g.id as group_id,
+      g.title as group_title,
+      c.title as course_title,
+      COUNT(l.id) as total,
+      SUM(CASE WHEN a.status = 'present'       THEN 1 ELSE 0 END) as present,
+      SUM(CASE WHEN a.status = 'absent'         THEN 1 ELSE 0 END) as absent,
+      SUM(CASE WHEN a.status = 'makeup_planned' THEN 1 ELSE 0 END) as makeup_planned,
+      SUM(CASE WHEN a.status = 'makeup_done'    THEN 1 ELSE 0 END) as makeup_done,
+      SUM(CASE WHEN a.status IS NULL            THEN 1 ELSE 0 END) as not_marked
+     FROM students s
+     JOIN student_groups sg ON sg.student_id = s.id AND sg.is_active = TRUE
+     JOIN groups g ON sg.group_id = g.id
+     LEFT JOIN courses c ON g.course_id = c.id
+     JOIN lessons l ON l.group_id = g.id
+       AND l.status != 'canceled'
+       AND EXTRACT(YEAR FROM l.lesson_date) = $1
+       AND EXTRACT(MONTH FROM l.lesson_date) = $2
+     LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = s.id
+     WHERE ${where}
+     GROUP BY s.id, s.full_name, g.id, g.title, c.title
+     HAVING COUNT(l.id) > 0
+     ORDER BY s.full_name, g.title`,
+    params
+  );
+
+  // Individual lessons (group_id IS NULL)
+  let indivWhere = 's.is_active = TRUE';
+  const indivParams: (number | string)[] = [year, month];
+  let indivIdx = 3;
+  if (search) { indivWhere += ` AND s.full_name ILIKE $${indivIdx++}`; indivParams.push(`%${search}%`); }
+
+  const indivRows = !groupId ? await all<{
+    student_id: number;
+    student_name: string;
+    group_id: number;
+    group_title: string;
+    course_title: string | null;
+    total: number;
+    present: number;
+    absent: number;
+    makeup_planned: number;
+    makeup_done: number;
+    not_marked: number;
+  }>(
+    `SELECT
+      s.id as student_id,
+      s.full_name as student_name,
+      0 as group_id,
+      'Індивідуальні' as group_title,
+      c.title as course_title,
+      COUNT(l.id) as total,
+      SUM(CASE WHEN a.status = 'present'       THEN 1 ELSE 0 END) as present,
+      SUM(CASE WHEN a.status = 'absent'         THEN 1 ELSE 0 END) as absent,
+      SUM(CASE WHEN a.status = 'makeup_planned' THEN 1 ELSE 0 END) as makeup_planned,
+      SUM(CASE WHEN a.status = 'makeup_done'    THEN 1 ELSE 0 END) as makeup_done,
+      SUM(CASE WHEN a.status IS NULL            THEN 1 ELSE 0 END) as not_marked
+     FROM students s
+     JOIN attendance a ON a.student_id = s.id
+     JOIN lessons l ON a.lesson_id = l.id
+       AND l.group_id IS NULL
+       AND l.status != 'canceled'
+       AND EXTRACT(YEAR FROM l.lesson_date) = $1
+       AND EXTRACT(MONTH FROM l.lesson_date) = $2
+     LEFT JOIN courses c ON l.course_id = c.id
+     WHERE ${indivWhere}
+     GROUP BY s.id, s.full_name, c.title
+     HAVING COUNT(l.id) > 0
+     ORDER BY s.full_name`,
+    indivParams
+  ) : [];
+
+  const allRows = [...groupRows, ...indivRows];
+
+  return allRows.map(r => ({
+    ...r,
+    attendance_rate: r.total > 0 ? Math.round((r.present / r.total) * 100) : 0,
+  }));
+}
+
+export async function getGlobalMonthlyTotals(year: number, month: number): Promise<{
+  total_lessons: number;
+  group_lessons: number;
+  individual_lessons: number;
+  total_records: number;
+  present: number;
+  absent: number;
+  makeup: number;
+  not_marked: number;
+  overall_rate: number;
+  students_count: number;
+}> {
+  const result = await get<{
+    total_lessons: number;
+    group_lessons: number;
+    individual_lessons: number;
+    total_records: number;
+    present: number;
+    absent: number;
+    makeup: number;
+    not_marked: number;
+    students_count: number;
+  }>(
+    `SELECT
+      COUNT(DISTINCT l.id) as total_lessons,
+      COUNT(DISTINCT CASE WHEN l.group_id IS NOT NULL THEN l.id END) as group_lessons,
+      COUNT(DISTINCT CASE WHEN l.group_id IS NULL THEN l.id END) as individual_lessons,
+      COUNT(a.id) as total_records,
+      SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present,
+      SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as absent,
+      SUM(CASE WHEN a.status IN ('makeup_planned','makeup_done') THEN 1 ELSE 0 END) as makeup,
+      SUM(CASE WHEN a.status IS NULL THEN 1 ELSE 0 END) as not_marked,
+      COUNT(DISTINCT a.student_id) as students_count
+     FROM lessons l
+     LEFT JOIN attendance a ON a.lesson_id = l.id
+     WHERE l.status != 'canceled'
+       AND EXTRACT(YEAR FROM l.lesson_date) = $1
+       AND EXTRACT(MONTH FROM l.lesson_date) = $2`,
+    [year, month]
+  );
+
+  if (!result) {
+    return { total_lessons: 0, group_lessons: 0, individual_lessons: 0, total_records: 0, present: 0, absent: 0, makeup: 0, not_marked: 0, overall_rate: 0, students_count: 0 };
+  }
+  return {
+    ...result,
+    overall_rate: result.total_records > 0 ? Math.round((result.present / result.total_records) * 100) : 0,
+  };
+}
+
+// ─── Global monthly grouped stats (for Attendance page "По групах" view) ──
+
+export interface GroupedMonthlyGroup {
+  group_id: number;
+  group_title: string;
+  course_title: string | null;
+  weekly_day: number | null;
+  start_time: string | null;
+  duration_minutes: number;
+  students: Array<{
+    student_id: number;
+    student_name: string;
+    total: number;
+    present: number;
+    absent: number;
+    makeup: number;
+    not_marked: number;
+    rate: number;
+  }>;
+  total_lessons: number;
+  avg_rate: number;
+}
+
+export interface GroupedMonthlyIndividual {
+  lesson_id: number;
+  lesson_date: string;
+  start_time: string | null;
+  topic: string | null;
+  course_title: string | null;
+  students: Array<{
+    student_id: number;
+    student_name: string;
+    status: AttendanceStatus | null;
+  }>;
+}
+
+export interface GroupedMonthlyResult {
+  groups: GroupedMonthlyGroup[];
+  individual_lessons: GroupedMonthlyIndividual[];
+}
+
+export async function getGlobalMonthlyGroupedStats(
+  year: number,
+  month: number,
+  options: { groupId?: number; search?: string } = {}
+): Promise<GroupedMonthlyResult> {
+  const { groupId, search } = options;
+
+  // --- Group lessons ---
+  const gParams: (number | string)[] = [year, month];
+  let gIdx = 3;
+  let gWhere = 'sg.is_active = TRUE AND s.is_active = TRUE';
+  if (groupId) { gWhere += ` AND g.id = $${gIdx++}`; gParams.push(groupId); }
+  if (search) { gWhere += ` AND s.full_name ILIKE $${gIdx++}`; gParams.push(`%${search}%`); }
+
+  const groupRows = await all<{
+    group_id: number;
+    group_title: string;
+    course_title: string | null;
+    weekly_day: number | null;
+    start_time: string | null;
+    duration_minutes: number;
+    student_id: number;
+    student_name: string;
+    total: number;
+    present: number;
+    absent: number;
+    makeup: number;
+    not_marked: number;
+  }>(
+    `SELECT
+      g.id as group_id,
+      g.title as group_title,
+      c.title as course_title,
+      g.weekly_day,
+      g.start_time,
+      g.duration_minutes,
+      s.id as student_id,
+      s.full_name as student_name,
+      COUNT(l.id) as total,
+      SUM(CASE WHEN a.status = 'present'       THEN 1 ELSE 0 END) as present,
+      SUM(CASE WHEN a.status = 'absent'         THEN 1 ELSE 0 END) as absent,
+      SUM(CASE WHEN a.status IN ('makeup_planned','makeup_done') THEN 1 ELSE 0 END) as makeup,
+      SUM(CASE WHEN a.status IS NULL            THEN 1 ELSE 0 END) as not_marked
+     FROM students s
+     JOIN student_groups sg ON sg.student_id = s.id
+     JOIN groups g ON sg.group_id = g.id
+     LEFT JOIN courses c ON g.course_id = c.id
+     JOIN lessons l ON l.group_id = g.id
+       AND l.status != 'canceled'
+       AND EXTRACT(YEAR FROM l.lesson_date) = $1
+       AND EXTRACT(MONTH FROM l.lesson_date) = $2
+     LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = s.id
+     WHERE ${gWhere}
+     GROUP BY g.id, g.title, c.title, g.weekly_day, g.start_time, g.duration_minutes, s.id, s.full_name
+     HAVING COUNT(l.id) > 0
+     ORDER BY g.title, s.full_name`,
+    gParams
+  );
+
+  // Aggregate into groups
+  const groupsMap = new Map<number, GroupedMonthlyGroup>();
+  for (const row of groupRows) {
+    if (!groupsMap.has(row.group_id)) {
+      groupsMap.set(row.group_id, {
+        group_id: row.group_id,
+        group_title: row.group_title,
+        course_title: row.course_title,
+        weekly_day: row.weekly_day,
+        start_time: row.start_time,
+        duration_minutes: row.duration_minutes,
+        students: [],
+        total_lessons: 0,
+        avg_rate: 0,
+      });
+    }
+    const g = groupsMap.get(row.group_id)!;
+    const rate = row.total > 0 ? Math.round((row.present / row.total) * 100) : 0;
+    g.students.push({
+      student_id: row.student_id,
+      student_name: row.student_name,
+      total: row.total,
+      present: row.present,
+      absent: row.absent,
+      makeup: row.makeup,
+      not_marked: row.not_marked,
+      rate,
+    });
+    g.total_lessons = row.total; // same for all students in a group
+  }
+
+  // Compute avg rate per group
+  Array.from(groupsMap.values()).forEach(g => {
+    if (g.students.length > 0) {
+      g.avg_rate = Math.round(g.students.reduce((sum: number, st: { rate: number }) => sum + st.rate, 0) / g.students.length);
+    }
+  });
+
+  // --- Individual lessons ---
+  let indivLessons: GroupedMonthlyIndividual[] = [];
+  if (!groupId) {
+    const iParams: (number | string)[] = [year, month];
+    let iWhere = `l.group_id IS NULL AND l.status != 'canceled'
+       AND EXTRACT(YEAR FROM l.lesson_date) = $1
+       AND EXTRACT(MONTH FROM l.lesson_date) = $2`;
+
+    const lessonRows = await all<{
+      lesson_id: number;
+      lesson_date: string;
+      start_time_formatted: string | null;
+      topic: string | null;
+      course_title: string | null;
+      student_id: number;
+      student_name: string;
+      att_status: AttendanceStatus | null;
+    }>(
+      `SELECT
+        l.id as lesson_id,
+        l.lesson_date,
+        TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as start_time_formatted,
+        l.topic,
+        c.title as course_title,
+        s.id as student_id,
+        s.full_name as student_name,
+        a.status as att_status
+       FROM lessons l
+       LEFT JOIN courses c ON l.course_id = c.id
+       JOIN attendance a ON a.lesson_id = l.id
+       JOIN students s ON a.student_id = s.id
+       WHERE ${iWhere}
+       ORDER BY l.lesson_date, l.start_datetime, s.full_name`,
+      iParams
+    );
+
+    const lessonMap = new Map<number, GroupedMonthlyIndividual>();
+    for (const row of lessonRows) {
+      if (!lessonMap.has(row.lesson_id)) {
+        lessonMap.set(row.lesson_id, {
+          lesson_id: row.lesson_id,
+          lesson_date: row.lesson_date,
+          start_time: row.start_time_formatted,
+          topic: row.topic,
+          course_title: row.course_title,
+          students: [],
+        });
+      }
+      const lesson = lessonMap.get(row.lesson_id)!;
+      if (!search || row.student_name.toLowerCase().includes(search.toLowerCase())) {
+        lesson.students.push({
+          student_id: row.student_id,
+          student_name: row.student_name,
+          status: row.att_status,
+        });
+      }
+    }
+    // Filter out lessons with no matching students after search
+    indivLessons = Array.from(lessonMap.values()).filter(l => l.students.length > 0);
+  }
+
+  return {
+    groups: Array.from(groupsMap.values()),
+    individual_lessons: indivLessons,
+  };
+}
+
+// ─── Group register (matrix view) ─────────────────────────────────────────
+
+export interface GroupRegisterLesson {
+  lesson_id: number;
+  lesson_date: string;
+  topic: string | null;
+}
+
+export interface GroupRegisterStudent {
+  student_id: number;
+  student_name: string;
+  attendance: Record<number, AttendanceStatus | null>;
+  present: number;
+  absent: number;
+  not_marked: number;
+  rate: number;
+}
+
+export interface GroupRegister {
+  lessons: GroupRegisterLesson[];
+  students: GroupRegisterStudent[];
+}
+
+export async function getGroupMonthlyRegister(
+  groupId: number,
+  year: number,
+  month: number
+): Promise<GroupRegister> {
+  const lessons = await all<{ lesson_id: number; lesson_date: string; topic: string | null }>(
+    `SELECT id as lesson_id, lesson_date, topic
+     FROM lessons
+     WHERE group_id = $1
+       AND status != 'canceled'
+       AND EXTRACT(YEAR FROM lesson_date) = $2
+       AND EXTRACT(MONTH FROM lesson_date) = $3
+     ORDER BY lesson_date`,
+    [groupId, year, month]
+  );
+
+  if (lessons.length === 0) return { lessons: [], students: [] };
+
+  const students = await all<{ student_id: number; student_name: string }>(
+    `SELECT s.id as student_id, s.full_name as student_name
+     FROM students s
+     JOIN student_groups sg ON sg.student_id = s.id
+     WHERE sg.group_id = $1 AND sg.is_active = TRUE AND s.is_active = TRUE
+     ORDER BY s.full_name`,
+    [groupId]
+  );
+
+  if (students.length === 0) return { lessons, students: [] };
+
+  const lessonIdList = lessons.map(l => l.lesson_id).join(',');
+  const attendance = await all<{ lesson_id: number; student_id: number; status: AttendanceStatus }>(
+    `SELECT lesson_id, student_id, status
+     FROM attendance
+     WHERE lesson_id IN (${lessonIdList})`,
+    []
+  );
+
+  const attMap = new Map<string, AttendanceStatus>();
+  for (const att of attendance) {
+    attMap.set(`${att.lesson_id}-${att.student_id}`, att.status);
+  }
+
+  const studentRows: GroupRegisterStudent[] = students.map(s => {
+    const att: Record<number, AttendanceStatus | null> = {};
+    let present = 0, absent = 0, not_marked = 0;
+    for (const l of lessons) {
+      const status = attMap.get(`${l.lesson_id}-${s.student_id}`) ?? null;
+      att[l.lesson_id] = status;
+      if (status === 'present') present++;
+      else if (status === 'absent' || status === 'makeup_planned' || status === 'makeup_done') absent++;
+      else not_marked++;
+    }
+    return {
+      student_id: s.student_id,
+      student_name: s.student_name,
+      attendance: att,
+      present,
+      absent,
+      not_marked,
+      rate: lessons.length > 0 ? Math.round((present / lessons.length) * 100) : 0,
+    };
+  });
+
+  return { lessons, students: studentRows };
+}

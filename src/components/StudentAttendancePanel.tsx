@@ -1,435 +1,256 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { t } from '@/i18n/t';
 
-interface LessonRow {
+type AttendanceStatus = 'present' | 'absent' | 'makeup_planned' | 'makeup_done';
+
+interface MonthlyLessonItem {
   lesson_id: number;
   lesson_date: string;
   start_datetime: string | null;
+  topic: string | null;
+  lesson_status: string;
+  attendance_status: AttendanceStatus | null;
+}
+
+interface MonthlyGroupAttendance {
   group_id: number | null;
   group_title: string | null;
   course_title: string | null;
-  topic: string | null;
-  status: 'present' | 'absent' | 'makeup_planned' | 'makeup_done' | null;
-}
-
-interface GroupStat {
-  group_id: number;
-  group_title: string;
-  course_title: string | null;
+  weekly_day: number | null;
+  start_time: string | null;
+  lessons: MonthlyLessonItem[];
   total: number;
   present: number;
   absent: number;
-  makeup_planned: number;
-  makeup_done: number;
-  attendance_rate: number;
+  not_marked: number;
+  makeup: number;
+  rate: number;
 }
 
-interface Summary {
-  total: number;
-  present: number;
-  absent: number;
-  makeup_planned: number;
-  makeup_done: number;
-  attendance_rate: number;
-}
-
-const STATUS_COLOR: Record<string, string> = {
-  present: '#16a34a',
-  absent: '#dc2626',
-  makeup_planned: '#d97706',
-  makeup_done: '#2563eb',
-};
-
-const STATUS_BG: Record<string, string> = {
-  present: '#dcfce7',
-  absent: '#fee2e2',
-  makeup_planned: '#fef3c7',
-  makeup_done: '#dbeafe',
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  present: t('attendance.present'),
-  absent: t('attendance.absent'),
-  makeup_planned: t('attendance.makeupPlanned'),
-  makeup_done: t('attendance.makeupDone'),
-};
+const WEEKDAY_UK = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+const MONTH_UK = ['', 'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
+  'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
 
 function formatDate(dateStr: string): string {
   try {
-    return new Date(dateStr).toLocaleDateString('uk-UA', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
+    const d = new Date(dateStr);
+    return `${String(d.getUTCDate()).padStart(2, '0')}.${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  } catch { return dateStr; }
 }
 
-function RateBar({ rate, size = 'md' }: { rate: number; size?: 'sm' | 'md' }) {
-  const color = rate >= 80 ? '#16a34a' : rate >= 60 ? '#d97706' : '#dc2626';
-  const height = size === 'sm' ? 4 : 6;
+function formatTime(datetimeStr: string | null): string {
+  if (!datetimeStr) return '';
+  try {
+    const d = new Date(datetimeStr);
+    return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+  } catch { return ''; }
+}
+
+function StatusBadge({ status }: { status: AttendanceStatus | null }) {
+  if (!status) return (
+    <div title="Не відмічено" style={{
+      width: 36, height: 36, borderRadius: '50%',
+      backgroundColor: '#f3f4f6', border: '2px solid #e5e7eb',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '1rem', color: '#9ca3af',
+    }}>⬜</div>
+  );
+  const map: Record<AttendanceStatus, { bg: string; border: string; icon: string; title: string; color: string }> = {
+    present:       { bg: '#dcfce7', border: '#86efac', icon: '✓', title: 'Присутній', color: '#16a34a' },
+    absent:        { bg: '#fee2e2', border: '#fca5a5', icon: '✗', title: 'Відсутній', color: '#dc2626' },
+    makeup_planned:{ bg: '#fef3c7', border: '#fcd34d', icon: '↺', title: 'Відпрацювання', color: '#d97706' },
+    makeup_done:   { bg: '#dbeafe', border: '#93c5fd', icon: '✓', title: 'Відпрацьовано', color: '#2563eb' },
+  };
+  const s = map[status];
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <div style={{
-        flex: 1,
-        height,
-        backgroundColor: '#e5e7eb',
-        borderRadius: height,
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          width: `${rate}%`,
-          height: '100%',
-          backgroundColor: color,
-          borderRadius: height,
-          transition: 'width 0.4s ease',
-        }} />
+    <div title={s.title} style={{
+      width: 36, height: 36, borderRadius: '50%',
+      backgroundColor: s.bg, border: `2px solid ${s.border}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '0.875rem', fontWeight: 700, color: s.color,
+    }}>{s.icon}</div>
+  );
+}
+
+function RateBar({ rate }: { rate: number }) {
+  const color = rate >= 80 ? '#16a34a' : rate >= 60 ? '#d97706' : '#dc2626';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ flex: 1, height: 6, backgroundColor: '#e5e7eb', borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{ width: `${rate}%`, height: '100%', backgroundColor: color, borderRadius: 6 }} />
       </div>
-      <span style={{ fontSize: size === 'sm' ? '0.75rem' : '0.8125rem', fontWeight: 600, color, minWidth: '36px', textAlign: 'right' }}>
-        {rate}%
-      </span>
+      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color, minWidth: 36, textAlign: 'right' }}>{rate}%</span>
     </div>
   );
 }
 
 export default function StudentAttendancePanel({ studentId }: { studentId: number }) {
-  const [tab, setTab] = useState<'summary' | 'lessons'>('summary');
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [groups, setGroups] = useState<GroupStat[]>([]);
-  const [lessons, setLessons] = useState<LessonRow[]>([]);
-  const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [groups, setGroups] = useState<MonthlyGroupAttendance[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterGroup, setFilterGroup] = useState('');
-  const LIMIT = 20;
 
-  const loadSummary = useCallback(async () => {
-    const [summaryRes, groupsRes] = await Promise.all([
-      fetch(`/api/students/${studentId}/attendance?view=summary`),
-      fetch(`/api/students/${studentId}/attendance?view=byGroup`),
-    ]);
-    if (summaryRes.ok) {
-      const data = await summaryRes.json();
-      setSummary(data.summary);
-    }
-    if (groupsRes.ok) {
-      const data = await groupsRes.json();
-      setGroups(data.groups || []);
+  const load = useCallback(async (y: number, m: number) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/students/${studentId}/attendance?view=monthly&year=${y}&month=${m}`);
+      if (res.ok) {
+        const data = await res.json();
+        setGroups(data.groups || []);
+      }
+    } finally {
+      setLoading(false);
     }
   }, [studentId]);
 
-  const loadLessons = useCallback(async (reset = false) => {
-    const newOffset = reset ? 0 : offset;
-    setLoading(true);
-    const params = new URLSearchParams({
-      limit: LIMIT.toString(),
-      offset: newOffset.toString(),
-    });
-    if (filterStatus) params.set('status', filterStatus);
-    if (filterGroup) params.set('groupId', filterGroup);
+  useEffect(() => { load(year, month); }, [load, year, month]);
 
-    const res = await fetch(`/api/students/${studentId}/attendance?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (reset) {
-        setLessons(data.lessons || []);
-        setOffset(LIMIT);
-      } else {
-        setLessons(prev => [...prev, ...(data.lessons || [])]);
-        setOffset(prev => prev + LIMIT);
-      }
-      setTotal(data.total || 0);
-    }
-    setLoading(false);
-  }, [studentId, offset, filterStatus, filterGroup]);
-
-  useEffect(() => {
-    loadSummary();
-  }, [loadSummary]);
-
-  useEffect(() => {
-    if (tab === 'lessons') {
-      setOffset(0);
-      loadLessons(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, filterStatus, filterGroup, studentId]);
-
-  const handleExportCSV = () => {
-    const params = new URLSearchParams({ limit: '9999', offset: '0' });
-    if (filterStatus) params.set('status', filterStatus);
-    if (filterGroup) params.set('groupId', filterGroup);
-
-    const rows: string[][] = [[
-      t('table.date'), t('table.group'), t('table.topic'), t('attendance.rate'),
-    ]];
-    lessons.forEach(l => {
-      rows.push([
-        formatDate(l.lesson_date),
-        l.group_title || '—',
-        l.topic || '—',
-        l.status ? (STATUS_LABEL[l.status] || l.status) : '—',
-      ]);
-    });
-    const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `attendance_${studentId}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const prevMonth = () => {
+    if (month === 1) { setYear(y => y - 1); setMonth(12); }
+    else setMonth(m => m - 1);
   };
 
+  const nextMonth = () => {
+    const today = new Date();
+    if (year > today.getFullYear() || (year === today.getFullYear() && month >= today.getMonth() + 1)) return;
+    if (month === 12) { setYear(y => y + 1); setMonth(1); }
+    else setMonth(m => m + 1);
+  };
+
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+  const groupLessons = groups.filter(g => g.group_id !== null);
+  const individualLessons = groups.find(g => g.group_id === null);
+
+  const totalPresent = groups.reduce((sum, g) => sum + g.present, 0);
+  const totalLessons = groups.reduce((sum, g) => sum + g.total, 0);
+  const overallRate = totalLessons > 0 ? Math.round((totalPresent / totalLessons) * 100) : 0;
+
   return (
-    <div className="card" style={{
-      marginBottom: '2rem',
-      borderRadius: '1rem',
-      overflow: 'hidden',
-      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)',
-    }}>
+    <div className="card" style={{ marginBottom: '2rem', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
       {/* Header */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '1.5rem 2rem',
-        borderBottom: '1px solid var(--gray-200)',
-      }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0, color: 'var(--gray-800)', letterSpacing: '-0.025em' }}>
-          {t('attendance.panel')}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 2rem', borderBottom: '1px solid var(--gray-200)' }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0, color: 'var(--gray-800)' }}>
+          Відвідуваність учня
         </h2>
-        {summary && (
+        {totalLessons > 0 && (
           <span style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             minWidth: 28, height: 28, padding: '0 0.625rem',
-            backgroundColor: summary.attendance_rate >= 80 ? '#16a34a' : summary.attendance_rate >= 60 ? '#d97706' : '#dc2626',
+            backgroundColor: overallRate >= 80 ? '#16a34a' : overallRate >= 60 ? '#d97706' : '#dc2626',
             color: 'white', borderRadius: 14, fontSize: '0.8125rem', fontWeight: 600,
           }}>
-            {summary.attendance_rate}%
+            {overallRate}%
           </span>
         )}
       </div>
 
-      {/* Summary KPI row */}
-      {summary && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 0,
-          borderBottom: '1px solid var(--gray-100)',
-        }}>
-          {[
-            { label: t('attendance.totalLessons'), value: summary.total, color: '#374151' },
-            { label: t('attendance.attended'), value: summary.present, color: '#16a34a' },
-            { label: t('attendance.missed'), value: summary.absent, color: '#dc2626' },
-            { label: t('attendance.makeup'), value: summary.makeup_planned + summary.makeup_done, color: '#d97706' },
-          ].map((kpi, i) => (
-            <div key={i} style={{
-              padding: '1rem 1.5rem',
-              borderRight: i < 3 ? '1px solid var(--gray-100)' : 'none',
-              textAlign: 'center',
-            }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: kpi.color }}>{kpi.value}</div>
-              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{kpi.label}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--gray-200)', paddingLeft: '1rem' }}>
-        {(['summary', 'lessons'] as const).map((t_) => (
-          <button
-            key={t_}
-            onClick={() => setTab(t_)}
-            style={{
-              padding: '0.75rem 1.25rem',
-              border: 'none',
-              backgroundColor: 'transparent',
-              fontSize: '0.875rem',
-              fontWeight: tab === t_ ? 600 : 400,
-              color: tab === t_ ? 'var(--primary)' : '#6b7280',
-              borderBottom: tab === t_ ? '2px solid var(--primary)' : '2px solid transparent',
-              cursor: 'pointer',
-              marginBottom: -1,
-            }}
-          >
-            {t_ === 'summary' ? t('attendance.byGroup') : t('attendance.lessonHistory')}
-          </button>
-        ))}
+      {/* Month navigation */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '1rem 2rem', borderBottom: '1px solid var(--gray-100)', backgroundColor: '#fafafa' }}>
+        <button onClick={prevMonth} style={{ width: 32, height: 32, border: '1px solid #e5e7eb', borderRadius: '50%', backgroundColor: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#374151' }}>‹</button>
+        <span style={{ fontWeight: 600, fontSize: '1rem', color: '#111827', minWidth: 160, textAlign: 'center' }}>
+          {MONTH_UK[month]} {year}
+        </span>
+        <button
+          onClick={nextMonth}
+          disabled={isCurrentMonth}
+          style={{ width: 32, height: 32, border: '1px solid #e5e7eb', borderRadius: '50%', backgroundColor: 'white', cursor: isCurrentMonth ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: isCurrentMonth ? '#d1d5db' : '#374151', opacity: isCurrentMonth ? 0.5 : 1 }}
+        >›</button>
       </div>
 
-      {/* Tab content */}
-      {tab === 'summary' && (
-        <div style={{ padding: '1.5rem 2rem' }}>
-          {groups.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#9ca3af', padding: '2rem' }}>
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>{t('attendance.noData')}</p>
-              <p style={{ margin: 0, fontSize: '0.8125rem' }}>{t('attendance.noDataHint')}</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {groups.map(g => (
-                <div key={g.group_id} style={{
-                  padding: '1rem 1.25rem',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '0.75rem',
-                  border: '1px solid #e5e7eb',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#111827' }}>{g.group_title}</div>
-                      {g.course_title && <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{g.course_title}</div>}
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-                      <span title={t('attendance.attended')} style={{ padding: '2px 8px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#dcfce7', color: '#16a34a' }}>✓ {g.present}</span>
-                      <span title={t('attendance.missed')} style={{ padding: '2px 8px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#fee2e2', color: '#dc2626' }}>✗ {g.absent}</span>
-                      {(g.makeup_planned + g.makeup_done) > 0 && (
-                        <span title={t('attendance.makeup')} style={{ padding: '2px 8px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#fef3c7', color: '#d97706' }}>↺ {g.makeup_planned + g.makeup_done}</span>
+      {loading ? (
+        <div style={{ padding: '3rem', textAlign: 'center', color: '#9ca3af' }}>Завантаження...</div>
+      ) : groups.length === 0 ? (
+        <div style={{ padding: '3rem', textAlign: 'center' }}>
+          <p style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9375rem' }}>Занять у цьому місяці немає</p>
+          <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.8125rem' }}>Відвідуваність з&apos;явиться після проведення занять</p>
+        </div>
+      ) : (
+        <div style={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Group lessons */}
+          {groupLessons.map(g => (
+            <div key={g.group_id} style={{ border: '1px solid #e5e7eb', borderRadius: '0.875rem', overflow: 'hidden' }}>
+              {/* Group header */}
+              <div style={{ padding: '0.875rem 1.25rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#111827' }}>{g.group_title}</div>
+                  <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {g.course_title && <span>{g.course_title}</span>}
+                    {g.weekly_day && g.start_time && (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                        padding: '1px 6px', backgroundColor: '#eef2ff', borderRadius: 4,
+                        fontSize: '0.75rem', fontWeight: 500, color: '#4f46e5',
+                      }}>
+                        📅 {WEEKDAY_UK[g.weekly_day]} {g.start_time?.slice(0, 5)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0, alignItems: 'center' }}>
+                  <span style={{ padding: '2px 8px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#dcfce7', color: '#16a34a' }}>✓ {g.present}</span>
+                  <span style={{ padding: '2px 8px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#fee2e2', color: '#dc2626' }}>✗ {g.absent}</span>
+                  {g.not_marked > 0 && <span style={{ padding: '2px 8px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#f3f4f6', color: '#6b7280' }}>⬜ {g.not_marked}</span>}
+                </div>
+              </div>
+              {/* Lesson dots */}
+              <div style={{ padding: '1rem 1.25rem' }}>
+                <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', marginBottom: '0.875rem' }}>
+                  {g.lessons.map(l => (
+                    <div key={l.lesson_id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                      <StatusBadge status={l.attendance_status} />
+                      <span style={{ fontSize: '0.6875rem', color: '#6b7280', fontWeight: 500 }}>{formatDate(l.lesson_date)}</span>
+                      {l.topic && (
+                        <span style={{ fontSize: '0.625rem', color: '#9ca3af', maxWidth: 56, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.topic}>{l.topic}</span>
                       )}
                     </div>
-                  </div>
-                  <RateBar rate={g.attendance_rate} />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === 'lessons' && (
-        <div>
-          {/* Filters + Export */}
-          <div style={{ display: 'flex', gap: '0.75rem', padding: '1rem 2rem', flexWrap: 'wrap', borderBottom: '1px solid var(--gray-100)', alignItems: 'center' }}>
-            <select
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              style={{ padding: '0.375rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', fontSize: '0.875rem', color: '#374151', backgroundColor: 'white' }}
-            >
-              <option value="">{t('attendance.allStatuses')}</option>
-              <option value="present">{t('attendance.present')}</option>
-              <option value="absent">{t('attendance.absent')}</option>
-              <option value="makeup_planned">{t('attendance.makeupPlanned')}</option>
-              <option value="makeup_done">{t('attendance.makeupDone')}</option>
-            </select>
-            {groups.length > 0 && (
-              <select
-                value={filterGroup}
-                onChange={e => setFilterGroup(e.target.value)}
-                style={{ padding: '0.375rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', fontSize: '0.875rem', color: '#374151', backgroundColor: 'white' }}
-              >
-                <option value="">{t('attendance.allGroups')}</option>
-                {groups.map(g => (
-                  <option key={g.group_id} value={g.group_id}>{g.group_title}</option>
-                ))}
-              </select>
-            )}
-            <div style={{ marginLeft: 'auto' }}>
-              <button
-                onClick={handleExportCSV}
-                style={{
-                  padding: '0.375rem 0.875rem',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '0.5rem',
-                  backgroundColor: 'white',
-                  color: '#374151',
-                  fontSize: '0.8125rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.375rem',
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                {t('attendance.exportCSV')}
-              </button>
-            </div>
-          </div>
-
-          {/* Table */}
-          {lessons.length === 0 && !loading ? (
-            <div style={{ textAlign: 'center', color: '#9ca3af', padding: '2rem' }}>
-              <p style={{ margin: 0 }}>{t('attendance.noData')}</p>
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f9fafb' }}>
-                    <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontWeight: 600, color: '#6b7280', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>{t('table.date')}</th>
-                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, color: '#6b7280', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>{t('table.group')}</th>
-                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, color: '#6b7280', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>{t('table.topic')}</th>
-                    <th style={{ padding: '0.75rem 1.5rem', textAlign: 'right', fontWeight: 600, color: '#6b7280', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>{t('attendance.title')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lessons.map(lesson => (
-                    <tr key={lesson.lesson_id} style={{ borderBottom: '1px solid #f3f4f6' }}
-                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
-                      onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                    >
-                      <td style={{ padding: '0.875rem 1.5rem', color: '#374151', whiteSpace: 'nowrap' }}>
-                        {formatDate(lesson.lesson_date)}
-                      </td>
-                      <td style={{ padding: '0.875rem 1rem', color: '#374151' }}>
-                        {lesson.group_title || <span style={{ color: '#9ca3af' }}>—</span>}
-                      </td>
-                      <td style={{ padding: '0.875rem 1rem', color: '#6b7280', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {lesson.topic || <span style={{ color: '#d1d5db' }}>—</span>}
-                      </td>
-                      <td style={{ padding: '0.875rem 1.5rem', textAlign: 'right' }}>
-                        {lesson.status ? (
-                          <span style={{
-                            display: 'inline-block',
-                            padding: '2px 10px',
-                            borderRadius: 99,
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            backgroundColor: STATUS_BG[lesson.status] || '#f3f4f6',
-                            color: STATUS_COLOR[lesson.status] || '#374151',
-                          }}>
-                            {STATUS_LABEL[lesson.status] || lesson.status}
-                          </span>
-                        ) : (
-                          <span style={{ color: '#d1d5db', fontSize: '0.75rem' }}>—</span>
-                        )}
-                      </td>
-                    </tr>
                   ))}
-                </tbody>
-              </table>
+                </div>
+                <RateBar rate={g.rate} />
+              </div>
             </div>
-          )}
+          ))}
 
-          {loading && (
-            <div style={{ textAlign: 'center', padding: '1.5rem', color: '#9ca3af', fontSize: '0.875rem' }}>
-              Завантаження...
-            </div>
-          )}
-
-          {/* Load more */}
-          {!loading && lessons.length < total && (
-            <div style={{ textAlign: 'center', padding: '1rem' }}>
-              <button
-                onClick={() => loadLessons(false)}
-                style={{
-                  padding: '0.5rem 1.5rem',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '0.5rem',
-                  backgroundColor: 'white',
-                  color: '#374151',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer',
-                }}
-              >
-                {t('attendance.loadMore')} ({total - lessons.length})
-              </button>
+          {/* Individual lessons */}
+          {individualLessons && individualLessons.lessons.length > 0 && (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: '0.875rem', overflow: 'hidden' }}>
+              <div style={{ padding: '0.875rem 1.25rem', backgroundColor: '#fdf8ff', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#111827' }}>Індивідуальні заняття</div>
+                  <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                    Персональні заняття
+                    <span style={{ marginLeft: 8, padding: '1px 6px', backgroundColor: '#f3e8ff', borderRadius: 4, fontSize: '0.75rem', color: '#7c3aed' }}>
+                      {individualLessons.lessons.length} {individualLessons.lessons.length === 1 ? 'заняття' : 'занять'}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0 }}>
+                  <span style={{ padding: '2px 8px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#dcfce7', color: '#16a34a' }}>✓ {individualLessons.present}</span>
+                  <span style={{ padding: '2px 8px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#fee2e2', color: '#dc2626' }}>✗ {individualLessons.absent}</span>
+                </div>
+              </div>
+              <div style={{ padding: '0.75rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                {individualLessons.lessons.map(l => (
+                  <div key={l.lesson_id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0', borderBottom: '1px solid #f9fafb' }}>
+                    <StatusBadge status={l.attendance_status} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>{formatDate(l.lesson_date)}</span>
+                        {l.start_datetime && (
+                          <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{formatTime(l.start_datetime)}</span>
+                        )}
+                      </div>
+                      {l.topic && <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 1 }}>{l.topic}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {individualLessons.total > 0 && (
+                <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid #f3f4f6' }}>
+                  <RateBar rate={individualLessons.rate} />
+                </div>
+              )}
             </div>
           )}
         </div>

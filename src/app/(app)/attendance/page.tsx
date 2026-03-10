@@ -3,30 +3,87 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
-import { t } from '@/i18n/t';
+
+type AttendanceStatus = 'present' | 'absent' | 'makeup_planned' | 'makeup_done';
 
 interface Totals {
   total_lessons: number;
+  group_lessons: number;
+  individual_lessons: number;
   total_records: number;
   present: number;
   absent: number;
-  makeup_planned: number;
-  makeup_done: number;
+  makeup: number;
+  not_marked: number;
   overall_rate: number;
   students_count: number;
 }
 
-interface StatRow {
+interface MonthlyRow {
   student_id: number;
   student_name: string;
-  group_id: number | null;
-  group_title: string | null;
+  group_id: number;
+  group_title: string;
+  course_title: string | null;
   total: number;
   present: number;
   absent: number;
   makeup_planned: number;
   makeup_done: number;
+  not_marked: number;
   attendance_rate: number;
+}
+
+interface RegisterLesson {
+  lesson_id: number;
+  lesson_date: string;
+  topic: string | null;
+}
+
+interface RegisterStudent {
+  student_id: number;
+  student_name: string;
+  attendance: Record<number, AttendanceStatus | null>;
+  present: number;
+  absent: number;
+  not_marked: number;
+  rate: number;
+}
+
+interface GroupedStudent {
+  student_id: number;
+  student_name: string;
+  total: number;
+  present: number;
+  absent: number;
+  makeup: number;
+  not_marked: number;
+  rate: number;
+}
+
+interface GroupedGroup {
+  group_id: number;
+  group_title: string;
+  course_title: string | null;
+  weekly_day: number | null;
+  start_time: string | null;
+  duration_minutes: number;
+  students: GroupedStudent[];
+  total_lessons: number;
+  avg_rate: number;
+}
+
+interface IndividualLesson {
+  lesson_id: number;
+  lesson_date: string;
+  start_time: string | null;
+  topic: string | null;
+  course_title: string | null;
+  students: Array<{
+    student_id: number;
+    student_name: string;
+    status: AttendanceStatus | null;
+  }>;
 }
 
 interface Group {
@@ -34,313 +91,515 @@ interface Group {
   title: string;
 }
 
+const WEEKDAY_UK = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+const MONTH_UK = ['', 'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
+  'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
+
+function formatDateShort(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    return `${String(d.getUTCDate()).padStart(2, '0')}.${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  } catch { return dateStr; }
+}
+
 function RateBar({ rate }: { rate: number }) {
   const color = rate >= 80 ? '#16a34a' : rate >= 60 ? '#d97706' : '#dc2626';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <div style={{ flex: 1, height: 6, backgroundColor: '#e5e7eb', borderRadius: 6, overflow: 'hidden' }}>
-        <div style={{ width: `${rate}%`, height: '100%', backgroundColor: color, borderRadius: 6, transition: 'width 0.3s ease' }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ width: 80, height: 5, backgroundColor: '#e5e7eb', borderRadius: 5, overflow: 'hidden', flexShrink: 0 }}>
+        <div style={{ width: `${rate}%`, height: '100%', backgroundColor: color, borderRadius: 5 }} />
       </div>
-      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color, minWidth: '36px', textAlign: 'right' }}>{rate}%</span>
+      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color }}>{rate}%</span>
     </div>
   );
 }
 
+function AttCell({ status }: { status: AttendanceStatus | null }) {
+  if (!status) return <span style={{ color: '#d1d5db', fontSize: '1rem' }}>○</span>;
+  if (status === 'present') return <span style={{ color: '#16a34a', fontSize: '1rem', fontWeight: 700 }}>✓</span>;
+  if (status === 'absent') return <span style={{ color: '#dc2626', fontSize: '1rem', fontWeight: 700 }}>✗</span>;
+  return <span style={{ color: '#d97706', fontSize: '1rem', fontWeight: 700 }}>↺</span>;
+}
+
+function StatusBadgeSmall({ status }: { status: AttendanceStatus | null }) {
+  if (!status) return <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', backgroundColor: '#f3f4f6', border: '2px solid #e5e7eb', fontSize: '0.75rem', color: '#9ca3af' }}>○</span>;
+  const map: Record<AttendanceStatus, { bg: string; border: string; icon: string; color: string }> = {
+    present:        { bg: '#dcfce7', border: '#86efac', icon: '✓', color: '#16a34a' },
+    absent:         { bg: '#fee2e2', border: '#fca5a5', icon: '✗', color: '#dc2626' },
+    makeup_planned: { bg: '#fef3c7', border: '#fcd34d', icon: '↺', color: '#d97706' },
+    makeup_done:    { bg: '#dbeafe', border: '#93c5fd', icon: '✓', color: '#2563eb' },
+  };
+  const s = map[status];
+  return <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', backgroundColor: s.bg, border: `2px solid ${s.border}`, fontSize: '0.75rem', fontWeight: 700, color: s.color }}>{s.icon}</span>;
+}
+
 export default function AttendancePage() {
   const router = useRouter();
+  const now = new Date();
   const [user, setUser] = useState<{ id: number; name: string; email: string; role: 'admin' | 'teacher' } | null>(null);
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [viewMode, setViewMode] = useState<'grouped' | 'summary' | 'register'>('grouped');
   const [totals, setTotals] = useState<Totals | null>(null);
-  const [rows, setRows] = useState<StatRow[]>([]);
-  const [rowsTotal, setRowsTotal] = useState(0);
+  const [rows, setRows] = useState<MonthlyRow[]>([]);
+  const [register, setRegister] = useState<{ lessons: RegisterLesson[]; students: RegisterStudent[] } | null>(null);
+  const [groupedData, setGroupedData] = useState<{ groups: GroupedGroup[]; individual_lessons: IndividualLesson[] } | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState('');
   const [search, setSearch] = useState('');
-  const [groupId, setGroupId] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'rate' | 'absent'>('name');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [offset, setOffset] = useState(0);
+  const [loading, setLoading] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
-  const LIMIT = 50;
 
   // Auth
   useEffect(() => {
-    fetch('/api/auth/me').then(res => {
-      if (!res.ok) { router.push('/login'); return; }
-      return res.json();
-    }).then(data => data && setUser(data.user));
+    fetch('/api/auth/me').then(r => { if (!r.ok) { router.push('/login'); return null; } return r.json(); })
+      .then(d => d && setUser(d.user));
   }, [router]);
 
-  // Load groups for filter
+  // Load groups
   useEffect(() => {
-    fetch('/api/groups?limit=200').then(r => r.json()).then(data => {
-      setGroups((data.groups || data || []).map((g: { id: number; title: string }) => ({ id: g.id, title: g.title })));
-    }).catch(() => {});
+    fetch('/api/groups?limit=200').then(r => r.json())
+      .then(d => setGroups((d.groups || []).map((g: { id: number; title: string }) => ({ id: g.id, title: g.title }))))
+      .catch(() => {});
   }, []);
 
-  // Load KPI totals
+  // Load totals for selected month
   useEffect(() => {
-    fetch('/api/attendance?view=totals').then(r => r.json()).then(data => {
-      if (data.totals) setTotals(data.totals);
-    }).catch(() => {});
-  }, []);
+    fetch(`/api/attendance?view=monthlyTotals&year=${year}&month=${month}`)
+      .then(r => r.json()).then(d => d.totals && setTotals(d.totals)).catch(() => {});
+  }, [year, month]);
 
-  const loadRows = useCallback(async (reset = false) => {
-    const newOffset = reset ? 0 : offset;
+  // Load data based on view mode
+  const loadData = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({
-      limit: LIMIT.toString(),
-      offset: newOffset.toString(),
-      sortBy,
-      sortDir,
-    });
-    if (groupId) params.set('groupId', groupId);
-    if (search) params.set('search', search);
-
-    const res = await fetch(`/api/attendance?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (reset) {
-        setRows(data.rows || []);
-        setOffset(LIMIT);
+    try {
+      if (viewMode === 'register' && selectedGroup) {
+        const res = await fetch(`/api/attendance?view=register&year=${year}&month=${month}&groupId=${selectedGroup}`);
+        if (res.ok) { const d = await res.json(); setRegister(d.register || null); }
+      } else if (viewMode === 'grouped') {
+        const params = new URLSearchParams({ view: 'groupedMonthly', year: String(year), month: String(month) });
+        if (selectedGroup) params.set('groupId', selectedGroup);
+        if (search) params.set('search', search);
+        const res = await fetch(`/api/attendance?${params}`);
+        if (res.ok) {
+          const d = await res.json();
+          setGroupedData({ groups: d.groups || [], individual_lessons: d.individual_lessons || [] });
+        }
       } else {
-        setRows(prev => [...prev, ...(data.rows || [])]);
-        setOffset(prev => prev + LIMIT);
+        const params = new URLSearchParams({ view: 'monthly', year: String(year), month: String(month) });
+        if (selectedGroup) params.set('groupId', selectedGroup);
+        if (search) params.set('search', search);
+        const res = await fetch(`/api/attendance?${params}`);
+        if (res.ok) { const d = await res.json(); setRows(d.rows || []); }
       }
-      setRowsTotal(data.total || 0);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [offset, sortBy, sortDir, groupId, search]);
+  }, [year, month, viewMode, selectedGroup, search]);
 
   useEffect(() => {
     clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => {
-      setOffset(0);
-      loadRows(true);
-    }, 300);
+    searchTimeout.current = setTimeout(loadData, 200);
     return () => clearTimeout(searchTimeout.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, groupId, sortBy, sortDir]);
+  }, [loadData]);
 
-  const handleSort = (col: 'name' | 'rate' | 'absent') => {
-    if (sortBy === col) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(col);
-      setSortDir('asc');
-    }
+  const prevMonth = () => {
+    if (month === 1) { setYear(y => y - 1); setMonth(12); }
+    else setMonth(m => m - 1);
   };
 
-  const handleExportCSV = () => {
-    const header = [t('table.student'), t('table.group'), t('table.total'), t('table.present'), t('table.absent'), t('table.makeup'), t('table.percent')];
-    const csvRows = [header, ...rows.map(r => [
-      r.student_name,
-      r.group_title || '—',
-      r.total,
-      r.present,
-      r.absent,
-      r.makeup_planned + r.makeup_done,
-      `${r.attendance_rate}%`,
-    ])];
+  const nextMonth = () => {
+    if (year > now.getFullYear() || (year === now.getFullYear() && month >= now.getMonth() + 1)) return;
+    if (month === 12) { setYear(y => y + 1); setMonth(1); }
+    else setMonth(m => m + 1);
+  };
+
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+
+  const exportCSV = () => {
+    let csvRows: (string | number)[][];
+    if (viewMode === 'register' && register) {
+      const header = ['Учень', ...register.lessons.map(l => formatDateShort(l.lesson_date)), 'Всього', '%'];
+      const data = register.students.map(s => [
+        s.student_name,
+        ...register.lessons.map(l => {
+          const st = s.attendance[l.lesson_id];
+          if (!st) return '—';
+          if (st === 'present') return 'П';
+          if (st === 'absent') return 'В';
+          return 'Відп';
+        }),
+        `${s.present}/${register.lessons.length}`,
+        `${s.rate}%`,
+      ]);
+      csvRows = [header, ...data];
+    } else if (viewMode === 'grouped' && groupedData) {
+      csvRows = [['Група', 'Учень', 'Занять', 'Присутній', 'Відсутній', 'Відпрацювань', 'Не відмічено', '%']];
+      for (const g of groupedData.groups) {
+        for (const s of g.students) {
+          csvRows.push([g.group_title, s.student_name, s.total, s.present, s.absent, s.makeup, s.not_marked, `${s.rate}%`]);
+        }
+      }
+      if (groupedData.individual_lessons.length > 0) {
+        csvRows.push(['', '', '', '', '', '', '', '']);
+        csvRows.push(['Індивідуальні заняття', '', '', '', '', '', '', '']);
+        csvRows.push(['Дата', 'Час', 'Учень', 'Тема', 'Статус', '', '', '']);
+        for (const il of groupedData.individual_lessons) {
+          for (const s of il.students) {
+            csvRows.push([formatDateShort(il.lesson_date), il.start_time || '—', s.student_name, il.topic || '', s.status || 'Не відмічено', '', '', '']);
+          }
+        }
+      }
+    } else {
+      csvRows = [['Учень', 'Група', 'Курс', 'Занять', 'Присутній', 'Відсутній', 'Відпрацювань', 'Не відмічено', '%'],
+        ...rows.map(r => [r.student_name, r.group_title, r.course_title || '', r.total, r.present, r.absent, r.makeup_planned + r.makeup_done, r.not_marked, `${r.attendance_rate}%`])];
+    }
     const csv = csvRows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'attendance_global.csv';
+    a.download = `attendance_${year}_${String(month).padStart(2, '0')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  const SortIcon = ({ col }: { col: 'name' | 'rate' | 'absent' }) => (
-    <span style={{ marginLeft: 4, color: sortBy === col ? '#1565c0' : '#d1d5db', fontSize: '0.75rem' }}>
-      {sortBy === col ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
-    </span>
-  );
 
   if (!user) return null;
 
   return (
     <Layout user={user}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '2rem 1rem' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '2rem 1rem' }}>
         {/* Page header */}
-        <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0, color: 'var(--gray-900)' }}>
-              {t('attendance.globalTitle')}
-            </h1>
-          </div>
-          <button
-            onClick={handleExportCSV}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.5rem',
-              padding: '0.625rem 1.25rem',
-              border: '1px solid #e5e7eb', borderRadius: '0.625rem',
-              backgroundColor: 'white', color: '#374151',
-              fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer',
-            }}
-          >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0, color: 'var(--gray-900)' }}>Відвідуваність</h1>
+          <button onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', border: '1px solid #e5e7eb', borderRadius: '0.625rem', backgroundColor: 'white', color: '#374151', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            {t('attendance.exportCSV')}
+            Експорт CSV
           </button>
+        </div>
+
+        {/* Month navigation */}
+        <div className="card" style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', borderRadius: '0.875rem' }}>
+          <button onClick={prevMonth} style={{ width: 36, height: 36, border: '1px solid #e5e7eb', borderRadius: '50%', backgroundColor: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.125rem', color: '#374151' }}>‹</button>
+          <span style={{ fontWeight: 700, fontSize: '1.125rem', color: '#111827', minWidth: 200, textAlign: 'center' }}>
+            {MONTH_UK[month]} {year}
+          </span>
+          <button onClick={nextMonth} disabled={isCurrentMonth} style={{ width: 36, height: 36, border: '1px solid #e5e7eb', borderRadius: '50%', backgroundColor: 'white', cursor: isCurrentMonth ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.125rem', color: isCurrentMonth ? '#d1d5db' : '#374151', opacity: isCurrentMonth ? 0.5 : 1 }}>›</button>
         </div>
 
         {/* KPI cards */}
         {totals && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
             {[
-              { label: t('attendance.totalLessons'), value: totals.total_lessons, color: '#374151', bg: '#f9fafb' },
-              { label: t('attendance.studentsCount'), value: totals.students_count, color: '#1d4ed8', bg: '#dbeafe' },
-              { label: t('attendance.attended'), value: totals.present, color: '#16a34a', bg: '#dcfce7' },
-              { label: t('attendance.missed'), value: totals.absent, color: '#dc2626', bg: '#fee2e2' },
-              { label: t('attendance.makeup'), value: totals.makeup_planned + totals.makeup_done, color: '#d97706', bg: '#fef3c7' },
-              { label: t('attendance.overallRate'), value: `${totals.overall_rate}%`, color: totals.overall_rate >= 80 ? '#16a34a' : totals.overall_rate >= 60 ? '#d97706' : '#dc2626', bg: '#f9fafb' },
+              { label: 'Всього занять', value: totals.total_lessons, color: '#374151', bg: '#f9fafb' },
+              { label: 'Групових', value: totals.group_lessons, color: '#1d4ed8', bg: '#dbeafe' },
+              { label: 'Індивідуальних', value: totals.individual_lessons, color: '#7c3aed', bg: '#ede9fe' },
+              { label: 'Учнів з даними', value: totals.students_count, color: '#0891b2', bg: '#cffafe' },
+              { label: 'Присутні', value: totals.present, color: '#16a34a', bg: '#dcfce7' },
+              { label: 'Відсутні', value: totals.absent, color: '#dc2626', bg: '#fee2e2' },
+              { label: 'Відпрацювань', value: totals.makeup, color: '#d97706', bg: '#fef3c7' },
+              { label: 'Загальний %', value: `${totals.overall_rate}%`, color: totals.overall_rate >= 80 ? '#16a34a' : totals.overall_rate >= 60 ? '#d97706' : '#dc2626', bg: '#f9fafb' },
             ].map((kpi, i) => (
-              <div key={i} className="card" style={{ padding: '1.25rem', borderRadius: '0.875rem', backgroundColor: kpi.bg, border: 'none' }}>
-                <div style={{ fontSize: '1.625rem', fontWeight: 700, color: kpi.color }}>{kpi.value}</div>
-                <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4 }}>{kpi.label}</div>
+              <div key={i} className="card" style={{ padding: '1rem', borderRadius: '0.875rem', backgroundColor: kpi.bg, border: 'none' }}>
+                <div style={{ fontSize: '1.375rem', fontWeight: 700, color: kpi.color }}>{kpi.value}</div>
+                <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginTop: 2 }}>{kpi.label}</div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Filters */}
-        <div className="card" style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', borderRadius: '0.875rem' }}>
-          <input
-            type="text"
-            placeholder="Пошук учня..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ flex: 1, minWidth: 200, padding: '0.5rem 0.875rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', fontSize: '0.875rem', color: '#374151' }}
-          />
-          <select
-            value={groupId}
-            onChange={e => setGroupId(e.target.value)}
-            style={{ padding: '0.5rem 0.875rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', fontSize: '0.875rem', color: '#374151', backgroundColor: 'white' }}
-          >
-            <option value="">{t('attendance.allGroups')}</option>
-            {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-          </select>
-          <select
-            value={`${sortBy}:${sortDir}`}
-            onChange={e => {
-              const [col, dir] = e.target.value.split(':');
-              setSortBy(col as 'name' | 'rate' | 'absent');
-              setSortDir(dir as 'asc' | 'desc');
-            }}
-            style={{ padding: '0.5rem 0.875rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', fontSize: '0.875rem', color: '#374151', backgroundColor: 'white' }}
-          >
-            <option value="name:asc">{t('attendance.sortName')} (А-Я)</option>
-            <option value="name:desc">{t('attendance.sortName')} (Я-А)</option>
-            <option value="rate:desc">{t('attendance.sortRate')} ↓</option>
-            <option value="rate:asc">{t('attendance.sortRate')} ↑</option>
-            <option value="absent:desc">{t('attendance.sortAbsent')} ↓</option>
-            <option value="absent:asc">{t('attendance.sortAbsent')} ↑</option>
-          </select>
-        </div>
-
-        {/* Table */}
+        {/* View mode tabs + filters */}
         <div className="card" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                <th
-                  onClick={() => handleSort('name')}
-                  style={{ padding: '0.875rem 1.5rem', textAlign: 'left', fontWeight: 600, color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                >
-                  {t('table.student')}<SortIcon col="name" />
-                </th>
-                <th style={{ padding: '0.875rem 1rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>
-                  {t('table.group')}
-                </th>
-                <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>
-                  {t('table.total')}
-                </th>
-                <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>
-                  {t('table.present')}
-                </th>
-                <th
-                  onClick={() => handleSort('absent')}
-                  style={{ padding: '0.875rem 1rem', textAlign: 'center', fontWeight: 600, color: '#dc2626', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                >
-                  {t('table.absent')}<SortIcon col="absent" />
-                </th>
-                <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontWeight: 600, color: '#d97706' }}>
-                  {t('table.makeup')}
-                </th>
-                <th
-                  onClick={() => handleSort('rate')}
-                  style={{ padding: '0.875rem 1.5rem', textAlign: 'left', fontWeight: 600, color: '#374151', cursor: 'pointer', minWidth: '160px', whiteSpace: 'nowrap' }}
-                >
-                  {t('table.percent')}<SortIcon col="rate" />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 && !loading ? (
-                <tr>
-                  <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#9ca3af' }}>
-                    {t('attendance.noData')}
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row, i) => (
-                  <tr
-                    key={`${row.student_id}-${row.group_id}-${i}`}
-                    style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
-                    onClick={() => router.push(`/students/${row.student_id}`)}
-                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
-                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    <td style={{ padding: '0.875rem 1.5rem', fontWeight: 500, color: '#111827' }}>
-                      {row.student_name}
-                    </td>
-                    <td style={{ padding: '0.875rem 1rem', color: '#6b7280' }}>
-                      {row.group_title || '—'}
-                    </td>
-                    <td style={{ padding: '0.875rem 1rem', textAlign: 'center', color: '#374151' }}>
-                      {row.total}
-                    </td>
-                    <td style={{ padding: '0.875rem 1rem', textAlign: 'center', color: '#16a34a', fontWeight: 600 }}>
-                      {row.present}
-                    </td>
-                    <td style={{ padding: '0.875rem 1rem', textAlign: 'center', color: row.absent > 0 ? '#dc2626' : '#9ca3af', fontWeight: row.absent > 0 ? 600 : 400 }}>
-                      {row.absent}
-                    </td>
-                    <td style={{ padding: '0.875rem 1rem', textAlign: 'center', color: '#d97706' }}>
-                      {row.makeup_planned + row.makeup_done > 0 ? row.makeup_planned + row.makeup_done : <span style={{ color: '#d1d5db' }}>—</span>}
-                    </td>
-                    <td style={{ padding: '0.875rem 1.5rem', minWidth: '160px' }}>
-                      <RateBar rate={row.attendance_rate} />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-
-          {loading && (
-            <div style={{ padding: '1.5rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-              Завантаження...
+          {/* Tabs + controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.5rem', borderBottom: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', border: '1px solid #e5e7eb', borderRadius: '0.625rem', overflow: 'hidden' }}>
+              {(['grouped', 'summary', 'register'] as const).map(mode => (
+                <button key={mode} onClick={() => setViewMode(mode)} style={{
+                  padding: '0.5rem 1rem', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500,
+                  backgroundColor: viewMode === mode ? '#1565c0' : 'white',
+                  color: viewMode === mode ? 'white' : '#374151',
+                }}>
+                  {mode === 'grouped' ? 'По групах' : mode === 'summary' ? 'Загальна таблиця' : 'Журнал групи'}
+                </button>
+              ))}
             </div>
-          )}
 
-          {!loading && rows.length < rowsTotal && (
-            <div style={{ padding: '1rem', textAlign: 'center', borderTop: '1px solid #f3f4f6' }}>
-              <button
-                onClick={() => loadRows(false)}
-                style={{
-                  padding: '0.5rem 1.5rem',
-                  border: '1px solid #e5e7eb', borderRadius: '0.5rem',
-                  backgroundColor: 'white', color: '#374151',
-                  fontSize: '0.875rem', cursor: 'pointer',
-                }}
-              >
-                {t('attendance.loadMore')} ({rowsTotal - rows.length})
-              </button>
-            </div>
+            <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)}
+              style={{ padding: '0.5rem 0.875rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', fontSize: '0.875rem', color: '#374151', backgroundColor: 'white' }}>
+              <option value="">Всі групи</option>
+              {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+            </select>
+
+            {viewMode !== 'register' && (
+              <input type="text" placeholder="Пошук учня..." value={search} onChange={e => setSearch(e.target.value)}
+                style={{ flex: 1, minWidth: 180, padding: '0.5rem 0.875rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', fontSize: '0.875rem', color: '#374151' }} />
+            )}
+          </div>
+
+          {loading ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: '#9ca3af' }}>Завантаження...</div>
+          ) : viewMode === 'grouped' ? (
+            /* Grouped view */
+            renderGroupedView()
+          ) : viewMode === 'register' ? (
+            /* Register (matrix) view */
+            renderRegisterView()
+          ) : (
+            /* Summary view */
+            renderSummaryView()
           )}
         </div>
       </div>
     </Layout>
   );
+
+  function renderGroupedView() {
+    if (!groupedData || (groupedData.groups.length === 0 && groupedData.individual_lessons.length === 0)) {
+      return (
+        <div style={{ padding: '3rem', textAlign: 'center', color: '#9ca3af' }}>
+          <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Даних про відвідуваність немає</p>
+          <p style={{ margin: 0, fontSize: '0.8125rem' }}>Відвідуваність з&apos;явиться після проведення занять</p>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Group sections */}
+        {groupedData.groups.map(g => (
+          <div key={g.group_id} style={{ border: '1px solid #e5e7eb', borderRadius: '0.875rem', overflow: 'hidden' }}>
+            {/* Group header */}
+            <div style={{ padding: '1rem 1.25rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '1rem', color: '#111827' }}>{g.group_title}</div>
+                <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {g.course_title && <span>{g.course_title}</span>}
+                  {g.weekly_day && g.start_time && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '2px 8px', backgroundColor: '#eef2ff', borderRadius: 6, fontSize: '0.75rem', fontWeight: 500, color: '#4f46e5' }}>
+                      📅 {WEEKDAY_UK[g.weekly_day]} {g.start_time?.slice(0, 5)}
+                    </span>
+                  )}
+                  <span style={{ padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: 6, fontSize: '0.75rem', color: '#6b7280' }}>
+                    {g.total_lessons} {g.total_lessons === 1 ? 'заняття' : 'занять'}
+                  </span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{g.students.length} учнів</span>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  minWidth: 40, height: 28, padding: '0 0.625rem',
+                  backgroundColor: g.avg_rate >= 80 ? '#16a34a' : g.avg_rate >= 60 ? '#d97706' : '#dc2626',
+                  color: 'white', borderRadius: 14, fontSize: '0.8125rem', fontWeight: 600,
+                }}>
+                  {g.avg_rate}%
+                </span>
+              </div>
+            </div>
+            {/* Students table */}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#fafafa', borderBottom: '1px solid #f3f4f6' }}>
+                    <th style={{ padding: '0.625rem 1.25rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.8125rem' }}>Учень</th>
+                    <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151', fontSize: '0.8125rem' }}>Занять</th>
+                    <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#16a34a', fontSize: '0.8125rem' }}>✓</th>
+                    <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#dc2626', fontSize: '0.8125rem' }}>✗</th>
+                    <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#d97706', fontSize: '0.8125rem' }}>↺</th>
+                    <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#6b7280', fontSize: '0.8125rem' }}>○</th>
+                    <th style={{ padding: '0.625rem 1.25rem', textAlign: 'left', fontWeight: 600, color: '#374151', minWidth: 120, fontSize: '0.8125rem' }}>%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {g.students.map(s => (
+                    <tr key={s.student_id}
+                      style={{ borderBottom: '1px solid #f9fafb', cursor: 'pointer' }}
+                      onClick={() => router.push(`/students/${s.student_id}`)}
+                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                      onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                      <td style={{ padding: '0.625rem 1.25rem', fontWeight: 500, color: '#111827' }}>{s.student_name}</td>
+                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: '#374151' }}>{s.total}</td>
+                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: '#16a34a', fontWeight: 600 }}>{s.present}</td>
+                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: s.absent > 0 ? '#dc2626' : '#9ca3af', fontWeight: s.absent > 0 ? 600 : 400 }}>{s.absent}</td>
+                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: '#d97706' }}>{s.makeup > 0 ? s.makeup : <span style={{ color: '#d1d5db' }}>—</span>}</td>
+                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: '#6b7280' }}>{s.not_marked > 0 ? s.not_marked : <span style={{ color: '#d1d5db' }}>—</span>}</td>
+                      <td style={{ padding: '0.625rem 1.25rem' }}><RateBar rate={s.rate} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+
+        {/* Individual lessons section */}
+        {groupedData.individual_lessons.length > 0 && (
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: '0.875rem', overflow: 'hidden' }}>
+            <div style={{ padding: '1rem 1.25rem', backgroundColor: '#fdf8ff', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '1rem', color: '#111827' }}>Індивідуальні заняття</div>
+                <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+                  Персональні заняття без фіксованого розкладу
+                  <span style={{ marginLeft: 8, padding: '2px 8px', backgroundColor: '#f3e8ff', borderRadius: 6, fontSize: '0.75rem', color: '#7c3aed' }}>
+                    {groupedData.individual_lessons.length} {groupedData.individual_lessons.length === 1 ? 'заняття' : 'занять'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#fafafa', borderBottom: '1px solid #f3f4f6' }}>
+                    <th style={{ padding: '0.625rem 1.25rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.8125rem' }}>Дата</th>
+                    <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.8125rem' }}>Час</th>
+                    <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.8125rem' }}>Учні</th>
+                    <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.8125rem' }}>Тема</th>
+                    <th style={{ padding: '0.625rem 1.25rem', textAlign: 'center', fontWeight: 600, color: '#374151', fontSize: '0.8125rem' }}>Статус</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupedData.individual_lessons.map(il => (
+                    <tr key={il.lesson_id} style={{ borderBottom: '1px solid #f9fafb' }}>
+                      <td style={{ padding: '0.625rem 1.25rem', fontWeight: 500, color: '#111827', whiteSpace: 'nowrap' }}>{formatDateShort(il.lesson_date)}</td>
+                      <td style={{ padding: '0.625rem 0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}>{il.start_time || '—'}</td>
+                      <td style={{ padding: '0.625rem 0.75rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {il.students.map(s => (
+                            <span key={s.student_id}
+                              style={{ cursor: 'pointer', color: '#1d4ed8', fontSize: '0.8125rem' }}
+                              onClick={() => router.push(`/students/${s.student_id}`)}>
+                              {s.student_name}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.625rem 0.75rem', color: '#6b7280', fontSize: '0.8125rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={il.topic || undefined}>{il.topic || '—'}</td>
+                      <td style={{ padding: '0.625rem 1.25rem', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap' }}>
+                          {il.students.map(s => (
+                            <StatusBadgeSmall key={s.student_id} status={s.status} />
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderRegisterView() {
+    if (!selectedGroup) {
+      return (
+        <div style={{ padding: '3rem', textAlign: 'center', color: '#9ca3af' }}>
+          <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Оберіть групу для перегляду журналу</p>
+        </div>
+      );
+    }
+    if (!register || register.lessons.length === 0) {
+      return (
+        <div style={{ padding: '3rem', textAlign: 'center', color: '#9ca3af' }}>
+          <p style={{ margin: 0, fontSize: '0.9375rem' }}>У цьому місяці немає занять для обраної групи</p>
+        </div>
+      );
+    }
+    return (
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#f9fafb' }}>
+              <th style={{ padding: '0.875rem 1.5rem', textAlign: 'left', fontWeight: 600, color: '#374151', borderBottom: '2px solid #e5e7eb', position: 'sticky', left: 0, backgroundColor: '#f9fafb', minWidth: 180, whiteSpace: 'nowrap' }}>
+                Учень
+              </th>
+              {register.lessons.map(l => (
+                <th key={l.lesson_id} style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: 600, color: '#374151', borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap' }}
+                  title={l.topic || undefined}>
+                  <div>{formatDateShort(l.lesson_date)}</div>
+                  {l.topic && <div style={{ fontSize: '0.65rem', color: '#9ca3af', fontWeight: 400, maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.topic}</div>}
+                </th>
+              ))}
+              <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontWeight: 600, color: '#374151', borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap' }}>Всього</th>
+              <th style={{ padding: '0.875rem 1.5rem', textAlign: 'left', fontWeight: 600, color: '#374151', borderBottom: '2px solid #e5e7eb', minWidth: 120, whiteSpace: 'nowrap' }}>%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {register.students.map(s => (
+              <tr key={s.student_id} style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
+                onClick={() => router.push(`/students/${s.student_id}`)}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                <td style={{ padding: '0.875rem 1.5rem', fontWeight: 500, color: '#111827', position: 'sticky', left: 0, backgroundColor: 'white', whiteSpace: 'nowrap' }}>
+                  {s.student_name}
+                </td>
+                {register.lessons.map(l => (
+                  <td key={l.lesson_id} style={{ padding: '0.875rem 1rem', textAlign: 'center' }}>
+                    <AttCell status={s.attendance[l.lesson_id] ?? null} />
+                  </td>
+                ))}
+                <td style={{ padding: '0.875rem 1rem', textAlign: 'center', color: '#374151' }}>
+                  <span style={{ fontWeight: 600, color: '#16a34a' }}>{s.present}</span>
+                  <span style={{ color: '#9ca3af' }}>/{register.lessons.length}</span>
+                  {s.absent > 0 && <span style={{ color: '#dc2626', marginLeft: 6 }}>({s.absent}✗)</span>}
+                </td>
+                <td style={{ padding: '0.875rem 1.5rem' }}>
+                  <RateBar rate={s.rate} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  function renderSummaryView() {
+    if (rows.length === 0) {
+      return (
+        <div style={{ padding: '3rem', textAlign: 'center', color: '#9ca3af' }}>
+          <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Даних про відвідуваність немає</p>
+          <p style={{ margin: 0, fontSize: '0.8125rem' }}>Відвідуваність з&apos;явиться після того, як викладач відмітить присутність</p>
+        </div>
+      );
+    }
+    return (
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+              <th style={{ padding: '0.875rem 1.5rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Учень</th>
+              <th style={{ padding: '0.875rem 1rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Група</th>
+              <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Занять</th>
+              <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>✓</th>
+              <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontWeight: 600, color: '#dc2626' }}>✗</th>
+              <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontWeight: 600, color: '#d97706' }}>↺</th>
+              <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontWeight: 600, color: '#6b7280' }}>○</th>
+              <th style={{ padding: '0.875rem 1.5rem', textAlign: 'left', fontWeight: 600, color: '#374151', minWidth: 140 }}>%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={`${row.student_id}-${row.group_id}-${i}`}
+                style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
+                onClick={() => router.push(`/students/${row.student_id}`)}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                <td style={{ padding: '0.875rem 1.5rem', fontWeight: 500, color: '#111827' }}>{row.student_name}</td>
+                <td style={{ padding: '0.875rem 1rem', color: '#6b7280' }}>{row.group_title}</td>
+                <td style={{ padding: '0.875rem 1rem', textAlign: 'center', color: '#374151' }}>{row.total}</td>
+                <td style={{ padding: '0.875rem 1rem', textAlign: 'center', color: '#16a34a', fontWeight: 600 }}>{row.present}</td>
+                <td style={{ padding: '0.875rem 1rem', textAlign: 'center', color: row.absent > 0 ? '#dc2626' : '#9ca3af', fontWeight: row.absent > 0 ? 600 : 400 }}>{row.absent}</td>
+                <td style={{ padding: '0.875rem 1rem', textAlign: 'center', color: '#d97706' }}>{row.makeup_planned + row.makeup_done > 0 ? row.makeup_planned + row.makeup_done : <span style={{ color: '#d1d5db' }}>—</span>}</td>
+                <td style={{ padding: '0.875rem 1rem', textAlign: 'center', color: '#6b7280' }}>{row.not_marked > 0 ? row.not_marked : <span style={{ color: '#d1d5db' }}>—</span>}</td>
+                <td style={{ padding: '0.875rem 1.5rem' }}><RateBar rate={row.attendance_rate} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 }
