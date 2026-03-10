@@ -119,8 +119,8 @@ const kyivTimeOptions: Intl.DateTimeFormatOptions = {
  * @param dateStr - Date string from database (stored as UTC)
  * @returns Formatted date string in dd.MM.yyyy format
  */
-export function formatDateKyiv(dateStr: string | null | undefined): string {
-  if (!dateStr || typeof dateStr !== 'string') return '';
+export function formatDateKyiv(dateStr: string | Date | null | undefined): string {
+  if (!dateStr) return '';
   const date = parseDatabaseDate(dateStr);
   return date.toLocaleDateString(UKRAINIAN_LOCALE, kyivDateOptions);
 }
@@ -130,8 +130,8 @@ export function formatDateKyiv(dateStr: string | null | undefined): string {
  * @param dateStr - Date string from database (stored as UTC)
  * @returns Formatted date string in dd.MM.yy format
  */
-export function formatShortDateKyiv(dateStr: string | null | undefined): string {
-  if (!dateStr || typeof dateStr !== 'string') return '';
+export function formatShortDateKyiv(dateStr: string | Date | null | undefined): string {
+  if (!dateStr) return '';
   const date = parseDatabaseDate(dateStr);
   return date.toLocaleDateString(UKRAINIAN_LOCALE, kyivShortDateOptions);
 }
@@ -141,8 +141,8 @@ export function formatShortDateKyiv(dateStr: string | null | undefined): string 
  * @param dateStr - Datetime string from database (stored as UTC)
  * @returns Formatted datetime string in dd.MM.yyyy, HH:mm format
  */
-export function formatDateTimeKyiv(dateStr: string | null | undefined): string {
-  if (!dateStr || typeof dateStr !== 'string') return '';
+export function formatDateTimeKyiv(dateStr: string | Date | null | undefined): string {
+  if (!dateStr) return '';
   const date = parseDatabaseDate(dateStr);
   return date.toLocaleString(UKRAINIAN_LOCALE, kyivDateTimeOptions);
 }
@@ -152,8 +152,8 @@ export function formatDateTimeKyiv(dateStr: string | null | undefined): string {
  * @param dateStr - Date string from database (stored as UTC)
  * @returns Formatted date string with short month name
  */
-export function formatDateShortMonthKyiv(dateStr: string | null | undefined): string {
-  if (!dateStr || typeof dateStr !== 'string') return '';
+export function formatDateShortMonthKyiv(dateStr: string | Date | null | undefined): string {
+  if (!dateStr) return '';
   const date = parseDatabaseDate(dateStr);
   return date.toLocaleDateString(UKRAINIAN_LOCALE, kyivShortMonthDateOptions);
 }
@@ -165,8 +165,13 @@ export function formatDateShortMonthKyiv(dateStr: string | null | undefined): st
  * @param dateStr - Datetime string from database
  * @returns Formatted time string in HH:mm format
  */
-export function formatTimeKyiv(dateStr: string | null | undefined): string {
-  if (!dateStr || typeof dateStr !== 'string') return '';
+export function formatTimeKyiv(dateStr: string | Date | null | undefined): string {
+  if (!dateStr) return '';
+  
+  // If Date object, use Intl formatter directly
+  if (dateStr instanceof Date) {
+    return dateStr.toLocaleTimeString(UKRAINIAN_LOCALE, kyivTimeOptions);
+  }
   
   // If the datetime string ends with Z (UTC), extract time directly without timezone conversion
   // because the database stores local Kyiv time with UTC marker
