@@ -8,4 +8,6 @@ public/fonts/
 .gitattributes
 .gitignore
 node_modules/
+migrate.ts
+out.txt
 # НЕ додаємо .next/ - Vercel використовує її для кешування
