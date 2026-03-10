@@ -87,17 +87,17 @@ export async function POST(request: NextRequest) {
 
     if (!initData) {
       return NextResponse.json(
-        { error: 'initData is required' },
+        { error: 'Параметр initData обов\'язковий' },
         { status: 400 }
       );
     }
 
     // Verify initData
     const verification = verifyInitData(initData);
-    
+
     if (!verification.valid || !verification.user) {
       return NextResponse.json(
-        { error: 'Invalid initData' },
+        { error: 'Невірний initData' },
         { status: 401 }
       );
     }
@@ -106,9 +106,9 @@ export async function POST(request: NextRequest) {
 
     // Find teacher in database
     const teacher = await queryOne(
-      `SELECT id, name, telegram_id, role 
-       FROM users 
-       WHERE telegram_id = $1 
+      `SELECT id, name, telegram_id, role
+       FROM users
+       WHERE telegram_id = $1
        AND is_active = TRUE
        LIMIT 1`,
       [telegramId]
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Teacher not found. Please contact administrator.' },
+        { error: 'Викладача не знайдено. Зверніться до адміністратора.' },
         { status: 401 }
       );
     }
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Auth error:', error);
     return NextResponse.json(
-      { error: 'Authentication failed' },
+      { error: 'Помилка автентифікації' },
       { status: 500 }
     );
   }

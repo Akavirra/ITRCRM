@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/db/neon';
 import crypto from 'crypto';
+import { toZonedTime } from 'date-fns-tz';
+import { format, addDays } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,19 +65,18 @@ function verifyInitData(initData: string): { valid: boolean; telegramId?: string
   }
 }
 
-// Get start and end of current week
-function getWeekBounds(date: Date = new Date()): { start: Date; end: Date } {
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-  const start = new Date(date);
-  start.setDate(diff);
-  start.setHours(0, 0, 0, 0);
-  
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  
-  return { start, end };
+// Get start and end of current week in Kyiv timezone
+function getWeekBounds(): { start: string; end: string } {
+  const KYIV_TZ = 'Europe/Kyiv';
+  const nowInKyiv = toZonedTime(new Date(), KYIV_TZ);
+  const day = nowInKyiv.getDay();
+  const daysFromMonday = day === 0 ? -6 : 1 - day;
+  const monday = addDays(nowInKyiv, daysFromMonday);
+  const sunday = addDays(monday, 6);
+  return {
+    start: format(monday, 'yyyy-MM-dd'),
+    end: format(sunday, 'yyyy-MM-dd'),
+  };
 }
 
 // GET /api/teacher-app/schedule
@@ -86,7 +87,7 @@ export async function GET(request: NextRequest) {
     
     if (!initData) {
       return NextResponse.json(
-        { error: 'X-Telegram-Init-Data header is required' },
+        { error: 'Заголовок X-Telegram-Init-Data обов\'язковий' },
         { status: 401 }
       );
     }
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
     
     if (!verification.valid || !verification.telegramId) {
       return NextResponse.json(
-        { error: 'Invalid initData' },
+        { error: 'Невірний initData' },
         { status: 401 }
       );
     }
@@ -111,15 +112,13 @@ export async function GET(request: NextRequest) {
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Teacher not found' },
+        { error: 'Викладача не знайдено' },
         { status: 401 }
       );
     }
 
-    // Get week bounds
-    const { start, end } = getWeekBounds();
-    const startStr = start.toISOString().split('T')[0];
-    const endStr = end.toISOString().split('T')[0];
+    // Get week bounds in Kyiv timezone
+    const { start: startStr, end: endStr } = getWeekBounds();
 
     // Get lessons for teacher (direct assignments + replacements + individual lessons)
     const lessons = await query(
@@ -165,7 +164,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Schedule error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch schedule' },
+      { error: 'Не вдалося завантажити розклад' },
       { status: 500 }
     );
   }

@@ -35,18 +35,20 @@ export async function GET(
   }
   
   // Get lesson to check group access
-  const lesson = await get<{ group_id: number }>(`SELECT group_id FROM lessons WHERE id = $1`, [lessonId]);
-  
+  const lesson = await get<{ group_id: number | null }>(`SELECT group_id FROM lessons WHERE id = $1`, [lessonId]);
+
   if (!lesson) {
     return NextResponse.json({ error: ERROR_MESSAGES.lessonNotFound }, { status: 404 });
   }
-  
-  const hasAccess = await checkGroupAccess(user, lesson.group_id);
-  
-  if (!hasAccess) {
-    return forbidden();
+
+  // Individual lessons (group_id = null) are accessible to admins only
+  if (lesson.group_id !== null) {
+    const hasAccess = await checkGroupAccess(user, lesson.group_id);
+    if (!hasAccess) {
+      return forbidden();
+    }
   }
-  
+
   const attendance = await getAttendanceForLessonWithStudents(lessonId);
   
   return NextResponse.json({ attendance });
@@ -70,18 +72,20 @@ export async function POST(
   }
   
   // Get lesson to check group access
-  const lesson = await get<{ group_id: number }>(`SELECT group_id FROM lessons WHERE id = $1`, [lessonId]);
-  
+  const lesson = await get<{ group_id: number | null }>(`SELECT group_id FROM lessons WHERE id = $1`, [lessonId]);
+
   if (!lesson) {
     return NextResponse.json({ error: ERROR_MESSAGES.lessonNotFound }, { status: 404 });
   }
-  
-  const hasAccess = await checkGroupAccess(user, lesson.group_id);
-  
-  if (!hasAccess) {
-    return forbidden();
+
+  // Individual lessons (group_id = null) are accessible to admins only
+  if (lesson.group_id !== null) {
+    const hasAccess = await checkGroupAccess(user, lesson.group_id);
+    if (!hasAccess) {
+      return forbidden();
+    }
   }
-  
+
   try {
     const body = await request.json();
     const { action, studentId, status, comment, makeupLessonId } = body;
@@ -96,25 +100,32 @@ export async function POST(
         }
         await setAttendance(lessonId, parseInt(studentId), status, user.id, comment, makeupLessonId);
         
-        // Check if this is marking attendance for a 'done' lesson - add history entry
-        const lessonInfo = await get<{ group_id: number; status: string; lesson_date: string; topic: string }>(
+        const lessonInfo = await get<{ group_id: number | null; status: string; lesson_date: string; topic: string }>(
           `SELECT group_id, status, lesson_date, topic FROM lessons WHERE id = $1`,
           [lessonId]
         );
-        
-        // Automatically set lesson status to 'done' when attendance is marked
-        if (lessonInfo && lessonInfo.status === 'scheduled') {
-          await run(`UPDATE lessons SET status = 'done', updated_at = NOW() WHERE id = $1`, [lessonId]);
-          
-          // Add history entry for lesson conducted
-          if (lessonInfo.group_id) {
-            await addGroupHistoryEntry(
-              lessonInfo.group_id,
-              'lesson_conducted',
-              formatLessonConductedDescription(lessonInfo.lesson_date, lessonInfo.topic),
-              user.id,
-              user.name
-            );
+
+        // Mark lesson as 'done' only when ALL active students have attendance recorded
+        if (lessonInfo && lessonInfo.status === 'scheduled' && lessonInfo.group_id !== null) {
+          const counts = await get<{ total: number; recorded: number }>(
+            `SELECT
+              (SELECT COUNT(*) FROM student_groups WHERE group_id = $2 AND is_active = TRUE) as total,
+              (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
+            [lessonId, lessonInfo.group_id]
+          );
+
+          if (counts && counts.total > 0 && counts.recorded >= counts.total) {
+            await run(`UPDATE lessons SET status = 'done', updated_at = NOW() WHERE id = $1`, [lessonId]);
+
+            if (lessonInfo.group_id) {
+              await addGroupHistoryEntry(
+                lessonInfo.group_id,
+                'lesson_conducted',
+                formatLessonConductedDescription(lessonInfo.lesson_date, lessonInfo.topic),
+                user.id,
+                user.name
+              );
+            }
           }
         }
         

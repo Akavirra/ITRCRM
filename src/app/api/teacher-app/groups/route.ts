@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     
     if (!initData) {
       return NextResponse.json(
-        { error: 'X-Telegram-Init-Data header is required' },
+        { error: 'Заголовок X-Telegram-Init-Data обов\'язковий' },
         { status: 401 }
       );
     }
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
     
     if (!verification.valid || !verification.telegramId) {
       return NextResponse.json(
-        { error: 'Invalid initData' },
+        { error: 'Невірний initData' },
         { status: 401 }
       );
     }
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Teacher not found' },
+        { error: 'Викладача не знайдено' },
         { status: 401 }
       );
     }
@@ -211,7 +211,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Teacher groups error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch groups' },
+      { error: 'Не вдалося завантажити групи' },
       { status: 500 }
     );
   }

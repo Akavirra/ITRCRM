@@ -53,6 +53,18 @@ export async function PATCH(
       return NextResponse.json({ error: 'Вкажіть нову дату та час' }, { status: 400 });
     }
 
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    const timeRegex = /^\d{2}:\d{2}$/;
+    if (!dateRegex.test(newDate) || isNaN(Date.parse(newDate))) {
+      return NextResponse.json({ error: 'Невірний формат дати (очікується YYYY-MM-DD)' }, { status: 400 });
+    }
+    if (!timeRegex.test(newStartTime) || !timeRegex.test(newEndTime)) {
+      return NextResponse.json({ error: 'Невірний формат часу (очікується HH:MM)' }, { status: 400 });
+    }
+    if (newStartTime >= newEndTime) {
+      return NextResponse.json({ error: 'Час початку повинен бути раніше часу завершення' }, { status: 400 });
+    }
+
     await rescheduleLesson(lessonId, newDate, newStartTime, newEndTime, lessonInfo.timezone);
 
     // Return formatted lesson (same shape as GET /api/lessons/[id])

@@ -74,7 +74,7 @@ export async function POST(
     
     if (!initData) {
       return NextResponse.json(
-        { error: 'X-Telegram-Init-Data header is required' },
+        { error: 'Заголовок X-Telegram-Init-Data обов\'язковий' },
         { status: 401 }
       );
     }
@@ -83,7 +83,7 @@ export async function POST(
     
     if (!verification.valid || !verification.telegramId) {
       return NextResponse.json(
-        { error: 'Invalid initData' },
+        { error: 'Невірний initData' },
         { status: 401 }
       );
     }
@@ -93,7 +93,7 @@ export async function POST(
 
     if (isNaN(lessonId)) {
       return NextResponse.json(
-        { error: 'Invalid lesson ID' },
+        { error: 'Невірний ID заняття' },
         { status: 400 }
       );
     }
@@ -106,7 +106,7 @@ export async function POST(
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Teacher not found' },
+        { error: 'Викладача не знайдено' },
         { status: 401 }
       );
     }
@@ -128,7 +128,7 @@ export async function POST(
 
     if (!lessonAccess) {
       return NextResponse.json(
-        { error: 'Lesson not found or access denied' },
+        { error: 'Заняття не знайдено або доступ заборонено' },
         { status: 404 }
       );
     }
@@ -151,7 +151,7 @@ export async function POST(
 
     if (!studentId || !attendanceStatus) {
       return NextResponse.json(
-        { error: 'studentId and status are required' },
+        { error: 'Параметри studentId та status обов\'язкові' },
         { status: 400 }
       );
     }
@@ -163,7 +163,7 @@ export async function POST(
     
     if (!['present', 'absent'].includes(dbStatus)) {
       return NextResponse.json(
-        { error: 'Invalid status. Must be present, absent, or sick' },
+        { error: 'Невірний статус. Допустимі значення: present, absent або sick' },
         { status: 400 }
       );
     }
@@ -194,7 +194,7 @@ export async function POST(
 
     if (!studentCheck) {
       return NextResponse.json(
-        { error: 'Student not found in this group' },
+        { error: 'Учня не знайдено у цій групі' },
         { status: 404 }
       );
     }
@@ -223,21 +223,27 @@ export async function POST(
       telegramId
     );
 
-    // Automatically mark lesson as conducted if it has attendance records
-    // and update reported fields (both new and old schema for compatibility)
-    await query(
-      `UPDATE lessons 
-       SET status = 'done',
-           reported_by = $1,
-           reported_at = NOW(),
-           reported_via = 'telegram',
-           topic_set_by = $1,
-           topic_set_at = NOW(),
-           updated_at = NOW()
-       WHERE id = $2
-       AND status = 'scheduled'`,
-      [teacher.id, lessonId]
-    );
+    // Mark lesson as 'done' only when ALL active students have attendance recorded
+    const counts = await queryOne(
+      `SELECT
+        (SELECT COUNT(*) FROM student_groups WHERE group_id = (SELECT group_id FROM lessons WHERE id = $1) AND is_active = TRUE) as total,
+        (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
+      [lessonId]
+    ) as { total: number; recorded: number } | null;
+
+    if (counts && counts.total > 0 && counts.recorded >= counts.total) {
+      await query(
+        `UPDATE lessons
+         SET status = 'done',
+             reported_by = $1,
+             reported_at = NOW(),
+             reported_via = 'telegram',
+             updated_at = NOW()
+         WHERE id = $2
+         AND status = 'scheduled'`,
+        [teacher.id, lessonId]
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -249,7 +255,7 @@ export async function POST(
   } catch (error) {
     console.error('Attendance update error:', error);
     return NextResponse.json(
-      { error: 'Failed to update attendance' },
+      { error: 'Не вдалося оновити відвідуваність' },
       { status: 500 }
     );
   }

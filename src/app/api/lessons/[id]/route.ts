@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, checkGroupAccess, forbidden } from '@/lib/api-utils';
 import { get, run } from '@/db';
-import { parseISO, setHours, setMinutes, format } from 'date-fns';
+import { format } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
 import { formatDateTimeKyiv, formatTimeKyiv } from '@/lib/date-utils';
 import { logLessonChange, getLessonChangeHistory } from '@/lib/lessons';
@@ -166,14 +167,6 @@ export async function GET(
       telegramUserInfo: lessonWithDetails.telegram_user_info,
     } : null;
     
-    console.log('API Debug - Transformed lesson:', {
-      topicSetBy: transformedLesson?.topicSetBy,
-      notesSetBy: transformedLesson?.notesSetBy,
-      topicSetByTelegramId: transformedLesson?.topicSetByTelegramId,
-      notesSetByTelegramId: transformedLesson?.notesSetByTelegramId,
-      telegramUserInfo: transformedLesson?.telegramUserInfo
-    });
-    
     // Get change history
     const changeHistory = await getLessonChangeHistory(lessonId);
     
@@ -270,19 +263,25 @@ export async function PATCH(
     
     // If changing date/time, recalculate datetime fields
     if (lesson_date || start_time) {
-      const newDate = lesson_date ? parseISO(lesson_date) : parseISO(lesson.lesson_date);
-      const newTime = start_time ? start_time : lesson.start_datetime.split(' ')[1].substring(0, 5);
-      const [hours, minutes] = newTime.split(':').map(Number);
-      
-      const startDateTime = setMinutes(setHours(newDate, hours), minutes);
-      const endDateTime = new Date(startDateTime.getTime() + 90 * 60 * 1000); // Default 90 min
-      
+      const KYIV_TZ = 'Europe/Kyiv';
+      const newDateStr = lesson_date ?? lesson.lesson_date.split('T')[0].split(' ')[0];
+      // Extract current time in Kyiv timezone (not raw UTC string)
+      const newTime = start_time ?? formatTimeKyiv(lesson.start_datetime);
+
+      // Preserve existing lesson duration
+      const existingDurationMs = new Date(lesson.end_datetime).getTime() - new Date(lesson.start_datetime).getTime();
+      const durationMinutes = Math.round(existingDurationMs / 60000) || 90;
+
+      // Convert Kyiv time to UTC for storage
+      const startUtc = fromZonedTime(`${newDateStr}T${newTime}:00`, KYIV_TZ);
+      const endUtc = new Date(startUtc.getTime() + durationMinutes * 60 * 1000);
+
       updates.push(`lesson_date = $${queryParams.length + 1}`);
-      queryParams.push(format(newDate, 'yyyy-MM-dd'));
+      queryParams.push(newDateStr);
       updates.push(`start_datetime = $${queryParams.length + 1}`);
-      queryParams.push(format(startDateTime, 'yyyy-MM-dd HH:mm:ss'));
+      queryParams.push(format(startUtc, 'yyyy-MM-dd HH:mm:ss'));
       updates.push(`end_datetime = $${queryParams.length + 1}`);
-      queryParams.push(format(endDateTime, 'yyyy-MM-dd HH:mm:ss'));
+      queryParams.push(format(endUtc, 'yyyy-MM-dd HH:mm:ss'));
     }
     
     // Always update updated_at

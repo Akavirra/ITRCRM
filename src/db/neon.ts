@@ -25,11 +25,6 @@ export async function query(text: string, params?: unknown[]) {
     } else {
       result = await sql.query(text);
     }
-    // DEBUG: логування для діагностики на Vercel (тимчасово)
-    console.log('[DB Query]', text.substring(0, 100), '| params:', JSON.stringify(params || []).substring(0, 100), '| result type:', typeof result, '| isArray:', Array.isArray(result), '| length:', Array.isArray(result) ? result.length : 'N/A');
-    if (Array.isArray(result) && result.length > 0) {
-      console.log('[DB Query] first row sample:', JSON.stringify(result[0]).substring(0, 200));
-    }
     return result;
   } catch (error) {
     console.error('DB Query Error:', { text: text.substring(0, 200), params, error });

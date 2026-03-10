@@ -16,6 +16,8 @@ function isPublicRoute(pathname: string): boolean {
   return PUBLIC_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'));
 }
 
+const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -31,6 +33,22 @@ export function middleware(request: NextRequest) {
     pathname.includes('.')
   ) {
     return NextResponse.next()
+  }
+
+  // CSRF: перевіряємо Origin для мутаційних запитів до API
+  if (MUTATION_METHODS.has(request.method) && pathname.startsWith('/api/')) {
+    const origin = request.headers.get('origin');
+    if (origin) {
+      const host = request.headers.get('host');
+      try {
+        const originHost = new URL(origin).host;
+        if (originHost !== host) {
+          return NextResponse.json({ error: 'CSRF перевірка не пройшла' }, { status: 403 });
+        }
+      } catch {
+        return NextResponse.json({ error: 'CSRF перевірка не пройшла' }, { status: 403 });
+      }
+    }
   }
 
   // Перевіряємо наявність сесійного cookie

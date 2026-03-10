@@ -1,11 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { run, get, all } from '@/db';
 import { answerCallbackQuery, editMessageText } from '@/lib/telegram';
+import crypto from 'crypto';
+
+export const dynamic = 'force-dynamic';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
+
+function verifyTelegramRequest(request: NextRequest): boolean {
+  if (!TELEGRAM_WEBHOOK_SECRET) return true; // skip if secret not configured
+  const secret = request.headers.get('x-telegram-bot-api-secret-token');
+  if (!secret) return false;
+  return crypto.timingSafeEqual(
+    Buffer.from(secret),
+    Buffer.from(TELEGRAM_WEBHOOK_SECRET)
+  );
+}
 
 // POST /api/telegram/callback - Handle callback queries from Telegram inline buttons
 export async function POST(request: NextRequest) {
+  if (!verifyTelegramRequest(request)) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     
@@ -16,20 +34,21 @@ export async function POST(request: NextRequest) {
       const message = callbackQuery.message;
       const user = callbackQuery.from;
       
-      console.log('[Telegram Callback] Received:', callbackData);
-      console.log('[Telegram Callback] User:', user.id);
-      console.log('[Telegram Callback] Message:', message ? 'present' : 'missing');
-      
       // Parse callback data: attendance_lessonId_studentId_status
       if (callbackData?.startsWith('attendance_')) {
         const parts = callbackData.split('_');
-        if (parts.length >= 4) {
+        if (parts.length === 4) {
           const lessonId = parseInt(parts[1]);
           const studentId = parseInt(parts[2]);
-          const status = parts[3]; // 'present' or 'absent'
-          
+          const status = parts[3];
+
           if (isNaN(lessonId) || isNaN(studentId)) {
             await answerCallbackQuery(callbackQuery.id, 'Невірні параметри');
+            return NextResponse.json({ ok: true });
+          }
+
+          if (!['present', 'absent'].includes(status)) {
+            await answerCallbackQuery(callbackQuery.id, 'Невірний статус відвідуваності');
             return NextResponse.json({ ok: true });
           }
           
@@ -143,11 +162,7 @@ export async function POST(request: NextRequest) {
     
     // Handle regular updates from Telegram (like messages)
     if (body.message) {
-      const message = body.message;
-      const text = message.text;
-      const chatId = message.chat.id.toString();
-      
-      console.log('[Telegram Message] From:', message.from.id, 'Text:', text);
+      // Additional message handling can be added here
     }
     
     return NextResponse.json({ ok: true });

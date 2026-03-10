@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { get, all, run } from '@/db';
 import { formatDateTimeKyiv, formatDateKyiv, formatTimeKyiv } from '@/lib/date-utils';
+import crypto from 'crypto';
+
+export const dynamic = 'force-dynamic';
 
 interface Lesson {
   id: number;
@@ -17,85 +20,52 @@ interface Lesson {
   notes_set_at: string | null;
 }
 
-// Verify Telegram user from initData
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+
+// Verify Telegram Mini App initData using HMAC-SHA256 (per Telegram docs)
 async function verifyTelegramUser(initData: string): Promise<{ id: number; name: string } | null> {
-  if (!initData) {
-    console.log('[Telegram Verify] No initData provided');
-    return null;
-  }
-  
+  if (!initData || !TELEGRAM_BOT_TOKEN) return null;
+
   try {
-    console.log('[Telegram Verify] initData:', initData.substring(0, 100));
-    // Parse initData (format: key1=value1&key2=value2&...)
     const params = new URLSearchParams(initData);
+    const hash = params.get('hash');
+    if (!hash) return null;
+
+    params.delete('hash');
+
+    const paramsArray = Array.from(params.entries());
+    paramsArray.sort(([a], [b]) => a.localeCompare(b));
+    const dataCheckString = paramsArray.map(([key, value]) => `${key}=${value}`).join('\n');
+
+    const secretKey = crypto
+      .createHmac('sha256', 'WebAppData')
+      .update(TELEGRAM_BOT_TOKEN)
+      .digest();
+
+    const calculatedHash = crypto
+      .createHmac('sha256', secretKey)
+      .update(dataCheckString)
+      .digest('hex');
+
+    if (calculatedHash !== hash) return null;
+
+    const authDate = parseInt(params.get('auth_date') || '0', 10);
+    const now = Math.floor(Date.now() / 1000);
+    if (now - authDate > 86400) return null;
+
     const userJson = params.get('user');
-    console.log('[Telegram Verify] userJson:', userJson);
-    if (!userJson) {
-      console.log('[Telegram Verify] No user in initData');
-      return null;
-    }
-    
-    const user = JSON.parse(decodeURIComponent(userJson));
-    if (!user || !user.id) {
-      console.log('[Telegram Verify] Invalid user data');
-      return null;
-    }
-    
-    console.log('[Telegram Verify] User from initData:', user.id, user.first_name, user.last_name);
-    
-    // Find user by telegram_id
+    if (!userJson) return null;
+
+    const telegramUser = JSON.parse(userJson);
+    if (!telegramUser?.id) return null;
+
     const dbUser = await get<{ id: number; name: string }>(
       `SELECT id, name FROM users WHERE telegram_id = $1`,
-      [user.id.toString()]
+      [telegramUser.id.toString()]
     );
-    
-    console.log('[Telegram Verify] DB User found:', dbUser);
-    
-    if (dbUser) {
-      return dbUser;
-    }
-    
-    // Try to find user by name - search across all roles (teacher, admin, etc.)
-    const userName = [user.first_name, user.last_name].filter(Boolean).join(' ');
-    console.log('[Telegram Verify] Trying to find user by name:', userName);
-    
-    // Try exact match first
-    let dbUserByName = await get<{ id: number; name: string }>(
-      `SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1`,
-      [userName]
-    );
-    
-    // If not found, try partial match (first name only)
-    if (!dbUserByName && user.first_name) {
-      dbUserByName = await get<{ id: number; name: string }>(
-        `SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1`,
-        [`%${user.first_name}%`]
-      );
-    }
-    
-    // If still not found, try with last name
-    if (!dbUserByName && user.last_name) {
-      dbUserByName = await get<{ id: number; name: string }>(
-        `SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1`,
-        [`%${user.last_name}%`]
-      );
-    }
-    
-    if (dbUserByName) {
-      console.log('[Telegram Verify] Found user by name, updating telegram_id');
-      // Update the user's telegram_id for future use
-      await run(
-        `UPDATE users SET telegram_id = $1 WHERE id = $2`,
-        [user.id.toString(), dbUserByName.id]
-      );
-      console.log('[Telegram Verify] Updated telegram_id for user:', dbUserByName.id);
-      return dbUserByName;
-    }
-    
-    console.log('[Telegram Verify] User not found in database');
-    return null;
-  } catch (error) {
-    console.error('Error verifying Telegram user:', error);
+
+    return dbUser || null;
+  } catch {
     return null;
   }
 }
@@ -105,17 +75,19 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Parse lessonId - support both numeric id and public_id (LSN-XXXXXXXX)
-  console.log('[Telegram Lesson] Raw params.id:', JSON.stringify(params.id));
+  const initData = request.nextUrl.searchParams.get('initData') || '';
+  const telegramUser = await verifyTelegramUser(initData);
+  if (!telegramUser) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const rawId = params.id;
   let lesson;
-  
-  // Try to parse as numeric id first
+
   const numericId = parseInt(rawId, 10);
   if (!isNaN(numericId)) {
-    console.log('[Telegram Lesson] Trying to find lesson by numeric id:', numericId);
     lesson = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; start_time_formatted: string | null; end_time_formatted: string | null }>(
-      `SELECT 
+      `SELECT
         l.id,
         l.group_id,
         l.lesson_date,
@@ -180,12 +152,10 @@ export async function GET(
       [numericId]
     );
   }
-  
-  // If not found by numeric id, try to find by public_id
+
   if (!lesson && rawId.includes('LSN-')) {
-    console.log('[Telegram Lesson] Trying to find lesson by public_id:', rawId);
     lesson = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; start_time_formatted: string | null; end_time_formatted: string | null }>(
-      `SELECT 
+      `SELECT
         l.id,
         l.group_id,
         l.lesson_date,
@@ -249,40 +219,11 @@ export async function GET(
       [rawId]
     );
   }
-  
+
   if (!lesson) {
-    console.error('[Telegram Lesson] Lesson not found by any identifier:', rawId);
-    const lessonsCount = await get<{ count: number }>(`SELECT COUNT(*) as count FROM lessons`);
-    const allLessons = await all<{ id: number; public_id: string; group_id: number; lesson_date: string }>(`SELECT id, public_id, group_id, lesson_date FROM lessons LIMIT 10`);
-    console.error('[Telegram Lesson] Lessons count:', lessonsCount?.count);
-    console.error('[Telegram Lesson] First 10 lessons:', allLessons);
-    return NextResponse.json({ error: 'Заняття не знайдено', debug: { searchedId: rawId, lessonsCount: lessonsCount?.count, allLessons } }, { status: 404 });
+    return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
   }
-  
-  // Verify Telegram user (skip verification if initData is empty for debugging purposes)
-  const initData = request.nextUrl.searchParams.get('initData') || '';
-  const teacherId = request.nextUrl.searchParams.get('teacher_id') || '';
-  console.log('[Telegram Lesson] initData received:', initData ? 'Yes' : 'No');
-  console.log('[Telegram Lesson] teacher_id from URL:', teacherId);
-  if (initData) {
-    console.log('[Telegram Lesson] initData preview:', initData.substring(0, 100));
-  }
-  let telegramUser = null;
-  
-  if (initData) {
-    telegramUser = await verifyTelegramUser(initData);
-  }
-  
-  // Allow access without Telegram authentication for debugging
-  // Note: In production, you might want to restrict this
-  console.log('[Telegram Lesson] User verification:', telegramUser ? 'Success' : 'Skipped (no initData)');
-  
-  if (telegramUser) {
-    console.log('[Telegram Lesson] Authorized user:', telegramUser.id, telegramUser.name);
-  }
-  
-  console.log('[Telegram Lesson] Found lesson:', lesson.group_title, lesson.course_title);
-  
+
   const transformedLesson = {
     id: lesson.id,
     groupId: lesson.group_id,
@@ -315,201 +256,65 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Parse lessonId - support both numeric id and public_id (LSN-XXXXXXXX)
+  const initData = request.headers.get('x-telegram-init-data') || '';
+  const telegramUser = await verifyTelegramUser(initData);
+  if (!telegramUser) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const rawId = params.id;
   let lesson: Lesson | null = null;
-  
-  // Try to parse as numeric id first
+
   const numericId = parseInt(rawId, 10);
   if (!isNaN(numericId)) {
-    console.log('[Telegram Lesson PATCH] Trying to find lesson by numeric id:', numericId);
     lesson = (await get<Lesson>(
       `SELECT * FROM lessons WHERE id = $1`,
       [numericId]
     )) || null;
   }
-  
-  // If not found by numeric id, try to find by public_id
+
   if (!lesson && rawId.includes('LSN-')) {
-    console.log('[Telegram Lesson PATCH] Trying to find lesson by public_id:', rawId);
     lesson = (await get<Lesson>(
       `SELECT * FROM lessons WHERE public_id = $1`,
       [rawId]
     )) || null;
   }
-  
+
   if (!lesson) {
-    console.error('[Telegram Lesson PATCH] Lesson not found by any identifier:', rawId);
     return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
   }
-  
-  // Verify Telegram user (skip verification if initData is empty for debugging purposes)
-  const initData = request.headers.get('x-telegram-init-data') || '';
-  const teacherIdFromBody = request.nextUrl.searchParams.get('teacher_id') || '';
-  console.log('[Telegram Lesson PATCH] initData received:', initData ? 'YES (' + initData.length + ' chars)' : 'NO');
-  console.log('[Telegram Lesson PATCH] teacher_id from URL:', teacherIdFromBody);
-  let telegramUser = null;
-  
-  if (initData) {
-    telegramUser = await verifyTelegramUser(initData);
-  }
-  
-  // Note: In production, you might want to restrict this
-  console.log('[Telegram Lesson PATCH] User verification result:', telegramUser ? `Found: ${telegramUser.name} (id: ${telegramUser.id})` : 'Not found');
-  
+
   try {
     const body = await request.json();
-    const { topic, notes, teacher_id } = body;
-    
-    console.log('[Telegram Lesson PATCH] Request body:', { topic, notes, teacher_id });
-    console.log('[Telegram Lesson PATCH] Full body:', JSON.stringify(body));
-    
-    // Debug: check if teacher_id is coming from body
-    if (teacher_id) {
-      console.log('[Telegram Lesson PATCH] teacher_id from body:', teacher_id);
-    } else {
-      console.log('[Telegram Lesson PATCH] No teacher_id in body');
-    }
-    
-    console.log('[Telegram Lesson PATCH] Received body:', JSON.stringify(body));
-    
+    const { topic, notes } = body;
+
     const updates: string[] = ['updated_at = NOW()'];
     const queryParams: (string | number | null)[] = [];
-    
+
     if (topic !== undefined) {
-      // Convert empty string to null to avoid PostgreSQL type inference issues
       const topicValue = topic === '' ? null : topic;
       updates.push(`topic = $${queryParams.length + 1}::text`);
       queryParams.push(topicValue);
-      
-      // Always track who set topic
-      if (telegramUser) {
-        updates.push(`topic_set_by = $${queryParams.length + 1}`);
-        queryParams.push(telegramUser.id);
-      } else {
-        // Store NULL for topic_set_by and use telegram_user_info for tracking
-        console.log('[Telegram Lesson] telegramUser is null, trying to parse initData');
-        const user = JSON.parse(decodeURIComponent(new URLSearchParams(initData).get('user') || '{}'));
-        console.log('[Telegram Lesson] Parsed user from initData:', user);
-        if (user.id) {
-          console.log('[Telegram Lesson] User ID found:', user.id);
-          updates.push(`topic_set_by = $${queryParams.length + 1}`);
-          queryParams.push(null); // Store NULL to avoid foreign key constraint
-          
-          // Store full Telegram user info in JSON field with complete name
-          updates.push(`telegram_user_info = $${queryParams.length + 1}`);
-          const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
-          const telegramUserInfo = {
-            telegram_id: user.id,
-            first_name: fullName || user.first_name || 'Telegram User',
-            last_name: user.last_name,
-            username: user.username
-          };
-          queryParams.push(JSON.stringify(telegramUserInfo));
-          console.log('[Telegram Lesson] Storing telegram user info:', telegramUserInfo);
-        } else if (teacher_id) {
-          console.log('[Telegram Lesson] Using teacher_id from body as fallback:', teacher_id);
-          updates.push(`topic_set_by = $${queryParams.length + 1}`);
-          queryParams.push(null); // Store NULL to avoid foreign key constraint
-          
-          // Get teacher name from database by telegram_id
-          const teacherFromDb = await get<{ name: string }>(
-            `SELECT name FROM users WHERE telegram_id = $1`,
-            [teacher_id]
-          );
-          const teacherName = teacherFromDb?.name || 'Unknown Teacher';
-          console.log('[Telegram Lesson] Found teacher name from DB:', teacherName);
-          
-          // Store teacher info in JSON field with name
-          updates.push(`telegram_user_info = $${queryParams.length + 1}`);
-          const teacherInfo = {
-            user_id: teacher_id,
-            first_name: teacherName,
-            source: 'body_parameter'
-          };
-          queryParams.push(JSON.stringify(teacherInfo));
-          console.log('[Telegram Lesson] Storing teacher info from body:', teacherInfo);
-        } else {
-          console.log('[Telegram Lesson] No user ID found in parsed data and no teacher_id in body');
-        }
-      }
+      updates.push(`topic_set_by = $${queryParams.length + 1}`);
+      queryParams.push(telegramUser.id);
       updates.push(`topic_set_at = NOW()`);
     }
-    
+
     if (notes !== undefined) {
-      // Convert empty string to null to avoid PostgreSQL type inference issues
       const notesValue = notes === '' ? null : notes;
       updates.push(`notes = $${queryParams.length + 1}::text`);
       queryParams.push(notesValue);
-      
-      // Always track who set notes
-      if (telegramUser) {
-        updates.push(`notes_set_by = $${queryParams.length + 1}`);
-        queryParams.push(telegramUser.id);
-      } else {
-        // Store NULL for notes_set_by and use telegram_user_info for tracking
-        console.log('[Telegram Lesson] telegramUser is null for notes, trying to parse initData');
-        const user = JSON.parse(decodeURIComponent(new URLSearchParams(initData).get('user') || '{}'));
-        console.log('[Telegram Lesson] Parsed user from initData for notes:', user);
-        if (user.id) {
-          console.log('[Telegram Lesson] User ID found for notes:', user.id);
-          updates.push(`notes_set_by = $${queryParams.length + 1}`);
-          queryParams.push(null); // Store NULL to avoid foreign key constraint
-          
-          // Only update telegram_user_info if not already updated by topic
-          if (!updates.some(update => update.includes('telegram_user_info'))) {
-            updates.push(`telegram_user_info = $${queryParams.length + 1}`);
-            const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
-            const telegramUserInfo = {
-              telegram_id: user.id,
-              first_name: fullName || user.first_name || 'Telegram User',
-              last_name: user.last_name,
-              username: user.username
-            };
-            queryParams.push(JSON.stringify(telegramUserInfo));
-            console.log('[Telegram Lesson] Storing telegram user info for notes:', telegramUserInfo);
-          }
-        } else if (teacher_id) {
-          console.log('[Telegram Lesson] Using teacher_id from body as fallback for notes:', teacher_id);
-          updates.push(`notes_set_by = $${queryParams.length + 1}`);
-          queryParams.push(null); // Store NULL to avoid foreign key constraint
-          
-          // Only update telegram_user_info if not already updated by topic
-          if (!updates.some(update => update.includes('telegram_user_info'))) {
-            // Get teacher name from database
-            const teacherFromDb = await get<{ name: string }>(
-              `SELECT name FROM users WHERE id = $1`,
-              [teacher_id]
-            );
-            const teacherName = teacherFromDb?.name || 'Unknown Teacher';
-            console.log('[Telegram Lesson] Found teacher name from DB for notes:', teacherName);
-            
-            updates.push(`telegram_user_info = $${queryParams.length + 1}`);
-            const teacherInfo = {
-              user_id: teacher_id,
-              first_name: teacherName,
-              source: 'body_parameter'
-            };
-            queryParams.push(JSON.stringify(teacherInfo));
-            console.log('[Telegram Lesson] Storing teacher info from body for notes:', teacherInfo);
-          }
-        } else {
-          console.log('[Telegram Lesson] No user ID found in parsed data for notes and no teacher_id in body');
-        }
-      }
+      updates.push(`notes_set_by = $${queryParams.length + 1}`);
+      queryParams.push(telegramUser.id);
       updates.push(`notes_set_at = NOW()`);
     }
-    
+
     queryParams.push(lesson.id);
-    
+
     const sql = `UPDATE lessons SET ${updates.join(', ')} WHERE id = $${queryParams.length}`;
     await run(sql, queryParams);
-    
-    // Get updated lesson with details
-    console.log('[Telegram Lesson] Querying lesson with id:', lesson.id);
-    console.log('[Telegram Lesson] SQL query params:', queryParams);
-    
-    const updatedLessonRaw = await get<Lesson & { topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: any; start_time_formatted: string | null; end_time_formatted: string | null }>(
+
+    const updatedLessonRaw = await get<Lesson & { topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: unknown; start_time_formatted: string | null; end_time_formatted: string | null }>(
       `SELECT
         l.*,
         TO_CHAR(l.start_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as start_time_formatted,
@@ -552,29 +357,24 @@ export async function PATCH(
       WHERE l.id = $1`,
       [lesson.id]
     );
-    
-    console.log('[Telegram Lesson] Updated lesson raw:', updatedLessonRaw);
-    console.log('[Telegram Lesson] telegram_user_info:', updatedLessonRaw?.telegram_user_info);
-    console.log('[Telegram Lesson] topic_set_by_name:', updatedLessonRaw?.topic_set_by_name);
-    console.log('[Telegram Lesson] notes_set_by_name:', updatedLessonRaw?.notes_set_by_name);
-    
-     const updatedLesson = updatedLessonRaw ? {
-       id: updatedLessonRaw.id,
-       groupId: updatedLessonRaw.group_id,
-       lessonDate: formatDateKyiv(updatedLessonRaw.lesson_date),
-       startTime: updatedLessonRaw.start_time_formatted || formatTimeKyiv(updatedLessonRaw.start_datetime),
-       endTime: updatedLessonRaw.end_time_formatted || formatTimeKyiv(updatedLessonRaw.end_datetime),
-       status: updatedLessonRaw.status,
-       topic: updatedLessonRaw.topic,
-       notes: updatedLessonRaw.notes,
-       topicSetBy: updatedLessonRaw.topic_set_by_name,
-       topicSetAt: formatDateTimeKyiv(updatedLessonRaw.topic_set_at),
-       topicSetByTelegramId: updatedLessonRaw.topic_set_by_telegram_id,
-       notesSetBy: updatedLessonRaw.notes_set_by_name,
-       notesSetAt: formatDateTimeKyiv(updatedLessonRaw.notes_set_at),
-       notesSetByTelegramId: updatedLessonRaw.notes_set_by_telegram_id,
-     } : null;
-    
+
+    const updatedLesson = updatedLessonRaw ? {
+      id: updatedLessonRaw.id,
+      groupId: updatedLessonRaw.group_id,
+      lessonDate: formatDateKyiv(updatedLessonRaw.lesson_date),
+      startTime: updatedLessonRaw.start_time_formatted || formatTimeKyiv(updatedLessonRaw.start_datetime),
+      endTime: updatedLessonRaw.end_time_formatted || formatTimeKyiv(updatedLessonRaw.end_datetime),
+      status: updatedLessonRaw.status,
+      topic: updatedLessonRaw.topic,
+      notes: updatedLessonRaw.notes,
+      topicSetBy: updatedLessonRaw.topic_set_by_name,
+      topicSetAt: formatDateTimeKyiv(updatedLessonRaw.topic_set_at),
+      topicSetByTelegramId: updatedLessonRaw.topic_set_by_telegram_id,
+      notesSetBy: updatedLessonRaw.notes_set_by_name,
+      notesSetAt: formatDateTimeKyiv(updatedLessonRaw.notes_set_at),
+      notesSetByTelegramId: updatedLessonRaw.notes_set_by_telegram_id,
+    } : null;
+
     return NextResponse.json({
       message: 'Заняття оновлено',
       lesson: updatedLesson,

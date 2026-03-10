@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
       messageText += `👥 <b>Студентів:</b> ${studentCount?.count || 0}`;
 
       // Create inline keyboard with Mini App button
-      const WEB_APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://itrcrm.vercel.app';
+      const WEB_APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
       const miniAppUrl = `${WEB_APP_URL}/teacher-app`;
       
       const keyboard: { inline_keyboard: Array<Array<{ text: string; web_app: { url: string } }>> } = {

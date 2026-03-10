@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { neon, neonConfig } from '@neondatabase/serverless';
+import { getAuthUser, unauthorized } from '@/lib/api-utils';
 
-// Configure Neon to not cache responses
-neonConfig.fetchFunction = (url: any, init: any) => {
-  return fetch(url, { ...init, cache: 'no-store' });
-};
+export const dynamic = 'force-dynamic';
 
-const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 // POST /api/telegram/webhook - Set up Telegram webhook
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
+
   try {
     const body = await request.json();
     const { url } = body;
@@ -58,7 +57,10 @@ export async function POST(request: NextRequest) {
 }
 
 // GET - Get current webhook info
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
+
   if (!TELEGRAM_BOT_TOKEN) {
     return NextResponse.json({ error: 'TELEGRAM_BOT_TOKEN not configured' }, { status: 500 });
   }
@@ -76,7 +78,10 @@ export async function GET() {
 }
 
 // DELETE - Remove webhook
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
+
   if (!TELEGRAM_BOT_TOKEN) {
     return NextResponse.json({ error: 'TELEGRAM_BOT_TOKEN not configured' }, { status: 500 });
   }

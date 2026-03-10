@@ -74,7 +74,7 @@ export async function GET(
     
     if (!initData) {
       return NextResponse.json(
-        { error: 'X-Telegram-Init-Data header is required' },
+        { error: 'Заголовок X-Telegram-Init-Data обов\'язковий' },
         { status: 401 }
       );
     }
@@ -83,7 +83,7 @@ export async function GET(
     
     if (!verification.valid || !verification.telegramId) {
       return NextResponse.json(
-        { error: 'Invalid initData' },
+        { error: 'Невірний initData' },
         { status: 401 }
       );
     }
@@ -93,7 +93,7 @@ export async function GET(
 
     if (isNaN(lessonId)) {
       return NextResponse.json(
-        { error: 'Invalid lesson ID' },
+        { error: 'Невірний ID заняття' },
         { status: 400 }
       );
     }
@@ -106,7 +106,7 @@ export async function GET(
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Teacher not found' },
+        { error: 'Викладача не знайдено' },
         { status: 401 }
       );
     }
@@ -137,7 +137,7 @@ export async function GET(
 
     if (!lesson) {
       return NextResponse.json(
-        { error: 'Lesson not found or access denied' },
+        { error: 'Заняття не знайдено або доступ заборонено' },
         { status: 404 }
       );
     }
@@ -179,7 +179,7 @@ export async function GET(
   } catch (error) {
     console.error('Lesson details error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch lesson details' },
+      { error: 'Не вдалося завантажити деталі заняття' },
       { status: 500 }
     );
   }
@@ -195,7 +195,7 @@ export async function PATCH(
     
     if (!initData) {
       return NextResponse.json(
-        { error: 'X-Telegram-Init-Data header is required' },
+        { error: 'Заголовок X-Telegram-Init-Data обов\'язковий' },
         { status: 401 }
       );
     }
@@ -204,7 +204,7 @@ export async function PATCH(
     
     if (!verification.valid || !verification.telegramId) {
       return NextResponse.json(
-        { error: 'Invalid initData' },
+        { error: 'Невірний initData' },
         { status: 401 }
       );
     }
@@ -214,7 +214,7 @@ export async function PATCH(
 
     if (isNaN(lessonId)) {
       return NextResponse.json(
-        { error: 'Invalid lesson ID' },
+        { error: 'Невірний ID заняття' },
         { status: 400 }
       );
     }
@@ -227,7 +227,7 @@ export async function PATCH(
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Teacher not found' },
+        { error: 'Викладача не знайдено' },
         { status: 401 }
       );
     }
@@ -249,7 +249,7 @@ export async function PATCH(
 
     if (!lessonAccess) {
       return NextResponse.json(
-        { error: 'Lesson not found or access denied' },
+        { error: 'Заняття не знайдено або доступ заборонено' },
         { status: 404 }
       );
     }
@@ -330,7 +330,7 @@ export async function PATCH(
 
     if (updates.length === 0) {
       return NextResponse.json(
-        { error: 'No fields to update' },
+        { error: 'Немає полів для оновлення' },
         { status: 400 }
       );
     }
@@ -382,7 +382,7 @@ export async function PATCH(
   } catch (error) {
     console.error('Lesson update error:', error);
     return NextResponse.json(
-      { error: 'Failed to update lesson' },
+      { error: 'Не вдалося оновити заняття' },
       { status: 500 }
     );
   }
