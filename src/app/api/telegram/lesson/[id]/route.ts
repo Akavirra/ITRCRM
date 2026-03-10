@@ -114,13 +114,15 @@ export async function GET(
   const numericId = parseInt(rawId, 10);
   if (!isNaN(numericId)) {
     console.log('[Telegram Lesson] Trying to find lesson by numeric id:', numericId);
-    lesson = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null }>(
+    lesson = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; start_time_formatted: string | null; end_time_formatted: string | null }>(
       `SELECT 
         l.id,
         l.group_id,
         l.lesson_date,
         l.start_datetime,
         l.end_datetime,
+        TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
+        TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
         l.topic,
         l.notes,
         l.status,
@@ -182,13 +184,15 @@ export async function GET(
   // If not found by numeric id, try to find by public_id
   if (!lesson && rawId.includes('LSN-')) {
     console.log('[Telegram Lesson] Trying to find lesson by public_id:', rawId);
-    lesson = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null }>(
+    lesson = await get<Lesson & { group_title: string; course_title: string; course_id: number; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; start_time_formatted: string | null; end_time_formatted: string | null }>(
       `SELECT 
         l.id,
         l.group_id,
         l.lesson_date,
         l.start_datetime,
         l.end_datetime,
+        TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
+        TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
         l.topic,
         l.notes,
         l.status,
@@ -289,8 +293,8 @@ export async function GET(
     teacherName: lesson.teacher_name || (lesson.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
     originalTeacherId: lesson.original_teacher_id || null,
     isReplaced: lesson.is_replaced,
-    startTime: formatTimeKyiv(lesson.start_datetime),
-    endTime: formatTimeKyiv(lesson.end_datetime),
+    startTime: lesson.start_time_formatted || formatTimeKyiv(lesson.start_datetime),
+    endTime: lesson.end_time_formatted || formatTimeKyiv(lesson.end_datetime),
     lessonDate: formatDateKyiv(lesson.lesson_date),
     status: lesson.status,
     topic: lesson.topic,
@@ -505,9 +509,11 @@ export async function PATCH(
     console.log('[Telegram Lesson] Querying lesson with id:', lesson.id);
     console.log('[Telegram Lesson] SQL query params:', queryParams);
     
-    const updatedLessonRaw = await get<Lesson & { topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: any }>(
+    const updatedLessonRaw = await get<Lesson & { topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: any; start_time_formatted: string | null; end_time_formatted: string | null }>(
       `SELECT 
         l.*, 
+        TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
+        TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
         CASE 
           WHEN l.topic_set_by IS NULL AND l.telegram_user_info IS NOT NULL THEN
             COALESCE(
@@ -555,8 +561,8 @@ export async function PATCH(
        id: updatedLessonRaw.id,
        groupId: updatedLessonRaw.group_id,
        lessonDate: formatDateKyiv(updatedLessonRaw.lesson_date),
-       startTime: formatTimeKyiv(updatedLessonRaw.start_datetime),
-       endTime: formatTimeKyiv(updatedLessonRaw.end_datetime),
+       startTime: updatedLessonRaw.start_time_formatted || formatTimeKyiv(updatedLessonRaw.start_datetime),
+       endTime: updatedLessonRaw.end_time_formatted || formatTimeKyiv(updatedLessonRaw.end_datetime),
        status: updatedLessonRaw.status,
        topic: updatedLessonRaw.topic,
        notes: updatedLessonRaw.notes,

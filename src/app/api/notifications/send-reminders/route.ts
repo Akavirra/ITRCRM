@@ -21,6 +21,8 @@ interface LessonData {
   lesson_date: string;
   start_datetime: string;
   end_datetime: string;
+  start_time_formatted: string | null;
+  end_time_formatted: string | null;
   status: string;
   topic: string | null;
   notes: string | null;
@@ -76,6 +78,8 @@ export async function POST(request: NextRequest) {
         lesson = await get<LessonData>(
           `SELECT 
             l.id, l.group_id, l.lesson_date, l.start_datetime, l.end_datetime, l.status,
+            TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
+            TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
             l.topic, l.notes,
             g.title as group_title, c.title as course_title,
             g.teacher_id,
@@ -99,6 +103,8 @@ export async function POST(request: NextRequest) {
         lesson = await get<LessonData>(
           `SELECT 
             l.id, l.group_id, l.lesson_date, l.start_datetime, l.end_datetime, l.status,
+            TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
+            TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
             l.topic, l.notes,
             g.title as group_title, c.title as course_title,
             g.teacher_id,
@@ -142,7 +148,7 @@ export async function POST(request: NextRequest) {
       
       // Format date and time - use proper timezone handling
       const lessonDate = formatDateKyiv(lesson.lesson_date);
-      const startTime = formatTimeKyiv(lesson.start_datetime);
+      const startTime = lesson.start_time_formatted || formatTimeKyiv(lesson.start_datetime);
       
       // Build message with student count
       let messageText = `📚 <b>Нагадування про заняття</b>\n\n`;

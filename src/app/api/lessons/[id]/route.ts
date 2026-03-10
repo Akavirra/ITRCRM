@@ -60,7 +60,7 @@ export async function GET(
   
   // Get lesson with group, course and teacher details
   // Use LEFT JOIN to support individual lessons (without group)
-  const lessonWithDetails = await get<Lesson & { group_title: string | null; course_title: string | null; course_id: number | null; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: any }>(
+  const lessonWithDetails = await get<Lesson & { group_title: string | null; course_title: string | null; course_id: number | null; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: any; start_time_formatted: string | null; end_time_formatted: string | null }>(
     `SELECT 
       l.id,
       l.group_id,
@@ -68,6 +68,8 @@ export async function GET(
       l.lesson_date,
       l.start_datetime,
       l.end_datetime,
+      TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
+      TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
       l.topic,
       l.notes,
       l.status,
@@ -150,8 +152,8 @@ export async function GET(
       teacherName: lessonWithDetails.teacher_name || (lessonWithDetails.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
       originalTeacherId: lessonWithDetails.original_teacher_id || null,
       isReplaced: lessonWithDetails.is_replaced,
-      startTime: formatTimeKyiv(lessonWithDetails.start_datetime),
-      endTime: formatTimeKyiv(lessonWithDetails.end_datetime),
+      startTime: lessonWithDetails.start_time_formatted || formatTimeKyiv(lessonWithDetails.start_datetime),
+      endTime: lessonWithDetails.end_time_formatted || formatTimeKyiv(lessonWithDetails.end_datetime),
       status: lessonWithDetails.status,
       topic: lessonWithDetails.topic,
       notes: lessonWithDetails.notes,
@@ -322,13 +324,15 @@ export async function PATCH(
     
     // Get updated lesson with group, course and teacher details
     // Use LEFT JOIN to support individual lessons (without group)
-    const updatedLessonRaw = await get<Lesson & { group_title: string | null; course_title: string | null; course_id: number | null; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null }>(
+    const updatedLessonRaw = await get<Lesson & { group_title: string | null; course_title: string | null; course_id: number | null; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; start_time_formatted: string | null; end_time_formatted: string | null }>(
       `SELECT 
         l.id,
         l.group_id,
         l.lesson_date,
         l.start_datetime,
         l.end_datetime,
+        TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
+        TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted,
         l.topic,
         l.notes,
         l.status,
@@ -398,8 +402,8 @@ export async function PATCH(
       teacherName: updatedLessonRaw.teacher_name || (updatedLessonRaw.original_teacher_id ? 'Викладач групи' : 'Немає викладача'),
       originalTeacherId: updatedLessonRaw.original_teacher_id || null,
       isReplaced: updatedLessonRaw.is_replaced,
-      startTime: formatTimeKyiv(updatedLessonRaw.start_datetime),
-      endTime: formatTimeKyiv(updatedLessonRaw.end_datetime),
+      startTime: updatedLessonRaw.start_time_formatted || formatTimeKyiv(updatedLessonRaw.start_datetime),
+      endTime: updatedLessonRaw.end_time_formatted || formatTimeKyiv(updatedLessonRaw.end_datetime),
       status: updatedLessonRaw.status,
       topic: updatedLessonRaw.topic,
       notes: updatedLessonRaw.notes,

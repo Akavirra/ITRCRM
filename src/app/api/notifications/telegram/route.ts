@@ -248,9 +248,13 @@ export async function POST(request: NextRequest) {
             course_title: string;
             start_datetime: string;
             end_datetime: string;
+            start_time_formatted: string | null;
+            end_time_formatted: string | null;
           }>(
             `SELECT l.topic, l.notes, g.title as group_title, c.title as course_title, 
-                    l.start_datetime, l.end_datetime
+                    l.start_datetime, l.end_datetime,
+                    TO_CHAR(l.start_datetime, 'HH24:MI') as start_time_formatted,
+                    TO_CHAR(l.end_datetime, 'HH24:MI') as end_time_formatted
              FROM lessons l
              JOIN groups g ON l.group_id = g.id
              JOIN courses c ON g.course_id = c.id
@@ -260,8 +264,8 @@ export async function POST(request: NextRequest) {
           
           if (lesson && lessonNotesAction.messageId) {
             // Format the updated message - use proper timezone handling
-            const startTime = formatTimeKyiv(lesson.start_datetime);
-            const endTime = formatTimeKyiv(lesson.end_datetime);
+            const startTime = lesson.start_time_formatted || formatTimeKyiv(lesson.start_datetime);
+            const endTime = lesson.end_time_formatted || formatTimeKyiv(lesson.end_datetime);
             const lessonDate = formatDateKyiv(lesson.start_datetime);
             
             let updatedMessage = `<b>📚 Заняття оновлено</b>\n\n`;
