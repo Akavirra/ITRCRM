@@ -206,7 +206,7 @@ export default function AttendancePage() {
       .then(d => setCourses((d.courses || []).map((c: Course) => ({ id: c.id, title: c.title }))))
       .catch(() => {});
     fetch('/api/teachers').then(r => r.json())
-      .then(d => setTeachers((d.teachers || []).map((t: { id: number; name: string }) => ({ id: t.id, name: t.name }))))
+      .then(d => setTeachers((Array.isArray(d) ? d : (d.teachers || [])).map((t: { id: number; name: string }) => ({ id: t.id, name: t.name }))))
       .catch(() => {});
   }, []);
 
