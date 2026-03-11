@@ -667,11 +667,6 @@ export default function AttendancePage() {
                       <div style={{ fontWeight:600, fontSize:'1rem', color:'#111827' }}>{g.group_title}</div>
                       <div style={{ fontSize:'0.8125rem', color:'#6b7280', marginTop:2, display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
                         {g.course_title && <span>{g.course_title}</span>}
-                        {g.weekly_day && g.start_time && (
-                          <span style={{ display:'inline-flex', alignItems:'center', gap:'0.25rem', padding:'2px 8px', backgroundColor:'#eef2ff', borderRadius:6, fontSize:'0.75rem', fontWeight:600, color:'#4f46e5' }}>
-                            📅 Що{WEEKDAY_UK[g.weekly_day].toLowerCase()} о {g.start_time?.slice(0,5)}
-                          </span>
-                        )}
                         <span style={{ padding:'2px 8px', backgroundColor:'#f3f4f6', borderRadius:6, fontSize:'0.75rem', color:'#6b7280' }}>
                           {g.lessons.length} {g.lessons.length === 1 ? 'заняття' : 'занять'} у місяці
                         </span>
