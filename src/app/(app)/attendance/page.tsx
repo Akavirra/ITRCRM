@@ -181,8 +181,12 @@ export default function AttendancePage() {
   const [atMonth,     setAtMonth]     = useState('');
   const [atStartDate, setAtStartDate] = useState('');
   const [atEndDate,   setAtEndDate]   = useState('');
-  const [loading,     setLoading]     = useState(false);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const [loading,           setLoading]           = useState(false);
+  const [studentSuggestions, setStudentSuggestions] = useState<{id:number;full_name:string}[]>([]);
+  const [showSuggestions,    setShowSuggestions]    = useState(false);
+  const searchTimeout    = useRef<ReturnType<typeof setTimeout>>();
+  const suggestTimeout   = useRef<ReturnType<typeof setTimeout>>();
+  const suggestBoxRef    = useRef<HTMLDivElement>(null);
 
   // Auth
   useEffect(() => {
@@ -270,6 +274,42 @@ export default function AttendancePage() {
     // reset all-time specific filters when toggling off
     if (allTime) { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); }
   };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setShowSuggestions(true);
+    clearTimeout(suggestTimeout.current);
+    if (value.trim().length >= 1) {
+      suggestTimeout.current = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/students?search=${encodeURIComponent(value)}&limit=8`);
+          if (res.ok) {
+            const d = await res.json();
+            setStudentSuggestions(d.students || []);
+          }
+        } catch { /* ignore */ }
+      }, 200);
+    } else {
+      setStudentSuggestions([]);
+    }
+  };
+
+  const selectSuggestion = (name: string) => {
+    setSearch(name);
+    setShowSuggestions(false);
+    setStudentSuggestions([]);
+  };
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (suggestBoxRef.current && !suggestBoxRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // helpers to keep year/month and date-range mutually exclusive
   const setDateRange = (start: string, end: string) => {
@@ -420,8 +460,24 @@ export default function AttendancePage() {
                 {/* Student search */}
                 <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem', flex:1, minWidth:180 }}>
                   <label style={{ fontSize:'0.6875rem', color:'#6b7280', fontWeight:500 }}>Учень</label>
-                  <input type="text" placeholder="Пошук за іменем..." value={search} onChange={e => setSearch(e.target.value)}
-                    style={{ ...selectStyle, width:'100%' }} />
+                  <div ref={suggestBoxRef} style={{ position:'relative', width:'100%' }}>
+                    <input type="text" placeholder="Пошук за іменем..." value={search}
+                      onChange={e => handleSearchChange(e.target.value)}
+                      onFocus={() => { if (studentSuggestions.length > 0) setShowSuggestions(true); }}
+                      style={{ ...selectStyle, width:'100%', boxSizing:'border-box' }} />
+                    {showSuggestions && studentSuggestions.length > 0 && (
+                      <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:100, backgroundColor:'white', border:'1px solid #e5e7eb', borderRadius:'0.5rem', boxShadow:'0 4px 12px rgba(0,0,0,0.1)', marginTop:2, overflow:'hidden' }}>
+                        {studentSuggestions.map(s => (
+                          <div key={s.id} onMouseDown={() => selectSuggestion(s.full_name)}
+                            style={{ padding:'0.5rem 0.75rem', fontSize:'0.875rem', color:'#374151', cursor:'pointer', borderBottom:'1px solid #f3f4f6' }}
+                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'white')}>
+                            {s.full_name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Reset button */}
@@ -516,8 +572,24 @@ export default function AttendancePage() {
                 </select>
 
                 {viewMode !== 'register' && (
-                  <input type="text" placeholder="Пошук учня..." value={search} onChange={e => setSearch(e.target.value)}
-                    style={{ flex:1, minWidth:180, ...selectStyle }} />
+                  <div ref={suggestBoxRef} style={{ position:'relative', flex:1, minWidth:180 }}>
+                    <input type="text" placeholder="Пошук учня..." value={search}
+                      onChange={e => handleSearchChange(e.target.value)}
+                      onFocus={() => { if (studentSuggestions.length > 0) setShowSuggestions(true); }}
+                      style={{ width:'100%', boxSizing:'border-box', ...selectStyle }} />
+                    {showSuggestions && studentSuggestions.length > 0 && (
+                      <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:100, backgroundColor:'white', border:'1px solid #e5e7eb', borderRadius:'0.5rem', boxShadow:'0 4px 12px rgba(0,0,0,0.1)', marginTop:2, overflow:'hidden' }}>
+                        {studentSuggestions.map(s => (
+                          <div key={s.id} onMouseDown={() => selectSuggestion(s.full_name)}
+                            style={{ padding:'0.5rem 0.75rem', fontSize:'0.875rem', color:'#374151', cursor:'pointer', borderBottom:'1px solid #f3f4f6' }}
+                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'white')}>
+                            {s.full_name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
