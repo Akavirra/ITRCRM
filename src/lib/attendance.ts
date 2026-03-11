@@ -609,6 +609,7 @@ export interface MonthlyLessonItem {
   lesson_id: number;
   lesson_date: string;
   start_datetime: string | null;
+  start_time_kyiv: string | null;
   topic: string | null;
   lesson_status: string;
   attendance_status: AttendanceStatus | null;
@@ -639,6 +640,7 @@ export async function getStudentMonthlyAttendance(
     lesson_id: number;
     lesson_date: string;
     start_datetime: string | null;
+    start_time_kyiv: string | null;
     topic: string | null;
     lesson_status: string;
     group_id: number | null;
@@ -652,6 +654,7 @@ export async function getStudentMonthlyAttendance(
       l.id as lesson_id,
       l.lesson_date,
       l.start_datetime,
+      TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as start_time_kyiv,
       l.topic,
       l.status as lesson_status,
       l.group_id,
@@ -706,6 +709,7 @@ export async function getStudentMonthlyAttendance(
       lesson_id: row.lesson_id,
       lesson_date: row.lesson_date,
       start_datetime: row.start_datetime,
+      start_time_kyiv: row.start_time_kyiv,
       topic: row.topic,
       lesson_status: row.lesson_status,
       attendance_status: row.attendance_status,
