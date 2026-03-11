@@ -186,14 +186,7 @@ export default function AttendancePage() {
       .catch(() => {});
   }, []);
 
-  // Load KPI totals for selected month
-  useEffect(() => {
-    if (allTime) return;
-    fetch(`/api/attendance?view=monthlyTotals&year=${year}&month=${month}`)
-      .then(r => r.json()).then(d => d.totals && setTotals(d.totals)).catch(() => {});
-  }, [year, month, allTime]);
-
-  // Load data based on view mode
+  // Load data based on view mode (totals are included in grouped response to save an extra round-trip)
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -208,6 +201,7 @@ export default function AttendancePage() {
         if (res.ok) {
           const d = await res.json();
           setGroupedData({ groups: d.groups || [], individual_lessons: d.individual_lessons || [] });
+          if (d.totals) setTotals(d.totals); // totals come bundled with grouped response
         }
       } else {
         const params = new URLSearchParams({ view: 'lessonRecords' });
@@ -215,8 +209,13 @@ export default function AttendancePage() {
         else { params.set('allTime', 'true'); }
         if (selectedGroup) params.set('groupId', selectedGroup);
         if (search) params.set('search', search);
-        const res = await fetch(`/api/attendance?${params}`);
-        if (res.ok) { const d = await res.json(); setLessonRecords(d.records || []); }
+        // Fetch records + totals in parallel for summary/register views
+        const [recordsRes, totalsRes] = await Promise.all([
+          fetch(`/api/attendance?${params}`),
+          allTime ? Promise.resolve(null) : fetch(`/api/attendance?view=monthlyTotals&year=${year}&month=${month}`),
+        ]);
+        if (recordsRes.ok) { const d = await recordsRes.json(); setLessonRecords(d.records || []); }
+        if (totalsRes?.ok) { const d = await totalsRes.json(); if (d.totals) setTotals(d.totals); }
       }
     } finally {
       setLoading(false);

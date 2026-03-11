@@ -956,90 +956,121 @@ export async function getGlobalMonthlyGroupedStats(
 ): Promise<GroupedMonthlyResult> {
   const { groupId, search } = options;
 
-  // --- Get distinct group IDs with lessons this month ---
-  const gidParams: (number | string)[] = [year, month];
-  let gidIdx = 3;
-  let gidWhere = `l.status != 'canceled' AND l.group_id IS NOT NULL
+  // --- 1. Get all groups with info that have lessons this month (1 query) ---
+  const gParams: (number | string)[] = [year, month];
+  let gIdx = 3;
+  let gWhere = `l.status != 'canceled' AND l.group_id IS NOT NULL
     AND EXTRACT(YEAR FROM l.lesson_date) = $1
     AND EXTRACT(MONTH FROM l.lesson_date) = $2`;
-  if (groupId) { gidWhere += ` AND l.group_id = $${gidIdx++}`; gidParams.push(groupId); }
+  if (groupId) { gWhere += ` AND l.group_id = $${gIdx++}`; gParams.push(groupId); }
 
-  const groupIds = await all<{ group_id: number }>(`SELECT DISTINCT l.group_id FROM lessons l WHERE ${gidWhere}`, gidParams);
+  const groupInfoRows = await all<{
+    group_id: number; group_title: string; course_title: string | null;
+    weekly_day: number | null; start_time: string | null; duration_minutes: number;
+  }>(
+    `SELECT g.id as group_id, g.title as group_title, c.title as course_title,
+            g.weekly_day, g.start_time, g.duration_minutes
+     FROM groups g
+     LEFT JOIN courses c ON g.course_id = c.id
+     WHERE g.id IN (
+       SELECT DISTINCT l.group_id FROM lessons l WHERE ${gWhere}
+     )
+     ORDER BY g.weekly_day NULLS LAST, g.start_time, g.title`,
+    gParams
+  );
 
   const groupsResult: GroupedMonthlyGroup[] = [];
 
-  for (const { group_id: gId } of groupIds) {
-    // Get group info
-    const groupInfo = await get<{
-      group_id: number; group_title: string; course_title: string | null;
-      weekly_day: number | null; start_time: string | null; duration_minutes: number;
-    }>(
-      `SELECT g.id as group_id, g.title as group_title, c.title as course_title,
-              g.weekly_day, g.start_time, g.duration_minutes
-       FROM groups g LEFT JOIN courses c ON g.course_id = c.id WHERE g.id = $1`,
-      [gId]
-    );
-    if (!groupInfo) continue;
+  if (groupInfoRows.length > 0) {
+    const groupIdList = groupInfoRows.map(g => g.group_id).join(',');
 
-    // Get lessons for this group this month
-    const lessons = await all<{ lesson_id: number; lesson_date: string; topic: string | null }>(
-      `SELECT id as lesson_id, lesson_date, topic FROM lessons
-       WHERE group_id = $1 AND status != 'canceled'
-         AND EXTRACT(YEAR FROM lesson_date) = $2 AND EXTRACT(MONTH FROM lesson_date) = $3
-       ORDER BY lesson_date`,
-      [gId, year, month]
+    // --- 2. Get all lessons for these groups this month (1 query) ---
+    const allLessons = await all<{ lesson_id: number; group_id: number; lesson_date: string; topic: string | null }>(
+      `SELECT id as lesson_id, group_id, lesson_date, topic
+       FROM lessons
+       WHERE group_id IN (${groupIdList})
+         AND status != 'canceled'
+         AND EXTRACT(YEAR FROM lesson_date) = $1
+         AND EXTRACT(MONTH FROM lesson_date) = $2
+       ORDER BY group_id, lesson_date`,
+      [year, month]
     );
-    if (lessons.length === 0) continue;
 
-    // Get students
-    let studentsQuery = `SELECT s.id as student_id, s.full_name as student_name
-       FROM students s JOIN student_groups sg ON sg.student_id = s.id
-       WHERE sg.group_id = $1 AND sg.is_active = TRUE AND s.is_active = TRUE`;
-    const sParams: (number | string)[] = [gId];
-    if (search) { studentsQuery += ` AND s.full_name ILIKE $2`; sParams.push(`%${search}%`); }
-    studentsQuery += ' ORDER BY s.full_name';
-    const students = await all<{ student_id: number; student_name: string }>(studentsQuery, sParams);
-    if (students.length === 0 && search) continue;
+    // --- 3. Get all students for these groups (1 query) ---
+    let studentsQuery = `SELECT s.id as student_id, s.full_name as student_name, sg.group_id
+       FROM students s
+       JOIN student_groups sg ON sg.student_id = s.id
+       WHERE sg.group_id IN (${groupIdList}) AND sg.is_active = TRUE AND s.is_active = TRUE`;
+    const sParams: (number | string)[] = [];
+    if (search) { studentsQuery += ` AND s.full_name ILIKE $1`; sParams.push(`%${search}%`); }
+    studentsQuery += ' ORDER BY sg.group_id, s.full_name';
+    const allStudents = await all<{ student_id: number; student_name: string; group_id: number }>(studentsQuery, sParams);
 
-    // Get attendance for all lessons
-    const lessonIdList = lessons.map(l => l.lesson_id).join(',');
-    const attRows = await all<{ lesson_id: number; student_id: number; status: AttendanceStatus }>(
-      `SELECT lesson_id, student_id, status FROM attendance WHERE lesson_id IN (${lessonIdList})`, []
-    );
+    // --- 4. Get all attendance for these lessons (1 query) ---
+    const allLessonIds = allLessons.map(l => l.lesson_id);
+    let attRows: Array<{ lesson_id: number; student_id: number; status: AttendanceStatus }> = [];
+    if (allLessonIds.length > 0) {
+      attRows = await all<{ lesson_id: number; student_id: number; status: AttendanceStatus }>(
+        `SELECT lesson_id, student_id, status FROM attendance WHERE lesson_id IN (${allLessonIds.join(',')})`,
+        []
+      );
+    }
+
+    // --- Aggregate in JS ---
     const attMap = new Map<string, AttendanceStatus>();
     for (const a of attRows) { attMap.set(`${a.lesson_id}-${a.student_id}`, a.status); }
 
-    const studentRows = students.map(s => {
-      const attendance: Record<number, AttendanceStatus | null> = {};
-      let present = 0, absent = 0;
-      for (const l of lessons) {
-        const st = attMap.get(`${l.lesson_id}-${s.student_id}`) ?? null;
-        attendance[l.lesson_id] = st;
-        if (st === 'present' || st === 'makeup_done') present++;
-        else if (st === 'absent' || st === 'makeup_planned') absent++;
-      }
-      return {
-        student_id: s.student_id,
-        student_name: s.student_name,
-        attendance,
-        present,
-        absent,
-        rate: lessons.length > 0 ? Math.round((present / lessons.length) * 100) : 0,
-      };
-    });
+    const lessonsByGroup = new Map<number, Array<{ lesson_id: number; lesson_date: string; topic: string | null }>>();
+    for (const l of allLessons) {
+      if (!lessonsByGroup.has(l.group_id)) lessonsByGroup.set(l.group_id, []);
+      lessonsByGroup.get(l.group_id)!.push({ lesson_id: l.lesson_id, lesson_date: l.lesson_date, topic: l.topic });
+    }
 
-    const avgRate = studentRows.length > 0
-      ? Math.round(studentRows.reduce((s, st) => s + st.rate, 0) / studentRows.length) : 0;
+    const studentsByGroup = new Map<number, Array<{ student_id: number; student_name: string }>>();
+    for (const s of allStudents) {
+      if (!studentsByGroup.has(s.group_id)) studentsByGroup.set(s.group_id, []);
+      studentsByGroup.get(s.group_id)!.push({ student_id: s.student_id, student_name: s.student_name });
+    }
 
-    groupsResult.push({
-      ...groupInfo,
-      lessons,
-      students: studentRows,
-      avg_rate: avgRate,
-    });
+    for (const groupInfo of groupInfoRows) {
+      const lessons = lessonsByGroup.get(groupInfo.group_id) ?? [];
+      if (lessons.length === 0) continue;
+
+      const students = studentsByGroup.get(groupInfo.group_id) ?? [];
+      if (students.length === 0 && search) continue;
+
+      const studentRows = students.map(s => {
+        const attendance: Record<number, AttendanceStatus | null> = {};
+        let present = 0, absent = 0;
+        for (const l of lessons) {
+          const st = attMap.get(`${l.lesson_id}-${s.student_id}`) ?? null;
+          attendance[l.lesson_id] = st;
+          if (st === 'present' || st === 'makeup_done') present++;
+          else if (st === 'absent' || st === 'makeup_planned') absent++;
+        }
+        return {
+          student_id: s.student_id,
+          student_name: s.student_name,
+          attendance,
+          present,
+          absent,
+          rate: lessons.length > 0 ? Math.round((present / lessons.length) * 100) : 0,
+        };
+      });
+
+      const avgRate = studentRows.length > 0
+        ? Math.round(studentRows.reduce((s, st) => s + st.rate, 0) / studentRows.length) : 0;
+
+      groupsResult.push({
+        ...groupInfo,
+        lessons,
+        students: studentRows,
+        avg_rate: avgRate,
+      });
+    }
   }
 
-  // --- Individual lessons ---
+  // --- Individual lessons (1 query, unchanged) ---
   let indivLessons: GroupedMonthlyIndividual[] = [];
   if (!groupId) {
     const iParams: (number | string)[] = [year, month];

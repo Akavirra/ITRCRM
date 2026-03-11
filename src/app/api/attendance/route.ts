@@ -35,8 +35,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (view === 'groupedMonthly') {
-      const data = await getGlobalMonthlyGroupedStats(year, month, { groupId, search });
-      return NextResponse.json(data);
+      // Run grouped stats + totals in parallel to save one round-trip
+      const [data, totals] = await Promise.all([
+        getGlobalMonthlyGroupedStats(year, month, { groupId, search }),
+        getGlobalMonthlyTotals(year, month),
+      ]);
+      return NextResponse.json({ ...data, totals });
     }
 
     if (view === 'lessonRecords') {
