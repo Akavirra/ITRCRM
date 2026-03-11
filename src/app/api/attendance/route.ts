@@ -21,7 +21,10 @@ export async function GET(request: NextRequest) {
   const year = parseInt(searchParams.get('year') || String(new Date().getFullYear()), 10);
   const month = parseInt(searchParams.get('month') || String(new Date().getMonth() + 1), 10);
   const groupId = searchParams.get('groupId') ? parseInt(searchParams.get('groupId')!, 10) : undefined;
+  const courseId = searchParams.get('courseId') ? parseInt(searchParams.get('courseId')!, 10) : undefined;
   const search = searchParams.get('search') || undefined;
+  const startDate = searchParams.get('startDate') || undefined;
+  const endDate = searchParams.get('endDate') || undefined;
 
   try {
     if (view === 'monthlyTotals') {
@@ -45,10 +48,13 @@ export async function GET(request: NextRequest) {
 
     if (view === 'lessonRecords') {
       const allTime = searchParams.get('allTime') === 'true';
+      // In allTime mode year/month are optional filters (may or may not be provided)
+      const effectiveYear = allTime ? (searchParams.get('year') ? year : null) : year;
+      const effectiveMonth = allTime ? (searchParams.get('month') ? month : null) : month;
       const records = await getGlobalMonthlyLessonRecords(
-        allTime ? null : year,
-        allTime ? null : month,
-        { groupId, search }
+        effectiveYear,
+        effectiveMonth,
+        { groupId, search, courseId, startDate, endDate }
       );
       return NextResponse.json({ records });
     }

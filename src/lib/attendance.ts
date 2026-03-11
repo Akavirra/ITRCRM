@@ -1135,19 +1135,34 @@ export interface MonthlyLessonRecord {
 export async function getGlobalMonthlyLessonRecords(
   year: number | null,
   month: number | null,
-  options: { groupId?: number; search?: string } = {}
+  options: { groupId?: number; search?: string; courseId?: number; startDate?: string; endDate?: string } = {}
 ): Promise<MonthlyLessonRecord[]> {
-  const { groupId, search } = options;
+  const { groupId, search, courseId, startDate, endDate } = options;
+
+  function buildDateFilter(idx: number, params: (number | string)[]): { clause: string; nextIdx: number } {
+    let clause = '';
+    if (startDate) { clause += ` AND l.lesson_date >= $${idx++}`; params.push(startDate); }
+    if (endDate)   { clause += ` AND l.lesson_date <= $${idx++}`; params.push(endDate); }
+    if (!startDate && !endDate && year !== null) {
+      clause += ` AND EXTRACT(YEAR FROM l.lesson_date) = $${idx++}`;
+      params.push(year);
+      if (month !== null) {
+        clause += ` AND EXTRACT(MONTH FROM l.lesson_date) = $${idx++}`;
+        params.push(month);
+      }
+    }
+    return { clause, nextIdx: idx };
+  }
+
+  // ── Group lesson records ──
   const params: (number | string)[] = [];
   let idx = 1;
-  let dateFilter = '';
-  if (year !== null && month !== null) {
-    dateFilter = ` AND EXTRACT(YEAR FROM l.lesson_date) = $${idx++} AND EXTRACT(MONTH FROM l.lesson_date) = $${idx++}`;
-    params.push(year, month);
-  }
+  const { clause: dateFilter, nextIdx: idx2 } = buildDateFilter(idx, params);
+  idx = idx2;
   let where = '';
-  if (groupId) { where += ` AND l.group_id = $${idx++}`; params.push(groupId); }
-  if (search) { where += ` AND s.full_name ILIKE $${idx++}`; params.push(`%${search}%`); }
+  if (courseId) { where += ` AND COALESCE(g.course_id, l.course_id) = $${idx++}`; params.push(courseId); }
+  if (groupId)  { where += ` AND l.group_id = $${idx++}`; params.push(groupId); }
+  if (search)   { where += ` AND s.full_name ILIKE $${idx++}`; params.push(`%${search}%`); }
 
   // Group lesson records
   const groupRecords = await all<MonthlyLessonRecord>(
@@ -1178,13 +1193,11 @@ export async function getGlobalMonthlyLessonRecords(
   if (!groupId) {
     const iParams: (number | string)[] = [];
     let iIdx = 1;
-    let iDateFilter = '';
-    if (year !== null && month !== null) {
-      iDateFilter = ` AND EXTRACT(YEAR FROM l.lesson_date) = $${iIdx++} AND EXTRACT(MONTH FROM l.lesson_date) = $${iIdx++}`;
-      iParams.push(year, month);
-    }
+    const { clause: iDateFilter, nextIdx: iIdx2 } = buildDateFilter(iIdx, iParams);
+    iIdx = iIdx2;
     let iWhere = '';
-    if (search) { iWhere += ` AND s.full_name ILIKE $${iIdx++}`; iParams.push(`%${search}%`); }
+    if (courseId) { iWhere += ` AND l.course_id = $${iIdx++}`; iParams.push(courseId); }
+    if (search)   { iWhere += ` AND s.full_name ILIKE $${iIdx++}`; iParams.push(`%${search}%`); }
 
     indivRecords = await all<MonthlyLessonRecord>(
       `SELECT
