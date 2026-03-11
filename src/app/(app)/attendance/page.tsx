@@ -305,10 +305,28 @@ export default function AttendancePage() {
         {/* Page header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0, color: 'var(--gray-900)' }}>Відвідуваність</h1>
-          <button onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', border: '1px solid #e5e7eb', borderRadius: '0.625rem', backgroundColor: 'white', color: '#374151', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Експорт CSV
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+            <button
+              onClick={() => setAllTime(!allTime)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.625rem 1.25rem',
+                border: `1px solid ${allTime ? '#1565c0' : '#e5e7eb'}`,
+                borderRadius: '0.625rem',
+                backgroundColor: allTime ? '#1565c0' : 'white',
+                color: allTime ? 'white' : '#374151',
+                fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              За весь час
+            </button>
+            <button onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', border: '1px solid #e5e7eb', borderRadius: '0.625rem', backgroundColor: 'white', color: '#374151', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Експорт CSV
+            </button>
+          </div>
         </div>
 
         {/* Month navigation */}
@@ -318,9 +336,6 @@ export default function AttendancePage() {
             {allTime ? 'За весь час' : `${MONTH_UK[month]} ${year}`}
           </span>
           <button onClick={nextMonth} disabled={isCurrentMonth || allTime} style={{ width: 34, height: 34, border: '1px solid #e5e7eb', borderRadius: '50%', backgroundColor: 'white', cursor: (isCurrentMonth || allTime) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.125rem', color: (isCurrentMonth || allTime) ? '#d1d5db' : '#374151', opacity: (isCurrentMonth || allTime) ? 0.4 : 1, flexShrink: 0 }}>›</button>
-          <button onClick={() => setAllTime(!allTime)} style={{ marginLeft: '0.25rem', padding: '0.375rem 0.875rem', border: `1px solid ${allTime ? '#1565c0' : '#e5e7eb'}`, borderRadius: '0.5rem', backgroundColor: allTime ? '#1565c0' : 'white', color: allTime ? 'white' : '#374151', fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
-            За весь час
-          </button>
         </div>
 
         {/* KPI cards */}
@@ -370,12 +385,6 @@ export default function AttendancePage() {
                 style={{ flex: 1, minWidth: 180, padding: '0.5rem 0.875rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', fontSize: '0.875rem', color: '#374151' }} />
             )}
 
-            {viewMode === 'summary' && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', cursor: 'pointer', fontSize: '0.8125rem', color: '#374151', whiteSpace: 'nowrap' as const }}>
-                <input type="checkbox" checked={allTime} onChange={e => setAllTime(e.target.checked)} />
-                За весь час
-              </label>
-            )}
           </div>
 
           {loading ? (
