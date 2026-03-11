@@ -20,8 +20,9 @@ export async function GET(request: NextRequest) {
   const view = searchParams.get('view') || 'monthly';
   const year = parseInt(searchParams.get('year') || String(new Date().getFullYear()), 10);
   const month = parseInt(searchParams.get('month') || String(new Date().getMonth() + 1), 10);
-  const groupId = searchParams.get('groupId') ? parseInt(searchParams.get('groupId')!, 10) : undefined;
-  const courseId = searchParams.get('courseId') ? parseInt(searchParams.get('courseId')!, 10) : undefined;
+  const groupId   = searchParams.get('groupId')   ? parseInt(searchParams.get('groupId')!,   10) : undefined;
+  const courseId  = searchParams.get('courseId')  ? parseInt(searchParams.get('courseId')!,  10) : undefined;
+  const teacherId = searchParams.get('teacherId') ? parseInt(searchParams.get('teacherId')!, 10) : undefined;
   const search = searchParams.get('search') || undefined;
   const startDate = searchParams.get('startDate') || undefined;
   const endDate = searchParams.get('endDate') || undefined;
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     if (view === 'groupedMonthly') {
       // Run grouped stats + totals in parallel to save one round-trip
       const [data, totals] = await Promise.all([
-        getGlobalMonthlyGroupedStats(year, month, { groupId, search }),
+        getGlobalMonthlyGroupedStats(year, month, { groupId, search, teacherId, courseId }),
         getGlobalMonthlyTotals(year, month),
       ]);
       return NextResponse.json({ ...data, totals });
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
       const records = await getGlobalMonthlyLessonRecords(
         effectiveYear,
         effectiveMonth,
-        { groupId, search, courseId, startDate, endDate }
+        { groupId, search, courseId, teacherId, startDate, endDate }
       );
       return NextResponse.json({ records });
     }

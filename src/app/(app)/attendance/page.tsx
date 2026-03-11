@@ -90,6 +90,7 @@ interface LessonRecord {
 
 interface Group   { id: number; title: string; }
 interface Course  { id: number; title: string; }
+interface Teacher { id: number; name: string; }
 
 const WEEKDAY_UK    = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
 const WEEKDAY_SHORT = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
@@ -170,10 +171,12 @@ export default function AttendancePage() {
   const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
   const [register,      setRegister]      = useState<{ lessons:RegisterLesson[]; students:RegisterStudent[] }|null>(null);
   const [groupedData,   setGroupedData]   = useState<{ groups:GroupedGroup[]; individual_lessons:IndividualLesson[] }|null>(null);
-  const [groups,        setGroups]        = useState<Group[]>([]);
-  const [courses,       setCourses]       = useState<Course[]>([]);
-  const [selectedGroup,  setSelectedGroup]  = useState('');
-  const [selectedCourse, setSelectedCourse] = useState('');
+  const [groups,          setGroups]          = useState<Group[]>([]);
+  const [courses,         setCourses]         = useState<Course[]>([]);
+  const [teachers,        setTeachers]        = useState<Teacher[]>([]);
+  const [selectedGroup,   setSelectedGroup]   = useState('');
+  const [selectedCourse,  setSelectedCourse]  = useState('');
+  const [selectedTeacher, setSelectedTeacher] = useState('');
   const [search,        setSearch]        = useState('');
   const [allTime,       setAllTime]       = useState(false);
   // all-time extra filters
@@ -194,13 +197,16 @@ export default function AttendancePage() {
       .then(d => d && setUser(d.user));
   }, [router]);
 
-  // Load groups & courses
+  // Load groups, courses & teachers
   useEffect(() => {
     fetch('/api/groups?limit=200').then(r => r.json())
       .then(d => setGroups((d.groups || []).map((g: Group) => ({ id: g.id, title: g.title }))))
       .catch(() => {});
     fetch('/api/courses?limit=200').then(r => r.json())
       .then(d => setCourses((d.courses || []).map((c: Course) => ({ id: c.id, title: c.title }))))
+      .catch(() => {});
+    fetch('/api/teachers').then(r => r.json())
+      .then(d => setTeachers((d.teachers || []).map((t: { id: number; name: string }) => ({ id: t.id, name: t.name }))))
       .catch(() => {});
   }, []);
 
@@ -218,9 +224,10 @@ export default function AttendancePage() {
           if (atYear)  params.set('year', atYear);
           if (atYear && atMonth) params.set('month', atMonth);
         }
-        if (selectedCourse) params.set('courseId', selectedCourse);
-        if (selectedGroup)  params.set('groupId', selectedGroup);
-        if (search)         params.set('search', search);
+        if (selectedCourse)  params.set('courseId',  selectedCourse);
+        if (selectedTeacher) params.set('teacherId', selectedTeacher);
+        if (selectedGroup)   params.set('groupId',   selectedGroup);
+        if (search)          params.set('search',    search);
         const res = await fetch(`/api/attendance?${params}`);
         if (res.ok) { const d = await res.json(); setLessonRecords(d.records || []); }
 
@@ -230,7 +237,9 @@ export default function AttendancePage() {
 
       } else if (viewMode === 'grouped') {
         const params = new URLSearchParams({ view: 'groupedMonthly', year: String(year), month: String(month) });
-        if (selectedGroup) params.set('groupId', selectedGroup);
+        if (selectedGroup)   params.set('groupId',   selectedGroup);
+        if (selectedCourse)  params.set('courseId',  selectedCourse);
+        if (selectedTeacher) params.set('teacherId', selectedTeacher);
         if (search) params.set('search', search);
         const res = await fetch(`/api/attendance?${params}`);
         if (res.ok) {
@@ -242,7 +251,9 @@ export default function AttendancePage() {
       } else {
         // summary (non-allTime)
         const params = new URLSearchParams({ view: 'lessonRecords', year: String(year), month: String(month) });
-        if (selectedGroup) params.set('groupId', selectedGroup);
+        if (selectedGroup)   params.set('groupId',   selectedGroup);
+        if (selectedCourse)  params.set('courseId',  selectedCourse);
+        if (selectedTeacher) params.set('teacherId', selectedTeacher);
         if (search) params.set('search', search);
         const [recordsRes, totalsRes] = await Promise.all([
           fetch(`/api/attendance?${params}`),
@@ -254,7 +265,7 @@ export default function AttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [year, month, viewMode, selectedGroup, selectedCourse, search, allTime, atYear, atMonth, atStartDate, atEndDate]);
+  }, [year, month, viewMode, selectedGroup, selectedCourse, selectedTeacher, search, allTime, atYear, atMonth, atStartDate, atEndDate]);
 
   useEffect(() => {
     clearTimeout(searchTimeout.current);
@@ -272,7 +283,7 @@ export default function AttendancePage() {
   const toggleAllTime = () => {
     setAllTime(v => !v);
     // reset all-time specific filters when toggling off
-    if (allTime) { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); }
+    if (allTime) { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); setSelectedTeacher(''); }
   };
 
   const handleSearchChange = (value: string) => {
@@ -448,6 +459,15 @@ export default function AttendancePage() {
                   </select>
                 </div>
 
+                {/* Teacher */}
+                <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
+                  <label style={{ fontSize:'0.6875rem', color:'#6b7280', fontWeight:500 }}>Викладач</label>
+                  <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} style={selectStyle}>
+                    <option value="">Всі викладачі</option>
+                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </div>
+
                 {/* Group */}
                 <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
                   <label style={{ fontSize:'0.6875rem', color:'#6b7280', fontWeight:500 }}>Група</label>
@@ -481,10 +501,10 @@ export default function AttendancePage() {
                 </div>
 
                 {/* Reset button */}
-                {(atYear || atMonth || atStartDate || atEndDate || selectedCourse || selectedGroup || search) && (
+                {(atYear || atMonth || atStartDate || atEndDate || selectedCourse || selectedTeacher || selectedGroup || search) && (
                   <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
                     <label style={{ fontSize:'0.6875rem', color:'transparent', fontWeight:500 }}>.</label>
-                    <button onClick={() => { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); setSelectedGroup(''); setSearch(''); }}
+                    <button onClick={() => { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); setSelectedTeacher(''); setSelectedGroup(''); setSearch(''); }}
                       style={{ padding:'0.5rem 0.875rem', border:'1px solid #fca5a5', borderRadius:'0.5rem', backgroundColor:'#fef2f2', color:'#dc2626', fontSize:'0.8125rem', fontWeight:500, cursor:'pointer', whiteSpace:'nowrap' as const }}>
                       ✕ Скинути
                     </button>
@@ -493,7 +513,7 @@ export default function AttendancePage() {
               </div>
 
               {/* Active filter summary */}
-              {(atYear || atStartDate || atEndDate || selectedCourse || selectedGroup) && (
+              {(atYear || atStartDate || atEndDate || selectedCourse || selectedTeacher || selectedGroup) && (
                 <div style={{ marginTop:'0.75rem', display:'flex', flexWrap:'wrap', gap:'0.375rem', alignItems:'center' }}>
                   <span style={{ fontSize:'0.75rem', color:'#9ca3af' }}>Активні фільтри:</span>
                   {atStartDate && atEndDate && <span style={{ padding:'2px 8px', borderRadius:99, backgroundColor:'#dbeafe', color:'#1d4ed8', fontSize:'0.75rem', fontWeight:500 }}>📅 {atStartDate} — {atEndDate}</span>}
@@ -504,6 +524,9 @@ export default function AttendancePage() {
                   </span>}
                   {selectedCourse && <span style={{ padding:'2px 8px', borderRadius:99, backgroundColor:'#ede9fe', color:'#7c3aed', fontSize:'0.75rem', fontWeight:500 }}>
                     Курс: {courses.find(c => String(c.id) === selectedCourse)?.title}
+                  </span>}
+                  {selectedTeacher && <span style={{ padding:'2px 8px', borderRadius:99, backgroundColor:'#fef3c7', color:'#b45309', fontSize:'0.75rem', fontWeight:500 }}>
+                    Викладач: {teachers.find(t => String(t.id) === selectedTeacher)?.name}
                   </span>}
                   {selectedGroup && <span style={{ padding:'2px 8px', borderRadius:99, backgroundColor:'#dcfce7', color:'#16a34a', fontSize:'0.75rem', fontWeight:500 }}>
                     Група: {groups.find(g => String(g.id) === selectedGroup)?.title}
@@ -570,6 +593,20 @@ export default function AttendancePage() {
                   <option value="">Всі групи</option>
                   {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
                 </select>
+
+                {viewMode !== 'register' && (
+                  <select value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)} style={selectStyle}>
+                    <option value="">Всі курси</option>
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                  </select>
+                )}
+
+                {viewMode !== 'register' && (
+                  <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} style={selectStyle}>
+                    <option value="">Всі викладачі</option>
+                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                )}
 
                 {viewMode !== 'register' && (
                   <div ref={suggestBoxRef} style={{ position:'relative', flex:1, minWidth:180 }}>

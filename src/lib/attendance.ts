@@ -952,9 +952,9 @@ export interface GroupedMonthlyResult {
 export async function getGlobalMonthlyGroupedStats(
   year: number,
   month: number,
-  options: { groupId?: number; search?: string } = {}
+  options: { groupId?: number; search?: string; teacherId?: number; courseId?: number } = {}
 ): Promise<GroupedMonthlyResult> {
-  const { groupId, search } = options;
+  const { groupId, search, teacherId, courseId } = options;
 
   // --- 1. Get all groups with info that have lessons this month (1 query) ---
   const gParams: (number | string)[] = [year, month];
@@ -962,7 +962,9 @@ export async function getGlobalMonthlyGroupedStats(
   let gWhere = `l.status != 'canceled' AND l.group_id IS NOT NULL
     AND EXTRACT(YEAR FROM l.lesson_date) = $1
     AND EXTRACT(MONTH FROM l.lesson_date) = $2`;
-  if (groupId) { gWhere += ` AND l.group_id = $${gIdx++}`; gParams.push(groupId); }
+  if (groupId)   { gWhere += ` AND l.group_id = $${gIdx++}`; gParams.push(groupId); }
+  if (teacherId) { gWhere += ` AND g.teacher_id = $${gIdx++}`; gParams.push(teacherId); }
+  if (courseId)  { gWhere += ` AND g.course_id = $${gIdx++}`;  gParams.push(courseId); }
 
   const groupInfoRows = await all<{
     group_id: number; group_title: string; course_title: string | null;
@@ -973,7 +975,9 @@ export async function getGlobalMonthlyGroupedStats(
      FROM groups g
      LEFT JOIN courses c ON g.course_id = c.id
      WHERE g.id IN (
-       SELECT DISTINCT l.group_id FROM lessons l WHERE ${gWhere}
+       SELECT DISTINCT l.group_id FROM lessons l
+       JOIN groups g ON l.group_id = g.id
+       WHERE ${gWhere}
      )
      ORDER BY g.weekly_day NULLS LAST, g.start_time, g.title`,
     gParams
@@ -1135,9 +1139,9 @@ export interface MonthlyLessonRecord {
 export async function getGlobalMonthlyLessonRecords(
   year: number | null,
   month: number | null,
-  options: { groupId?: number; search?: string; courseId?: number; startDate?: string; endDate?: string } = {}
+  options: { groupId?: number; search?: string; courseId?: number; teacherId?: number; startDate?: string; endDate?: string } = {}
 ): Promise<MonthlyLessonRecord[]> {
-  const { groupId, search, courseId, startDate, endDate } = options;
+  const { groupId, search, courseId, teacherId, startDate, endDate } = options;
 
   function buildDateFilter(idx: number, params: (number | string)[]): { clause: string; nextIdx: number } {
     let clause = '';
@@ -1160,9 +1164,10 @@ export async function getGlobalMonthlyLessonRecords(
   const { clause: dateFilter, nextIdx: idx2 } = buildDateFilter(idx, params);
   idx = idx2;
   let where = '';
-  if (courseId) { where += ` AND COALESCE(g.course_id, l.course_id) = $${idx++}`; params.push(courseId); }
-  if (groupId)  { where += ` AND l.group_id = $${idx++}`; params.push(groupId); }
-  if (search)   { where += ` AND s.full_name ILIKE $${idx++}`; params.push(`%${search}%`); }
+  if (courseId)  { where += ` AND COALESCE(g.course_id, l.course_id) = $${idx++}`; params.push(courseId); }
+  if (teacherId) { where += ` AND COALESCE(g.teacher_id, l.teacher_id) = $${idx++}`; params.push(teacherId); }
+  if (groupId)   { where += ` AND l.group_id = $${idx++}`; params.push(groupId); }
+  if (search)    { where += ` AND s.full_name ILIKE $${idx++}`; params.push(`%${search}%`); }
 
   // Group lesson records
   const groupRecords = await all<MonthlyLessonRecord>(
@@ -1196,8 +1201,9 @@ export async function getGlobalMonthlyLessonRecords(
     const { clause: iDateFilter, nextIdx: iIdx2 } = buildDateFilter(iIdx, iParams);
     iIdx = iIdx2;
     let iWhere = '';
-    if (courseId) { iWhere += ` AND l.course_id = $${iIdx++}`; iParams.push(courseId); }
-    if (search)   { iWhere += ` AND s.full_name ILIKE $${iIdx++}`; iParams.push(`%${search}%`); }
+    if (courseId)  { iWhere += ` AND l.course_id = $${iIdx++}`; iParams.push(courseId); }
+    if (teacherId) { iWhere += ` AND l.teacher_id = $${iIdx++}`; iParams.push(teacherId); }
+    if (search)    { iWhere += ` AND s.full_name ILIKE $${iIdx++}`; iParams.push(`%${search}%`); }
 
     indivRecords = await all<MonthlyLessonRecord>(
       `SELECT
