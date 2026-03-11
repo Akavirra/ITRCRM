@@ -8,6 +8,7 @@ import {
   getGroupMonthlyRegister,
   getGlobalMonthlyGroupedStats,
   getGlobalMonthlyLessonRecords,
+  getGroupAllTimeRegister,
 } from '@/lib/attendance';
 
 export const dynamic = 'force-dynamic';
@@ -58,6 +59,11 @@ export async function GET(request: NextRequest) {
         { groupId, search, courseId, teacherId, startDate, endDate }
       );
       return NextResponse.json({ records });
+    }
+
+    if (view === 'groupRegisterAllTime' && groupId) {
+      const data = await getGroupAllTimeRegister(groupId);
+      return NextResponse.json({ data });
     }
 
     if (view === 'register' && groupId) {

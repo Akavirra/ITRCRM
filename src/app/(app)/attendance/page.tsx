@@ -92,6 +92,28 @@ interface Group   { id: number; title: string; }
 interface Course  { id: number; title: string; }
 interface Teacher { id: number; name: string; }
 
+interface AllTimeMonth {
+  year: number;
+  month: number;
+  lessons: RegisterLesson[];
+}
+
+interface AllTimeStudentRow {
+  student_id: number;
+  student_name: string;
+  attendance: Record<number, AttendanceStatus | null>;
+  present: number;
+  absent: number;
+  total: number;
+  rate: number;
+}
+
+interface GroupAllTimeData {
+  group_title: string;
+  months: AllTimeMonth[];
+  students: AllTimeStudentRow[];
+}
+
 const WEEKDAY_UK    = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
 const WEEKDAY_SHORT = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 const MONTH_UK      = ['', 'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
@@ -166,7 +188,7 @@ export default function AttendancePage() {
   const [user,          setUser]          = useState<{ id:number; name:string; email:string; role:'admin'|'teacher' }|null>(null);
   const [year,          setYear]          = useState(now.getFullYear());
   const [month,         setMonth]         = useState(now.getMonth() + 1);
-  const [viewMode,      setViewMode]      = useState<'grouped'|'summary'|'register'>('grouped');
+  const [viewMode,      setViewMode]      = useState<'grouped'|'summary'>('grouped');
   const [totals,        setTotals]        = useState<Totals|null>(null);
   const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
   const [register,      setRegister]      = useState<{ lessons:RegisterLesson[]; students:RegisterStudent[] }|null>(null);
@@ -179,6 +201,9 @@ export default function AttendancePage() {
   const [selectedTeacher, setSelectedTeacher] = useState('');
   const [search,        setSearch]        = useState('');
   const [allTime,       setAllTime]       = useState(false);
+  const [journalMode,   setJournalMode]   = useState(false);
+  const [journalData,   setJournalData]   = useState<GroupAllTimeData | null>(null);
+  const [openMonths,    setOpenMonths]    = useState<Set<string>>(new Set());
   // all-time extra filters
   const [atYear,      setAtYear]      = useState('');
   const [atMonth,     setAtMonth]     = useState('');
@@ -210,8 +235,33 @@ export default function AttendancePage() {
       .catch(() => {});
   }, []);
 
+  const loadJournalData = useCallback(async () => {
+    if (!selectedGroup) { setJournalData(null); return; }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/attendance?view=groupRegisterAllTime&groupId=${selectedGroup}`);
+      if (res.ok) {
+        const d = await res.json();
+        const data: GroupAllTimeData = d.data;
+        setJournalData(data);
+        // Auto-open the most recent month
+        if (data.months.length > 0) {
+          const last = data.months[data.months.length - 1];
+          setOpenMonths(new Set([`${last.year}-${last.month}`]));
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedGroup]);
+
+  useEffect(() => {
+    if (journalMode) loadJournalData();
+  }, [journalMode, loadJournalData]);
+
   // Load data
   const loadData = useCallback(async () => {
+    if (journalMode) return;
     setLoading(true);
     try {
       if (allTime) {
@@ -230,10 +280,6 @@ export default function AttendancePage() {
         if (search)          params.set('search',    search);
         const res = await fetch(`/api/attendance?${params}`);
         if (res.ok) { const d = await res.json(); setLessonRecords(d.records || []); }
-
-      } else if (viewMode === 'register' && selectedGroup) {
-        const res = await fetch(`/api/attendance?view=register&year=${year}&month=${month}&groupId=${selectedGroup}`);
-        if (res.ok) { const d = await res.json(); setRegister(d.register || null); }
 
       } else if (viewMode === 'grouped') {
         const params = new URLSearchParams({ view: 'groupedMonthly', year: String(year), month: String(month) });
@@ -265,7 +311,7 @@ export default function AttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [year, month, viewMode, selectedGroup, selectedCourse, selectedTeacher, search, allTime, atYear, atMonth, atStartDate, atEndDate]);
+  }, [year, month, viewMode, selectedGroup, selectedCourse, selectedTeacher, search, allTime, journalMode, atYear, atMonth, atStartDate, atEndDate]);
 
   useEffect(() => {
     clearTimeout(searchTimeout.current);
@@ -282,8 +328,14 @@ export default function AttendancePage() {
 
   const toggleAllTime = () => {
     setAllTime(v => !v);
+    setJournalMode(false);
     // reset all-time specific filters when toggling off
     if (allTime) { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); setSelectedTeacher(''); }
+  };
+
+  const toggleJournal = () => {
+    setJournalMode(v => !v);
+    setAllTime(false);
   };
 
   const handleSearchChange = (value: string) => {
@@ -339,14 +391,7 @@ export default function AttendancePage() {
   // ── Export CSV ──
   const exportCSV = () => {
     let csvRows: (string|number)[][];
-    if (!allTime && viewMode === 'register' && register) {
-      const header = ['Учень', ...register.lessons.map(l => `${getWeekdayShort(l.lesson_date)} ${formatDateShort(l.lesson_date)}`), 'Всього', '%'];
-      csvRows = [header, ...register.students.map(s => [
-        s.student_name,
-        ...register.lessons.map(l => { const st = s.attendance[l.lesson_id]; return !st ? '—' : st === 'present' ? 'П' : st === 'absent' ? 'В' : 'Відп'; }),
-        `${s.present}/${register.lessons.length}`, `${s.rate}%`,
-      ])];
-    } else if (!allTime && viewMode === 'grouped' && groupedData) {
+    if (!allTime && viewMode === 'grouped' && groupedData) {
       csvRows = [['Тип', 'Група', 'Учень', 'Дата', 'День', 'Статус']];
       for (const g of groupedData.groups)
         for (const s of g.students)
@@ -393,6 +438,18 @@ export default function AttendancePage() {
             }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               За весь час
+            </button>
+            <button onClick={toggleJournal} style={{
+              display:'flex', alignItems:'center', gap:'0.5rem',
+              padding:'0.625rem 1.25rem',
+              border:`1px solid ${journalMode ? '#7c3aed' : '#e5e7eb'}`,
+              borderRadius:'0.625rem',
+              backgroundColor: journalMode ? '#7c3aed' : 'white',
+              color: journalMode ? 'white' : '#374151',
+              fontSize:'0.875rem', fontWeight:500, cursor:'pointer',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              Журнал групи
             </button>
             <button onClick={exportCSV} style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.625rem 1.25rem', border:'1px solid #e5e7eb', borderRadius:'0.625rem', backgroundColor:'white', color:'#374151', fontSize:'0.875rem', fontWeight:500, cursor:'pointer' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -542,7 +599,7 @@ export default function AttendancePage() {
             }
           </div>
 
-        ) : (
+        ) : journalMode ? renderJournalView() : (
           /* ══ REGULAR MONTHLY MODE ══ */
           <>
             {/* Month navigation */}
@@ -578,13 +635,13 @@ export default function AttendancePage() {
             <div className="card" style={{ borderRadius:'1rem', overflow:'hidden' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'1rem 1.5rem', borderBottom:'1px solid #e5e7eb', flexWrap:'wrap' }}>
                 <div style={{ display:'flex', border:'1px solid #e5e7eb', borderRadius:'0.625rem', overflow:'hidden', flexShrink:0 }}>
-                  {(['grouped','summary','register'] as const).map(mode => (
+                  {(['grouped','summary'] as const).map(mode => (
                     <button key={mode} onClick={() => setViewMode(mode)} style={{
                       padding:'0.5rem 1rem', border:'none', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
                       backgroundColor: viewMode === mode ? '#1565c0' : 'white',
                       color: viewMode === mode ? 'white' : '#374151',
                     }}>
-                      {mode === 'grouped' ? 'По групах' : mode === 'summary' ? 'Загальна таблиця' : 'Журнал групи'}
+                      {mode === 'grouped' ? 'По групах' : 'Загальна таблиця'}
                     </button>
                   ))}
                 </div>
@@ -594,21 +651,21 @@ export default function AttendancePage() {
                   {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
                 </select>
 
-                {viewMode !== 'register' && (
+                {(
                   <select value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)} style={selectStyle}>
                     <option value="">Всі курси</option>
                     {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                   </select>
                 )}
 
-                {viewMode !== 'register' && (
+                {(
                   <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} style={selectStyle}>
                     <option value="">Всі викладачі</option>
                     {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
                 )}
 
-                {viewMode !== 'register' && (
+                {(
                   <div ref={suggestBoxRef} style={{ position:'relative', flex:1, minWidth:180 }}>
                     <input type="text" placeholder="Пошук учня..." value={search}
                       onChange={e => handleSearchChange(e.target.value)}
@@ -633,7 +690,6 @@ export default function AttendancePage() {
               {loading ? (
                 <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>Завантаження...</div>
               ) : viewMode === 'grouped' ? renderGroupedView()
-                : viewMode === 'register' ? renderRegisterView()
                 : renderSummaryView()
               }
             </div>
@@ -768,6 +824,116 @@ export default function AttendancePage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Journal (all-time group register) ────────────────────────────────────
+
+  function renderJournalView() {
+    return (
+      <div className="card" style={{ borderRadius:'1rem', overflow:'hidden' }}>
+        {/* Header with group selector */}
+        <div style={{ padding:'1.25rem 1.5rem', borderBottom:'1px solid #e5e7eb', backgroundColor:'#fafafa', display:'flex', alignItems:'center', gap:'1rem', flexWrap:'wrap' }}>
+          <span style={{ fontSize:'0.6875rem', fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.06em' }}>Журнал групи — вся історія</span>
+          <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)} style={selectStyle}>
+            <option value="">Оберіть групу...</option>
+            {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+          </select>
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>Завантаження...</div>
+        ) : !selectedGroup ? (
+          <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>
+            <p style={{ margin:0 }}>Оберіть групу для перегляду журналу</p>
+          </div>
+        ) : !journalData || journalData.months.length === 0 ? (
+          <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>
+            <p style={{ margin:0 }}>Немає занять для цієї групи</p>
+          </div>
+        ) : (
+          <div>
+            {/* Summary stats */}
+            <div style={{ padding:'0.75rem 1.5rem', borderBottom:'1px solid #e5e7eb', backgroundColor:'#f8fafc', display:'flex', gap:'1.5rem', flexWrap:'wrap', fontSize:'0.8125rem', color:'#6b7280' }}>
+              <span>Група: <strong style={{ color:'#111827' }}>{journalData.group_title}</strong></span>
+              <span>Всього місяців: <strong style={{ color:'#111827' }}>{journalData.months.length}</strong></span>
+              <span>Всього занять: <strong style={{ color:'#111827' }}>{journalData.months.reduce((s, m) => s + m.lessons.length, 0)}</strong></span>
+              <span>Учнів: <strong style={{ color:'#111827' }}>{journalData.students.length}</strong></span>
+            </div>
+
+            {/* Months accordion (newest first) */}
+            {[...journalData.months].reverse().map(m => {
+              const key = `${m.year}-${m.month}`;
+              const isOpen = openMonths.has(key);
+              const toggle = () => setOpenMonths(prev => {
+                const next = new Set(prev);
+                if (isOpen) next.delete(key); else next.add(key);
+                return next;
+              });
+              return (
+                <div key={key} style={{ borderBottom:'1px solid #e5e7eb' }}>
+                  {/* Month header */}
+                  <button onClick={toggle} style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.875rem 1.5rem', backgroundColor: isOpen ? '#f0f4ff' : 'white', border:'none', cursor:'pointer', textAlign:'left' }}>
+                    <span style={{ fontWeight:600, fontSize:'0.9375rem', color:'#111827' }}>
+                      {MONTH_UK[m.month]} {m.year}
+                    </span>
+                    <span style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
+                      <span style={{ fontSize:'0.8125rem', color:'#6b7280' }}>{m.lessons.length} занять</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition:'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                  </button>
+
+                  {/* Matrix table */}
+                  {isOpen && (
+                    <div style={{ overflowX:'auto' }}>
+                      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.8125rem' }}>
+                        <thead>
+                          <tr style={{ backgroundColor:'#f9fafb' }}>
+                            <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', borderBottom:'2px solid #e5e7eb', position:'sticky', left:0, backgroundColor:'#f9fafb', minWidth:160, whiteSpace:'nowrap' }}>Учень</th>
+                            {m.lessons.map(l => (
+                              <th key={l.lesson_id} style={{ padding:'0.375rem 0.625rem', textAlign:'center', fontWeight:600, color:'#374151', borderBottom:'2px solid #e5e7eb', whiteSpace:'nowrap', minWidth:44 }} title={l.topic || undefined}>
+                                <div style={{ fontSize:'0.6rem', color:'#9ca3af', fontWeight:500 }}>{getWeekdayShort(l.lesson_date)}</div>
+                                <div>{formatDateShort(l.lesson_date)}</div>
+                                {l.topic && <div style={{ fontSize:'0.55rem', color:'#9ca3af', fontWeight:400, maxWidth:44, overflow:'hidden', textOverflow:'ellipsis' }}>{l.topic}</div>}
+                              </th>
+                            ))}
+                            <th style={{ padding:'0.625rem 0.875rem', textAlign:'center', fontWeight:600, color:'#374151', borderBottom:'2px solid #e5e7eb', whiteSpace:'nowrap' }}>За місяць</th>
+                            <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', borderBottom:'2px solid #e5e7eb', minWidth:100, whiteSpace:'nowrap' }}>Всього %</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {journalData.students.map(s => {
+                            const monthPresent = m.lessons.filter(l => { const st = s.attendance[l.lesson_id]; return st === 'present' || st === 'makeup_done'; }).length;
+                            return (
+                              <tr key={s.student_id} style={{ borderBottom:'1px solid #f3f4f6', cursor:'pointer' }}
+                                onClick={() => router.push(`/students/${s.student_id}`)}
+                                onMouseEnter={e => (e.currentTarget.style.backgroundColor='#f9fafb')}
+                                onMouseLeave={e => (e.currentTarget.style.backgroundColor='transparent')}>
+                                <td style={{ padding:'0.625rem 1.25rem', fontWeight:500, color:'#111827', position:'sticky', left:0, backgroundColor:'white', whiteSpace:'nowrap' }}>{s.student_name}</td>
+                                {m.lessons.map(l => (
+                                  <td key={l.lesson_id} style={{ padding:'0.625rem 0.5rem', textAlign:'center' }}>
+                                    <AttCell status={s.attendance[l.lesson_id] ?? null} />
+                                  </td>
+                                ))}
+                                <td style={{ padding:'0.625rem 0.875rem', textAlign:'center', color:'#374151', fontSize:'0.8125rem' }}>
+                                  <span style={{ fontWeight:600, color:'#16a34a' }}>{monthPresent}</span>
+                                  <span style={{ color:'#9ca3af' }}>/{m.lessons.length}</span>
+                                </td>
+                                <td style={{ padding:'0.625rem 1.25rem' }}><RateBar rate={s.rate} /></td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

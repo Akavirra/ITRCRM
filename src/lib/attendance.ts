@@ -1322,3 +1322,107 @@ export async function getGroupMonthlyRegister(
 
   return { lessons, students: studentRows };
 }
+
+export interface GroupAllTimeMonth {
+  year: number;
+  month: number;
+  lessons: GroupRegisterLesson[];
+}
+
+export interface GroupAllTimeStudentRow {
+  student_id: number;
+  student_name: string;
+  attendance: Record<number, AttendanceStatus | null>;
+  present: number;
+  absent: number;
+  total: number;
+  rate: number;
+}
+
+export interface GroupAllTimeRegister {
+  group_title: string;
+  months: GroupAllTimeMonth[];
+  students: GroupAllTimeStudentRow[];
+}
+
+export async function getGroupAllTimeRegister(groupId: number): Promise<GroupAllTimeRegister> {
+  // Get group title
+  const groupRow = await get<{ title: string }>(
+    `SELECT title FROM groups WHERE id = $1`,
+    [groupId]
+  );
+
+  const lessons = await all<{ lesson_id: number; lesson_date: string; topic: string | null }>(
+    `SELECT id as lesson_id, lesson_date, topic
+     FROM lessons
+     WHERE group_id = $1 AND status != 'canceled' AND lesson_date <= CURRENT_DATE
+     ORDER BY lesson_date`,
+    [groupId]
+  );
+
+  if (lessons.length === 0) return { group_title: groupRow?.title || '', months: [], students: [] };
+
+  const lessonIds = lessons.map(l => l.lesson_id).join(',');
+
+  // All students who ever attended this group OR are currently active
+  const students = await all<{ student_id: number; student_name: string }>(
+    `SELECT s.id as student_id, s.full_name as student_name
+     FROM students s
+     WHERE s.id IN (
+       SELECT DISTINCT a.student_id FROM attendance a WHERE a.lesson_id IN (${lessonIds})
+       UNION
+       SELECT sg.student_id FROM student_groups sg WHERE sg.group_id = $1 AND sg.is_active = TRUE AND sg.student_id NOT IN (SELECT DISTINCT a.student_id FROM attendance a WHERE a.lesson_id IN (${lessonIds}))
+     )
+     ORDER BY s.full_name`,
+    [groupId]
+  );
+
+  if (students.length === 0) return { group_title: groupRow?.title || '', months: [], students: [] };
+
+  const attendance = await all<{ lesson_id: number; student_id: number; status: AttendanceStatus }>(
+    `SELECT lesson_id, student_id, status FROM attendance WHERE lesson_id IN (${lessonIds})`,
+    []
+  );
+
+  const attMap = new Map<string, AttendanceStatus>();
+  for (const att of attendance) {
+    attMap.set(`${att.lesson_id}-${att.student_id}`, att.status);
+  }
+
+  // Group lessons by year-month
+  const monthMap = new Map<string, GroupAllTimeMonth>();
+  for (const l of lessons) {
+    const d = new Date(l.lesson_date);
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth() + 1;
+    const key = `${y}-${m}`;
+    if (!monthMap.has(key)) monthMap.set(key, { year: y, month: m, lessons: [] });
+    monthMap.get(key)!.lessons.push(l);
+  }
+
+  const studentRows: GroupAllTimeStudentRow[] = students.map(s => {
+    const att: Record<number, AttendanceStatus | null> = {};
+    let present = 0, absent = 0;
+    for (const l of lessons) {
+      const status = attMap.get(`${l.lesson_id}-${s.student_id}`) ?? null;
+      att[l.lesson_id] = status;
+      if (status === 'present' || status === 'makeup_done') present++;
+      else if (status === 'absent' || status === 'makeup_planned') absent++;
+    }
+    return {
+      student_id: s.student_id,
+      student_name: s.student_name,
+      attendance: att,
+      present,
+      absent,
+      total: lessons.length,
+      rate: lessons.length > 0 ? Math.round((present / lessons.length) * 100) : 0,
+    };
+  });
+
+  return {
+    group_title: groupRow?.title || '',
+    months: Array.from(monthMap.values()),
+    students: studentRows,
+  };
+}
