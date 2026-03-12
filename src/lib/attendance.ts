@@ -915,7 +915,9 @@ export interface GroupedMonthlyLesson {
 export interface GroupedMonthlyGroup {
   group_id: number;
   group_title: string;
+  course_id: number | null;
   course_title: string | null;
+  teacher_id: number | null;
   teacher_name: string | null;
   weekly_day: number | null;
   start_time: string | null;
@@ -938,6 +940,7 @@ export interface GroupedMonthlyIndividual {
   start_time: string | null;
   topic: string | null;
   course_title: string | null;
+  teacher_id: number | null;
   teacher_name: string | null;
   students: Array<{
     student_id: number;
@@ -969,12 +972,12 @@ export async function getGlobalMonthlyGroupedStats(
   if (courseId)  { gWhere += ` AND g.course_id = $${gIdx++}`;  gParams.push(courseId); }
 
   const groupInfoRows = await all<{
-    group_id: number; group_title: string; course_title: string | null;
-    teacher_name: string | null;
+    group_id: number; group_title: string; course_id: number | null; course_title: string | null;
+    teacher_id: number | null; teacher_name: string | null;
     weekly_day: number | null; start_time: string | null; duration_minutes: number;
   }>(
-    `SELECT g.id as group_id, g.title as group_title, c.title as course_title,
-            t.name as teacher_name,
+    `SELECT g.id as group_id, g.title as group_title, g.course_id, c.title as course_title,
+            g.teacher_id, t.name as teacher_name,
             g.weekly_day, g.start_time, g.duration_minutes
      FROM groups g
      LEFT JOIN courses c ON g.course_id = c.id
@@ -1089,13 +1092,13 @@ export async function getGlobalMonthlyGroupedStats(
 
     const lessonRows = await all<{
       lesson_id: number; lesson_date: string; start_time_formatted: string | null;
-      topic: string | null; course_title: string | null; teacher_name: string | null;
+      topic: string | null; course_title: string | null; teacher_id: number | null; teacher_name: string | null;
       student_id: number; student_name: string; att_status: AttendanceStatus | null;
     }>(
       `SELECT
         l.id as lesson_id, l.lesson_date,
         TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as start_time_formatted,
-        l.topic, c.title as course_title, t.name as teacher_name,
+        l.topic, c.title as course_title, l.teacher_id, t.name as teacher_name,
         s.id as student_id, s.full_name as student_name, a.status as att_status
        FROM lessons l
        LEFT JOIN courses c ON l.course_id = c.id
@@ -1113,7 +1116,7 @@ export async function getGlobalMonthlyGroupedStats(
         lessonMap.set(row.lesson_id, {
           lesson_id: row.lesson_id, lesson_date: row.lesson_date,
           start_time: row.start_time_formatted, topic: row.topic,
-          course_title: row.course_title, teacher_name: row.teacher_name, students: [],
+          course_title: row.course_title, teacher_id: row.teacher_id, teacher_name: row.teacher_name, students: [],
         });
       }
       const lesson = lessonMap.get(row.lesson_id)!;
@@ -1136,7 +1139,9 @@ export interface MonthlyLessonRecord {
   topic: string | null;
   group_id: number | null;
   group_title: string;
+  course_id: number | null;
   course_title: string | null;
+  teacher_id: number | null;
   teacher_name: string | null;
   student_id: number;
   student_name: string;
@@ -1183,7 +1188,8 @@ export async function getGlobalMonthlyLessonRecords(
       TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as start_time,
       l.topic,
       g.id as group_id, g.title as group_title,
-      c.title as course_title,
+      g.course_id, c.title as course_title,
+      COALESCE(l.teacher_id, g.teacher_id) as teacher_id,
       COALESCE(lt.name, gt.name) as teacher_name,
       s.id as student_id, s.full_name as student_name,
       a.status
@@ -1221,8 +1227,8 @@ export async function getGlobalMonthlyLessonRecords(
         TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as start_time,
         l.topic,
         NULL as group_id, 'Індивідуальне' as group_title,
-        c.title as course_title,
-        t.name as teacher_name,
+        l.course_id, c.title as course_title,
+        l.teacher_id, t.name as teacher_name,
         s.id as student_id, s.full_name as student_name,
         a.status
        FROM lessons l

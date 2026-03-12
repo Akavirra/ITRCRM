@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { useLessonModals } from '@/components/LessonModalsContext';
+import { useStudentModals } from '@/components/StudentModalsContext';
+import { useGroupModals } from '@/components/GroupModalsContext';
+import { useCourseModals } from '@/components/CourseModalsContext';
+import { useTeacherModals } from '@/components/TeacherModalsContext';
 
 type AttendanceStatus = 'present' | 'absent' | 'makeup_planned' | 'makeup_done';
 
@@ -55,7 +59,9 @@ interface GroupedStudent {
 interface GroupedGroup {
   group_id: number;
   group_title: string;
+  course_id: number | null;
   course_title: string | null;
+  teacher_id: number | null;
   teacher_name: string | null;
   weekly_day: number | null;
   start_time: string | null;
@@ -71,6 +77,7 @@ interface IndividualLesson {
   start_time: string | null;
   topic: string | null;
   course_title: string | null;
+  teacher_id: number | null;
   teacher_name: string | null;
   students: Array<{
     student_id: number;
@@ -86,7 +93,9 @@ interface LessonRecord {
   topic: string | null;
   group_id: number | null;
   group_title: string;
+  course_id: number | null;
   course_title: string | null;
+  teacher_id: number | null;
   teacher_name: string | null;
   student_id: number;
   student_name: string;
@@ -208,6 +217,10 @@ const OpenLessonBtn = ({ lessonId }: { lessonId: number }) => {
 export default function AttendancePage() {
   const router = useRouter();
   const { openLessonModal } = useLessonModals();
+  const { openStudentModal } = useStudentModals();
+  const { openGroupModal } = useGroupModals();
+  const { openCourseModal } = useCourseModals();
+  const { openTeacherModal } = useTeacherModals();
 
   const [user,          setUser]          = useState<{ id:number; name:string; email:string; role:'admin'|'teacher' }|null>(null);
   const [year,          setYear]          = useState(now.getFullYear());
@@ -744,10 +757,19 @@ export default function AttendancePage() {
                 <div key={g.group_id} style={{ border:'1px solid #e5e7eb', borderRadius:'0.875rem', overflow:'hidden' }}>
                   <div style={{ padding:'0.875rem 1.25rem', backgroundColor:'#f8fafc', borderBottom:'1px solid #e5e7eb', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'0.5rem' }}>
                     <div>
-                      <div style={{ fontWeight:600, fontSize:'1rem', color:'#111827' }}>{g.group_title}</div>
+                      <div style={{ fontWeight:600, fontSize:'1rem', color:'#111827', cursor:'pointer' }}
+                        onClick={() => openGroupModal(g.group_id, g.group_title)}
+                        onMouseEnter={e => (e.currentTarget.style.color='#1d4ed8')}
+                        onMouseLeave={e => (e.currentTarget.style.color='#111827')}>{g.group_title}</div>
                       <div style={{ fontSize:'0.8125rem', color:'#6b7280', marginTop:2, display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
-                        {g.course_title && <span>{g.course_title}</span>}
-                        {g.teacher_name && <span style={{ padding:'2px 8px', backgroundColor:'#fef3c7', borderRadius:6, fontSize:'0.75rem', color:'#92400e', fontWeight:500 }}>{g.teacher_name}</span>}
+                        {g.course_title && <span style={{ cursor:'pointer', textDecoration:'none' }}
+                          onClick={() => g.course_id && openCourseModal(g.course_id, g.course_title!)}
+                          onMouseEnter={e => (e.currentTarget.style.color='#7c3aed')}
+                          onMouseLeave={e => (e.currentTarget.style.color='#6b7280')}>{g.course_title}</span>}
+                        {g.teacher_name && <span style={{ padding:'2px 8px', backgroundColor:'#fef3c7', borderRadius:6, fontSize:'0.75rem', color:'#92400e', fontWeight:500, cursor:'pointer' }}
+                          onClick={() => g.teacher_id && openTeacherModal(g.teacher_id, g.teacher_name!)}
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor='#fde68a'; }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor='#fef3c7'; }}>{g.teacher_name}</span>}
                         <span style={{ padding:'2px 8px', backgroundColor:'#f3f4f6', borderRadius:6, fontSize:'0.75rem', color:'#6b7280' }}>
                           {g.lessons.length} {g.lessons.length === 1 ? 'заняття' : 'занять'} у місяці
                         </span>
@@ -780,11 +802,11 @@ export default function AttendancePage() {
                       </thead>
                       <tbody>
                         {g.students.map(s => (
-                          <tr key={s.student_id} style={{ borderBottom:'1px solid #f9fafb', cursor:'pointer' }}
-                            onClick={() => router.push(`/students/${s.student_id}`)}
+                          <tr key={s.student_id} style={{ borderBottom:'1px solid #f9fafb' }}
                             onMouseEnter={e => (e.currentTarget.style.backgroundColor='#f9fafb')}
                             onMouseLeave={e => (e.currentTarget.style.backgroundColor='transparent')}>
-                            <td style={{ padding:'0.625rem 1.25rem', fontWeight:500, color:'#111827', position:'sticky', left:0, backgroundColor:'white', whiteSpace:'nowrap' }}>{s.student_name}</td>
+                            <td style={{ padding:'0.625rem 1.25rem', fontWeight:500, color:'#1d4ed8', position:'sticky', left:0, backgroundColor:'white', whiteSpace:'nowrap', cursor:'pointer' }}
+                              onClick={() => openStudentModal(s.student_id, s.student_name)}>{s.student_name}</td>
                             {g.lessons.map(l => (
                               <td key={l.lesson_id} style={{ padding:'0.5rem 0.625rem', textAlign:'center' }}>
                                 <AttCell status={s.attendance[l.lesson_id]??null} />
@@ -836,8 +858,13 @@ export default function AttendancePage() {
                           ? <span style={{ padding:'2px 8px', borderRadius:6, backgroundColor:'#f3e8ff', color:'#7c3aed', fontSize:'0.8125rem', fontWeight:600 }}>{il.start_time}</span>
                           : <span style={{ color:'#9ca3af' }}>—</span>}
                       </td>
-                      <td style={{ padding:'0.75rem 0.75rem', whiteSpace:'nowrap', fontSize:'0.8125rem', color:'#92400e' }}>
-                        {il.teacher_name || <span style={{ color:'#9ca3af' }}>—</span>}
+                      <td style={{ padding:'0.75rem 0.75rem', whiteSpace:'nowrap', fontSize:'0.8125rem' }}>
+                        {il.teacher_name
+                          ? <span style={{ color:'#92400e', cursor:'pointer', fontWeight:500 }}
+                              onClick={() => il.teacher_id && openTeacherModal(il.teacher_id, il.teacher_name!)}
+                              onMouseEnter={e => (e.currentTarget.style.textDecoration='underline')}
+                              onMouseLeave={e => (e.currentTarget.style.textDecoration='none')}>{il.teacher_name}</span>
+                          : <span style={{ color:'#9ca3af' }}>—</span>}
                       </td>
                       <td style={{ padding:'0.75rem 0.75rem' }}>
                         <div style={{ display:'flex', flexDirection:'column', gap:'0.375rem' }}>
@@ -845,7 +872,7 @@ export default function AttendancePage() {
                             <div key={s.student_id} style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
                               <StatusBadge status={s.status} />
                               <span style={{ fontSize:'0.8125rem', color:'#1d4ed8', cursor:'pointer', fontWeight:500 }}
-                                onClick={() => router.push(`/students/${s.student_id}`)}>{s.student_name}</span>
+                                onClick={() => openStudentModal(s.student_id, s.student_name)}>{s.student_name}</span>
                             </div>
                           ))}
                         </div>
@@ -951,11 +978,11 @@ export default function AttendancePage() {
                           {journalData.students.map(s => {
                             const monthPresent = m.lessons.filter(l => { const st = s.attendance[l.lesson_id]; return st === 'present' || st === 'makeup_done'; }).length;
                             return (
-                              <tr key={s.student_id} style={{ borderBottom:'1px solid #f3f4f6', cursor:'pointer' }}
-                                onClick={() => router.push(`/students/${s.student_id}`)}
+                              <tr key={s.student_id} style={{ borderBottom:'1px solid #f3f4f6' }}
                                 onMouseEnter={e => (e.currentTarget.style.backgroundColor='#f9fafb')}
                                 onMouseLeave={e => (e.currentTarget.style.backgroundColor='transparent')}>
-                                <td style={{ padding:'0.625rem 1.25rem', fontWeight:500, color:'#111827', position:'sticky', left:0, backgroundColor:'white', whiteSpace:'nowrap' }}>{s.student_name}</td>
+                                <td style={{ padding:'0.625rem 1.25rem', fontWeight:500, color:'#1d4ed8', position:'sticky', left:0, backgroundColor:'white', whiteSpace:'nowrap', cursor:'pointer' }}
+                                  onClick={() => openStudentModal(s.student_id, s.student_name)}>{s.student_name}</td>
                                 {m.lessons.map(l => (
                                   <td key={l.lesson_id} style={{ padding:'0.625rem 0.5rem', textAlign:'center' }}>
                                     <AttCell status={s.attendance[l.lesson_id] ?? null} />
@@ -1006,11 +1033,11 @@ export default function AttendancePage() {
           </thead>
           <tbody>
             {register.students.map(s => (
-              <tr key={s.student_id} style={{ borderBottom:'1px solid #f3f4f6', cursor:'pointer' }}
-                onClick={() => router.push(`/students/${s.student_id}`)}
+              <tr key={s.student_id} style={{ borderBottom:'1px solid #f3f4f6' }}
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor='#f9fafb')}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor='transparent')}>
-                <td style={{ padding:'0.875rem 1.5rem', fontWeight:500, color:'#111827', position:'sticky', left:0, backgroundColor:'white', whiteSpace:'nowrap' }}>{s.student_name}</td>
+                <td style={{ padding:'0.875rem 1.5rem', fontWeight:500, color:'#1d4ed8', position:'sticky', left:0, backgroundColor:'white', whiteSpace:'nowrap', cursor:'pointer' }}
+                  onClick={() => openStudentModal(s.student_id, s.student_name)}>{s.student_name}</td>
                 {register.lessons.map(l => (
                   <td key={l.lesson_id} style={{ padding:'0.875rem 1rem', textAlign:'center' }}>
                     <AttCell status={s.attendance[l.lesson_id]??null} />
@@ -1063,8 +1090,7 @@ export default function AttendancePage() {
           <tbody>
             {lessonRecords.map((r, i) => (
               <tr key={`${r.lesson_id}-${r.student_id}-${i}`}
-                style={{ borderBottom:'1px solid #f3f4f6', cursor:'pointer' }}
-                onClick={() => router.push(`/students/${r.student_id}`)}
+                style={{ borderBottom:'1px solid #f3f4f6' }}
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor='#f9fafb')}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor='transparent')}>
                 <td style={{ padding:'0.625rem 1.25rem', whiteSpace:'nowrap' }}>
@@ -1081,12 +1107,30 @@ export default function AttendancePage() {
                     <span style={{ padding:'1px 7px', borderRadius:4, fontSize:'0.7rem', fontWeight:600, backgroundColor: r.group_id ? '#dbeafe' : '#f3e8ff', color: r.group_id ? '#1d4ed8' : '#7c3aed' }}>
                       {r.group_id ? 'Групове' : 'Індив.'}
                     </span>
-                    <span style={{ color:'#6b7280', fontSize:'0.8125rem' }}>{r.group_title}</span>
+                    {r.group_id
+                      ? <span style={{ color:'#1d4ed8', fontSize:'0.8125rem', cursor:'pointer', fontWeight:500 }}
+                          onClick={() => openGroupModal(r.group_id!, r.group_title)}>{r.group_title}</span>
+                      : <span style={{ color:'#6b7280', fontSize:'0.8125rem' }}>{r.group_title}</span>}
                   </div>
                 </td>
-                {allTime && <td style={{ padding:'0.625rem 0.75rem', color:'#6b7280', fontSize:'0.8125rem' }}>{r.course_title||'—'}</td>}
-                <td style={{ padding:'0.625rem 0.75rem', fontSize:'0.8125rem', color:'#92400e', whiteSpace:'nowrap' }}>{r.teacher_name||'—'}</td>
-                <td style={{ padding:'0.625rem 0.75rem', fontWeight:500, color:'#111827' }}>{r.student_name}</td>
+                {allTime && <td style={{ padding:'0.625rem 0.75rem', fontSize:'0.8125rem' }}>
+                  {r.course_title && r.course_id
+                    ? <span style={{ color:'#7c3aed', cursor:'pointer', fontWeight:500 }}
+                        onClick={() => openCourseModal(r.course_id!, r.course_title!)}>{r.course_title}</span>
+                    : <span style={{ color:'#6b7280' }}>{r.course_title||'—'}</span>}
+                </td>}
+                <td style={{ padding:'0.625rem 0.75rem', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>
+                  {r.teacher_name && r.teacher_id
+                    ? <span style={{ color:'#92400e', cursor:'pointer', fontWeight:500 }}
+                        onClick={() => openTeacherModal(r.teacher_id!, r.teacher_name!)}
+                        onMouseEnter={e => (e.currentTarget.style.textDecoration='underline')}
+                        onMouseLeave={e => (e.currentTarget.style.textDecoration='none')}>{r.teacher_name}</span>
+                    : <span style={{ color:'#6b7280' }}>—</span>}
+                </td>
+                <td style={{ padding:'0.625rem 0.75rem', fontWeight:500 }}>
+                  <span style={{ color:'#1d4ed8', cursor:'pointer' }}
+                    onClick={() => openStudentModal(r.student_id, r.student_name)}>{r.student_name}</span>
+                </td>
                 <td style={{ padding:'0.625rem 0.75rem', color:'#6b7280', fontSize:'0.8125rem', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={r.topic||undefined}>{r.topic||'—'}</td>
                 <td style={{ padding:'0.625rem 1.25rem', textAlign:'center' }}>
                   <StatusLabel status={r.status} />
