@@ -502,122 +502,80 @@ export default function AttendancePage() {
           <div className="card" style={{ borderRadius:'1rem', overflow:'hidden' }}>
 
             {/* Filter panel */}
-            <div style={{ padding:'1.25rem 1.5rem', borderBottom:'1px solid #e5e7eb', backgroundColor:'#fafafa' }}>
-              <div style={{ fontSize:'0.6875rem', fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'0.75rem' }}>
-                Фільтри — За весь час
-              </div>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:'0.625rem', alignItems:'flex-end' }}>
+            <div style={{ padding:'0.875rem 1.25rem', borderBottom:'1px solid #e5e7eb', backgroundColor:'#fafafa' }}>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:'0.5rem', alignItems:'center' }}>
 
-                {/* Year */}
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
-                  <label style={{ fontSize:'0.6875rem', color:'#6b7280', fontWeight:500 }}>Рік</label>
-                  <select value={atYear} onChange={e => setYearFilter(e.target.value)} style={selectStyle}>
-                    <option value="">Всі роки</option>
-                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
+                {/* Period group */}
+                <select value={atYear} onChange={e => setYearFilter(e.target.value)} style={selectStyle}>
+                  <option value="">Всі роки</option>
+                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+
+                <select value={atMonth} onChange={e => setMonthFilter(e.target.value)} disabled={!atYear} style={{ ...selectStyle, opacity: atYear ? 1 : 0.5, cursor: atYear ? 'pointer' : 'not-allowed' }}>
+                  <option value="">Всі місяці</option>
+                  {MONTH_UK.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+                </select>
+
+                <span style={{ color:'#d1d5db', fontSize:'0.75rem', flexShrink:0 }}>або</span>
+
+                <input type="date" value={atStartDate} onChange={e => setDateRange(e.target.value, atEndDate)}
+                  title="Дата від" style={{ ...selectStyle, minWidth: 130 }} />
+
+                <input type="date" value={atEndDate} onChange={e => setDateRange(atStartDate, e.target.value)}
+                  title="Дата до" style={{ ...selectStyle, minWidth: 130 }} />
+
+                {/* Vertical separator */}
+                <div style={{ width:1, height:28, backgroundColor:'#e5e7eb', flexShrink:0 }} />
+
+                {/* Entity filters */}
+                <select value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)} style={selectStyle}>
+                  <option value="">Всі курси</option>
+                  {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                </select>
+
+                <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} style={selectStyle}>
+                  <option value="">Всі викладачі</option>
+                  {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+
+                <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)} style={selectStyle}>
+                  <option value="">Всі групи</option>
+                  {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+                </select>
+
+                <div ref={suggestBoxRef} style={{ position:'relative', flex:1, minWidth:160 }}>
+                  <input type="text" placeholder="Учень..." value={search}
+                    onChange={e => handleSearchChange(e.target.value)}
+                    onFocus={() => { if (studentSuggestions.length > 0) setShowSuggestions(true); }}
+                    style={{ ...selectStyle, width:'100%', boxSizing:'border-box' }} />
+                  {showSuggestions && studentSuggestions.length > 0 && (
+                    <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:100, backgroundColor:'white', border:'1px solid #e5e7eb', borderRadius:'0.5rem', boxShadow:'0 4px 12px rgba(0,0,0,0.1)', marginTop:2, overflow:'hidden' }}>
+                      {studentSuggestions.map(s => (
+                        <div key={s.id} onMouseDown={() => selectSuggestion(s.full_name)}
+                          style={{ padding:'0.5rem 0.75rem', fontSize:'0.875rem', color:'#374151', cursor:'pointer', borderBottom:'1px solid #f3f4f6' }}
+                          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                          onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'white')}>
+                          {s.full_name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* Month (only if year selected) */}
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
-                  <label style={{ fontSize:'0.6875rem', color: atYear ? '#6b7280' : '#d1d5db', fontWeight:500 }}>Місяць</label>
-                  <select value={atMonth} onChange={e => setMonthFilter(e.target.value)} disabled={!atYear} style={{ ...selectStyle, opacity: atYear ? 1 : 0.5, cursor: atYear ? 'pointer' : 'not-allowed' }}>
-                    <option value="">Всі місяці</option>
-                    {MONTH_UK.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-                  </select>
-                </div>
+                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}>
+                  <option value="">Всі статуси</option>
+                  <option value="absent">Відсутній</option>
+                  <option value="present">Присутній</option>
+                  <option value="makeup_planned">Відпрацювання</option>
+                  <option value="makeup_done">Відпрацьовано</option>
+                  <option value="null">Не відмічено</option>
+                </select>
 
-                {/* Divider */}
-                <div style={{ display:'flex', alignItems:'center', padding:'0 0.25rem', color:'#d1d5db', fontSize:'0.75rem', marginTop:'auto', paddingBottom:'0.5rem' }}>або</div>
-
-                {/* Date from */}
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
-                  <label style={{ fontSize:'0.6875rem', color:'#6b7280', fontWeight:500 }}>Дата від</label>
-                  <input type="date" value={atStartDate} onChange={e => setDateRange(e.target.value, atEndDate)}
-                    style={{ ...selectStyle, minWidth: 140 }} />
-                </div>
-
-                {/* Date to */}
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
-                  <label style={{ fontSize:'0.6875rem', color:'#6b7280', fontWeight:500 }}>Дата до</label>
-                  <input type="date" value={atEndDate} onChange={e => setDateRange(atStartDate, e.target.value)}
-                    style={{ ...selectStyle, minWidth: 140 }} />
-                </div>
-
-                {/* Separator */}
-                <div style={{ width: 1, height: 36, backgroundColor: '#e5e7eb', margin: 'auto 0.125rem', marginTop: 'auto' }} />
-
-                {/* Course */}
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
-                  <label style={{ fontSize:'0.6875rem', color:'#6b7280', fontWeight:500 }}>Курс</label>
-                  <select value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)} style={selectStyle}>
-                    <option value="">Всі курси</option>
-                    {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                  </select>
-                </div>
-
-                {/* Teacher */}
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
-                  <label style={{ fontSize:'0.6875rem', color:'#6b7280', fontWeight:500 }}>Викладач</label>
-                  <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} style={selectStyle}>
-                    <option value="">Всі викладачі</option>
-                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
-                </div>
-
-                {/* Group */}
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
-                  <label style={{ fontSize:'0.6875rem', color:'#6b7280', fontWeight:500 }}>Група</label>
-                  <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)} style={selectStyle}>
-                    <option value="">Всі групи</option>
-                    {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-                  </select>
-                </div>
-
-                {/* Student search */}
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem', flex:1, minWidth:180 }}>
-                  <label style={{ fontSize:'0.6875rem', color:'#6b7280', fontWeight:500 }}>Учень</label>
-                  <div ref={suggestBoxRef} style={{ position:'relative', width:'100%' }}>
-                    <input type="text" placeholder="Пошук за іменем..." value={search}
-                      onChange={e => handleSearchChange(e.target.value)}
-                      onFocus={() => { if (studentSuggestions.length > 0) setShowSuggestions(true); }}
-                      style={{ ...selectStyle, width:'100%', boxSizing:'border-box' }} />
-                    {showSuggestions && studentSuggestions.length > 0 && (
-                      <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:100, backgroundColor:'white', border:'1px solid #e5e7eb', borderRadius:'0.5rem', boxShadow:'0 4px 12px rgba(0,0,0,0.1)', marginTop:2, overflow:'hidden' }}>
-                        {studentSuggestions.map(s => (
-                          <div key={s.id} onMouseDown={() => selectSuggestion(s.full_name)}
-                            style={{ padding:'0.5rem 0.75rem', fontSize:'0.875rem', color:'#374151', cursor:'pointer', borderBottom:'1px solid #f3f4f6' }}
-                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
-                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'white')}>
-                            {s.full_name}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Status filter */}
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
-                  <label style={{ fontSize:'0.6875rem', color:'#6b7280', fontWeight:500 }}>Статус</label>
-                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}>
-                    <option value="">Всі статуси</option>
-                    <option value="absent">Відсутній</option>
-                    <option value="present">Присутній</option>
-                    <option value="makeup_planned">Відпрацювання</option>
-                    <option value="makeup_done">Відпрацьовано</option>
-                    <option value="null">Не відмічено</option>
-                  </select>
-                </div>
-
-                {/* Reset button */}
                 {(atYear || atMonth || atStartDate || atEndDate || selectedCourse || selectedTeacher || selectedGroup || search || statusFilter) && (
-                  <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
-                    <label style={{ fontSize:'0.6875rem', color:'transparent', fontWeight:500 }}>.</label>
-                    <button onClick={() => { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); setSelectedTeacher(''); setSelectedGroup(''); setSearch(''); setStatusFilter(''); }}
-                      style={{ padding:'0.5rem 0.875rem', border:'1px solid #fca5a5', borderRadius:'0.5rem', backgroundColor:'#fef2f2', color:'#dc2626', fontSize:'0.8125rem', fontWeight:500, cursor:'pointer', whiteSpace:'nowrap' as const }}>
-                      ✕ Скинути
-                    </button>
-                  </div>
+                  <button onClick={() => { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); setSelectedTeacher(''); setSelectedGroup(''); setSearch(''); setStatusFilter(''); }}
+                    style={{ padding:'0.5rem 0.75rem', border:'1px solid #fca5a5', borderRadius:'0.5rem', backgroundColor:'#fef2f2', color:'#dc2626', fontSize:'0.8125rem', fontWeight:500, cursor:'pointer', whiteSpace:'nowrap' as const, flexShrink:0 }}>
+                    ✕ Скинути
+                  </button>
                 )}
               </div>
 
