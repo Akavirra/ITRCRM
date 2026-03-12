@@ -99,7 +99,32 @@ export async function POST(
           );
         }
         await setAttendance(lessonId, parseInt(studentId), status, user.id, comment, makeupLessonId);
-        
+
+        // If this is a makeup lesson, sync original absence record
+        {
+          const makeupLesson = await get<{ is_makeup: boolean | null }>(
+            `SELECT is_makeup FROM lessons WHERE id = $1`,
+            [lessonId]
+          );
+          if (makeupLesson?.is_makeup) {
+            if (status === 'present') {
+              // Mark original absence as makeup_done
+              await run(
+                `UPDATE attendance SET status = 'makeup_done', updated_by = $1, updated_at = NOW()
+                 WHERE makeup_lesson_id = $2 AND student_id = $3`,
+                [user.id, lessonId, parseInt(studentId)]
+              );
+            } else if (status === 'absent') {
+              // Revert original absence back to makeup_planned
+              await run(
+                `UPDATE attendance SET status = 'makeup_planned', updated_by = $1, updated_at = NOW()
+                 WHERE makeup_lesson_id = $2 AND student_id = $3 AND status = 'makeup_done'`,
+                [user.id, lessonId, parseInt(studentId)]
+              );
+            }
+          }
+        }
+
         const lessonInfo = await get<{ group_id: number | null; status: string; lesson_date: string; topic: string }>(
           `SELECT group_id, status, lesson_date, topic FROM lessons WHERE id = $1`,
           [lessonId]

@@ -211,6 +211,27 @@ export async function POST(
       [lessonId, studentId, dbStatus, teacher.id]
     );
     
+    // If this is a makeup lesson, sync original absence record
+    const makeupLesson = await queryOne(
+      `SELECT is_makeup FROM lessons WHERE id = $1`,
+      [lessonId]
+    ) as { is_makeup: boolean | null } | null;
+    if (makeupLesson?.is_makeup) {
+      if (dbStatus === 'present') {
+        await query(
+          `UPDATE attendance SET status = 'makeup_done', updated_by = $1, updated_at = NOW()
+           WHERE makeup_lesson_id = $2 AND student_id = $3`,
+          [teacher.id, lessonId, studentId]
+        );
+      } else if (dbStatus === 'absent') {
+        await query(
+          `UPDATE attendance SET status = 'makeup_planned', updated_by = $1, updated_at = NOW()
+           WHERE makeup_lesson_id = $2 AND student_id = $3 AND status = 'makeup_done'`,
+          [teacher.id, lessonId, studentId]
+        );
+      }
+    }
+
     // Log attendance change from Telegram
     const studentName = await queryOne(
       `SELECT full_name FROM students WHERE id = $1`,
