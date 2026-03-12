@@ -19,6 +19,7 @@ interface Lesson {
   reported_by_name: string | null;
   reported_at: string | null;
   reported_via: string | null;
+  is_makeup: boolean;
   group_title: string;
   course_title: string;
 }
@@ -29,6 +30,11 @@ interface Student {
   student_public_id: string;
   attendance_status: 'present' | 'absent' | null;
   attendance_updated: string | null;
+  original_lesson_id?: number | null;
+  original_lesson_date?: string | null;
+  original_lesson_topic?: string | null;
+  original_group_title?: string | null;
+  original_course_title?: string | null;
 }
 
 interface LessonData {
@@ -348,18 +354,26 @@ export default function LessonDetailPage() {
       <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: 'var(--space-md)', color: 'var(--tg-text-color)', letterSpacing: '-0.02em' }}>
         🕐 {formatTime(lesson.start_datetime)} - {formatTime(lesson.end_datetime)}
       </h1>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-          <span style={{ fontSize: '15px', color: 'var(--tg-text-color)', fontWeight: 500 }}>
-            👥 {lesson.group_title}
+      {lesson.is_makeup ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-xs)' }}>
+          <span style={{ fontSize: '15px', color: 'var(--tg-text-color)', fontWeight: 600 }}>
+            🔄 Відпрацювання
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-          <span style={{ fontSize: '13px', color: 'var(--tg-text-secondary)' }}>
-            📚 {lesson.course_title}
-          </span>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+            <span style={{ fontSize: '15px', color: 'var(--tg-text-color)', fontWeight: 500 }}>
+              👥 {lesson.group_title}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+            <span style={{ fontSize: '13px', color: 'var(--tg-text-secondary)' }}>
+              📚 {lesson.course_title}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Past lesson warning */}
       {isPastLesson && (
@@ -376,8 +390,8 @@ export default function LessonDetailPage() {
         </div>
       )}
 
-      {/* Topic */}
-      <div style={{ marginBottom: 'var(--space-xl)' }}>
+      {/* Topic - hidden for makeup lessons */}
+      {!lesson.is_makeup && (<div style={{ marginBottom: 'var(--space-xl)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
           <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)' }}>📝 Тема заняття</span>
           {!editingTopic && !isPastLesson && (
@@ -425,7 +439,7 @@ export default function LessonDetailPage() {
             </p>
           </div>
         )}
-      </div>
+      </div>)}
 
       {/* Notes */}
       <div style={{ marginBottom: 'var(--space-xl)' }}>
@@ -485,29 +499,64 @@ export default function LessonDetailPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
             {students.map(student => (
-              <div 
+              <div
                 key={student.id}
-                className="tg-list-item"
+                style={{
+                  background: 'var(--tg-surface)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: 'var(--space-md)',
+                  border: '1px solid var(--tg-border)',
+                }}
               >
-                <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--tg-text-color)' }}>{student.full_name}</span>
-                <div className="tg-actions">
-                  <button
-                    onClick={() => updateAttendance(student.id, 'present')}
-                    className={`tg-action-btn tg-action-btn-success ${student.attendance_status === 'present' ? 'active' : ''}`}
-                    title="Присутній"
-                    disabled={isPastLesson}
-                  >
-                    ✓
-                  </button>
-                  <button
-                    onClick={() => updateAttendance(student.id, 'absent')}
-                    className={`tg-action-btn tg-action-btn-danger ${student.attendance_status === 'absent' ? 'active' : ''}`}
-                    title="Відсутній"
-                    disabled={isPastLesson}
-                  >
-                    ✗
-                  </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--tg-text-color)' }}>{student.full_name}</span>
+                  <div className="tg-actions">
+                    <button
+                      onClick={() => updateAttendance(student.id, 'present')}
+                      className={`tg-action-btn tg-action-btn-success ${student.attendance_status === 'present' ? 'active' : ''}`}
+                      title="Присутній"
+                      disabled={isPastLesson}
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={() => updateAttendance(student.id, 'absent')}
+                      className={`tg-action-btn tg-action-btn-danger ${student.attendance_status === 'absent' ? 'active' : ''}`}
+                      title="Відсутній"
+                      disabled={isPastLesson}
+                    >
+                      ✗
+                    </button>
+                  </div>
                 </div>
+                {lesson.is_makeup && student.original_lesson_date && (
+                  <div style={{
+                    marginTop: 'var(--space-sm)',
+                    padding: 'var(--space-sm) var(--space-md)',
+                    background: 'var(--tg-primary-bg)',
+                    borderRadius: 'var(--radius-sm)',
+                    borderLeft: '3px solid var(--tg-link-color)',
+                    fontSize: '12px',
+                    color: 'var(--tg-text-secondary)',
+                  }}>
+                    <div style={{ marginBottom: '2px' }}>
+                      <strong>Відпрацьовує:</strong> {formatDate(student.original_lesson_date)}
+                    </div>
+                    {student.original_course_title && (
+                      <div style={{ marginBottom: '2px' }}>📚 {student.original_course_title}</div>
+                    )}
+                    {student.original_lesson_topic ? (
+                      <div>📝 {student.original_lesson_topic}</div>
+                    ) : (
+                      <div style={{ fontStyle: 'italic' }}>Тема не вказана</div>
+                    )}
+                  </div>
+                )}
+                {lesson.is_makeup && !student.original_lesson_date && (
+                  <div style={{ marginTop: 'var(--space-sm)', fontSize: '12px', color: 'var(--tg-hint-color)', fontStyle: 'italic' }}>
+                    Оригінальне заняття не вказано
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -116,6 +116,7 @@ export async function GET(
       `SELECT 
         l.id, l.public_id, l.group_id, l.course_id, l.lesson_date, l.start_datetime, l.end_datetime,
         l.status, l.topic, l.notes, l.reported_by, l.reported_at, l.reported_via,
+        COALESCE(l.is_makeup, FALSE) as is_makeup,
         g.title as group_title, c.title as course_title,
         ltr.replacement_teacher_id,
         ru.name as replacement_teacher_name,
@@ -171,9 +172,46 @@ export async function GET(
           [lessonId]
         );
 
+    // For makeup lessons, fetch original lesson info per student
+    let studentsWithOriginal = students || [];
+    if (lesson.is_makeup && studentsWithOriginal.length > 0) {
+      const originalInfoRows = await query(
+        `SELECT
+          orig_att.student_id,
+          orig_l.id as original_lesson_id,
+          orig_l.lesson_date as original_lesson_date,
+          orig_l.topic as original_lesson_topic,
+          COALESCE(orig_g.title, 'Індивідуальне') as original_group_title,
+          COALESCE(oc_les.title, oc_grp.title, 'Без курсу') as original_course_title
+        FROM attendance orig_att
+        JOIN lessons orig_l ON orig_att.lesson_id = orig_l.id
+        LEFT JOIN groups orig_g ON orig_l.group_id = orig_g.id
+        LEFT JOIN courses oc_grp ON orig_g.course_id = oc_grp.id
+        LEFT JOIN courses oc_les ON orig_l.course_id = oc_les.id
+        WHERE orig_att.makeup_lesson_id = $1`,
+        [lessonId]
+      );
+
+      const originalByStudent = new Map<number, object>();
+      for (const row of (originalInfoRows || [])) {
+        originalByStudent.set(row.student_id, {
+          original_lesson_id: row.original_lesson_id,
+          original_lesson_date: row.original_lesson_date,
+          original_lesson_topic: row.original_lesson_topic,
+          original_group_title: row.original_group_title,
+          original_course_title: row.original_course_title,
+        });
+      }
+
+      studentsWithOriginal = studentsWithOriginal.map((s: { id: number }) => ({
+        ...s,
+        ...(originalByStudent.get(s.id) || {}),
+      }));
+    }
+
     return NextResponse.json({
       lesson,
-      students: students || []
+      students: studentsWithOriginal
     });
 
   } catch (error) {

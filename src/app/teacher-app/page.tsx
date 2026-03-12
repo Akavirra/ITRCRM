@@ -28,6 +28,7 @@ interface Lesson {
   student_count: number;
   reported_at: string | null;
   reported_via: string | null;
+  is_makeup: boolean;
 }
 
 interface ScheduleData {
@@ -386,13 +387,13 @@ export default function TeacherAppPage() {
 
               <div style={{ marginBottom: '6px' }}>
                 <span className="tg-lesson-group">
-                  {lesson.group_title || 'Індивідуальне заняття'}
+                  {lesson.is_makeup ? '🔄 Відпрацювання' : (lesson.group_title || 'Індивідуальне заняття')}
                 </span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="tg-lesson-course">
-                  {lesson.course_title || 'Без курсу'}
+                  {lesson.is_makeup ? '' : (lesson.course_title || 'Без курсу')}
                 </span>
                 <span style={{ fontSize: '13px', color: 'var(--tg-text-secondary)' }}>
                   👥 {lesson.student_count} студентів

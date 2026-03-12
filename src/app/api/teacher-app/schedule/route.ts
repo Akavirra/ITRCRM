@@ -122,9 +122,10 @@ export async function GET(request: NextRequest) {
 
     // Get lessons for teacher (direct assignments + replacements + individual lessons)
     const lessons = await query(
-      `SELECT DISTINCT 
-        l.id, l.public_id, l.group_id, l.course_id, l.lesson_date, l.start_datetime, l.end_datetime, 
+      `SELECT DISTINCT
+        l.id, l.public_id, l.group_id, l.course_id, l.lesson_date, l.start_datetime, l.end_datetime,
         l.status, l.topic, l.notes, l.reported_by, l.reported_at, l.reported_via,
+        COALESCE(l.is_makeup, FALSE) as is_makeup,
         g.title as group_title, c.title as course_title,
         ltr.replacement_teacher_id,
         ru.name as replacement_teacher_name,
