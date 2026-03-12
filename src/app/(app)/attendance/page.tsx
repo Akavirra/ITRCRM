@@ -51,9 +51,27 @@ interface GroupedStudent {
   student_id: number;
   student_name: string;
   attendance: Record<number, AttendanceStatus | null>;
+  makeup_lesson_ids?: Record<number, number | null>;
   present: number;
   absent: number;
   rate: number;
+}
+
+interface MakeupLessonEntry {
+  makeup_lesson_id: number;
+  makeup_lesson_date: string;
+  makeup_start_time: string | null;
+  makeup_status: string;
+  student_id: number;
+  student_name: string;
+  original_lesson_id: number;
+  original_lesson_date: string;
+  original_lesson_topic: string | null;
+  original_group_id: number | null;
+  original_group_title: string | null;
+  original_course_title: string | null;
+  teacher_id: number | null;
+  teacher_name: string | null;
 }
 
 interface GroupedGroup {
@@ -159,11 +177,22 @@ function RateBar({ rate }: { rate: number }) {
   );
 }
 
-function AttCell({ status }: { status: AttendanceStatus | null }) {
+function AttCell({ status, makeupLessonId, onMakeupClick }: { status: AttendanceStatus | null; makeupLessonId?: number | null; onMakeupClick?: () => void }) {
   if (!status) return <span style={{ color: '#d1d5db' }}>○</span>;
   if (status === 'present')     return <span style={{ color: '#16a34a', fontWeight: 700 }}>✓</span>;
   if (status === 'absent')      return <span style={{ color: '#dc2626', fontWeight: 700 }}>✗</span>;
-  if (status === 'makeup_done') return <span style={{ color: '#2563eb', fontWeight: 700 }}>✓</span>;
+  if (status === 'makeup_done') {
+    if (makeupLessonId && onMakeupClick) {
+      return (
+        <span
+          onClick={(e) => { e.stopPropagation(); onMakeupClick(); }}
+          style={{ color: '#2563eb', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted' }}
+          title="Відпрацьовано — відкрити заняття відпрацювання"
+        >✓</span>
+      );
+    }
+    return <span style={{ color: '#2563eb', fontWeight: 700 }}>✓</span>;
+  }
   return <span style={{ color: '#d97706', fontWeight: 700 }}>↺</span>;
 }
 
@@ -226,6 +255,9 @@ export default function AttendancePage() {
   const [year,          setYear]          = useState(now.getFullYear());
   const [month,         setMonth]         = useState(now.getMonth() + 1);
   const [viewMode,      setViewMode]      = useState<'grouped'|'summary'>('grouped');
+  const [makeupTab,     setMakeupTab]     = useState(false);
+  const [makeupData,    setMakeupData]    = useState<MakeupLessonEntry[]>([]);
+  const [makeupLoading, setMakeupLoading] = useState(false);
   const [totals,        setTotals]        = useState<Totals|null>(null);
   const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
   const [register,      setRegister]      = useState<{ lessons:RegisterLesson[]; students:RegisterStudent[] }|null>(null);
@@ -296,6 +328,20 @@ export default function AttendancePage() {
   useEffect(() => {
     if (journalMode) loadJournalData();
   }, [journalMode, loadJournalData]);
+
+  const loadMakeupData = useCallback(async () => {
+    setMakeupLoading(true);
+    try {
+      const res = await fetch(`/api/attendance?view=makeupLessons`);
+      if (res.ok) { const d = await res.json(); setMakeupData(d.entries || []); }
+    } finally {
+      setMakeupLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (makeupTab) loadMakeupData();
+  }, [makeupTab, loadMakeupData]);
 
   // Load data
   const loadData = useCallback(async () => {
@@ -646,14 +692,21 @@ export default function AttendancePage() {
               <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'1rem 1.5rem', borderBottom:'1px solid #e5e7eb', flexWrap:'wrap' }}>
                 <div style={{ display:'flex', border:'1px solid #e5e7eb', borderRadius:'0.625rem', overflow:'hidden', flexShrink:0 }}>
                   {(['grouped','summary'] as const).map(mode => (
-                    <button key={mode} onClick={() => { setViewMode(mode); setStatusFilter(''); }} style={{
+                    <button key={mode} onClick={() => { setViewMode(mode); setStatusFilter(''); setMakeupTab(false); }} style={{
                       padding:'0.5rem 1rem', border:'none', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
-                      backgroundColor: viewMode === mode ? '#1565c0' : 'white',
-                      color: viewMode === mode ? 'white' : '#374151',
+                      backgroundColor: !makeupTab && viewMode === mode ? '#1565c0' : 'white',
+                      color: !makeupTab && viewMode === mode ? 'white' : '#374151',
                     }}>
                       {mode === 'grouped' ? 'По групах' : 'Загальна таблиця'}
                     </button>
                   ))}
+                  <button onClick={() => { setMakeupTab(true); setStatusFilter(''); }} style={{
+                    padding:'0.5rem 1rem', border:'none', borderLeft:'1px solid #e5e7eb', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
+                    backgroundColor: makeupTab ? '#1565c0' : 'white',
+                    color: makeupTab ? 'white' : '#374151',
+                  }}>
+                    Відпрацювання
+                  </button>
                 </div>
 
                 <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)} style={selectStyle}>
@@ -708,7 +761,11 @@ export default function AttendancePage() {
                 )}
               </div>
 
-              {loading ? (
+              {makeupTab ? (
+                makeupLoading
+                  ? <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>Завантаження...</div>
+                  : renderMakeupView()
+              ) : loading ? (
                 <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>Завантаження...</div>
               ) : viewMode === 'grouped' ? renderGroupedView()
                 : renderSummaryView()
@@ -791,11 +848,18 @@ export default function AttendancePage() {
                             onMouseLeave={e => (e.currentTarget.style.backgroundColor='transparent')}>
                             <td style={{ padding:'0.625rem 1.25rem', fontWeight:500, color:'#1d4ed8', position:'sticky', left:0, backgroundColor:'white', whiteSpace:'nowrap', cursor:'pointer' }}
                               onClick={() => openStudentModal(s.student_id, s.student_name)}>{s.student_name}</td>
-                            {g.lessons.map(l => (
-                              <td key={l.lesson_id} style={{ padding:'0.5rem 0.625rem', textAlign:'center' }}>
-                                <AttCell status={s.attendance[l.lesson_id]??null} />
-                              </td>
-                            ))}
+                            {g.lessons.map(l => {
+                              const makeupId = s.makeup_lesson_ids?.[l.lesson_id];
+                              return (
+                                <td key={l.lesson_id} style={{ padding:'0.5rem 0.625rem', textAlign:'center' }}>
+                                  <AttCell
+                                    status={s.attendance[l.lesson_id]??null}
+                                    makeupLessonId={makeupId}
+                                    onMakeupClick={makeupId ? () => openLessonModal(makeupId, `Заняття #${makeupId}`, undefined) : undefined}
+                                  />
+                                </td>
+                              );
+                            })}
                             <td style={{ padding:'0.625rem 1rem', textAlign:'center', color:'#374151' }}>
                               <span style={{ fontWeight:600, color:'#16a34a' }}>{s.present}</span>
                               <span style={{ color:'#9ca3af' }}>/{g.lessons.length}</span>
@@ -1129,6 +1193,113 @@ export default function AttendancePage() {
                 </td>
                 <td style={{ padding:'0.625rem 0.5rem' }}>
                   <OpenLessonBtn lessonId={r.lesson_id} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // ── Makeup lessons view ───────────────────────────────────────────────────
+
+  function renderMakeupView() {
+    if (makeupData.length === 0) {
+      return (
+        <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>
+          <p style={{ margin:'0 0 0.5rem 0' }}>Відпрацювань не знайдено</p>
+          <p style={{ margin:0, fontSize:'0.8125rem' }}>Тут відображатимуться заняття-відпрацювання після їх проведення</p>
+        </div>
+      );
+    }
+    return (
+      <div style={{ overflowX:'auto' }}>
+        <div style={{ padding:'0.5rem 1.25rem', borderBottom:'1px solid #f3f4f6', backgroundColor:'#fafafa', fontSize:'0.75rem', color:'#6b7280' }}>
+          Знайдено: <strong style={{ color:'#374151' }}>{makeupData.length}</strong> відпрацювань
+        </div>
+        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.875rem' }}>
+          <thead>
+            <tr style={{ backgroundColor:'#f9fafb', borderBottom:'2px solid #e5e7eb' }}>
+              <th style={{ padding:'0.75rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', whiteSpace:'nowrap' }}>Дата відпрацювання</th>
+              <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', whiteSpace:'nowrap' }}>Час</th>
+              <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151' }}>Учень</th>
+              <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', whiteSpace:'nowrap' }}>Дата пропуску</th>
+              <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151' }}>Курс / Група</th>
+              <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151' }}>Тема пропущеного</th>
+              <th style={{ padding:'0.75rem 1.25rem', textAlign:'center', fontWeight:600, color:'#374151' }}>Статус</th>
+              <th style={{ padding:'0.75rem 0.5rem', width:72 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {makeupData.map((entry, i) => (
+              <tr key={`${entry.makeup_lesson_id}-${entry.student_id}-${i}`}
+                style={{ borderBottom:'1px solid #f3f4f6' }}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor='#f9fafb')}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor='transparent')}>
+                <td style={{ padding:'0.625rem 1.25rem', whiteSpace:'nowrap' }}>
+                  <div style={{ fontWeight:500, color:'#111827' }}>{formatDateShort(entry.makeup_lesson_date)}</div>
+                  <div style={{ fontSize:'0.7rem', color:'#9ca3af' }}>{getWeekdayShort(entry.makeup_lesson_date)}</div>
+                </td>
+                <td style={{ padding:'0.625rem 0.75rem', color:'#6b7280', whiteSpace:'nowrap' }}>
+                  {entry.makeup_start_time
+                    ? <span style={{ padding:'1px 7px', borderRadius:4, backgroundColor:'#f3f4f6', color:'#374151', fontSize:'0.8125rem' }}>{entry.makeup_start_time}</span>
+                    : '—'}
+                </td>
+                <td style={{ padding:'0.625rem 0.75rem', fontWeight:500 }}>
+                  <span style={{ color:'#1d4ed8', cursor:'pointer' }}
+                    onClick={() => openStudentModal(entry.student_id, entry.student_name)}>{entry.student_name}</span>
+                </td>
+                <td style={{ padding:'0.625rem 0.75rem', whiteSpace:'nowrap' }}>
+                  <div style={{ fontWeight:500, color:'#374151' }}>{formatDateShort(entry.original_lesson_date)}</div>
+                  <div style={{ fontSize:'0.7rem', color:'#9ca3af' }}>{getWeekdayShort(entry.original_lesson_date)}</div>
+                </td>
+                <td style={{ padding:'0.625rem 0.75rem' }}>
+                  <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                    {entry.original_group_id
+                      ? <span style={{ color:'#1d4ed8', fontSize:'0.8125rem', cursor:'pointer', fontWeight:500 }}
+                          onClick={() => openGroupModal(entry.original_group_id!, entry.original_group_title!)}>{entry.original_group_title}</span>
+                      : <span style={{ color:'#6b7280', fontSize:'0.8125rem' }}>Індивідуальне</span>}
+                    {entry.original_course_title && (
+                      <span style={{ color:'#7c3aed', fontSize:'0.75rem' }}>{entry.original_course_title}</span>
+                    )}
+                  </div>
+                </td>
+                <td style={{ padding:'0.625rem 0.75rem', color:'#6b7280', fontSize:'0.8125rem', maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={entry.original_lesson_topic||undefined}>
+                  {entry.original_lesson_topic || <span style={{ color:'#9ca3af' }}>—</span>}
+                </td>
+                <td style={{ padding:'0.625rem 1.25rem', textAlign:'center' }}>
+                  <span style={{ padding:'2px 8px', borderRadius:6, fontSize:'0.75rem', fontWeight:600, color:'#1d4ed8', backgroundColor:'#dbeafe' }}>
+                    Відпрацьовано
+                  </span>
+                </td>
+                <td style={{ padding:'0.625rem 0.5rem' }}>
+                  <div style={{ display:'flex', gap:2 }}>
+                    <button
+                      onClick={() => openLessonModal(entry.makeup_lesson_id, `Заняття #${entry.makeup_lesson_id}`, undefined)}
+                      style={{ padding:'0.375rem', borderRadius:'0.5rem', backgroundColor:'transparent', border:'none', cursor:'pointer', color:'#2563eb', display:'flex', alignItems:'center' }}
+                      onMouseEnter={e => { e.currentTarget.style.backgroundColor='#dbeafe'; }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor='transparent'; }}
+                      title="Відкрити заняття відпрацювання"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => openLessonModal(entry.original_lesson_id, `Заняття #${entry.original_lesson_id}`, undefined)}
+                      style={{ padding:'0.375rem', borderRadius:'0.5rem', backgroundColor:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', display:'flex', alignItems:'center' }}
+                      onMouseEnter={e => { e.currentTarget.style.backgroundColor='#eef2ff'; e.currentTarget.style.color='#6366f1'; }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color='#94a3b8'; }}
+                      title="Відкрити пропущене заняття"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

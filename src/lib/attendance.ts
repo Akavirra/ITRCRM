@@ -927,6 +927,7 @@ export interface GroupedMonthlyGroup {
     student_id: number;
     student_name: string;
     attendance: Record<number, AttendanceStatus | null>;
+    makeup_lesson_ids: Record<number, number | null>;
     present: number;
     absent: number;
     rate: number;
@@ -1020,17 +1021,17 @@ export async function getGlobalMonthlyGroupedStats(
 
     // --- 4. Get all attendance for these lessons (1 query) ---
     const allLessonIds = allLessons.map(l => l.lesson_id);
-    let attRows: Array<{ lesson_id: number; student_id: number; status: AttendanceStatus }> = [];
+    let attRows: Array<{ lesson_id: number; student_id: number; status: AttendanceStatus; makeup_lesson_id: number | null }> = [];
     if (allLessonIds.length > 0) {
-      attRows = await all<{ lesson_id: number; student_id: number; status: AttendanceStatus }>(
-        `SELECT lesson_id, student_id, status FROM attendance WHERE lesson_id IN (${allLessonIds.join(',')})`,
+      attRows = await all<{ lesson_id: number; student_id: number; status: AttendanceStatus; makeup_lesson_id: number | null }>(
+        `SELECT lesson_id, student_id, status, makeup_lesson_id FROM attendance WHERE lesson_id IN (${allLessonIds.join(',')})`,
         []
       );
     }
 
     // --- Aggregate in JS ---
-    const attMap = new Map<string, AttendanceStatus>();
-    for (const a of attRows) { attMap.set(`${a.lesson_id}-${a.student_id}`, a.status); }
+    const attMap = new Map<string, { status: AttendanceStatus; makeup_lesson_id: number | null }>();
+    for (const a of attRows) { attMap.set(`${a.lesson_id}-${a.student_id}`, { status: a.status, makeup_lesson_id: a.makeup_lesson_id }); }
 
     const lessonsByGroup = new Map<number, Array<{ lesson_id: number; lesson_date: string; topic: string | null }>>();
     for (const l of allLessons) {
@@ -1053,10 +1054,13 @@ export async function getGlobalMonthlyGroupedStats(
 
       const studentRows = students.map(s => {
         const attendance: Record<number, AttendanceStatus | null> = {};
+        const makeup_lesson_ids: Record<number, number | null> = {};
         let present = 0, absent = 0;
         for (const l of lessons) {
-          const st = attMap.get(`${l.lesson_id}-${s.student_id}`) ?? null;
+          const entry = attMap.get(`${l.lesson_id}-${s.student_id}`) ?? null;
+          const st = entry?.status ?? null;
           attendance[l.lesson_id] = st;
+          makeup_lesson_ids[l.lesson_id] = entry?.makeup_lesson_id ?? null;
           if (st === 'present' || st === 'makeup_done') present++;
           else if (st === 'absent' || st === 'makeup_planned') absent++;
         }
@@ -1064,6 +1068,7 @@ export async function getGlobalMonthlyGroupedStats(
           student_id: s.student_id,
           student_name: s.student_name,
           attendance,
+          makeup_lesson_ids,
           present,
           absent,
           rate: lessons.length > 0 ? Math.round((present / lessons.length) * 100) : 0,
@@ -1086,7 +1091,7 @@ export async function getGlobalMonthlyGroupedStats(
   let indivLessons: GroupedMonthlyIndividual[] = [];
   if (!groupId) {
     const iParams: (number | string)[] = [year, month];
-    const iWhere = `l.group_id IS NULL AND l.status != 'canceled'
+    const iWhere = `l.group_id IS NULL AND l.status != 'canceled' AND COALESCE(l.is_makeup, FALSE) = FALSE
        AND EXTRACT(YEAR FROM l.lesson_date) = $1
        AND EXTRACT(MONTH FROM l.lesson_date) = $2`;
 
@@ -1202,6 +1207,7 @@ export async function getGlobalMonthlyLessonRecords(
      JOIN students s ON sg.student_id = s.id AND s.is_active = TRUE
      LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = s.id
      WHERE l.status != 'canceled'
+       AND COALESCE(l.is_makeup, FALSE) = FALSE
        AND l.lesson_date <= CURRENT_DATE
        ${dateFilter}
        ${where}
@@ -1237,6 +1243,7 @@ export async function getGlobalMonthlyLessonRecords(
        JOIN attendance a ON a.lesson_id = l.id
        JOIN students s ON a.student_id = s.id
        WHERE l.group_id IS NULL AND l.status != 'canceled'
+         AND COALESCE(l.is_makeup, FALSE) = FALSE
          AND l.lesson_date <= CURRENT_DATE
          ${iDateFilter}
          ${iWhere}
@@ -1446,4 +1453,79 @@ export async function getGroupAllTimeRegister(groupId: number): Promise<GroupAll
     months: Array.from(monthMap.values()),
     students: studentRows,
   };
+}
+
+// ─── Makeup lessons data ───────────────────────────────────────────────────
+
+export interface MakeupLessonEntry {
+  makeup_lesson_id: number;
+  makeup_lesson_date: string;
+  makeup_start_time: string | null;
+  makeup_status: string;
+  student_id: number;
+  student_name: string;
+  original_lesson_id: number;
+  original_lesson_date: string;
+  original_lesson_topic: string | null;
+  original_group_id: number | null;
+  original_group_title: string | null;
+  original_course_title: string | null;
+  teacher_id: number | null;
+  teacher_name: string | null;
+}
+
+export async function getMakeupLessonsData(options: {
+  startDate?: string;
+  endDate?: string;
+  year?: number;
+  month?: number;
+} = {}): Promise<MakeupLessonEntry[]> {
+  const { startDate, endDate, year, month } = options;
+  const params: (number | string)[] = [];
+  let idx = 1;
+  let dateFilter = '';
+
+  if (startDate) { dateFilter += ` AND ml.lesson_date >= $${idx++}`; params.push(startDate); }
+  if (endDate) { dateFilter += ` AND ml.lesson_date <= $${idx++}`; params.push(endDate); }
+  if (!startDate && !endDate && year) {
+    dateFilter += ` AND EXTRACT(YEAR FROM ml.lesson_date) = $${idx++}`;
+    params.push(year);
+    if (month) {
+      dateFilter += ` AND EXTRACT(MONTH FROM ml.lesson_date) = $${idx++}`;
+      params.push(month);
+    }
+  }
+
+  const rows = await all<MakeupLessonEntry>(
+    `SELECT
+      ml.id as makeup_lesson_id,
+      ml.lesson_date as makeup_lesson_date,
+      TO_CHAR(ml.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as makeup_start_time,
+      ml.status as makeup_status,
+      s.id as student_id,
+      s.full_name as student_name,
+      orig_l.id as original_lesson_id,
+      orig_l.lesson_date as original_lesson_date,
+      orig_l.topic as original_lesson_topic,
+      orig_g.id as original_group_id,
+      orig_g.title as original_group_title,
+      COALESCE(oc_les.title, oc_grp.title) as original_course_title,
+      t.id as teacher_id,
+      t.name as teacher_name
+    FROM attendance orig_att
+    JOIN lessons ml ON orig_att.makeup_lesson_id = ml.id
+    JOIN students s ON orig_att.student_id = s.id
+    JOIN lessons orig_l ON orig_att.lesson_id = orig_l.id
+    LEFT JOIN groups orig_g ON orig_l.group_id = orig_g.id
+    LEFT JOIN courses oc_grp ON orig_g.course_id = oc_grp.id
+    LEFT JOIN courses oc_les ON orig_l.course_id = oc_les.id
+    LEFT JOIN users t ON ml.teacher_id = t.id
+    WHERE orig_att.makeup_lesson_id IS NOT NULL
+    AND ml.lesson_date <= CURRENT_DATE
+    ${dateFilter}
+    ORDER BY ml.lesson_date DESC, s.full_name`,
+    params
+  );
+
+  return rows;
 }

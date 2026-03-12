@@ -1639,10 +1639,28 @@ export default function LessonModalsManager() {
                             backgroundColor: idx % 2 === 0 ? 'white' : '#f9fafb'
                           }}
                         >
-                          <span style={{ fontSize: '0.8125rem', color: '#374151' }}>
-                            {att.student_name}
-                          </span>
-                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' as const, flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                              {att.student_name}
+                            </span>
+                            {att.status === 'makeup_done' && (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <span style={{ padding: '1px 6px', borderRadius: 4, backgroundColor: '#dbeafe', color: '#1d4ed8', fontSize: '0.6875rem', fontWeight: 600 }}>
+                                  ↺ Відпрацьовано
+                                </span>
+                                {att.makeup_lesson_id && (
+                                  <button
+                                    onClick={() => openLessonModal(att.makeup_lesson_id!, `Заняття #${att.makeup_lesson_id}`, undefined)}
+                                    title="Відкрити заняття відпрацювання"
+                                    style={{ padding: '1px 5px', borderRadius: 4, backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', fontSize: '0.6875rem', cursor: 'pointer', fontWeight: 500 }}
+                                  >
+                                    →
+                                  </button>
+                                )}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
                             <button
                               onClick={() => setStudentAttendance(modal.id, att.student_id, 'present')}
                               disabled={attendanceSaving[modal.id]}
