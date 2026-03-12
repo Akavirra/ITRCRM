@@ -188,7 +188,7 @@ export async function generateLessonsForAllGroups(
   monthsAhead: number = 1
 ): Promise<{ groupId: number; generated: number; skipped: number }[]> {
   const groups = await all<{ id: number }>(
-    `SELECT id FROM groups WHERE is_active = TRUE OR status = 'active'`
+    `SELECT id FROM groups WHERE is_active = TRUE AND status = 'active'`
   );
 
   const results: { groupId: number; generated: number; skipped: number }[] = [];
