@@ -431,7 +431,7 @@ export async function checkGroupDeletion(id: number): Promise<GroupDeletionCheck
 }
 
 // Get students in group
-export async function getStudentsInGroup(groupId: number): Promise<Array<{
+export async function getStudentsInGroup(groupId: number, includeInactive = false): Promise<Array<{
   id: number;
   public_id: string;
   full_name: string;
@@ -456,7 +456,7 @@ export async function getStudentsInGroup(groupId: number): Promise<Array<{
     `SELECT s.id, s.public_id, s.full_name, s.phone, s.parent_name, s.parent_phone, sg.join_date, sg.id as student_group_id, s.photo
      FROM students s
      JOIN student_groups sg ON s.id = sg.student_id
-     WHERE sg.group_id = $1 AND sg.is_active = TRUE
+     WHERE sg.group_id = $1${includeInactive ? '' : ' AND sg.is_active = TRUE'}
      ORDER BY s.full_name`,
     [groupId]
   );
