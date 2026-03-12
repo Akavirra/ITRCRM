@@ -211,30 +211,23 @@ export default function SchedulePage() {
     }
   };
 
-  const getLessonStyle = (status: string, isMakeup?: boolean) => {
-    if (isMakeup) {
-      switch (status) {
-        case 'done':    return { background: '#f0fdf4', borderColor: '#16a34a', color: '#14532d' };
-        case 'canceled': return { background: '#fef2f2', borderColor: '#dc2626', color: '#7f1d1d' };
-        default:        return { background: '#fff7ed', borderColor: '#f97316', color: '#7c2d12' };
-      }
-    }
-    switch (status) {
-      case 'done':    return { background: '#f0fdf4', borderColor: '#22c55e', color: '#166534' };
-      case 'canceled': return { background: '#fef2f2', borderColor: '#ef4444', color: '#991b1b' };
-      default:        return { background: '#eff6ff', borderColor: '#3b82f6', color: '#1e40af' };
-    }
+  // Returns card background/border based on lesson TYPE (for scheduled)
+  // and lesson STATUS (for done/canceled — status overrides type color)
+  const getLessonStyle = (status: string, isMakeup?: boolean, groupId?: number | null) => {
+    if (status === 'done')    return { background: '#f0fdf4', borderColor: '#16a34a', color: '#166534', accentColor: '#16a34a' };
+    if (status === 'canceled') return { background: '#fef2f2', borderColor: '#dc2626', color: '#991b1b', accentColor: '#dc2626' };
+    // Scheduled — differentiate by type
+    if (isMakeup)  return { background: '#fff7ed', borderColor: '#f97316', color: '#7c2d12', accentColor: '#f97316' };
+    if (!groupId)  return { background: '#f5f3ff', borderColor: '#8b5cf6', color: '#4c1d95', accentColor: '#8b5cf6' };
+    return               { background: '#eff6ff', borderColor: '#3b82f6', color: '#1e40af', accentColor: '#3b82f6' };
   };
 
-  const getStatusBadgeStyle = (status: string) => {
-    switch (status) {
-      case 'done':
-        return { background: '#22c55e', color: 'white' };
-      case 'canceled':
-        return { background: '#ef4444', color: 'white' };
-      default:
-        return { background: '#3b82f6', color: 'white' };
-    }
+  const getStatusBadgeStyle = (status: string, isMakeup?: boolean, groupId?: number | null) => {
+    if (status === 'done')    return { background: '#16a34a', color: 'white' };
+    if (status === 'canceled') return { background: '#dc2626', color: 'white' };
+    if (isMakeup)  return { background: '#f97316', color: 'white' };
+    if (!groupId)  return { background: '#8b5cf6', color: 'white' };
+    return               { background: '#3b82f6', color: 'white' };
   };
 
   const formatDate = (dateStr: string) => {
@@ -586,7 +579,7 @@ export default function SchedulePage() {
               {/* Lessons */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {day.lessons.map((lesson) => {
-                  const lessonStyle = getLessonStyle(lesson.status, lesson.isMakeup);
+                  const lessonStyle = getLessonStyle(lesson.status, lesson.isMakeup, lesson.groupId);
                   return (
                     <div
                       key={lesson.id}
@@ -609,65 +602,51 @@ export default function SchedulePage() {
                         e.currentTarget.style.boxShadow = 'none';
                       }}
                     >
-                      {lesson.isMakeup && (
+                      {/* Type badge — shown for makeup and individual lessons */}
+                      {lesson.isMakeup ? (
                         <div style={{
-                          fontSize: '0.625rem',
-                          fontWeight: 700,
-                          background: '#fff7ed',
-                          color: '#c2410c',
-                          border: '1px solid #fed7aa',
-                          borderRadius: '0.25rem',
-                          padding: '0.0625rem 0.375rem',
-                          marginBottom: '0.25rem',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.4px',
+                          fontSize: '0.625rem', fontWeight: 700,
+                          background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa',
+                          borderRadius: '0.25rem', padding: '0.125rem 0.375rem', marginBottom: '0.3rem',
+                          display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                          textTransform: 'uppercase', letterSpacing: '0.4px',
                         }}>
                           <RefreshCw size={8} />
                           Відпрацювання
                         </div>
-                      )}
+                      ) : !lesson.groupId ? (
+                        <div style={{
+                          fontSize: '0.625rem', fontWeight: 700,
+                          background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe',
+                          borderRadius: '0.25rem', padding: '0.125rem 0.375rem', marginBottom: '0.3rem',
+                          display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                          textTransform: 'uppercase', letterSpacing: '0.4px',
+                        }}>
+                          <User size={8} />
+                          Індивідуальне
+                        </div>
+                      ) : null}
+
+                      {/* Time */}
                       <div style={{
-                        fontSize: '0.875rem',
-                        fontWeight: 700,
-                        color: lessonStyle.borderColor,
+                        fontSize: '0.875rem', fontWeight: 700,
+                        color: lessonStyle.accentColor,
                         marginBottom: '0.25rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
+                        display: 'flex', alignItems: 'center', gap: '0.25rem',
                       }}>
                         <Clock size={10} />
                         {lesson.startTime} - {lesson.endTime}
                       </div>
-                      {lesson.isMakeup ? (
-                        <div style={{
-                          fontSize: '0.8125rem',
-                          fontWeight: 600,
-                          color: '#9a3412',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                        }}>
-                          <Users size={10} />
-                          Відпрацювання
-                        </div>
-                      ) : (
+
+                      {/* Group row — only for group lessons */}
+                      {lesson.groupId && !lesson.isMakeup && (
                         <div
                           onClick={(e) => handleGroupClick(e, lesson)}
                           style={{
-                            fontSize: '0.8125rem',
-                            fontWeight: 600,
-                            color: '#111827',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            cursor: 'pointer',
-                            transition: 'color 0.15s ease',
+                            fontSize: '0.8125rem', fontWeight: 600, color: '#111827',
+                            display: 'flex', alignItems: 'center', gap: '0.25rem',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            cursor: 'pointer', transition: 'color 0.15s ease',
                           }}
                           onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.color = '#111827'; }}
@@ -676,21 +655,19 @@ export default function SchedulePage() {
                           {lesson.groupTitle}
                         </div>
                       )}
-                      {!lesson.isMakeup && (
+
+                      {/* Course row — hidden for makeup and individual */}
+                      {lesson.groupId && !lesson.isMakeup && (
                         <div
                           onClick={(e) => handleCourseClick(e, lesson)}
                           style={{
-                            fontSize: '0.875rem',
-                            color: '#3b82f6',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            marginTop: '0.125rem',
-                            cursor: 'pointer',
-                            transition: 'color 0.15s ease',
+                            fontSize: '0.8125rem', color: lessonStyle.accentColor,
+                            display: 'flex', alignItems: 'center', gap: '0.25rem',
+                            marginTop: '0.125rem', cursor: 'pointer', transition: 'color 0.15s ease',
+                            opacity: 0.85,
                           }}
-                          onMouseEnter={(e) => { e.currentTarget.style.color = '#2563eb'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.color = '#3b82f6'; }}
+                          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85'; }}
                         >
                           <BookOpen size={9} />
                           {lesson.courseTitle}
@@ -746,8 +723,8 @@ export default function SchedulePage() {
                           {lesson.topic}
                         </div>
                       )}
-                      <div style={{ 
-                        ...getStatusBadgeStyle(lesson.status),
+                      <div style={{
+                        ...getStatusBadgeStyle(lesson.status, lesson.isMakeup, lesson.groupId),
                         fontSize: '0.6875rem',
                         padding: '0.25rem 0.5rem',
                         borderRadius: '0.25rem',
