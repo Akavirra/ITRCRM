@@ -126,8 +126,19 @@ export async function GET(request: NextRequest) {
   }
   
   sql += ` ORDER BY l.lesson_date ASC, g.start_time ASC`;
-  
-  const lessons = await all<LessonRow>(sql, params);
+
+  // Try with is_makeup column; fall back silently if the migration hasn't run yet
+  let lessons: LessonRow[];
+  try {
+    lessons = await all<LessonRow>(sql, params);
+  } catch (err: any) {
+    if (String(err?.message ?? err).toLowerCase().includes('is_makeup')) {
+      const fallback = sql.replace('COALESCE(l.is_makeup, FALSE) as is_makeup,', 'FALSE as is_makeup,');
+      lessons = await all<LessonRow>(fallback, params);
+    } else {
+      throw err;
+    }
+  }
   
   // Group lessons by day
   const daysMap: Record<string, LessonRow[]> = {};

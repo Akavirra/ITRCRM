@@ -62,8 +62,8 @@ export async function GET(
   
   // Get lesson with group, course and teacher details
   // Use LEFT JOIN to support individual lessons (without group)
-  const lessonWithDetails = await get<Lesson & { group_title: string | null; course_title: string | null; course_id: number | null; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: any; start_time_formatted: string | null; end_time_formatted: string | null }>(
-    `SELECT
+  type LessonDetails = Lesson & { group_title: string | null; course_title: string | null; course_id: number | null; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: any; start_time_formatted: string | null; end_time_formatted: string | null };
+  const detailsSql = `SELECT
       l.id,
       l.group_id,
       l.course_id as lesson_course_id,
@@ -116,10 +116,20 @@ export async function GET(
     LEFT JOIN users g_teacher ON g.teacher_id = g_teacher.id
     LEFT JOIN users topic_user ON l.topic_set_by > 0 AND l.topic_set_by = topic_user.id
     LEFT JOIN users notes_user ON l.notes_set_by > 0 AND l.notes_set_by = notes_user.id
-    WHERE l.id = $1`,
-    [lessonId]
-  );
-  
+    WHERE l.id = $1`;
+
+  let lessonWithDetails: LessonDetails | undefined;
+  try {
+    lessonWithDetails = await get<LessonDetails>(detailsSql, [lessonId]);
+  } catch (err: any) {
+    if (String(err?.message ?? err).toLowerCase().includes('is_makeup')) {
+      const fallback = detailsSql.replace('COALESCE(l.is_makeup, FALSE) as is_makeup,', 'FALSE as is_makeup,');
+      lessonWithDetails = await get<LessonDetails>(fallback, [lessonId]);
+    } else {
+      throw err;
+    }
+  }
+
   console.log('API Debug - lessonWithDetails:', lessonWithDetails);
   
   // Debug telegram_user_info field
