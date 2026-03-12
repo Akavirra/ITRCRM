@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { t } from '@/i18n/t';
 import {
   Home,
@@ -39,6 +40,71 @@ const menuItems = [
 const adminMenuItems = [
   { href: '/users', labelKey: 'nav.users', icon: Settings },
 ];
+
+// ── Date/time widget ──────────────────────────────────────────────────────────
+
+const DAYS_UK = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'П\u2019ятниця', 'Субота'];
+const MONTHS_UK = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
+
+function DateTimeWidget() {
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (!now) return null;
+
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  const day = DAYS_UK[now.getDay()];
+  const date = `${now.getDate()} ${MONTHS_UK[now.getMonth()]}`;
+
+  return (
+    <div style={{
+      margin: '0 12px 14px',
+      padding: '14px 16px',
+      borderRadius: '14px',
+      background: 'linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)',
+      border: '1px solid rgba(59,130,246,0.1)',
+      flexShrink: 0,
+    }}>
+      {/* Clock */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: '2px',
+        lineHeight: 1,
+        marginBottom: '8px',
+      }}>
+        <span style={{ fontSize: '26px', fontWeight: '300', color: '#1e3a5f', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
+          {h}<span style={{ opacity: 0.4, margin: '0 1px' }}>:</span>{m}
+        </span>
+        <span style={{ fontSize: '13px', fontWeight: '400', color: '#94a3b8', marginLeft: '3px', fontVariantNumeric: 'tabular-nums' }}>
+          {s}
+        </span>
+      </div>
+
+      {/* Divider */}
+      <div style={{ height: '1px', background: 'rgba(59,130,246,0.08)', marginBottom: '8px' }} />
+
+      {/* Day + date */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '12px', fontWeight: '600', color: '#3b82f6', letterSpacing: '0.02em' }}>
+          {day}
+        </span>
+        <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '400' }}>
+          {date}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTablet = false }: SidebarProps) {
   const pathname = usePathname();
@@ -213,6 +279,9 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             </>
           )}
         </nav>
+
+        {/* Date/time widget */}
+        <DateTimeWidget />
 
       </aside>
     </>
