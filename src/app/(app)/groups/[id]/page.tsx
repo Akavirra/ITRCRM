@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { uk } from '@/i18n/uk';
-import { formatShortDateKyiv, formatDateKyiv, formatTimeKyiv } from '@/lib/date-utils';
+import { formatShortDateKyiv, formatDateKyiv } from '@/lib/date-utils';
 import { useStudentModals } from '@/components/StudentModalsContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
 import GroupHistoryPanel from '@/components/GroupHistoryPanel';
@@ -66,6 +66,36 @@ interface Lesson {
   status: 'scheduled' | 'done' | 'canceled';
 }
 
+type AttStatus = 'present' | 'absent' | 'makeup_planned' | 'makeup_done';
+
+interface RegLesson {
+  lesson_id: number;
+  lesson_date: string;
+  topic: string | null;
+}
+
+interface RegStudentRow {
+  student_id: number;
+  student_name: string;
+  attendance: Record<number, AttStatus | null>;
+  present: number;
+  absent: number;
+  total: number;
+  rate: number;
+}
+
+interface AllTimeMonth {
+  year: number;
+  month: number;
+  lessons: RegLesson[];
+}
+
+interface AllTimeRegister {
+  group_title: string;
+  months: AllTimeMonth[];
+  students: RegStudentRow[];
+}
+
 interface Course {
   id: number;
   title: string;
@@ -91,12 +121,13 @@ export default function GroupDetailsPage() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [studentsExpanded, setStudentsExpanded] = useState(true);
-  const [lessonsExpanded, setLessonsExpanded] = useState(true);
-  
+  const [lessonsExpanded, setLessonsExpanded] = useState(false);
+  const [registerData, setRegisterData] = useState<AllTimeRegister | null>(null);
+  const [registerLoading, setRegisterLoading] = useState(false);
+
   // Modal states
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showEditGroupModal, setShowEditGroupModal] = useState(false);
-  const [showLessonsModal, setShowLessonsModal] = useState(false);
   
   // Student search
   const [studentSearch, setStudentSearch] = useState('');
@@ -186,6 +217,17 @@ export default function GroupDetailsPage() {
         const lessonsRes = await fetch(`/api/lessons?groupId=${groupId}`);
         const lessonsData = await lessonsRes.json();
         setLessons(lessonsData.lessons || []);
+
+        setRegisterLoading(true);
+        try {
+          const regRes = await fetch(`/api/attendance?view=groupRegisterAllTime&groupId=${groupId}`);
+          const regData = await regRes.json();
+          setRegisterData(regData || null);
+        } catch {
+          // register data is non-critical
+        } finally {
+          setRegisterLoading(false);
+        }
         
         if (authData.user.role === 'admin') {
           const coursesRes = await fetch('/api/courses');
@@ -369,40 +411,98 @@ export default function GroupDetailsPage() {
     return uk.groupStatus[status as keyof typeof uk.groupStatus] || status;
   };
 
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case 'done':
-        return 'badge-success';
-      case 'canceled':
-        return 'badge-danger';
-      case 'scheduled':
-      default:
-        return 'badge-info';
-    }
-  };
-
   const formatDate = (dateStr: string) => {
     return formatShortDateKyiv(dateStr);
   };
 
-  const formatTime = (dateTimeStr: string) => {
-    return formatTimeKyiv(dateTimeStr);
+  const MONTH_NAMES = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+  const MONTH_SHORT = ['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру'];
+  const WEEKDAY_SHORT = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
+
+  const formatLessonDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return `${String(d.getUTCDate()).padStart(2,'0')} ${MONTH_SHORT[d.getUTCMonth()]}`;
   };
 
-  const getLessonStatusLabel = (status: string) => {
-    switch (status) {
-      case 'done':
-        return 'Проведено';
-      case 'canceled':
-        return 'Скасовано';
-      case 'scheduled':
-      default:
-        return 'Заплановано';
-    }
+  const getWeekdayShort = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return WEEKDAY_SHORT[d.getUTCDay()];
   };
 
-  const recentLessons = lessons.slice(-5).reverse();
-  const allLessons = [...lessons].reverse();
+  const renderAttCell = (status: AttStatus | null) => {
+    if (!status) return <span style={{ color: '#d1d5db' }}>○</span>;
+    if (status === 'present') return <span style={{ color: '#16a34a', fontWeight: 700 }}>✓</span>;
+    if (status === 'absent') return <span style={{ color: '#dc2626', fontWeight: 700 }}>✗</span>;
+    if (status === 'makeup_done') return <span style={{ color: '#2563eb', fontWeight: 700 }}>✓</span>;
+    return <span style={{ color: '#d97706', fontWeight: 700 }}>↺</span>;
+  };
+
+  const renderRateBar = (rate: number) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+      <div style={{ flex: 1, height: 6, backgroundColor: '#f3f4f6', borderRadius: 3, overflow: 'hidden', minWidth: 40 }}>
+        <div style={{ height: '100%', width: `${rate}%`, backgroundColor: rate >= 80 ? '#16a34a' : rate >= 60 ? '#d97706' : '#dc2626', borderRadius: 3 }} />
+      </div>
+      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: rate >= 80 ? '#16a34a' : rate >= 60 ? '#d97706' : '#dc2626', minWidth: 32 }}>{rate}%</span>
+    </div>
+  );
+
+  const renderMonthMatrix = (month: AllTimeMonth, students: RegStudentRow[]) => (
+    <div key={`${month.year}-${month.month}`} style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+        <thead>
+          <tr style={{ backgroundColor: '#fafafa', borderBottom: '1px solid #f3f4f6' }}>
+            <th style={{ padding: '0.5rem 1rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.8125rem', position: 'sticky', left: 0, backgroundColor: '#fafafa', minWidth: 140, whiteSpace: 'nowrap' }}>Учень</th>
+            {month.lessons.map(l => (
+              <th key={l.lesson_id}
+                style={{ padding: '0.375rem 0.5rem', textAlign: 'center', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                title={l.topic ? `${l.topic} — відкрити заняття` : 'Відкрити заняття'}
+                onClick={() => openLessonModal(l.lesson_id, `Заняття #${l.lesson_id}`, undefined)}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#eef2ff'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = ''; }}>
+                <div style={{ fontSize: '0.6rem', color: '#9ca3af', fontWeight: 500 }}>{getWeekdayShort(l.lesson_date)}</div>
+                <div style={{ fontSize: '0.75rem' }}>{formatLessonDate(l.lesson_date)}</div>
+                {l.topic && <div style={{ fontSize: '0.55rem', color: '#9ca3af', fontWeight: 400, maxWidth: 44, overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.topic}</div>}
+              </th>
+            ))}
+            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>Всього</th>
+            <th style={{ padding: '0.5rem 1rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.8125rem', minWidth: 100 }}>%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {students.map(s => {
+            const monthPresent = month.lessons.filter(l => {
+              const st = s.attendance[l.lesson_id];
+              return st === 'present' || st === 'makeup_done';
+            }).length;
+            const monthAbsent = month.lessons.filter(l => {
+              const st = s.attendance[l.lesson_id];
+              return st === 'absent' || st === 'makeup_planned';
+            }).length;
+            const monthRate = month.lessons.length > 0 ? Math.round((monthPresent / month.lessons.length) * 100) : 0;
+            return (
+              <tr key={s.student_id} style={{ borderBottom: '1px solid #f9fafb' }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
+                <td style={{ padding: '0.5rem 1rem', fontWeight: 500, color: '#1d4ed8', position: 'sticky', left: 0, backgroundColor: 'white', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                  onClick={() => openStudentModal(s.student_id, s.student_name)}>{s.student_name}</td>
+                {month.lessons.map(l => (
+                  <td key={l.lesson_id} style={{ padding: '0.375rem 0.5rem', textAlign: 'center' }}>
+                    {renderAttCell(s.attendance[l.lesson_id] ?? null)}
+                  </td>
+                ))}
+                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', color: '#374151' }}>
+                  <span style={{ fontWeight: 600, color: '#16a34a' }}>{monthPresent}</span>
+                  <span style={{ color: '#9ca3af' }}>/{month.lessons.length}</span>
+                  {monthAbsent > 0 && <span style={{ color: '#dc2626', marginLeft: 3, fontSize: '0.8125rem' }}>({monthAbsent}✗)</span>}
+                </td>
+                <td style={{ padding: '0.5rem 1rem' }}>{renderRateBar(monthRate)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 
   if (loading || !user) {
     return (
@@ -658,7 +758,7 @@ export default function GroupDetailsPage() {
 
             {/* Lessons Card */}
             <div className="card">
-              <div style={{ padding: '1.25rem', borderBottom: lessonsExpanded ? '1px solid var(--gray-200)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setLessonsExpanded(!lessonsExpanded)}>
+              <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--gray-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setLessonsExpanded(!lessonsExpanded)}>
                 <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0, color: 'var(--gray-900)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gray-500)" strokeWidth="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -669,19 +769,15 @@ export default function GroupDetailsPage() {
                   Заняття
                 </h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setShowLessonsModal(true); }}
-                    className="btn btn-primary"
-                    style={{ padding: '0.375rem 0.75rem', fontSize: '0.8125rem', marginRight: '0.25rem' }}
-                  >
-                    Усі заняття
-                  </button>
-                  <svg 
-                    width="16" 
-                    height="16" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="var(--gray-400)" 
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--gray-400)' }}>
+                    {lessonsExpanded ? 'Усі місяці' : 'Поточний місяць'}
+                  </span>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--gray-400)"
                     strokeWidth="2"
                     style={{ transition: 'transform 0.2s', transform: lessonsExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
                   >
@@ -689,69 +785,47 @@ export default function GroupDetailsPage() {
                   </svg>
                 </div>
               </div>
-              {lessonsExpanded && (
-              <div style={{ padding: '0.5rem 0' }}>
-                {recentLessons.length > 0 ? (
-                  <>
-                    <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: '100px 100px 1fr', 
-                      padding: '0.75rem 1.25rem',
-                      borderBottom: '1px solid var(--gray-100)',
-                    }}>
-                      <span style={{ fontSize: '0.6875rem', fontWeight: '600', textTransform: 'uppercase', color: 'var(--gray-400)', letterSpacing: '0.05em' }}>Дата</span>
-                      <span style={{ fontSize: '0.6875rem', fontWeight: '600', textTransform: 'uppercase', color: 'var(--gray-400)', letterSpacing: '0.05em' }}>Статус</span>
-                      <span style={{ fontSize: '0.6875rem', fontWeight: '600', textTransform: 'uppercase', color: 'var(--gray-400)', letterSpacing: '0.05em' }}>Тема</span>
-                    </div>
-                    {recentLessons.map((lesson) => (
-                      <div 
-                        key={lesson.id}
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: '100px 100px 1fr',
-                          padding: '0.875rem 1.25rem',
-                          borderBottom: '1px solid var(--gray-100)',
-                          alignItems: 'center',
-                          cursor: 'pointer',
-                          transition: 'background 0.15s',
-                        }}
-                        onClick={() => openLessonModal(lesson.id, `Заняття #${lesson.id}`, {
-                          id: lesson.id,
-                          groupId: group?.id || 0,
-                          groupTitle: group?.title || '',
-                          courseTitle: group?.course_title || '',
-                          courseId: group?.course_id || 0,
-                          teacherId: group?.teacher_id || 0,
-                          teacherName: group?.teacher_name || '',
-                          startTime: lesson.start_datetime ? formatTime(lesson.start_datetime) : '',
-                          endTime: lesson.end_datetime ? formatTime(lesson.end_datetime) : '',
-                          status: lesson.status,
-                          topic: lesson.topic,
-                        })}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-50)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <span style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--gray-900)' }}>
-                          {formatDate(lesson.lesson_date)}
-                        </span>
-                        <span>
-                          <span className={`badge ${getStatusBadgeClass(lesson.status)}`}>
-                            {getLessonStatusLabel(lesson.status)}
-                          </span>
-                        </span>
-                        <span style={{ fontSize: '0.875rem', color: lesson.topic ? 'var(--gray-700)' : 'var(--gray-400)', fontStyle: lesson.topic ? 'normal' : 'italic' }}>
-                          {lesson.topic || 'Тема не вказана'}
-                        </span>
-                      </div>
-                    ))}
-                  </>
-                ) : (
+              <div>
+                {registerLoading ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)', fontSize: '0.875rem' }}>Завантаження...</div>
+                ) : !registerData || registerData.months.length === 0 ? (
                   <div style={{ padding: '2.5rem 1.25rem', textAlign: 'center', color: 'var(--gray-400)' }}>
                     <p style={{ margin: 0 }}>Немає занять</p>
                   </div>
-                )}
+                ) : (() => {
+                  const now = new Date();
+                  const curYear = now.getFullYear();
+                  const curMonth = now.getMonth() + 1;
+                  const monthsToShow = lessonsExpanded
+                    ? [...registerData.months].reverse()
+                    : registerData.months.filter(m => m.year === curYear && m.month === curMonth);
+                  if (monthsToShow.length === 0) {
+                    return (
+                      <div style={{ padding: '2.5rem 1.25rem', textAlign: 'center', color: 'var(--gray-400)' }}>
+                        <p style={{ margin: 0 }}>Занять у поточному місяці немає</p>
+                        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem' }}>
+                          <span style={{ color: 'var(--primary)', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setLessonsExpanded(true); }}>Показати всі місяці</span>
+                        </p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div>
+                      {monthsToShow.map(month => (
+                        <div key={`${month.year}-${month.month}`}>
+                          {(lessonsExpanded || monthsToShow.length > 1) && (
+                            <div style={{ padding: '0.625rem 1rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb', borderTop: '1px solid #f3f4f6', fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+                              {MONTH_NAMES[month.month - 1]} {month.year}
+                              <span style={{ fontWeight: 400, color: '#6b7280', marginLeft: '0.5rem' }}>— {month.lessons.length} {month.lessons.length === 1 ? 'заняття' : 'занять'}</span>
+                            </div>
+                          )}
+                          {renderMonthMatrix(month, registerData.students)}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
-              )}
             </div>
 
           </div>
@@ -1141,119 +1215,6 @@ export default function GroupDetailsPage() {
         </div>
       )}
 
-      {/* All Lessons Modal */}
-      {showLessonsModal && (
-        <div className="modal-overlay" onClick={() => setShowLessonsModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px' }}>
-            <div className="modal-header">
-              <h2 className="modal-title">Всі заняття групи</h2>
-              <button className="modal-close" onClick={() => setShowLessonsModal(false)}>×</button>
-            </div>
-            <div className="modal-body" style={{ padding: 0 }}>
-              {allLessons.length > 0 ? (
-                <>
-                  {(() => {
-                    const monthGroups: { [key: string]: typeof allLessons } = {};
-                    const monthNames = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
-                    
-                    allLessons.forEach((lesson) => {
-                      const date = new Date(lesson.lesson_date);
-                      const key = `${date.getFullYear()}-${date.getMonth()}`;
-                      if (!monthGroups[key]) {
-                        monthGroups[key] = [];
-                      }
-                      monthGroups[key].push(lesson);
-                    });
-                    
-                    const sortedKeys = Object.keys(monthGroups).sort((a, b) => {
-                      const [yearA, monthA] = a.split('-').map(Number);
-                      const [yearB, monthB] = b.split('-').map(Number);
-                      return yearA - yearB || monthA - monthB;
-                    });
-                    
-                    return sortedKeys.map((key) => {
-                      const [year, month] = key.split('-').map(Number);
-                      const monthLabel = `${monthNames[month]} ${year}`;
-                      const lessonsInMonth = monthGroups[key];
-                      
-                      return (
-                        <div key={key}>
-                          <div style={{ 
-                            padding: '0.75rem 1.25rem', 
-                            background: 'var(--gray-100)', 
-                            borderBottom: '1px solid var(--gray-200)',
-                            fontSize: '0.8125rem',
-                            fontWeight: '600',
-                            color: 'var(--gray-700)',
-                          }}>
-                            {monthLabel}
-                          </div>
-                          <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: '100px 100px 1fr', 
-                            padding: '0.75rem 1.25rem',
-                            borderBottom: '1px solid var(--gray-100)',
-                            background: 'var(--gray-50)',
-                          }}>
-                            <span style={{ fontSize: '0.6875rem', fontWeight: '600', textTransform: 'uppercase', color: 'var(--gray-400)', letterSpacing: '0.05em' }}>Дата</span>
-                            <span style={{ fontSize: '0.6875rem', fontWeight: '600', textTransform: 'uppercase', color: 'var(--gray-400)', letterSpacing: '0.05em' }}>Статус</span>
-                            <span style={{ fontSize: '0.6875rem', fontWeight: '600', textTransform: 'uppercase', color: 'var(--gray-400)', letterSpacing: '0.05em' }}>Тема</span>
-                          </div>
-                          {lessonsInMonth.map((lesson) => (
-                            <div 
-                              key={lesson.id}
-                              style={{
-                                display: 'grid',
-                                gridTemplateColumns: '100px 100px 1fr',
-                                padding: '0.875rem 1.25rem',
-                                borderBottom: '1px solid var(--gray-100)',
-                                alignItems: 'center',
-                                cursor: 'pointer',
-                                transition: 'background 0.15s',
-                              }}
-                              onClick={() => openLessonModal(lesson.id, `Заняття #${lesson.id}`, {
-                                id: lesson.id,
-                                groupId: group?.id || 0,
-                                groupTitle: group?.title || '',
-                                courseTitle: group?.course_title || '',
-                                courseId: group?.course_id || 0,
-                                teacherId: group?.teacher_id || 0,
-                                teacherName: group?.teacher_name || '',
-                                startTime: lesson.start_datetime ? lesson.start_datetime.split(' ')[1].substring(0, 5) : '',
-                                endTime: lesson.end_datetime ? lesson.end_datetime.split(' ')[1].substring(0, 5) : '',
-                                status: lesson.status,
-                                topic: lesson.topic,
-                              })}
-                              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-50)'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <span style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--gray-900)' }}>
-                                {formatDate(lesson.lesson_date)}
-                              </span>
-                              <span>
-                                <span className={`badge ${getStatusBadgeClass(lesson.status)}`}>
-                                  {getLessonStatusLabel(lesson.status)}
-                                </span>
-                              </span>
-                              <span style={{ fontSize: '0.875rem', color: lesson.topic ? 'var(--gray-700)' : 'var(--gray-400)', fontStyle: lesson.topic ? 'normal' : 'italic' }}>
-                                {lesson.topic || 'Тема не вказана'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    });
-                  })()}
-                </>
-              ) : (
-                <div style={{ padding: '3rem 1.25rem', textAlign: 'center', color: 'var(--gray-400)' }}>
-                  <p style={{ margin: 0 }}>Немає занять</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 }
