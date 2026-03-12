@@ -131,28 +131,11 @@ export async function GET(
     }
   }
 
-  console.log('API Debug - lessonWithDetails:', lessonWithDetails);
-  
-  // Debug telegram_user_info field
-  if (lessonWithDetails?.telegram_user_info) {
-    console.log('API Debug - telegram_user_info found:', lessonWithDetails.telegram_user_info);
-  } else {
-    console.log('API Debug - telegram_user_info is null/undefined');
-  }
-  
     // Transform to camelCase format - handle null teacher_id and date conversion
     const formatTimestamp = (timestamp: string | null): string | null => {
       if (!timestamp) return null;
       return formatDateTimeKyiv(timestamp);
     };
-    
-    console.log('API Debug - Raw lessonWithDetails:', {
-      topic_set_by_name: lessonWithDetails?.topic_set_by_name,
-      notes_set_by_name: lessonWithDetails?.notes_set_by_name,
-      topic_set_by_telegram_id: lessonWithDetails?.topic_set_by_telegram_id,
-      notes_set_by_telegram_id: lessonWithDetails?.notes_set_by_telegram_id,
-      telegram_user_info: lessonWithDetails?.telegram_user_info
-    });
     
     const transformedLesson = lessonWithDetails ? {
       id: lessonWithDetails.id,

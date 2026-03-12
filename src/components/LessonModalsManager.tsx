@@ -266,6 +266,11 @@ export default function LessonModalsManager() {
     
     try {
       const response = await fetch(`/api/lessons/${lessonId}`);
+      if (response.status === 404) {
+        // Lesson no longer exists — close the stale modal
+        closeLessonModal(lessonId);
+        return;
+      }
       if (response.ok) {
         const data = await response.json();
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
