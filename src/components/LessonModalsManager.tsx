@@ -818,7 +818,7 @@ export default function LessonModalsManager() {
             id={`lesson-modal-${modal.id}`}
             isOpen={true}
             onClose={() => handleClose(modal.id)}
-            title={lesson?.isMakeup ? 'Відпрацювання' : lesson?.groupId ? 'Групове заняття' : 'Індивідуальне заняття'}
+            title={(lesson?.isMakeup ?? (modal.lessonData as any)?.isMakeup) ? 'Відпрацювання' : (lesson?.groupId ?? (modal.lessonData as any)?.groupId) ? 'Групове заняття' : 'Індивідуальне заняття'}
             groupUrl={lesson?.groupId ? `/groups/${lesson.groupId}` : undefined}
             initialWidth={modal.size?.width || 420}
             initialHeight={modal.size?.height || 480}
@@ -1137,6 +1137,7 @@ export default function LessonModalsManager() {
                 </div>
                 )}
                 
+                {!lesson.isMakeup && (
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>Курс</div>
                   <button
@@ -1161,6 +1162,7 @@ export default function LessonModalsManager() {
                     {lesson.courseTitle}
                   </button>
                 </div>
+                )}
                 
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>Викладач</div>

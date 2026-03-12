@@ -172,6 +172,7 @@ export default function SchedulePage() {
       endTime: lesson.endTime,
       status: lesson.status,
       topic: lesson.topic,
+      isMakeup: lesson.isMakeup,
     });
   };
 
@@ -640,53 +641,61 @@ export default function SchedulePage() {
                         <Clock size={10} />
                         {lesson.startTime} - {lesson.endTime}
                       </div>
-                      <div
-                        onClick={(e) => handleGroupClick(e, lesson)}
-                        style={{
+                      {lesson.isMakeup ? (
+                        <div style={{
                           fontSize: '0.8125rem',
                           fontWeight: 600,
-                          color: '#111827',
+                          color: '#9a3412',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '0.25rem',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          cursor: 'pointer',
-                          transition: 'color 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = '#3b82f6';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = '#111827';
-                        }}
-                      >
-                        <Users size={10} />
-                        {lesson.groupTitle}
-                      </div>
-                      <div
-                        onClick={(e) => handleCourseClick(e, lesson)}
-                        style={{
-                          fontSize: '0.875rem',
-                          color: '#3b82f6',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          marginTop: '0.125rem',
-                          cursor: 'pointer',
-                          transition: 'color 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = '#2563eb';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = '#3b82f6';
-                        }}
-                      >
-                        <BookOpen size={9} />
-                        {lesson.courseTitle}
-                      </div>
+                        }}>
+                          <Users size={10} />
+                          Відпрацювання
+                        </div>
+                      ) : (
+                        <div
+                          onClick={(e) => handleGroupClick(e, lesson)}
+                          style={{
+                            fontSize: '0.8125rem',
+                            fontWeight: 600,
+                            color: '#111827',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            cursor: 'pointer',
+                            transition: 'color 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = '#111827'; }}
+                        >
+                          <Users size={10} />
+                          {lesson.groupTitle}
+                        </div>
+                      )}
+                      {!lesson.isMakeup && (
+                        <div
+                          onClick={(e) => handleCourseClick(e, lesson)}
+                          style={{
+                            fontSize: '0.875rem',
+                            color: '#3b82f6',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            marginTop: '0.125rem',
+                            cursor: 'pointer',
+                            transition: 'color 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = '#2563eb'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = '#3b82f6'; }}
+                        >
+                          <BookOpen size={9} />
+                          {lesson.courseTitle}
+                        </div>
+                      )}
                       <div style={{
                         fontSize: '0.8125rem',
                         color: lesson.isReplaced ? '#d97706' : '#9ca3af',

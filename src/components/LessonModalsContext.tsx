@@ -27,6 +27,7 @@ interface StoredModal {
     topicSetAt?: string | null;
     notesSetBy?: string | null;
     notesSetAt?: string | null;
+    isMakeup?: boolean;
   };
 }
 
