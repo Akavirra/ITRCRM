@@ -1,9 +1,8 @@
 'use client';
 
-import { motion, AnimatePresence } from 'motion/react';
-import { useState, useEffect, useRef } from 'react';
+import { motion } from 'motion/react';
 
-// ── Icons ────────────────────────────────────────────────────────────────────
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
 const ProcessorIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
@@ -40,7 +39,6 @@ const PaletteIcon = () => (
   </svg>
 );
 
-// Малювання на планшеті — стілус торкається екрану
 const TabletPenIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
     <rect x="3" y="2" width="14" height="18" rx="2" stroke="currentColor" strokeWidth="1.5"/>
@@ -51,28 +49,23 @@ const TabletPenIcon = () => (
   </svg>
 );
 
-// 3D-моделювання — куб з гранями
 const CubeIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
     <path d="M12 2L22 7V17L12 22L2 17V7L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-    <path d="M12 2V22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M2 7L12 12L22 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 2V22M2 7L12 12L22 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
 );
 
-// Анімація — фігура в русі (кадри анімації)
 const AnimationIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
     <rect x="2" y="4" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
     <circle cx="8"  cy="11" r="2" stroke="currentColor" strokeWidth="1.4"/>
     <circle cx="16" cy="11" r="2" stroke="currentColor" strokeWidth="1.4"/>
     <path d="M10 11h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-    <path d="M6 20h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M8 18v2M16 18v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M6 20h12M8 18v2M16 18v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
 );
 
-// Відеозйомка — камера з записом
 const VideoCameraIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
     <rect x="2" y="6" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
@@ -81,145 +74,136 @@ const VideoCameraIcon = () => (
   </svg>
 );
 
-// Відеомонтаж — таймлайн зі скісами
-const EditVideoIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
-    <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-    <path d="M8 6v12M16 6v12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-    <path d="M2 12h20" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-    <path d="M5 9l3 3-3 3M19 9l-3 3 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
+// ── Data ──────────────────────────────────────────────────────────────────────
 
-// ── Palette ───────────────────────────────────────────────────────────────────
-
-const ITEMS = [
-  { Icon: ProcessorIcon,  color: '#3b82f6', bg: '#eff6ff', glow: 'rgba(59,130,246,0.13)'  },
-  { Icon: CodeIcon,       color: '#f59e0b', bg: '#fffbeb', glow: 'rgba(245,158,11,0.13)'  },
-  { Icon: LegoIcon,       color: '#2563eb', bg: '#eff6ff', glow: 'rgba(37,99,235,0.13)'   },
-  { Icon: PaletteIcon,    color: '#ec4899', bg: '#fdf2f8', glow: 'rgba(236,72,153,0.13)'  },
-  { Icon: TabletPenIcon,  color: '#0ea5e9', bg: '#f0f9ff', glow: 'rgba(14,165,233,0.13)'  },
-  { Icon: CubeIcon,       color: '#8b5cf6', bg: '#f5f3ff', glow: 'rgba(139,92,246,0.13)'  },
-  { Icon: AnimationIcon,  color: '#10b981', bg: '#ecfdf5', glow: 'rgba(16,185,129,0.13)'  },
-  { Icon: VideoCameraIcon,color: '#d97706', bg: '#fffbeb', glow: 'rgba(217,119,6,0.13)'   },
-  { Icon: EditVideoIcon,  color: '#ef4444', bg: '#fff1f2', glow: 'rgba(239,68,68,0.13)'   },
+// 8 items arranged at angles 0°, 45°, ..., 315° (top = 0°, clockwise)
+// Center of 320×290 container: cx=160, cy=145 | radius=110
+// size: px of the card  |  top/left: absolute position
+const RING = [
+  { Icon: CodeIcon,        color: '#f59e0b', bg: '#fffbeb', shadow: 'rgba(245,158,11,0.22)',   size: 62, top:   5, left: 129 }, // top
+  { Icon: CubeIcon,        color: '#8b5cf6', bg: '#f5f3ff', shadow: 'rgba(139,92,246,0.22)',   size: 54, top:  39, left: 210 }, // top-right
+  { Icon: ProcessorIcon,   color: '#3b82f6', bg: '#eff6ff', shadow: 'rgba(59,130,246,0.22)',   size: 68, top: 111, left: 238 }, // right
+  { Icon: AnimationIcon,   color: '#10b981', bg: '#ecfdf5', shadow: 'rgba(16,185,129,0.22)',   size: 54, top: 195, left: 210 }, // bot-right
+  { Icon: VideoCameraIcon, color: '#d97706', bg: '#fff7ed', shadow: 'rgba(217,119,6,0.22)',    size: 62, top: 223, left: 129 }, // bottom
+  { Icon: TabletPenIcon,   color: '#0ea5e9', bg: '#f0f9ff', shadow: 'rgba(14,165,233,0.22)',   size: 54, top: 195, left:  54 }, // bot-left
+  { Icon: PaletteIcon,     color: '#ec4899', bg: '#fdf2f8', shadow: 'rgba(236,72,153,0.22)',   size: 68, top: 111, left:  14 }, // left
+  { Icon: LegoIcon,        color: '#2563eb', bg: '#eff6ff', shadow: 'rgba(37,99,235,0.22)',    size: 54, top:  39, left:  54 }, // top-left
 ];
 
-// Fisher-Yates shuffle — next index ≠ current
-function nextRandom(current: number, len: number): number {
-  let n: number;
-  do { n = Math.floor(Math.random() * len); } while (n === current);
-  return n;
-}
+// Float: duration (s), CSS animation-delay to offset phase (s)
+const FLOAT = [
+  { dur: 3.4, delay: 0.0  },
+  { dur: 4.1, delay: -1.3 },
+  { dur: 3.7, delay: -0.6 },
+  { dur: 2.9, delay: -2.1 },
+  { dur: 4.3, delay: -0.9 },
+  { dur: 3.1, delay: -1.8 },
+  { dur: 4.6, delay: -0.3 },
+  { dur: 3.8, delay: -2.5 },
+];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export const PageLoading = () => {
-  const [idx, setIdx] = useState(() => Math.floor(Math.random() * ITEMS.length));
-  const idxRef = useRef(idx);
-  idxRef.current = idx;
+export const PageLoading = () => (
+  <div style={{
+    position: 'fixed', inset: 0,
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    zIndex: 1000,
+  }}>
 
-  useEffect(() => {
-    const t = setInterval(() => {
-      setIdx(prev => nextRandom(prev, ITEMS.length));
-    }, 1100);
-    return () => clearInterval(t);
-  }, []);
-
-  const { Icon, color, bg, glow } = ITEMS[idx];
-
-  return (
+    {/* Ambient glow */}
     <div style={{
-      position: 'fixed', inset: 0,
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      backgroundColor: '#ffffff',
-      zIndex: 1000,
-    }}>
+      position: 'absolute',
+      width: 340, height: 300,
+      borderRadius: '50%',
+      background: 'radial-gradient(ellipse, rgba(59,130,246,0.055) 0%, transparent 68%)',
+      pointerEvents: 'none',
+    }} />
 
-      {/* Ambient glow blob */}
-      <motion.div
-        animate={{ opacity: [0.55, 1, 0.55], scale: [0.95, 1.06, 0.95] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-        style={{
-          position: 'absolute',
-          width: 280, height: 280,
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${glow} 0%, transparent 70%)`,
-          transition: 'background 0.75s ease',
-          pointerEvents: 'none',
-        }}
-      />
+    {/* Icon constellation — 320×290 container */}
+    <div style={{ position: 'relative', width: 320, height: 290 }}>
+      {RING.map(({ Icon, color, bg, shadow, size, top, left }, i) => {
+        const { dur, delay } = FLOAT[i];
+        const radius = Math.round(size * 0.28);
+        const iconSize = Math.round(size * 0.50);
 
-      {/* Floating card */}
-      <motion.div
-        animate={{ y: [0, -7, 0] }}
-        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-        style={{
-          width: 104, height: 104,
-          borderRadius: 28,
-          backgroundColor: bg,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: `0 16px 48px ${glow}, 0 4px 12px rgba(0,0,0,0.06)`,
-          position: 'relative', overflow: 'hidden',
-          transition: 'background-color 0.7s ease, box-shadow 0.7s ease',
-          zIndex: 1,
-        }}
-      >
-        {/* Gloss */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(145deg, rgba(255,255,255,0.55) 0%, transparent 60%)',
-          borderRadius: 28, pointerEvents: 'none',
-        }} />
-
-        {/* Icon */}
-        <div style={{ width: 52, height: 52, position: 'relative', zIndex: 1 }}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, scale: 0.65, y: 10 }}
-              animate={{ opacity: 1, scale: 1,    y: 0  }}
-              exit={  { opacity: 0, scale: 0.65, y: -10 }}
-              transition={{ duration: 0.28, ease: [0.34, 1.2, 0.64, 1] }}
-              style={{ position: 'absolute', inset: 0, color }}
-            >
-              <Icon />
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </motion.div>
-
-      {/* Three breathing dots */}
-      <div style={{ display: 'flex', gap: 7, marginTop: 28 }}>
-        {[0, 1, 2].map(i => (
+        return (
+          /* Entrance: Framer Motion (runs once, spring pop-in) */
           <motion.div
             key={i}
-            animate={{ scale: [1, 1.5, 1], opacity: [0.25, 1, 0.25] }}
-            transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.22, ease: 'easeInOut' }}
-            style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#3b82f6' }}
-          />
-        ))}
-      </div>
-
-      {/* Label */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.35 }}
-        style={{
-          margin: '14px 0 0',
-          fontSize: 11, fontWeight: 500,
-          color: '#b0b8c4',
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-        }}
-      >
-        Завантаження
-      </motion.p>
-
+            initial={{ opacity: 0, scale: 0.45, y: 12 }}
+            animate={{ opacity: 1, scale: 1,    y: 0  }}
+            transition={{
+              duration: 0.45,
+              delay: i * 0.07,
+              type: 'spring',
+              stiffness: 180,
+              damping: 16,
+            }}
+            style={{ position: 'absolute', top, left, width: size, height: size }}
+          >
+            {/* Float: pure CSS on inner wrapper — no conflict with Framer Motion */}
+            <div style={{
+              width: '100%', height: '100%',
+              animation: `pl-float ${dur}s ease-in-out ${delay}s infinite`,
+              willChange: 'transform',
+            }}>
+              {/* Card */}
+              <div style={{
+                width: '100%', height: '100%',
+                borderRadius: radius,
+                backgroundColor: bg,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: `0 10px 28px ${shadow}, 0 2px 8px rgba(0,0,0,0.05)`,
+                position: 'relative', overflow: 'hidden',
+              }}>
+                {/* Gloss overlay */}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: 'linear-gradient(145deg, rgba(255,255,255,0.52) 0%, transparent 58%)',
+                  borderRadius: radius, pointerEvents: 'none',
+                }} />
+                {/* Icon */}
+                <div style={{ width: iconSize, height: iconSize, color, position: 'relative', zIndex: 1 }}>
+                  <Icon />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        );
+      })}
     </div>
-  );
-};
+
+    {/* Loading dots */}
+    <div style={{ display: 'flex', gap: 7, marginTop: 10 }}>
+      {[0, 1, 2].map(i => (
+        <div
+          key={i}
+          style={{
+            width: 5, height: 5, borderRadius: '50%',
+            backgroundColor: '#3b82f6',
+            animation: `pl-dot 1.4s ease-in-out ${i * 0.22}s infinite`,
+            willChange: 'transform, opacity',
+          }}
+        />
+      ))}
+    </div>
+
+    {/* Label */}
+    <p style={{
+      margin: '13px 0 0',
+      fontSize: 11, fontWeight: 500,
+      color: '#b5bec8',
+      letterSpacing: '0.08em',
+      textTransform: 'uppercase',
+      animation: 'pl-fadein 0.5s ease 0.6s both',
+    }}>
+      Завантаження
+    </p>
+
+  </div>
+);
 
 export default PageLoading;
