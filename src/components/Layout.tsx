@@ -119,10 +119,9 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
       <div style={{ display: 'flex', flex: 1, paddingTop: hideNavbar ? 0 : '64px' }}>
         {/* Sidebar */}
         <Sidebar
-          user={user}
+          user={{ role: user.role }}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
-          onLogout={handleLogout}
           isMobile={isMobile}
           isTablet={isTablet}
         />

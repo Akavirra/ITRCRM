@@ -11,20 +11,16 @@ import {
   Calendar,
   BarChart3,
   Settings,
-  LogOut,
   ClipboardList
 } from 'lucide-react';
 import TransitionLink from '@/components/TransitionLink';
 
 interface SidebarProps {
   user: {
-    name: string;
-    email: string;
     role: 'admin' | 'teacher';
   };
   isOpen: boolean;
   onClose: () => void;
-  onLogout: () => void;
   isMobile?: boolean;
   isTablet?: boolean;
 }
@@ -44,7 +40,7 @@ const adminMenuItems = [
   { href: '/users', labelKey: 'nav.users', icon: Settings },
 ];
 
-export default function Sidebar({ user, isOpen, onClose, onLogout, isMobile = false, isTablet = false }: SidebarProps) {
+export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTablet = false }: SidebarProps) {
   const pathname = usePathname();
 
   const isSmallScreen = isMobile || isTablet;
@@ -218,55 +214,6 @@ export default function Sidebar({ user, isOpen, onClose, onLogout, isMobile = fa
           )}
         </nav>
 
-        {/* User section at bottom */}
-        <div style={{
-          padding: '16px',
-          borderTop: '1px solid #f5f5f5',
-          flexShrink: 0,
-        }}>
-          <div style={{ 
-            marginBottom: '12px', 
-            fontSize: '14px',
-            padding: '12px',
-            borderRadius: '12px',
-            backgroundColor: '#f8f9fa',
-          }}>
-            <div style={{ fontWeight: '600', color: '#333333' }}>{user.name}</div>
-            <div style={{ color: '#888888', fontSize: '12px', marginTop: '2px' }}>{user.email}</div>
-          </div>
-          <button
-            onClick={onLogout}
-            style={{ 
-              width: '100%', 
-              padding: isMobile ? '14px 16px' : '12px 16px',
-              borderRadius: '12px',
-              border: '1px solid #e0e0e0',
-              backgroundColor: 'transparent',
-              color: '#666666',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#fef2f2';
-              e.currentTarget.style.color = '#dc2626';
-              e.currentTarget.style.borderColor = '#fecaca';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#666666';
-              e.currentTarget.style.borderColor = '#e0e0e0';
-            }}
-          >
-            <LogOut width="18" height="18" />
-            {t('actions.logout')}
-          </button>
-        </div>
       </aside>
     </>
   );
