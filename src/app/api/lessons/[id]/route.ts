@@ -52,14 +52,15 @@ export async function GET(
     if (!lesson) {
       return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
     }
-    
-    // Check access
-    const hasAccess = await checkGroupAccess(user, lesson.group_id);
-    
-    if (!hasAccess) {
-      return forbidden();
+
+    // Check access - skip for individual/makeup lessons (no group)
+    if (lesson.group_id !== null && lesson.group_id !== undefined) {
+      const hasAccess = await checkGroupAccess(user, lesson.group_id);
+      if (!hasAccess) {
+        return forbidden();
+      }
     }
-  
+
   // Get lesson with group, course and teacher details
   // Use LEFT JOIN to support individual lessons (without group)
   type LessonDetails = Lesson & { group_title: string | null; course_title: string | null; course_id: number | null; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: any; start_time_formatted: string | null; end_time_formatted: string | null };
@@ -257,14 +258,15 @@ export async function PATCH(
     if (!lesson) {
       return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
     }
-    
-    // Check access
-    const hasAccess = await checkGroupAccess(user, lesson.group_id);
-    
-    if (!hasAccess) {
-      return forbidden();
+
+    // Check access - skip for individual/makeup lessons (no group)
+    if (lesson.group_id !== null && lesson.group_id !== undefined) {
+      const hasAccess = await checkGroupAccess(user, lesson.group_id);
+      if (!hasAccess) {
+        return forbidden();
+      }
     }
-    
+
     const body = await request.json();
     const { topic, notes, status, lesson_date, start_time, set_by_telegram } = body;
     

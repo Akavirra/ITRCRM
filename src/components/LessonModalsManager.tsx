@@ -1038,46 +1038,34 @@ export default function LessonModalsManager() {
                       <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
                         За які заняття
                       </div>
-                      <div style={{ border: '1px solid #fed7aa', borderRadius: '0.5rem', overflow: 'hidden', background: '#fff7ed' }}>
-                        {Object.values(byStudent).map((group, gIdx) => (
-                          <div key={group.name} style={{ borderBottom: gIdx < Object.keys(byStudent).length - 1 ? '1px solid #fed7aa' : 'none' }}>
-                            <div style={{ padding: '0.375rem 0.75rem', background: '#ffedd5', display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, color: '#9a3412' }}>
-                              <User size={12} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {Object.values(byStudent).map((group) => (
+                          <div key={group.name} style={{ borderLeft: '2px solid #fb923c', paddingLeft: '0.625rem' }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <User size={11} style={{ color: '#9ca3af' }} />
                               {group.name}
-                              {group.items.length > 1 && (
-                                <span style={{ fontWeight: 400, color: '#c2410c', fontSize: '0.75rem' }}>
-                                  ({group.items.length} заняття)
-                                </span>
-                              )}
                             </div>
-                            {group.items.map(item => (
-                              <div key={item.attendance_id} style={{ padding: '0.375rem 0.75rem 0.375rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                <div style={{ fontSize: '0.75rem', color: '#374151' }}>
-                                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
-                                    <Calendar size={10} style={{ color: '#9ca3af' }} />
-                                    <span>{new Date(item.original_lesson_date + 'T00:00:00').toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                    {item.original_start_time && (
-                                      <><Clock size={10} style={{ color: '#9ca3af' }} /><span>{item.original_start_time}</span></>
-                                    )}
-                                    {(item.original_group_title || item.original_course_title) && (
-                                      <span style={{ color: '#6b7280' }}>
-                                        · {item.original_group_title || item.original_course_title}
-                                      </span>
-                                    )}
-                                    {item.original_group_title && item.original_course_title && (
-                                      <span style={{ color: '#9ca3af' }}>/ {item.original_course_title}</span>
-                                    )}
-                                  </span>
-                                </div>
-                                <button
-                                  onClick={() => openLessonModal(item.original_lesson_id, `Заняття #${item.original_lesson_id}`, undefined)}
-                                  title="Відкрити заняття"
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f97316', padding: '0.125rem', display: 'flex', flexShrink: 0 }}
-                                >
-                                  <ExternalLink size={13} />
-                                </button>
-                              </div>
-                            ))}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                              {group.items.map(item => {
+                                const dateStr = item.original_lesson_date.slice(0, 10);
+                                const dateLabel = new Date(dateStr + 'T00:00:00').toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' });
+                                const context = [item.original_group_title, item.original_course_title].filter(Boolean).join(' / ');
+                                return (
+                                  <div key={item.attendance_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                      {dateLabel}{item.original_start_time ? `, ${item.original_start_time}` : ''}{context ? ` · ${context}` : ''}
+                                    </span>
+                                    <button
+                                      onClick={() => openLessonModal(item.original_lesson_id, `Заняття #${item.original_lesson_id}`, undefined)}
+                                      title="Відкрити заняття"
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fb923c', padding: '0.125rem', display: 'flex', flexShrink: 0 }}
+                                    >
+                                      <ExternalLink size={12} />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         ))}
                       </div>
