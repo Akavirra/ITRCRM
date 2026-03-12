@@ -284,8 +284,8 @@ export async function PATCH(
         return NextResponse.json({ error: 'Невірний статус' }, { status: 400 });
       }
       
-      // Add history entry when lesson is marked as done
-      if (status === 'done' && lesson.status !== 'done') {
+      // Add history entry when lesson is marked as done (only for group lessons)
+      if (status === 'done' && lesson.status !== 'done' && lesson.group_id) {
         await addGroupHistoryEntry(
           lesson.group_id,
           'lesson_conducted',
