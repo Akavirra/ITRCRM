@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
   
   const users = await all(
     includeInactive
-      ? `SELECT id, name, email, role, is_active, created_at, updated_at FROM users ORDER BY created_at DESC`
-      : `SELECT id, name, email, role, is_active, created_at, updated_at FROM users WHERE is_active = TRUE ORDER BY created_at DESC`
+      ? `SELECT id, name, email, role, is_active, created_at, updated_at FROM users WHERE role = 'admin' ORDER BY created_at DESC`
+      : `SELECT id, name, email, role, is_active, created_at, updated_at FROM users WHERE role = 'admin' AND is_active = TRUE ORDER BY created_at DESC`
   );
   
   return NextResponse.json({ users });
