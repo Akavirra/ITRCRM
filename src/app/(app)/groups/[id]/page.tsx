@@ -771,7 +771,16 @@ export default function GroupDetailsPage() {
                 </h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span style={{ fontSize: '0.8125rem', color: 'var(--gray-400)' }}>
-                    {lessonsExpanded ? 'Усі місяці' : 'Поточний місяць'}
+                    {lessonsExpanded ? 'Усі місяці' : (() => {
+                      if (!registerData?.months?.length) return 'Поточний місяць';
+                      const now = new Date();
+                      const curYear = now.getFullYear();
+                      const curMonth = now.getMonth() + 1;
+                      const hasCurrentMonth = registerData.months.some(m => m.year === curYear && m.month === curMonth);
+                      if (hasCurrentMonth) return 'Поточний місяць';
+                      const last = registerData.months[registerData.months.length - 1];
+                      return `${MONTH_NAMES[last.month - 1]} ${last.year}`;
+                    })()}
                   </span>
                   <svg
                     width="16"
@@ -797,24 +806,25 @@ export default function GroupDetailsPage() {
                   const now = new Date();
                   const curYear = now.getFullYear();
                   const curMonth = now.getMonth() + 1;
-                  const monthsToShow = lessonsExpanded
-                    ? [...registerData.months].reverse()
-                    : registerData.months.filter(m => m.year === curYear && m.month === curMonth);
-                  if (monthsToShow.length === 0) {
-                    return (
-                      <div style={{ padding: '2.5rem 1.25rem', textAlign: 'center', color: 'var(--gray-400)' }}>
-                        <p style={{ margin: 0 }}>Занять у поточному місяці немає</p>
-                        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem' }}>
-                          <span style={{ color: 'var(--primary)', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setLessonsExpanded(true); }}>Показати всі місяці</span>
-                        </p>
-                      </div>
-                    );
+                  let monthsToShow: AllTimeMonth[];
+                  if (lessonsExpanded) {
+                    monthsToShow = [...registerData.months].reverse();
+                  } else {
+                    const currentMonthData = registerData.months.filter(m => m.year === curYear && m.month === curMonth);
+                    if (currentMonthData.length > 0) {
+                      monthsToShow = currentMonthData;
+                    } else {
+                      // No lessons this month — show the most recent available month
+                      monthsToShow = registerData.months.length > 0
+                        ? [registerData.months[registerData.months.length - 1]]
+                        : [];
+                    }
                   }
                   return (
                     <div>
                       {monthsToShow.map(month => (
                         <div key={`${month.year}-${month.month}`}>
-                          {(lessonsExpanded || monthsToShow.length > 1) && (
+                          {(lessonsExpanded || monthsToShow.length > 1 || month.month !== curMonth || month.year !== curYear) && (
                             <div style={{ padding: '0.625rem 1rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb', borderTop: '1px solid #f3f4f6', fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
                               {MONTH_NAMES[month.month - 1]} {month.year}
                               <span style={{ fontWeight: 400, color: '#6b7280', marginLeft: '0.5rem' }}>— {month.lessons.length} {month.lessons.length === 1 ? 'заняття' : 'занять'}</span>
