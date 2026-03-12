@@ -222,7 +222,7 @@ export default function LessonModalsManager() {
           // Check if any attendance was set before this change
           const hadAttendanceBefore = (attendance[lessonId] || []).some(a => a.status !== null);
           const hasAttendanceNow = updatedAttendance.some(a => a.status !== null);
-          
+
           // If this is the first attendance being set, mark lesson as done
           if (!hadAttendanceBefore && hasAttendanceNow) {
             // Update lesson status to done
@@ -234,7 +234,7 @@ export default function LessonModalsManager() {
             if (statusResponse.ok) {
               const data = await statusResponse.json();
               setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
-              updateModalState(lessonId, { 
+              updateModalState(lessonId, {
                 lessonData: {
                   ...lessonData[lessonId],
                   status: 'done',
@@ -243,6 +243,8 @@ export default function LessonModalsManager() {
             }
           }
         }
+        // Notify schedule page to silently refresh
+        window.dispatchEvent(new Event('itrobot-lesson-updated'));
       }
     } catch (error) {
       console.error('Error setting attendance:', error);
@@ -406,7 +408,7 @@ export default function LessonModalsManager() {
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
         // Also update local topic state
         setLessonTopic(prev => ({ ...prev, [lessonId]: newTopic }));
-        updateModalState(lessonId, { 
+        updateModalState(lessonId, {
           lessonData: {
             ...currentLessonData,
             topic: newTopic,
@@ -415,6 +417,7 @@ export default function LessonModalsManager() {
             topicSetAt: data.lesson.topicSetAt,
           }
         });
+        window.dispatchEvent(new Event('itrobot-lesson-updated'));
       } else {
         const errorData = await res.json().catch(() => ({}));
         alert(errorData.error || 'Не вдалося зберегти тему');
@@ -463,7 +466,7 @@ export default function LessonModalsManager() {
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
         // Also update local notes state
         setLessonNotes(prev => ({ ...prev, [lessonId]: newNotes }));
-        updateModalState(lessonId, { 
+        updateModalState(lessonId, {
           lessonData: {
             ...currentLessonData,
             notes: newNotes,
@@ -472,6 +475,7 @@ export default function LessonModalsManager() {
             notesSetAt: data.lesson.notesSetAt,
           }
         });
+        window.dispatchEvent(new Event('itrobot-lesson-updated'));
       } else {
         const errorData = await res.json().catch(() => ({}));
         alert(errorData.error || 'Не вдалося зберегти нотатки');
@@ -580,12 +584,13 @@ export default function LessonModalsManager() {
         const data = await res.json();
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
         // Update modal data as well
-        updateModalState(lessonId, { 
+        updateModalState(lessonId, {
           lessonData: {
             ...lessonData[lessonId],
             status: 'canceled',
           }
         });
+        window.dispatchEvent(new Event('itrobot-lesson-updated'));
       }
     } catch (error) {
       console.error('Failed to cancel lesson:', error);
@@ -606,13 +611,13 @@ export default function LessonModalsManager() {
       if (res.ok) {
         const data = await res.json();
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
-        // Update modal data as well
-        updateModalState(lessonId, { 
+        updateModalState(lessonId, {
           lessonData: {
             ...lessonData[lessonId],
             status: 'done',
           }
         });
+        window.dispatchEvent(new Event('itrobot-lesson-updated'));
       }
     } catch (error) {
       console.error('Failed to mark done:', error);

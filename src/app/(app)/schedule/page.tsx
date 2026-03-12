@@ -61,6 +61,7 @@ export default function SchedulePage() {
     startOfWeek(new Date(), { weekStartsOn: 1, locale: uk })
   );
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filters
   const [groupFilter, setGroupFilter] = useState<string>('');
@@ -78,34 +79,47 @@ export default function SchedulePage() {
   // Create lesson modal state
   const [showCreateLessonModal, setShowCreateLessonModal] = useState(false);
 
-  const fetchSchedule = useCallback(async () => {
-    setIsNavigating(true);
+  const buildScheduleUrl = useCallback(() => {
     const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
     const weekEndStr = format(addDays(currentWeekStart, 6), 'yyyy-MM-dd');
-    
     let url = `/api/schedule?startDate=${weekStartStr}&endDate=${weekEndStr}`;
     if (groupFilter) url += `&groupId=${groupFilter}`;
     if (teacherFilter) url += `&teacherId=${teacherFilter}`;
-    
-    const res = await fetch(url);
-    const data = await res.json();
-    setSchedule(data);
-    setTimeout(() => setIsNavigating(false), 300);
+    return url;
   }, [currentWeekStart, groupFilter, teacherFilter]);
 
-  // Listen for lesson deletion to refresh schedule
+  // Full navigation fetch — dims the grid, shows loading state
+  const fetchSchedule = useCallback(async () => {
+    setIsNavigating(true);
+    const res = await fetch(buildScheduleUrl());
+    const data = await res.json();
+    setSchedule(data);
+    setTimeout(() => setIsNavigating(false), 200);
+  }, [buildScheduleUrl]);
+
+  // Silent background refresh — no visual dimming, just a thin indicator
+  const silentRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const res = await fetch(buildScheduleUrl());
+      if (res.ok) {
+        const data = await res.json();
+        setSchedule(data);
+      }
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 600);
+    }
+  }, [buildScheduleUrl]);
+
+  // Listen for lesson changes from modals
   useEffect(() => {
-    const handleLessonDeleted = () => {
-      fetchSchedule();
-    };
-    
-    window.addEventListener('itrobot-lesson-deleted', handleLessonDeleted);
-    window.addEventListener('itrobot-lesson-updated', fetchSchedule);
+    window.addEventListener('itrobot-lesson-deleted', silentRefresh);
+    window.addEventListener('itrobot-lesson-updated', silentRefresh);
     return () => {
-      window.removeEventListener('itrobot-lesson-deleted', handleLessonDeleted);
-      window.removeEventListener('itrobot-lesson-updated', fetchSchedule);
+      window.removeEventListener('itrobot-lesson-deleted', silentRefresh);
+      window.removeEventListener('itrobot-lesson-updated', silentRefresh);
     };
-  }, [fetchSchedule]);
+  }, [silentRefresh]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -296,11 +310,31 @@ export default function SchedulePage() {
       </div>
 
       {/* Week Navigator */}
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
+      <div className="card" style={{ marginBottom: '1.5rem', overflow: 'hidden', position: 'relative' }}>
+        {/* Loading bar — slides across top on navigation or silent refresh */}
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0,
+          height: '3px',
+          overflow: 'hidden',
+          borderRadius: '0.5rem 0.5rem 0 0',
+          opacity: (isNavigating || isRefreshing) ? 1 : 0,
+          transition: 'opacity 0.3s ease',
+        }}>
+          <div style={{
+            width: '40%',
+            height: '100%',
+            background: isNavigating
+              ? 'linear-gradient(90deg, transparent, #3b82f6, transparent)'
+              : 'linear-gradient(90deg, transparent, #10b981, transparent)',
+            animation: 'nav-loading 1.2s ease-in-out infinite',
+          }} />
+        </div>
+
         <div className="card-body" style={{ padding: '1rem 1.25rem' }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: '1rem',
@@ -309,36 +343,31 @@ export default function SchedulePage() {
               onClick={goToPreviousWeek}
               disabled={isNavigating}
               className="btn btn-secondary"
-              style={{ 
-                padding: '0.5rem 0.75rem', 
+              style={{
+                padding: '0.5rem 0.75rem',
                 fontSize: '0.8125rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
                 transition: 'all 0.2s ease',
-                opacity: isNavigating ? 0.7 : 1,
+                opacity: isNavigating ? 0.6 : 1,
+                minWidth: '110px',
               }}
             >
-              <span style={{ 
-                display: 'inline-flex',
-                animation: isNavigating ? 'spin 0.6s linear infinite' : 'none',
-              }}>
-                <ChevronLeft size={16} />
-              </span>
-              {!isNavigating && 'Попередній'}
-              {isNavigating && 'Завантаження...'}
+              <ChevronLeft size={16} style={{ flexShrink: 0 }} />
+              Попередній
             </button>
-            
+
             <div style={{ textAlign: 'center' }}>
-              <div style={{ 
-                fontSize: '0.9375rem', 
-                fontWeight: 600, 
-                color: '#111827', 
-                textTransform: 'uppercase', 
-                letterSpacing: '0.5px', 
+              <div style={{
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                color: '#111827',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
                 marginBottom: '0.25rem',
                 transition: 'opacity 0.2s ease',
-                opacity: isNavigating ? 0.5 : 1,
+                opacity: isNavigating ? 0.4 : 1,
               }}>
                 {schedule?.weekStart && format(parseISO(schedule.weekStart), 'LLLL yyyy', { locale: uk })}
               </div>
@@ -351,68 +380,87 @@ export default function SchedulePage() {
                   return `${weeks.length} тижнів у місяці`;
                 })()}
               </div>
-              <div style={{ 
-                fontSize: '1.125rem', 
-                fontWeight: 500, 
+              <div style={{
+                fontSize: '1.125rem',
+                fontWeight: 500,
                 color: '#111827',
                 transition: 'opacity 0.2s ease',
-                opacity: isNavigating ? 0.5 : 1,
+                opacity: isNavigating ? 0.4 : 1,
               }}>
                 {schedule?.weekStart && formatDate(schedule.weekStart)} — {schedule?.weekEnd && formatDate(schedule.weekEnd)}
               </div>
-              <button
-                onClick={goToCurrentWeek}
-                disabled={isNavigating}
-                style={{
-                  fontSize: '0.8125rem',
-                  fontWeight: 500,
-                  color: '#3b82f6',
-                  background: '#eff6ff',
-                  border: '1px solid #dbeafe',
-                  borderRadius: '0.5rem',
-                  cursor: isNavigating ? 'not-allowed' : 'pointer',
-                  padding: '0.375rem 0.75rem',
-                  marginTop: '0.5rem',
-                  transition: 'all 0.15s ease',
-                  opacity: isNavigating ? 0.7 : 1,
-                }}
-                onMouseEnter={(e) => {
-                  if (!isNavigating) {
-                    e.currentTarget.style.background = '#dbeafe';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#eff6ff';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                Поточний тиждень
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button
+                  onClick={goToCurrentWeek}
+                  disabled={isNavigating}
+                  style={{
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                    color: '#3b82f6',
+                    background: '#eff6ff',
+                    border: '1px solid #dbeafe',
+                    borderRadius: '0.5rem',
+                    cursor: isNavigating ? 'not-allowed' : 'pointer',
+                    padding: '0.375rem 0.75rem',
+                    transition: 'all 0.15s ease',
+                    opacity: isNavigating ? 0.6 : 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isNavigating) {
+                      e.currentTarget.style.background = '#dbeafe';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#eff6ff';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  Поточний тиждень
+                </button>
+                {/* Subtle live-sync indicator */}
+                {isRefreshing && !isNavigating && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    fontSize: '0.6875rem',
+                    color: '#10b981',
+                    fontWeight: 500,
+                    animation: 'fadeIn 0.2s ease',
+                  }}>
+                    <span style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: '#10b981',
+                      animation: 'pulse-dot 1s ease-in-out infinite',
+                      flexShrink: 0,
+                    }} />
+                    оновлення
+                  </span>
+                )}
+              </div>
             </div>
-            
+
             <button
               onClick={goToNextWeek}
               disabled={isNavigating}
               className="btn btn-secondary"
-              style={{ 
-                padding: '0.5rem 0.75rem', 
+              style={{
+                padding: '0.5rem 0.75rem',
                 fontSize: '0.8125rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
                 transition: 'all 0.2s ease',
-                opacity: isNavigating ? 0.7 : 1,
+                opacity: isNavigating ? 0.6 : 1,
+                minWidth: '110px',
+                justifyContent: 'flex-end',
               }}
             >
-              {!isNavigating && 'Наступний'}
-              {isNavigating && 'Завантаження...'}
-              <span style={{ 
-                display: 'inline-flex',
-                animation: isNavigating ? 'spin 0.6s linear infinite' : 'none',
-              }}>
-                <ChevronRight size={16} />
-              </span>
+              Наступний
+              <ChevronRight size={16} style={{ flexShrink: 0 }} />
             </button>
           </div>
         </div>
@@ -424,8 +472,8 @@ export default function SchedulePage() {
         gridTemplateColumns: 'repeat(7, 1fr)', 
         gap: '0.75rem',
         minHeight: '400px',
-        transition: 'opacity 0.2s ease',
-        opacity: isNavigating ? 0.6 : 1,
+        transition: 'opacity 0.25s ease',
+        opacity: isNavigating ? 0.5 : 1,
       }} className="schedule-grid">
         <style>{`
           @keyframes spin {
@@ -436,9 +484,13 @@ export default function SchedulePage() {
             from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
           }
-          @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
+          @keyframes nav-loading {
+            0%   { transform: translateX(-120%); }
+            100% { transform: translateX(300%); }
+          }
+          @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.4; transform: scale(0.7); }
           }
           .schedule-grid {
             animation: fadeIn 0.3s ease-out;
