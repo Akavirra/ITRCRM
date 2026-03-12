@@ -228,9 +228,14 @@ export async function POST(
     );
 
     // Mark lesson as 'done' only when ALL active students have attendance recorded
+    // For individual/makeup lessons (group_id IS NULL), use attendance table count as total
     const counts = await queryOne(
       `SELECT
-        (SELECT COUNT(*) FROM student_groups WHERE group_id = (SELECT group_id FROM lessons WHERE id = $1) AND is_active = TRUE) as total,
+        CASE
+          WHEN (SELECT group_id FROM lessons WHERE id = $1) IS NULL
+          THEN (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1)
+          ELSE (SELECT COUNT(*) FROM student_groups WHERE group_id = (SELECT group_id FROM lessons WHERE id = $1) AND is_active = TRUE)
+        END as total,
         (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
       [lessonId]
     ) as { total: number; recorded: number } | null;
