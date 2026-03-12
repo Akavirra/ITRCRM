@@ -775,6 +775,22 @@ export default function LessonModalsManager() {
 
   return (
     <>
+      <style>{`
+        @keyframes lmm-dot-bounce {
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+          40%            { transform: translateY(-3px); opacity: 1; }
+        }
+        @keyframes lmm-skeleton {
+          0%   { background-position: -200px 0; }
+          100% { background-position: calc(200px + 100%) 0; }
+        }
+        .lmm-skeleton {
+          background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+          background-size: 400px 100%;
+          animation: lmm-skeleton 1.4s ease infinite;
+          border-radius: 0.25rem;
+        }
+      `}</style>
       {openModals.map((modal) => {
         if (!modal.isOpen) return null;
         
@@ -992,8 +1008,21 @@ export default function LessonModalsManager() {
             }
           >
             {isLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-                <div style={{ color: '#6b7280' }}>Завантаження...</div>
+              <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div className="lmm-skeleton" style={{ width: '40%', height: '20px' }} />
+                <div className="lmm-skeleton" style={{ width: '70%', height: '14px' }} />
+                <div className="lmm-skeleton" style={{ width: '55%', height: '14px' }} />
+                <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {[1, 2, 3].map(i => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div className="lmm-skeleton" style={{ width: `${50 + i * 10}px`, height: '12px' }} />
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <div className="lmm-skeleton" style={{ width: '28px', height: '28px', borderRadius: '0.25rem' }} />
+                        <div className="lmm-skeleton" style={{ width: '28px', height: '28px', borderRadius: '0.25rem' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : lesson ? (
               <div style={{ padding: '1.25rem', overflow: 'auto', height: '100%' }}>
@@ -1571,9 +1600,21 @@ export default function LessonModalsManager() {
                 
                 {/* Attendance section */}
                 <div style={{ marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                  <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                     Відвідуваність
-                    {attendanceLoading[modal.id] && <span style={{ marginLeft: '0.5rem', color: '#9ca3af' }}>Завантаження...</span>}
+                    {/* Show 3-dot pulse only during background refresh (data already loaded) */}
+                    {attendanceLoading[modal.id] && attendance[modal.id] && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                        {[0, 1, 2].map(i => (
+                          <span key={i} style={{
+                            width: '3px', height: '3px', borderRadius: '50%',
+                            background: '#9ca3af',
+                            display: 'inline-block',
+                            animation: `lmm-dot-bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
+                          }} />
+                        ))}
+                      </span>
+                    )}
                   </div>
                   
                   {attendance[modal.id] && attendance[modal.id].length > 0 ? (
@@ -1650,10 +1691,28 @@ export default function LessonModalsManager() {
                         </div>
                       ))}
                     </div>
-                  ) : !attendanceLoading[modal.id] ? (
-                    <div style={{ 
-                      padding: '0.75rem', 
-                      backgroundColor: '#f9fafb', 
+                  ) : attendanceLoading[modal.id] ? (
+                    /* First-time skeleton — shown only before any data arrives */
+                    <div style={{ border: '1px solid #e5e7eb', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                      {[1, 2, 3].map(i => (
+                        <div key={i} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '0.5rem 0.75rem',
+                          borderBottom: i < 3 ? '1px solid #e5e7eb' : 'none',
+                          backgroundColor: i % 2 === 0 ? '#f9fafb' : 'white',
+                        }}>
+                          <div className="lmm-skeleton" style={{ width: `${55 + i * 12}px`, height: '12px' }} />
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            <div className="lmm-skeleton" style={{ width: '28px', height: '28px', borderRadius: '0.25rem' }} />
+                            <div className="lmm-skeleton" style={{ width: '28px', height: '28px', borderRadius: '0.25rem' }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{
+                      padding: '0.75rem',
+                      backgroundColor: '#f9fafb',
                       borderRadius: '0.5rem',
                       color: '#6b7280',
                       fontSize: '0.8125rem',
@@ -1661,7 +1720,7 @@ export default function LessonModalsManager() {
                     }}>
                       Немає студентів у групі
                     </div>
-                  ) : null}
+                  )}
                 </div>
                 
                 {/* Actions - removed "Проведено" and "Скасовано" buttons, status is now auto-set based on attendance */}
