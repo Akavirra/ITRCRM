@@ -12,6 +12,7 @@ interface LessonRow {
   course_id: number | null;
   lesson_date: string;
   original_date: string | null;
+  is_makeup: boolean;
   start_datetime: string;
   end_datetime: string;
   topic: string | null;
@@ -72,6 +73,7 @@ export async function GET(request: NextRequest) {
       COALESCE(l.course_id, g.course_id) as course_id,
       l.lesson_date,
       l.original_date,
+      COALESCE(l.is_makeup, FALSE) as is_makeup,
       l.start_datetime,
       l.end_datetime,
       l.topic,
@@ -172,6 +174,7 @@ export async function GET(request: NextRequest) {
         topic: lesson.topic,
         originalDate: lesson.original_date ? new Date(lesson.original_date).toISOString().split('T')[0] : null,
         isRescheduled: !!lesson.original_date,
+        isMakeup: !!lesson.is_makeup,
       })),
     });
   }

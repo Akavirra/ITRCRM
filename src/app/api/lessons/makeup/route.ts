@@ -89,9 +89,12 @@ export async function POST(request: NextRequest) {
 
   // ── Create makeup lesson ────────────────────────────────────────────────────
   const lesson = await createSingleLesson(
-    { groupId: null, courseId, lessonDate, startTime, durationMinutes, teacherId },
+    { groupId: null, courseId: null, lessonDate, startTime, durationMinutes, teacherId },
     user.id
   );
+
+  // Mark lesson as makeup
+  await run(`UPDATE lessons SET is_makeup = TRUE WHERE id = $1`, [lesson.id]);
 
   // ── Add attendance stubs for each student in the makeup lesson ──────────────
   for (const studentId of studentIds) {

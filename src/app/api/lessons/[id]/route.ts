@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, checkGroupAccess, forbidden } from '@/lib/api-utils';
-import { get, run } from '@/db';
+import { get, run, all } from '@/db';
 import { format } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
@@ -18,6 +18,7 @@ interface Lesson {
   topic: string | null;
   notes: string | null;
   status: string;
+  is_makeup: boolean;
   created_by: number;
   topic_set_by: number | null;
   topic_set_at: string | null;
@@ -62,11 +63,12 @@ export async function GET(
   // Get lesson with group, course and teacher details
   // Use LEFT JOIN to support individual lessons (without group)
   const lessonWithDetails = await get<Lesson & { group_title: string | null; course_title: string | null; course_id: number | null; teacher_id: number | null; teacher_name: string | null; original_teacher_id: number | null; is_replaced: boolean; topic_set_by_name: string | null; notes_set_by_name: string | null; topic_set_by_telegram_id: string | null; notes_set_by_telegram_id: string | null; telegram_user_info: any; start_time_formatted: string | null; end_time_formatted: string | null }>(
-    `SELECT 
+    `SELECT
       l.id,
       l.group_id,
       l.course_id as lesson_course_id,
       l.lesson_date,
+      COALESCE(l.is_makeup, FALSE) as is_makeup,
       l.start_datetime,
       l.end_datetime,
       TO_CHAR(l.start_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as start_time_formatted,
@@ -164,15 +166,54 @@ export async function GET(
       notesSetBy: lessonWithDetails.notes_set_by_name,
       notesSetAt: formatTimestamp(lessonWithDetails.notes_set_at),
       notesSetByTelegramId: lessonWithDetails.notes_set_by_telegram_id,
+      isMakeup: !!(lessonWithDetails as any).is_makeup,
       telegramUserInfo: lessonWithDetails.telegram_user_info,
     } : null;
-    
+
     // Get change history
     const changeHistory = await getLessonChangeHistory(lessonId);
-    
-    return NextResponse.json({ 
+
+    // If this is a makeup lesson, fetch which original lessons it covers
+    let makeupFor: Array<{
+      attendance_id: number;
+      student_id: number;
+      student_name: string;
+      original_lesson_id: number;
+      original_lesson_date: string;
+      original_start_time: string | null;
+      original_group_id: number | null;
+      original_group_title: string | null;
+      original_course_title: string | null;
+    }> = [];
+
+    if (transformedLesson?.isMakeup) {
+      makeupFor = await all(
+        `SELECT
+           a.id                   AS attendance_id,
+           a.student_id,
+           s.full_name            AS student_name,
+           orig_l.id              AS original_lesson_id,
+           orig_l.lesson_date     AS original_lesson_date,
+           TO_CHAR(orig_l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') AS original_start_time,
+           orig_l.group_id        AS original_group_id,
+           orig_g.title           AS original_group_title,
+           COALESCE(c_grp.title, c_les.title) AS original_course_title
+         FROM attendance a
+         JOIN students  s      ON a.student_id   = s.id
+         JOIN lessons   orig_l ON a.lesson_id    = orig_l.id
+         LEFT JOIN groups  orig_g  ON orig_l.group_id  = orig_g.id
+         LEFT JOIN courses c_grp   ON orig_g.course_id = c_grp.id
+         LEFT JOIN courses c_les   ON orig_l.course_id = c_les.id
+         WHERE a.makeup_lesson_id = $1
+         ORDER BY s.full_name, orig_l.lesson_date`,
+        [lessonId]
+      );
+    }
+
+    return NextResponse.json({
       lesson: transformedLesson,
-      changeHistory: changeHistory || []
+      changeHistory: changeHistory || [],
+      makeupFor,
     });
   } catch (error) {
     console.error('Get lesson error:', error);

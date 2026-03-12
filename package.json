@@ -16,6 +16,7 @@
     "db:add-lesson-tracking": "node scripts/add-lesson-tracking-fields.js",
     "db:add-lesson-original-date": "node scripts/add-lesson-original-date.js",
     "db:fix-lesson-times": "node scripts/fix-group-lesson-times.js",
+    "db:add-is-makeup": "node scripts/add-is-makeup.js",
     "test": "jest"
   },
   "dependencies": {

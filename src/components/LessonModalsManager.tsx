@@ -6,7 +6,7 @@ import { useLessonModals } from './LessonModalsContext';
 import { useGroupModals } from './GroupModalsContext';
 import { useCourseModals } from './CourseModalsContext';
 import { useTeacherModals } from './TeacherModalsContext';
-import { Clock, BookOpen, User, Check, X, Calendar, Trash2, UserMinus, Users, MoreVertical, Edit2, Save, RefreshCw } from 'lucide-react';
+import { Clock, BookOpen, User, Check, X, Calendar, Trash2, UserMinus, Users, MoreVertical, Edit2, Save, RefreshCw, ExternalLink } from 'lucide-react';
 
 interface Teacher {
   id: number;
@@ -47,6 +47,19 @@ interface LessonData {
   notesSetByTelegramId: string | null;
   originalDate?: string | null;
   isRescheduled?: boolean;
+  isMakeup?: boolean;
+}
+
+interface MakeupForItem {
+  attendance_id: number;
+  student_id: number;
+  student_name: string;
+  original_lesson_id: number;
+  original_lesson_date: string;
+  original_start_time: string | null;
+  original_group_id: number | null;
+  original_group_title: string | null;
+  original_course_title: string | null;
 }
 
 interface ChangeHistoryEntry {
@@ -100,11 +113,12 @@ function getStatusBadge(status: 'scheduled' | 'done' | 'canceled') {
 }
 
 export default function LessonModalsManager() {
-  const { openModals, updateModalState, closeLessonModal } = useLessonModals();
+  const { openModals, updateModalState, closeLessonModal, openLessonModal } = useLessonModals();
   const { openGroupModal } = useGroupModals();
   const { openCourseModal } = useCourseModals();
   const { openTeacherModal } = useTeacherModals();
   const [lessonData, setLessonData] = useState<Record<number, LessonData>>({});
+  const [makeupForData, setMakeupForData] = useState<Record<number, MakeupForItem[]>>({});
   const [loadingLessons, setLoadingLessons] = useState<Record<number, boolean>>({});
   const loadingRef = useRef<Record<string, boolean>>({}); // Track loading state without causing re-renders
   const [isHydrated, setIsHydrated] = useState(false);
@@ -254,8 +268,11 @@ export default function LessonModalsManager() {
       if (response.ok) {
         const data = await response.json();
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
+        if (data.makeupFor) {
+          setMakeupForData(prev => ({ ...prev, [lessonId]: data.makeupFor }));
+        }
         // Also update the modal with the fresh data
-        updateModalState(lessonId, { 
+        updateModalState(lessonId, {
           lessonData: {
             id: data.lesson.id,
             groupId: data.lesson.groupId,
@@ -789,7 +806,7 @@ export default function LessonModalsManager() {
             id={`lesson-modal-${modal.id}`}
             isOpen={true}
             onClose={() => handleClose(modal.id)}
-            title={lesson?.groupId ? 'Групове заняття' : 'Індивідуальне заняття'}
+            title={lesson?.isMakeup ? 'Відпрацювання' : lesson?.groupId ? 'Групове заняття' : 'Індивідуальне заняття'}
             groupUrl={lesson?.groupId ? `/groups/${lesson.groupId}` : undefined}
             initialWidth={modal.size?.width || 420}
             initialHeight={modal.size?.height || 480}
@@ -984,11 +1001,90 @@ export default function LessonModalsManager() {
               </div>
             ) : lesson ? (
               <div style={{ padding: '1.25rem', overflow: 'auto', height: '100%' }}>
-                {/* Status badge */}
-                <div style={{ marginBottom: '1rem' }}>
+                {/* Status badge + makeup badge */}
+                <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {lesson.isMakeup && (
+                    <span style={{
+                      background: '#fff7ed', color: '#c2410c',
+                      border: '1px solid #fed7aa', borderRadius: '0.25rem',
+                      fontSize: '0.6875rem', fontWeight: 700,
+                      padding: '0.25rem 0.5rem',
+                      display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                      textTransform: 'uppercase', letterSpacing: '0.4px',
+                    }}>
+                      <RefreshCw size={9} />
+                      Відпрацювання
+                    </span>
+                  )}
                   {getStatusBadge(lesson.status)}
                 </div>
-              
+
+                {/* Makeup: which original lessons are being covered */}
+                {lesson.isMakeup && (() => {
+                  const items = makeupForData[modal.id] || [];
+                  if (items.length === 0) return null;
+
+                  // Group by student
+                  const byStudent: Record<number, { name: string; items: MakeupForItem[] }> = {};
+                  for (const item of items) {
+                    if (!byStudent[item.student_id]) {
+                      byStudent[item.student_id] = { name: item.student_name, items: [] };
+                    }
+                    byStudent[item.student_id].items.push(item);
+                  }
+
+                  return (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                        За які заняття
+                      </div>
+                      <div style={{ border: '1px solid #fed7aa', borderRadius: '0.5rem', overflow: 'hidden', background: '#fff7ed' }}>
+                        {Object.values(byStudent).map((group, gIdx) => (
+                          <div key={group.name} style={{ borderBottom: gIdx < Object.keys(byStudent).length - 1 ? '1px solid #fed7aa' : 'none' }}>
+                            <div style={{ padding: '0.375rem 0.75rem', background: '#ffedd5', display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, color: '#9a3412' }}>
+                              <User size={12} />
+                              {group.name}
+                              {group.items.length > 1 && (
+                                <span style={{ fontWeight: 400, color: '#c2410c', fontSize: '0.75rem' }}>
+                                  ({group.items.length} заняття)
+                                </span>
+                              )}
+                            </div>
+                            {group.items.map(item => (
+                              <div key={item.attendance_id} style={{ padding: '0.375rem 0.75rem 0.375rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#374151' }}>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
+                                    <Calendar size={10} style={{ color: '#9ca3af' }} />
+                                    <span>{new Date(item.original_lesson_date + 'T00:00:00').toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                    {item.original_start_time && (
+                                      <><Clock size={10} style={{ color: '#9ca3af' }} /><span>{item.original_start_time}</span></>
+                                    )}
+                                    {(item.original_group_title || item.original_course_title) && (
+                                      <span style={{ color: '#6b7280' }}>
+                                        · {item.original_group_title || item.original_course_title}
+                                      </span>
+                                    )}
+                                    {item.original_group_title && item.original_course_title && (
+                                      <span style={{ color: '#9ca3af' }}>/ {item.original_course_title}</span>
+                                    )}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => openLessonModal(item.original_lesson_id, `Заняття #${item.original_lesson_id}`, undefined)}
+                                  title="Відкрити заняття"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f97316', padding: '0.125rem', display: 'flex', flexShrink: 0 }}
+                                >
+                                  <ExternalLink size={13} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {lesson.groupId && (
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>Група</div>

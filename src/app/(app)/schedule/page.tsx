@@ -35,6 +35,7 @@ interface Lesson {
   topic: string | null;
   originalDate?: string | null;
   isRescheduled?: boolean;
+  isMakeup?: boolean;
 }
 
 interface DaySchedule {
@@ -195,26 +196,18 @@ export default function SchedulePage() {
     }
   };
 
-  const getLessonStyle = (status: string) => {
+  const getLessonStyle = (status: string, isMakeup?: boolean) => {
+    if (isMakeup) {
+      switch (status) {
+        case 'done':    return { background: '#f0fdf4', borderColor: '#16a34a', color: '#14532d' };
+        case 'canceled': return { background: '#fef2f2', borderColor: '#dc2626', color: '#7f1d1d' };
+        default:        return { background: '#fff7ed', borderColor: '#f97316', color: '#7c2d12' };
+      }
+    }
     switch (status) {
-      case 'done':
-        return {
-          background: '#f0fdf4',
-          borderColor: '#22c55e',
-          color: '#166534',
-        };
-      case 'canceled':
-        return {
-          background: '#fef2f2',
-          borderColor: '#ef4444',
-          color: '#991b1b',
-        };
-      default:
-        return {
-          background: '#eff6ff',
-          borderColor: '#3b82f6',
-          color: '#1e40af',
-        };
+      case 'done':    return { background: '#f0fdf4', borderColor: '#22c55e', color: '#166534' };
+      case 'canceled': return { background: '#fef2f2', borderColor: '#ef4444', color: '#991b1b' };
+      default:        return { background: '#eff6ff', borderColor: '#3b82f6', color: '#1e40af' };
     }
   };
 
@@ -540,7 +533,7 @@ export default function SchedulePage() {
               {/* Lessons */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {day.lessons.map((lesson) => {
-                  const lessonStyle = getLessonStyle(lesson.status);
+                  const lessonStyle = getLessonStyle(lesson.status, lesson.isMakeup);
                   return (
                     <div
                       key={lesson.id}
@@ -563,9 +556,29 @@ export default function SchedulePage() {
                         e.currentTarget.style.boxShadow = 'none';
                       }}
                     >
-                      <div style={{ 
-                        fontSize: '0.875rem', 
-                        fontWeight: 700, 
+                      {lesson.isMakeup && (
+                        <div style={{
+                          fontSize: '0.625rem',
+                          fontWeight: 700,
+                          background: '#fff7ed',
+                          color: '#c2410c',
+                          border: '1px solid #fed7aa',
+                          borderRadius: '0.25rem',
+                          padding: '0.0625rem 0.375rem',
+                          marginBottom: '0.25rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.4px',
+                        }}>
+                          <RefreshCw size={8} />
+                          Відпрацювання
+                        </div>
+                      )}
+                      <div style={{
+                        fontSize: '0.875rem',
+                        fontWeight: 700,
                         color: lessonStyle.borderColor,
                         marginBottom: '0.25rem',
                         display: 'flex',

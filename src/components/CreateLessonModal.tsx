@@ -215,16 +215,6 @@ export default function CreateLessonModal({
   const selectedAbsences = absences.filter(a => selectedAbsenceIds.includes(a.attendance_id));
   const selectedStudentNames = Array.from(new Set(selectedAbsences.map(a => a.student_name)));
 
-  // Detect if all selected absences share the same course (for auto-fill)
-  useEffect(() => {
-    if (selectedAbsences.length === 0) return;
-    const courseTitles = Array.from(new Set(selectedAbsences.map(a => a.course_title).filter(Boolean)));
-    if (courseTitles.length === 1) {
-      const matched = courses.find(c => c.title === courseTitles[0]);
-      if (matched) setMakeupCourseId(matched.id);
-    }
-  }, [selectedAbsenceIds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Handlers: new lesson tab ──────────────────────────────────────────────────
 
   const toggleStudent = (id: number) =>
@@ -310,7 +300,6 @@ export default function CreateLessonModal({
           lessonDate: makeupDate,
           startTime: makeupTime,
           durationMinutes: makeupDuration,
-          courseId: makeupCourseId,
           teacherId: makeupTeacherId,
           attendanceIds: selectedAbsenceIds,
         }),
@@ -345,7 +334,6 @@ export default function CreateLessonModal({
     setMakeupDate(today);
     setMakeupTime('10:00');
     setMakeupDuration(60);
-    setMakeupCourseId(null);
     setMakeupTeacherId(null);
     setSelectedAbsenceIds([]);
     setAbsenceSearch('');
@@ -934,17 +922,6 @@ export default function CreateLessonModal({
                 time={makeupTime} onTime={setMakeupTime}
                 duration={makeupDuration} onDuration={setMakeupDuration}
               />
-
-              {/* Course */}
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label style={labelStyle}>Курс</label>
-                <CourseDropdown
-                  value={makeupCourseId}
-                  onChange={v => { setMakeupCourseId(v); setShowMakeupCourseDropdown(false); }}
-                  show={showMakeupCourseDropdown}
-                  onToggle={() => setShowMakeupCourseDropdown(p => !p)}
-                />
-              </div>
 
               {/* Teacher */}
               <div style={{ marginBottom: '1.5rem' }}>
