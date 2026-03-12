@@ -543,7 +543,7 @@ export default function AttendancePage() {
                   {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
                 </select>
 
-                <div ref={suggestBoxRef} style={{ position:'relative', flex:1, minWidth:160 }}>
+                <div ref={suggestBoxRef} style={{ position:'relative', width:160, flexShrink:1 }}>
                   <input type="text" placeholder="Учень..." value={search}
                     onChange={e => handleSearchChange(e.target.value)}
                     onFocus={() => { if (studentSuggestions.length > 0) setShowSuggestions(true); }}
