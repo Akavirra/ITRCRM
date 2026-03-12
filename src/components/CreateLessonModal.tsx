@@ -67,6 +67,224 @@ function formatStartTime(isoDatetime: string | null) {
   }
 }
 
+// ─── Shared styles (static — defined outside to avoid recreation) ─────────────
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '0.625rem 1rem',
+  borderRadius: '0.5rem',
+  border: '1.5px solid #e5e7eb',
+  fontSize: '0.875rem',
+  color: '#111827',
+  outline: 'none',
+  boxSizing: 'border-box',
+  background: 'white',
+};
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: '0.8125rem',
+  fontWeight: 500,
+  color: '#374151',
+  marginBottom: '0.5rem',
+};
+
+const dropdownContainerStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: '100%',
+  left: 0,
+  right: 0,
+  marginTop: '0.25rem',
+  background: 'white',
+  border: '1px solid #e5e7eb',
+  borderRadius: '0.5rem',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  maxHeight: '200px',
+  overflow: 'auto',
+  zIndex: 20,
+};
+
+const dropdownItemStyle = (active: boolean): React.CSSProperties => ({
+  width: '100%',
+  padding: '0.625rem 1rem',
+  border: 'none',
+  background: active ? '#eff6ff' : 'white',
+  textAlign: 'left',
+  cursor: 'pointer',
+  fontSize: '0.875rem',
+  color: '#111827',
+  borderBottom: '1px solid #f3f4f6',
+  transition: 'background 0.15s ease',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.5rem',
+});
+
+// ─── Sub-components (defined outside to prevent remount on parent re-render) ──
+
+function DateTimeRow({
+  date, onDate, time, onTime, duration, onDuration,
+}: {
+  date: string; onDate: (v: string) => void;
+  time: string; onTime: (v: string) => void;
+  duration: number; onDuration: (v: number) => void;
+}) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+      <div>
+        <label style={labelStyle}>Дата <span style={{ color: '#ef4444' }}>*</span></label>
+        <div style={{ position: 'relative' }}>
+          <Calendar size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+          <input
+            type="date"
+            value={date}
+            onChange={e => onDate(e.target.value)}
+            style={{ ...inputStyle, paddingLeft: '2.25rem' }}
+          />
+        </div>
+      </div>
+      <div>
+        <label style={labelStyle}>Час <span style={{ color: '#ef4444' }}>*</span></label>
+        <div style={{ position: 'relative' }}>
+          <Clock size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+          <input
+            type="time"
+            value={time}
+            onChange={e => onTime(e.target.value)}
+            style={{ ...inputStyle, paddingLeft: '2.25rem' }}
+          />
+        </div>
+      </div>
+      <div>
+        <label style={labelStyle}>Тривалість <span style={{ color: '#ef4444' }}>*</span></label>
+        <select
+          value={duration}
+          onChange={e => onDuration(Number(e.target.value))}
+          style={{ ...inputStyle, cursor: 'pointer' }}
+        >
+          <option value={30}>30 хв</option>
+          <option value={45}>45 хв</option>
+          <option value={60}>1 год</option>
+          <option value={90}>1.5 год</option>
+          <option value={120}>2 год</option>
+          <option value={180}>3 год</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function TeacherDropdown({
+  teachers, value, onChange, show, onToggle,
+}: {
+  teachers: Teacher[];
+  value: number | null;
+  onChange: (id: number) => void;
+  show: boolean;
+  onToggle: () => void;
+}) {
+  const selected = teachers.find(t => t.id === value);
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          ...inputStyle,
+          textAlign: 'left',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <User size={14} style={{ color: '#9ca3af' }} />
+          <span style={{ color: selected ? '#111827' : '#9ca3af' }}>
+            {selected ? selected.name : 'Оберіть викладача'}
+          </span>
+        </span>
+        <ChevronDown size={16} style={{ color: '#9ca3af' }} />
+      </button>
+      {show && (
+        <div style={dropdownContainerStyle}>
+          {teachers.length === 0
+            ? <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>Немає викладачів</div>
+            : teachers.map(t => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onChange(t.id)}
+                style={dropdownItemStyle(t.id === value)}
+              >
+                <User size={14} style={{ color: '#6b7280' }} />
+                {t.name}
+              </button>
+            ))
+          }
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CourseDropdown({
+  courses, value, onChange, show, onToggle,
+}: {
+  courses: Course[];
+  value: number | null;
+  onChange: (id: number | null) => void;
+  show: boolean;
+  onToggle: () => void;
+}) {
+  const selected = courses.find(c => c.id === value);
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          ...inputStyle,
+          textAlign: 'left',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <BookOpen size={14} style={{ color: '#9ca3af' }} />
+          <span style={{ color: selected ? '#111827' : '#9ca3af' }}>
+            {selected ? selected.title : "Оберіть курс (необов'язково)"}
+          </span>
+        </span>
+        <ChevronDown size={16} style={{ color: '#9ca3af' }} />
+      </button>
+      {show && (
+        <div style={dropdownContainerStyle}>
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            style={dropdownItemStyle(value === null)}
+          >
+            <span style={{ color: '#9ca3af' }}>— Без курсу —</span>
+          </button>
+          {courses.map(c => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onChange(c.id)}
+              style={dropdownItemStyle(c.id === value)}
+            >
+              {c.title}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CreateLessonModal({
@@ -106,11 +324,9 @@ export default function CreateLessonModal({
   const [makeupDate, setMakeupDate] = useState(initialDate || format(new Date(), 'yyyy-MM-dd'));
   const [makeupTime, setMakeupTime] = useState('10:00');
   const [makeupDuration, setMakeupDuration] = useState(60);
-  const [makeupCourseId, setMakeupCourseId] = useState<number | null>(null);
   const [makeupTeacherId, setMakeupTeacherId] = useState<number | null>(null);
   const [makeupLoading, setMakeupLoading] = useState(false);
   const [makeupError, setMakeupError] = useState<string | null>(null);
-  const [showMakeupCourseDropdown, setShowMakeupCourseDropdown] = useState(false);
   const [showMakeupTeacherDropdown, setShowMakeupTeacherDropdown] = useState(false);
 
   // ── Load shared data on open ──────────────────────────────────────────────────
@@ -198,12 +414,7 @@ export default function CreateLessonModal({
 
   // ── Derived values ────────────────────────────────────────────────────────────
 
-  const selectedCourse = courses.find(c => c.id === courseId);
-  const selectedTeacher = teachers.find(t => t.id === teacherId);
   const selectedStudents = students.filter(s => selectedStudentIds.includes(s.id));
-
-  const selectedMakeupCourse = courses.find(c => c.id === makeupCourseId);
-  const selectedMakeupTeacher = teachers.find(t => t.id === makeupTeacherId);
 
   const filteredAbsences = absences.filter(a => {
     const matchSearch = !absenceSearch ||
@@ -348,220 +559,6 @@ export default function CreateLessonModal({
   };
 
   if (!isOpen) return null;
-
-  // ─── Shared sub-components ─────────────────────────────────────────────────
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '0.625rem 1rem',
-    borderRadius: '0.5rem',
-    border: '1.5px solid #e5e7eb',
-    fontSize: '0.875rem',
-    color: '#111827',
-    outline: 'none',
-    boxSizing: 'border-box',
-    background: 'white',
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: 'block',
-    fontSize: '0.8125rem',
-    fontWeight: 500,
-    color: '#374151',
-    marginBottom: '0.5rem',
-  };
-
-  const dropdownContainerStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    marginTop: '0.25rem',
-    background: 'white',
-    border: '1px solid #e5e7eb',
-    borderRadius: '0.5rem',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-    maxHeight: '200px',
-    overflow: 'auto',
-    zIndex: 20,
-  };
-
-  const dropdownItemStyle = (active: boolean): React.CSSProperties => ({
-    width: '100%',
-    padding: '0.625rem 1rem',
-    border: 'none',
-    background: active ? '#eff6ff' : 'white',
-    textAlign: 'left',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    color: '#111827',
-    borderBottom: '1px solid #f3f4f6',
-    transition: 'background 0.15s ease',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  });
-
-  function TeacherDropdown({
-    value, onChange, show, onToggle,
-  }: {
-    value: number | null;
-    onChange: (id: number) => void;
-    show: boolean;
-    onToggle: () => void;
-  }) {
-    const selected = teachers.find(t => t.id === value);
-    return (
-      <div style={{ position: 'relative' }}>
-        <button
-          type="button"
-          onClick={onToggle}
-          style={{
-            ...inputStyle,
-            textAlign: 'left',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <User size={14} style={{ color: '#9ca3af' }} />
-            <span style={{ color: selected ? '#111827' : '#9ca3af' }}>
-              {selected ? selected.name : 'Оберіть викладача'}
-            </span>
-          </span>
-          <ChevronDown size={16} style={{ color: '#9ca3af' }} />
-        </button>
-        {show && (
-          <div style={dropdownContainerStyle}>
-            {teachers.length === 0
-              ? <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>Немає викладачів</div>
-              : teachers.map(t => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => onChange(t.id)}
-                  style={dropdownItemStyle(t.id === value)}
-                >
-                  <User size={14} style={{ color: '#6b7280' }} />
-                  {t.name}
-                </button>
-              ))
-            }
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  function CourseDropdown({
-    value, onChange, show, onToggle,
-  }: {
-    value: number | null;
-    onChange: (id: number | null) => void;
-    show: boolean;
-    onToggle: () => void;
-  }) {
-    const selected = courses.find(c => c.id === value);
-    return (
-      <div style={{ position: 'relative' }}>
-        <button
-          type="button"
-          onClick={onToggle}
-          style={{
-            ...inputStyle,
-            textAlign: 'left',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <BookOpen size={14} style={{ color: '#9ca3af' }} />
-            <span style={{ color: selected ? '#111827' : '#9ca3af' }}>
-              {selected ? selected.title : "Оберіть курс (необов'язково)"}
-            </span>
-          </span>
-          <ChevronDown size={16} style={{ color: '#9ca3af' }} />
-        </button>
-        {show && (
-          <div style={dropdownContainerStyle}>
-            <button
-              type="button"
-              onClick={() => onChange(null)}
-              style={dropdownItemStyle(value === null)}
-            >
-              <span style={{ color: '#9ca3af' }}>— Без курсу —</span>
-            </button>
-            {courses.map(c => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => onChange(c.id)}
-                style={dropdownItemStyle(c.id === value)}
-              >
-                {c.title}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  function DateTimeRow({
-    date, onDate, time, onTime, duration, onDuration,
-  }: {
-    date: string; onDate: (v: string) => void;
-    time: string; onTime: (v: string) => void;
-    duration: number; onDuration: (v: number) => void;
-  }) {
-    return (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
-        <div>
-          <label style={labelStyle}>Дата <span style={{ color: '#ef4444' }}>*</span></label>
-          <div style={{ position: 'relative' }}>
-            <Calendar size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-            <input
-              type="date"
-              value={date}
-              onChange={e => onDate(e.target.value)}
-              style={{ ...inputStyle, paddingLeft: '2.25rem' }}
-            />
-          </div>
-        </div>
-        <div>
-          <label style={labelStyle}>Час <span style={{ color: '#ef4444' }}>*</span></label>
-          <div style={{ position: 'relative' }}>
-            <Clock size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-            <input
-              type="time"
-              value={time}
-              onChange={e => onTime(e.target.value)}
-              style={{ ...inputStyle, paddingLeft: '2.25rem' }}
-            />
-          </div>
-        </div>
-        <div>
-          <label style={labelStyle}>Тривалість <span style={{ color: '#ef4444' }}>*</span></label>
-          <select
-            value={duration}
-            onChange={e => onDuration(Number(e.target.value))}
-            style={{ ...inputStyle, cursor: 'pointer' }}
-          >
-            <option value={30}>30 хв</option>
-            <option value={45}>45 хв</option>
-            <option value={60}>1 год</option>
-            <option value={90}>1.5 год</option>
-            <option value={120}>2 год</option>
-            <option value={180}>3 год</option>
-          </select>
-        </div>
-      </div>
-    );
-  }
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -711,6 +708,7 @@ export default function CreateLessonModal({
               <div style={{ marginBottom: '1.25rem' }}>
                 <label style={labelStyle}>Курс</label>
                 <CourseDropdown
+                  courses={courses}
                   value={courseId}
                   onChange={v => { setCourseId(v); setShowCourseDropdown(false); }}
                   show={showCourseDropdown}
@@ -722,6 +720,7 @@ export default function CreateLessonModal({
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={labelStyle}>Викладач <span style={{ color: '#ef4444' }}>*</span></label>
                 <TeacherDropdown
+                  teachers={teachers}
                   value={teacherId}
                   onChange={v => { setTeacherId(v); setShowTeacherDropdown(false); }}
                   show={showTeacherDropdown}
@@ -927,6 +926,7 @@ export default function CreateLessonModal({
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={labelStyle}>Викладач <span style={{ color: '#ef4444' }}>*</span></label>
                 <TeacherDropdown
+                  teachers={teachers}
                   value={makeupTeacherId}
                   onChange={v => { setMakeupTeacherId(v); setShowMakeupTeacherDropdown(false); }}
                   show={showMakeupTeacherDropdown}
