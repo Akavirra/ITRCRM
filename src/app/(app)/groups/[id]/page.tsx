@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { uk } from '@/i18n/uk';
@@ -102,6 +102,8 @@ export default function GroupDetailsPage() {
   const [studentSearch, setStudentSearch] = useState('');
   const [searchResults, setSearchResults] = useState<StudentSearch[]>([]);
   const [searching, setSearching] = useState(false);
+  const [addingStudentId, setAddingStudentId] = useState<number | null>(null);
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   
   // Edit group form
   const [editForm, setEditForm] = useState({
@@ -221,46 +223,63 @@ export default function GroupDetailsPage() {
     }
   }, [showEditGroupModal, group]);
 
-  // Завантажити список учнів при відкритті модального вікна
+  // Скидаємо стан пошуку при відкритті модального вікна
   useEffect(() => {
     if (showAddStudentModal) {
       setStudentSearch('');
       setSearchResults([]);
-      handleSearchStudents('');
     }
   }, [showAddStudentModal]);
 
-  const handleSearchStudents = async (query: string) => {
+  const handleSearchStudents = (query: string) => {
     setStudentSearch(query);
-    
-    setSearching(true);
-    try {
-      // Якщо є текст пошуку - шукаємо, інакше отримуємо всіх учнів
-      const searchParam = query.trim().length >= 2 ? `search=${encodeURIComponent(query)}` : '';
-      const res = await fetch(`/api/students?${searchParam}&includeInactive=true`);
-      const data = await res.json();
-      const existingIds = students.map(s => s.id);
-      setSearchResults((data.students || []).filter((s: StudentSearch) => !existingIds.includes(s.id)));
-    } catch (error) {
-      console.error('Failed to search students:', error);
-    } finally {
-      setSearching(false);
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      return;
     }
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/students?search=${encodeURIComponent(query)}&includeInactive=true`);
+        const data = await res.json();
+        const existingIds = students.map(s => s.id);
+        setSearchResults((data.students || []).filter((s: StudentSearch) => !existingIds.includes(s.id)));
+      } catch (error) {
+        console.error('Failed to search students:', error);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
   };
 
   const handleAddStudent = async (studentId: number) => {
+    setAddingStudentId(studentId);
     try {
       const res = await fetch(`/api/groups/${groupId}/students`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_id: studentId }),
       });
-      
+
       if (res.ok) {
-        const groupRes = await fetch(`/api/groups/${groupId}?withStudents=true`);
-        const groupData = await groupRes.json();
-        setStudents(groupData.students || []);
-        setGroup(groupData.group);
+        const result = await res.json();
+        const found = searchResults.find(s => s.id === studentId);
+        if (found) {
+          const newStudent: Student = {
+            id: found.id,
+            public_id: '',
+            full_name: found.full_name,
+            phone: found.phone || null,
+            parent_name: null,
+            parent_phone: null,
+            join_date: new Date().toISOString(),
+            photo: found.photo || null,
+            student_group_id: result.id,
+          };
+          setStudents(prev => [...prev, newStudent]);
+          setGroup(prev => prev ? { ...prev, students_count: (prev.students_count || 0) + 1 } : prev);
+        }
         setShowAddStudentModal(false);
         setStudentSearch('');
         setSearchResults([]);
@@ -270,6 +289,8 @@ export default function GroupDetailsPage() {
       }
     } catch (error) {
       console.error('Failed to add student:', error);
+    } finally {
+      setAddingStudentId(null);
     }
   };
 
@@ -909,71 +930,75 @@ export default function GroupDetailsPage() {
                 style={{ marginBottom: '1rem' }}
               />
               
-              {searching && <p style={{ color: 'var(--gray-500)', textAlign: 'center', padding: '1rem 0' }}>{uk.common.loading}</p>}
-              
-              {searchResults.length > 0 && (
-                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                  {searchResults.map((student) => (
-                    <div
-                      key={student.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '0.75rem',
-                        borderBottom: '1px solid var(--gray-100)',
-                        cursor: 'pointer',
-                      }}
-                      onClick={() => handleAddStudent(student.id)}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-50)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <div style={{ 
-                        width: '36px', 
-                        height: '36px', 
-                        borderRadius: '50%', 
-                        background: student.photo ? 'transparent' : 'var(--gray-100)', 
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        marginRight: '0.75rem',
-                        flexShrink: 0,
-                        overflow: 'hidden',
-                        color: 'var(--gray-600)',
-                      }}>
-                        {student.photo ? (
-                          <img 
-                            src={student.photo} 
-                            alt={student.full_name}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        ) : (
-                          student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)
-                        )}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ margin: 0, fontWeight: '500' }}>{student.full_name}</p>
-                        {student.phone && (
-                          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{student.phone}</p>
-                        )}
-                      </div>
-                      <button className="btn btn-primary btn-sm">Додати</button>
-                    </div>
-                  ))}
+              <style>{`@keyframes grp-spin { to { transform: rotate(360deg); } }`}</style>
+
+              {searching && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1rem 0', color: 'var(--gray-500)' }}>
+                  <span style={{ width: '16px', height: '16px', border: '2px solid var(--gray-300)', borderTopColor: 'var(--primary)', borderRadius: '50%', display: 'inline-block', animation: 'grp-spin 0.7s linear infinite' }} />
+                  Пошук...
                 </div>
               )}
-              
-              {studentSearch.length >= 2 && !searching && searchResults.length === 0 && (
+
+              {!searching && studentSearch.length < 2 && (
+                <p style={{ color: 'var(--gray-400)', textAlign: 'center', padding: '1.5rem 0', fontSize: '0.875rem' }}>
+                  Введіть мінімум 2 символи для пошуку
+                </p>
+              )}
+
+              {!searching && studentSearch.length >= 2 && searchResults.length === 0 && (
                 <p style={{ color: 'var(--gray-500)', textAlign: 'center', padding: '1rem 0' }}>
                   Учнів не знайдено
                 </p>
               )}
-              
-              {studentSearch.length < 2 && !searching && searchResults.length === 0 && studentSearch.length > 0 && (
-                <p style={{ color: 'var(--gray-500)', textAlign: 'center', padding: '1rem 0' }}>
-                  Введіть мінімум 2 символи для пошуку
-                </p>
+
+              {searchResults.length > 0 && (
+                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  {searchResults.map((student) => {
+                    const isAdding = addingStudentId === student.id;
+                    return (
+                      <div
+                        key={student.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '0.75rem',
+                          borderBottom: '1px solid var(--gray-100)',
+                        }}
+                      >
+                        <div style={{
+                          width: '36px', height: '36px', borderRadius: '50%',
+                          background: student.photo ? 'transparent' : 'var(--gray-100)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.75rem', fontWeight: '600', marginRight: '0.75rem',
+                          flexShrink: 0, overflow: 'hidden', color: 'var(--gray-600)',
+                        }}>
+                          {student.photo ? (
+                            <img src={student.photo} alt={student.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)
+                          )}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ margin: 0, fontWeight: '500' }}>{student.full_name}</p>
+                          {student.phone && (
+                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{student.phone}</p>
+                          )}
+                        </div>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          disabled={isAdding}
+                          onClick={() => handleAddStudent(student.id)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', opacity: isAdding ? 0.7 : 1, minWidth: '80px', justifyContent: 'center' }}
+                        >
+                          {isAdding ? (
+                            <span style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'grp-spin 0.7s linear infinite' }} />
+                          ) : null}
+                          Додати
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
