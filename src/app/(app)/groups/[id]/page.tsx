@@ -222,7 +222,7 @@ export default function GroupDetailsPage() {
         try {
           const regRes = await fetch(`/api/attendance?view=groupRegisterAllTime&groupId=${groupId}`);
           const regData = await regRes.json();
-          setRegisterData(regData || null);
+          setRegisterData((regData && Array.isArray(regData.months)) ? regData : null);
         } catch {
           // register data is non-critical
         } finally {
@@ -788,7 +788,7 @@ export default function GroupDetailsPage() {
               <div>
                 {registerLoading ? (
                   <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)', fontSize: '0.875rem' }}>Завантаження...</div>
-                ) : !registerData || registerData.months.length === 0 ? (
+                ) : !registerData || !registerData.months?.length ? (
                   <div style={{ padding: '2.5rem 1.25rem', textAlign: 'center', color: 'var(--gray-400)' }}>
                     <p style={{ margin: 0 }}>Немає занять</p>
                   </div>
