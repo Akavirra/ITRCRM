@@ -900,6 +900,54 @@ a:hover {
 }
 
 /* ============================================
+   SKELETON LOADER
+   ============================================ */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f2f5 25%, #e4e8ed 50%, #f0f2f5 75%);
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.6s infinite linear;
+  border-radius: 0.375rem;
+}
+
+/* Group avatar bubble animation */
+@keyframes avatar-pop {
+  0%   { opacity: 0; transform: scale(0.5) translateY(6px); }
+  60%  { opacity: 1; transform: scale(1.08) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes avatar-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-4px); }
+}
+
+.group-loader-avatar {
+  animation: avatar-pop 0.45s cubic-bezier(0.34,1.56,0.64,1) both,
+             avatar-float 2.8s ease-in-out 0.45s infinite;
+}
+.group-loader-avatar:nth-child(1) { animation-delay: 0s, 0.45s; }
+.group-loader-avatar:nth-child(2) { animation-delay: 0.12s, 0.57s; }
+.group-loader-avatar:nth-child(3) { animation-delay: 0.24s, 0.69s; }
+.group-loader-avatar:nth-child(4) { animation-delay: 0.36s, 0.81s; }
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.skeleton-card-enter {
+  animation: fade-in-up 0.4s ease both;
+}
+.skeleton-card-enter:nth-child(1) { animation-delay: 0.3s; }
+.skeleton-card-enter:nth-child(2) { animation-delay: 0.42s; }
+.skeleton-card-enter:nth-child(3) { animation-delay: 0.54s; }
+
+/* ============================================
    SMALL MOBILE STYLES (up to 480px)
    ============================================ */
 @media (max-width: 480px) {

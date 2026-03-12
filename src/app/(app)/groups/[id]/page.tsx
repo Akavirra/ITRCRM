@@ -508,8 +508,125 @@ export default function GroupDetailsPage() {
   if (loading || !user) {
     return (
       <Layout user={{ id: 0, name: '', email: '', role: 'teacher' }}>
-        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-500)' }}>
-          {uk.common.loading}
+        <div style={{ maxWidth: '100%' }}>
+
+          {/* Animated group icon */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem', paddingTop: '0.5rem' }}>
+            {/* Avatars */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', marginBottom: '0.875rem' }}>
+              {/* Back-left */}
+              <div className="group-loader-avatar" style={{ animationDelay: '0s, 0.45s', width: 36, height: 36, borderRadius: '50%', backgroundColor: '#bfdbfe', border: '2.5px solid white', boxShadow: '0 2px 6px rgba(59,130,246,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              {/* Center (larger, front) */}
+              <div className="group-loader-avatar" style={{ animationDelay: '0.12s, 0.57s', width: 48, height: 48, borderRadius: '50%', backgroundColor: '#3b82f6', border: '3px solid white', boxShadow: '0 4px 12px rgba(59,130,246,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              {/* Back-right */}
+              <div className="group-loader-avatar" style={{ animationDelay: '0.24s, 0.69s', width: 36, height: 36, borderRadius: '50%', backgroundColor: '#dbeafe', border: '2.5px solid white', boxShadow: '0 2px 6px rgba(59,130,246,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              {/* Far-right small */}
+              <div className="group-loader-avatar" style={{ animationDelay: '0.36s, 0.81s', width: 28, height: 28, borderRadius: '50%', backgroundColor: '#eff6ff', border: '2px solid white', boxShadow: '0 1px 4px rgba(59,130,246,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" strokeWidth="2.5">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+            </div>
+            {/* Label skeleton */}
+            <div className="skeleton" style={{ height: 13, width: 110, borderRadius: 6, marginBottom: 4 }} />
+          </div>
+
+          {/* Page header skeleton */}
+          <div className="skeleton-card-enter" style={{ animationDelay: '0.3s', marginBottom: '1.5rem' }}>
+            <div className="skeleton" style={{ height: 36, width: '55%', marginBottom: '1rem', borderRadius: 8 }} />
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <div className="skeleton" style={{ height: 22, width: 80, borderRadius: 999 }} />
+              <div className="skeleton" style={{ height: 22, width: 60, borderRadius: 999 }} />
+            </div>
+          </div>
+
+          {/* Two-column layout skeleton */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }}>
+
+            {/* Left column */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+              {/* Students card skeleton */}
+              <div className="card skeleton-card-enter" style={{ animationDelay: '0.42s', padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                    <div className="skeleton" style={{ width: 20, height: 20, borderRadius: '50%' }} />
+                    <div className="skeleton" style={{ height: 18, width: 120, borderRadius: 5 }} />
+                  </div>
+                  <div className="skeleton" style={{ height: 32, width: 84, borderRadius: 6 }} />
+                </div>
+                {[1, 2, 3].map(i => (
+                  <div key={i} style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                    <div className="skeleton" style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div className="skeleton" style={{ height: 14, width: `${55 + i * 12}%`, marginBottom: 6, borderRadius: 4 }} />
+                      <div className="skeleton" style={{ height: 12, width: '40%', borderRadius: 4 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Lessons card skeleton */}
+              <div className="card skeleton-card-enter" style={{ animationDelay: '0.54s', padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                    <div className="skeleton" style={{ width: 20, height: 20, borderRadius: 4 }} />
+                    <div className="skeleton" style={{ height: 18, width: 90, borderRadius: 5 }} />
+                  </div>
+                  <div className="skeleton" style={{ height: 14, width: 100, borderRadius: 4 }} />
+                </div>
+                <div style={{ padding: '1rem 1.25rem', display: 'flex', gap: 8 }}>
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} style={{ flex: 1 }}>
+                      <div className="skeleton" style={{ height: 10, borderRadius: 3, marginBottom: 4 }} />
+                      <div className="skeleton" style={{ height: 10, borderRadius: 3 }} />
+                    </div>
+                  ))}
+                </div>
+                {[1, 2].map(i => (
+                  <div key={i} style={{ padding: '0.5rem 1.25rem', borderTop: '1px solid var(--gray-100)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div className="skeleton" style={{ height: 13, width: 120, borderRadius: 4 }} />
+                    <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+                      {[1,2,3,4,5].map(j => (
+                        <div key={j} className="skeleton" style={{ width: 18, height: 18, borderRadius: '50%' }} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+
+            {/* Right column — details card */}
+            <div className="card skeleton-card-enter" style={{ animationDelay: '0.42s', padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                <div className="skeleton" style={{ width: 20, height: 20, borderRadius: '50%' }} />
+                <div className="skeleton" style={{ height: 18, width: 70, borderRadius: 5 }} />
+              </div>
+              <div style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                {[100, 80, 90, 75, 60].map((w, i) => (
+                  <div key={i} style={{ padding: '0.875rem', backgroundColor: 'var(--gray-50)', borderRadius: '0.5rem', border: '1px solid var(--gray-200)' }}>
+                    <div className="skeleton" style={{ height: 10, width: '45%', marginBottom: 8, borderRadius: 3 }} />
+                    <div className="skeleton" style={{ height: 16, width: `${w}%`, borderRadius: 4 }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
         </div>
       </Layout>
     );
