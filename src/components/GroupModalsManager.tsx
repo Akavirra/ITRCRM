@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import DraggableModal from './DraggableModal';
 import { formatDateKyiv } from '@/lib/date-utils';
 import { useGroupModals } from './GroupModalsContext';
@@ -55,6 +55,9 @@ export default function GroupModalsManager() {
   const [availableStudents, setAvailableStudents] = useState<Record<number, AvailableStudent[]>>({});
   const [showAddStudentModal, setShowAddStudentModal] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loadingAvailableStudents, setLoadingAvailableStudents] = useState<Record<number, boolean>>({});
+  const [addingStudents, setAddingStudents] = useState<Set<number>>(new Set());
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setIsHydrated(true);
@@ -99,8 +102,9 @@ export default function GroupModalsManager() {
   };
 
   const loadAvailableStudents = async (groupId: number, search: string = '') => {
+    setLoadingAvailableStudents(prev => ({ ...prev, [groupId]: true }));
     try {
-      const params = new URLSearchParams({ withGroupCount: 'true' });
+      const params = new URLSearchParams();
       if (search) params.append('search', search);
       const response = await fetch(`/api/students?${params}`);
       if (response.ok) {
@@ -112,6 +116,8 @@ export default function GroupModalsManager() {
       }
     } catch (error) {
       console.error('Error loading available students:', error);
+    } finally {
+      setLoadingAvailableStudents(prev => ({ ...prev, [groupId]: false }));
     }
   };
 
@@ -143,27 +149,45 @@ export default function GroupModalsManager() {
   };
 
   const handleAddStudent = async (groupId: number, studentId: number) => {
+    setAddingStudents(prev => new Set(prev).add(studentId));
     try {
       const res = await fetch(`/api/groups/${groupId}/students`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_id: studentId }),
       });
-      
+
       if (res.ok) {
-        const response = await fetch(`/api/groups/${groupId}?withStudents=true`);
-        if (response.ok) {
-          const data = await response.json();
-          setGroupData(prev => ({ ...prev, [groupId]: data }));
-          // Remove added student from available list
+        const result = await res.json();
+        const studentToAdd = availableStudents[groupId]?.find(s => s.id === studentId);
+        if (studentToAdd) {
+          // Optimistic update — no re-fetch needed
+          const newStudent: GroupStudent = {
+            id: studentId,
+            public_id: studentToAdd.public_id,
+            full_name: studentToAdd.full_name,
+            phone: null,
+            join_date: new Date().toISOString(),
+            photo: null,
+            student_group_id: result.id,
+          };
+          setGroupData(prev => ({
+            ...prev,
+            [groupId]: {
+              ...prev[groupId],
+              students: [...(prev[groupId]?.students || []), newStudent],
+            },
+          }));
           setAvailableStudents(prev => ({
             ...prev,
-            [groupId]: (prev[groupId] || []).filter(s => s.id !== studentId)
+            [groupId]: (prev[groupId] || []).filter(s => s.id !== studentId),
           }));
         }
       }
     } catch (error) {
       console.error('Error adding student:', error);
+    } finally {
+      setAddingStudents(prev => { const s = new Set(prev); s.delete(studentId); return s; });
     }
   };
 
@@ -173,15 +197,19 @@ export default function GroupModalsManager() {
     await loadAvailableStudents(groupId);
   };
 
-  const handleSearchChange = async (groupId: number, query: string) => {
+  const handleSearchChange = (groupId: number, query: string) => {
     setSearchQuery(query);
-    await loadAvailableStudents(groupId, query);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      loadAvailableStudents(groupId, query);
+    }, 300);
   };
 
   if (!isHydrated || openModals.length === 0) return null;
 
   return (
     <>
+      <style>{`@keyframes gmm-spin { to { transform: rotate(360deg); } }`}</style>
       {openModals.map((modal) => {
         if (!modal.isOpen) return null;
         const data = groupData[modal.id];
@@ -252,8 +280,12 @@ export default function GroupModalsManager() {
                       <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#047857' }}>{data?.students?.length || 0} студентів</span>
                     </div>
                   </div>
-                  <button onClick={() => openAddStudentModal(modal.id)} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 0.75rem', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '0.375rem', fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  <button onClick={() => openAddStudentModal(modal.id)} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 0.75rem', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '0.375rem', fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer', opacity: loadingAvailableStudents[modal.id] ? 0.7 : 1 }}>
+                    {loadingAvailableStudents[modal.id] ? (
+                      <span style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'gmm-spin 0.7s linear infinite', flexShrink: 0 }} />
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                    )}
                     Додати
                   </button>
                 </div>
@@ -279,21 +311,34 @@ export default function GroupModalsManager() {
 
                     {/* Students List with Add Buttons */}
                     <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                      {availableStudents[modal.id]?.length === 0 ? (
+                      {loadingAvailableStudents[modal.id] && !availableStudents[modal.id] ? (
+                        <p style={{ color: '#0369a1', textAlign: 'center', fontSize: '0.875rem', margin: '0.5rem 0' }}>Завантаження...</p>
+                      ) : availableStudents[modal.id]?.length === 0 ? (
                         <p style={{ color: '#0369a1', textAlign: 'center', fontSize: '0.875rem', margin: '0.5rem 0' }}>Немає доступних учнів</p>
                       ) : (
-                        availableStudents[modal.id]?.map((student) => (
-                          <div key={student.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', backgroundColor: 'white', borderRadius: '0.375rem', border: '1px solid #bfdbfe' }}>
-                            <div>
-                              <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1e293b' }}>{student.full_name}</span>
-                              <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>#{student.public_id}</span>
+                        availableStudents[modal.id]?.map((student) => {
+                          const isAdding = addingStudents.has(student.id);
+                          return (
+                            <div key={student.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', backgroundColor: 'white', borderRadius: '0.375rem', border: '1px solid #bfdbfe' }}>
+                              <div>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1e293b' }}>{student.full_name}</span>
+                                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>#{student.public_id}</span>
+                              </div>
+                              <button
+                                onClick={() => handleAddStudent(modal.id, student.id)}
+                                disabled={isAdding}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.375rem 0.625rem', backgroundColor: '#22c55e', color: 'white', border: 'none', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 500, cursor: isAdding ? 'default' : 'pointer', opacity: isAdding ? 0.7 : 1 }}
+                              >
+                                {isAdding ? (
+                                  <span style={{ width: '12px', height: '12px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'gmm-spin 0.7s linear infinite' }} />
+                                ) : (
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+                                )}
+                                Додати
+                              </button>
                             </div>
-                            <button onClick={() => handleAddStudent(modal.id, student.id)} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.375rem 0.625rem', backgroundColor: '#22c55e', color: 'white', border: 'none', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
-                              Додати
-                            </button>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   </div>
