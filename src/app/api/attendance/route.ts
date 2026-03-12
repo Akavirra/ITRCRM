@@ -73,7 +73,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (view === 'groupRegisterAllTime' && groupId) {
-      const data = await getGroupAllTimeRegister(groupId);
+      const includeFuture = searchParams.get('includeFuture') === 'true';
+      const data = await getGroupAllTimeRegister(groupId, { includeFuture });
       return NextResponse.json({ data });
     }
 

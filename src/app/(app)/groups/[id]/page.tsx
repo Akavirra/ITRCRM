@@ -220,9 +220,10 @@ export default function GroupDetailsPage() {
 
         setRegisterLoading(true);
         try {
-          const regRes = await fetch(`/api/attendance?view=groupRegisterAllTime&groupId=${groupId}`);
+          const regRes = await fetch(`/api/attendance?view=groupRegisterAllTime&groupId=${groupId}&includeFuture=true`);
           const regData = await regRes.json();
-          setRegisterData((regData && Array.isArray(regData.months)) ? regData : null);
+          const parsed = regData?.data ?? regData;
+          setRegisterData((parsed && Array.isArray(parsed.months)) ? parsed : null);
         } catch {
           // register data is non-critical
         } finally {

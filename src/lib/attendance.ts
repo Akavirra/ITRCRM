@@ -1372,18 +1372,19 @@ export interface GroupAllTimeRegister {
   students: GroupAllTimeStudentRow[];
 }
 
-export async function getGroupAllTimeRegister(groupId: number): Promise<GroupAllTimeRegister> {
+export async function getGroupAllTimeRegister(groupId: number, options: { includeFuture?: boolean } = {}): Promise<GroupAllTimeRegister> {
   // Get group title
   const groupRow = await get<{ title: string }>(
     `SELECT title FROM groups WHERE id = $1`,
     [groupId]
   );
 
+  const dateFilter = options.includeFuture ? '' : 'AND l.lesson_date <= CURRENT_DATE';
   const lessons = await all<{ lesson_id: number; lesson_date: string; topic: string | null; teacher_name: string | null }>(
     `SELECT l.id as lesson_id, l.lesson_date, l.topic, t.name as teacher_name
      FROM lessons l
      LEFT JOIN users t ON l.teacher_id = t.id
-     WHERE l.group_id = $1 AND l.status != 'canceled' AND l.lesson_date <= CURRENT_DATE
+     WHERE l.group_id = $1 AND l.status != 'canceled' ${dateFilter}
      ORDER BY l.lesson_date`,
     [groupId]
   );
