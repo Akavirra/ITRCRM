@@ -141,9 +141,9 @@ export default function GroupsPage() {
 
         // Fetch teachers for filter (admin only)
         if (authData.user.role === 'admin') {
-          const usersRes = await fetch('/api/users');
-          const usersData = await usersRes.json();
-          setTeachers((usersData.users || []).filter((u: User) => u.role === 'teacher'));
+          const teachersRes = await fetch('/api/teachers');
+          const teachersData = await teachersRes.json();
+          setTeachers(Array.isArray(teachersData) ? teachersData : []);
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);
