@@ -508,17 +508,26 @@ export async function DELETE(
     return NextResponse.json({ error: 'Заняття не знайдено' }, { status: 404 });
   }
   
+  // If this is a makeup lesson, revert original absences back to 'absent'
+  if (lesson.is_makeup) {
+    await run(
+      `UPDATE attendance SET status = 'absent', makeup_lesson_id = NULL
+       WHERE makeup_lesson_id = $1`,
+      [lessonId]
+    );
+  }
+
   // Check for attendance records - for individual lessons we can delete them too
   const attendanceCount = await get<{ count: number }>(
     `SELECT COUNT(*) as count FROM attendance WHERE lesson_id = $1`,
     [lessonId]
   );
-  
+
   if (attendanceCount && attendanceCount.count > 0) {
     // Delete attendance records first (for individual lessons)
     await run(`DELETE FROM attendance WHERE lesson_id = $1`, [lessonId]);
   }
-  
+
   await run(`DELETE FROM lessons WHERE id = $1`, [lessonId]);
   
   return NextResponse.json({ message: 'Заняття видалено' });
