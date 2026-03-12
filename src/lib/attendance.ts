@@ -978,7 +978,7 @@ export async function getGlobalMonthlyGroupedStats(
             g.weekly_day, g.start_time, g.duration_minutes
      FROM groups g
      LEFT JOIN courses c ON g.course_id = c.id
-     LEFT JOIN teachers t ON g.teacher_id = t.id
+     LEFT JOIN users t ON g.teacher_id = t.id
      WHERE g.id IN (
        SELECT DISTINCT l.group_id FROM lessons l
        JOIN groups g ON l.group_id = g.id
@@ -1099,7 +1099,7 @@ export async function getGlobalMonthlyGroupedStats(
         s.id as student_id, s.full_name as student_name, a.status as att_status
        FROM lessons l
        LEFT JOIN courses c ON l.course_id = c.id
-       LEFT JOIN teachers t ON l.teacher_id = t.id
+       LEFT JOIN users t ON l.teacher_id = t.id
        JOIN attendance a ON a.lesson_id = l.id
        JOIN students s ON a.student_id = s.id
        WHERE ${iWhere}
@@ -1190,8 +1190,8 @@ export async function getGlobalMonthlyLessonRecords(
      FROM lessons l
      JOIN groups g ON l.group_id = g.id
      LEFT JOIN courses c ON g.course_id = c.id
-     LEFT JOIN teachers lt ON l.teacher_id = lt.id
-     LEFT JOIN teachers gt ON g.teacher_id = gt.id
+     LEFT JOIN users lt ON l.teacher_id = lt.id
+     LEFT JOIN users gt ON g.teacher_id = gt.id
      JOIN student_groups sg ON sg.group_id = g.id AND sg.is_active = TRUE
      JOIN students s ON sg.student_id = s.id AND s.is_active = TRUE
      LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = s.id
@@ -1227,7 +1227,7 @@ export async function getGlobalMonthlyLessonRecords(
         a.status
        FROM lessons l
        LEFT JOIN courses c ON l.course_id = c.id
-       LEFT JOIN teachers t ON l.teacher_id = t.id
+       LEFT JOIN users t ON l.teacher_id = t.id
        JOIN attendance a ON a.lesson_id = l.id
        JOIN students s ON a.student_id = s.id
        WHERE l.group_id IS NULL AND l.status != 'canceled'
@@ -1278,7 +1278,7 @@ export async function getGroupMonthlyRegister(
   const lessons = await all<{ lesson_id: number; lesson_date: string; topic: string | null; teacher_name: string | null }>(
     `SELECT l.id as lesson_id, l.lesson_date, l.topic, t.name as teacher_name
      FROM lessons l
-     LEFT JOIN teachers t ON l.teacher_id = t.id
+     LEFT JOIN users t ON l.teacher_id = t.id
      WHERE l.group_id = $1
        AND l.status != 'canceled'
        AND EXTRACT(YEAR FROM l.lesson_date) = $2
@@ -1369,7 +1369,7 @@ export async function getGroupAllTimeRegister(groupId: number): Promise<GroupAll
   const lessons = await all<{ lesson_id: number; lesson_date: string; topic: string | null; teacher_name: string | null }>(
     `SELECT l.id as lesson_id, l.lesson_date, l.topic, t.name as teacher_name
      FROM lessons l
-     LEFT JOIN teachers t ON l.teacher_id = t.id
+     LEFT JOIN users t ON l.teacher_id = t.id
      WHERE l.group_id = $1 AND l.status != 'canceled' AND l.lesson_date <= CURRENT_DATE
      ORDER BY l.lesson_date`,
     [groupId]
