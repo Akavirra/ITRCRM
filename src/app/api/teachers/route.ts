@@ -84,6 +84,15 @@ export async function POST(req: NextRequest) {
       retries++;
     }
 
+    // Check if email is already taken
+    const emailConflict = await get<{ role: string }>('SELECT role FROM users WHERE email = $1', [email.trim().toLowerCase()]);
+    if (emailConflict) {
+      if (emailConflict.role === 'admin') {
+        return badRequest('Цей email вже використовується адміністратором. Вкажіть інший email для викладача.');
+      }
+      return badRequest('Викладач з таким email вже існує');
+    }
+
     // Handle photo - upload to Cloudinary if base64
     let photoUrl = null;
     if (photo && photo.startsWith('data:')) {
