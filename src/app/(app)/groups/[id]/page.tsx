@@ -280,9 +280,7 @@ export default function GroupDetailsPage() {
           setStudents(prev => [...prev, newStudent]);
           setGroup(prev => prev ? { ...prev, students_count: (prev.students_count || 0) + 1 } : prev);
         }
-        setShowAddStudentModal(false);
-        setStudentSearch('');
-        setSearchResults([]);
+        setSearchResults(prev => prev.filter(s => s.id !== studentId));
       } else {
         const data = await res.json();
         alert(data.error || 'Помилка додавання учня');
