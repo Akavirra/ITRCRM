@@ -136,6 +136,10 @@ export default function LessonModalsManager() {
   // Refs for editing state - used by polling to avoid stale closures
   const editingTopicRef = useRef<Record<number, boolean>>({});
   const editingNotesRef = useRef<Record<number, boolean>>({});
+  // Refs for current state values - prevent stale closures in polling intervals
+  const lessonDataRef = useRef<Record<number, LessonData>>({});
+  const lessonTopicRef = useRef<Record<number, string>>({});
+  const lessonNotesRef = useRef<Record<number, string>>({});
   const [showActionsMenu, setShowActionsMenu] = useState<Record<number, boolean>>({});
   const [teachers, setTeachers] = useState<Record<number, Teacher[]>>({});
   const [showTeacherSelect, setShowTeacherSelect] = useState<Record<number, boolean>>({});
@@ -251,6 +255,11 @@ export default function LessonModalsManager() {
     setIsHydrated(true);
   }, []);
 
+  // Keep refs in sync with state so polling intervals always read current values
+  useEffect(() => { lessonDataRef.current = lessonData; }, [lessonData]);
+  useEffect(() => { lessonTopicRef.current = lessonTopic; }, [lessonTopic]);
+  useEffect(() => { lessonNotesRef.current = lessonNotes; }, [lessonNotes]);
+
   const loadLessonData = useCallback(async (lessonId: number) => {
     // Validate lessonId before making request
     if (!lessonId || typeof lessonId !== 'number' || isNaN(lessonId)) {
@@ -298,8 +307,13 @@ export default function LessonModalsManager() {
             notesSetAt: data.lesson.notesSetAt,
           }
         });
-        setLessonTopic(prev => ({ ...prev, [lessonId]: data.lesson.topic || '' }));
-        setLessonNotes(prev => ({ ...prev, [lessonId]: data.lesson.notes || '' }));
+        // Only update the editable fields if user is not actively editing them
+        if (!editingTopicRef.current[lessonId]) {
+          setLessonTopic(prev => ({ ...prev, [lessonId]: data.lesson.topic || '' }));
+        }
+        if (!editingNotesRef.current[lessonId]) {
+          setLessonNotes(prev => ({ ...prev, [lessonId]: data.lesson.notes || '' }));
+        }
         
         // Update change history if available
         if (data.changeHistory) {
@@ -314,73 +328,37 @@ export default function LessonModalsManager() {
     }
   }, [updateModalState]);
 
-  // Auto-refresh lesson data every 10 seconds when modal is open
-  // Use refs to avoid recreating interval
-  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Keep loadLessonData ref in sync for use in effects/intervals
   const loadLessonDataRef = useRef(loadLessonData);
-  
-  // Keep ref in sync
   useEffect(() => {
     loadLessonDataRef.current = loadLessonData;
   }, [loadLessonData]);
-  
-  useEffect(() => {
-    const openLessonIds = openModals
-      .filter(modal => modal.isOpen && modal.id && typeof modal.id === 'number')
-      .map(modal => modal.id as number);
-    
-    if (openLessonIds.length === 0) {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-        refreshIntervalRef.current = null;
-      }
-      return;
-    }
-    
-    // Don't set up interval if already running
-    if (refreshIntervalRef.current) return;
-    
-    refreshIntervalRef.current = setInterval(() => {
-      openLessonIds.forEach(lessonId => {
-        loadLessonDataRef.current(lessonId);
-      });
-    }, 10000); // Refresh every 10 seconds
-    
-    return () => {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-        refreshIntervalRef.current = null;
-      }
-    };
-  }, [openModals.length > 0]);
 
+  // Track which lesson IDs have been fetched since opening (reset when modal closes)
+  const fetchedOnOpenRef = useRef<Set<number>>(new Set());
+
+  // When a modal opens, always fetch fresh data from API immediately
+  // (avoids showing stale localStorage data on open)
   useEffect(() => {
     openModals.forEach(modal => {
-      // Validate modal has valid id
-      if (!modal.isOpen || !modal.id || typeof modal.id !== 'number') {
-        return;
-      }
-      
-      // Try to fetch fresh data from API when modal opens
-      // but don't block if we already have modalData
-      const hasModalData = modal.lessonData && modal.lessonData.groupTitle;
-      const hasApiData = lessonData[modal.id] && lessonData[modal.id].groupTitle;
-      
-      if (!hasModalData && !hasApiData && !loadingRef.current[modal.id]) {
-        loadLessonData(modal.id);
-      }
-      // Initialize topic from stored modal data or API data
-      const topicSource = modal.lessonData?.topic ?? lessonData[modal.id]?.topic;
-      if (topicSource !== undefined && !lessonTopic[modal.id]) {
-        setLessonTopic(prev => ({ ...prev, [modal.id]: topicSource || '' }));
-      }
-      
-      // Load attendance if not loaded
-      if (!attendance[modal.id] && !attendanceLoading[modal.id]) {
+      if (!modal.isOpen || !modal.id || typeof modal.id !== 'number') return;
+
+      if (!fetchedOnOpenRef.current.has(modal.id) && !loadingRef.current[modal.id]) {
+        fetchedOnOpenRef.current.add(modal.id);
+        loadLessonDataRef.current(modal.id);
         loadAttendance(modal.id);
       }
     });
-  }, [openModals, lessonData, lessonTopic, loadLessonData, attendance, attendanceLoading]);
+
+    // Remove IDs for closed modals so they re-fetch when reopened
+    const openIds = new Set(
+      openModals.filter(m => m.isOpen && m.id).map(m => m.id as number)
+    );
+    for (const id of Array.from(fetchedOnOpenRef.current)) {
+      if (!openIds.has(id)) fetchedOnOpenRef.current.delete(id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openModals]);
 
   const handleClose = (lessonId: number) => {
     closeLessonModal(lessonId);
@@ -543,35 +521,32 @@ export default function LessonModalsManager() {
                 const serverTopic = serverLesson.topic || '';
                 const serverNotes = serverLesson.notes || '';
                 
-                // Get current local state
-                const currentLesson = lessonData[modal.id];
-                const localTopic = lessonTopic[modal.id] ?? '';
-                const localNotes = lessonNotes[modal.id] ?? '';
+                // Read current values from refs (avoids stale closure problem)
+                const currentLesson = lessonDataRef.current[modal.id];
+                const localTopic = lessonTopicRef.current[modal.id] ?? '';
+                const localNotes = lessonNotesRef.current[modal.id] ?? '';
                 const currentLocalTopic = currentLesson?.topic || '';
                 const currentLocalNotes = currentLesson?.notes || '';
-                
+
                 // Update lesson data (always update to get latest status, teacher info, etc.)
                 setLessonData(prev => ({ ...prev, [modal.id]: serverLesson }));
-                
-                // Only update modal state with fresh server data if user is NOT editing topic/notes
-                // This prevents overwriting user's unsaved changes
+
+                // Only update modal state if user is NOT editing
                 const isEditing = editingTopicRef.current[modal.id] || editingNotesRef.current[modal.id];
-                
                 if (!isEditing) {
-                  updateModalState(modal.id, { 
+                  updateModalState(modal.id, {
                     lessonData: {
                       ...modal.lessonData,
                       ...serverLesson,
                     }
                   });
                 }
-                
-                // Only update local input state if user is not editing
-                // (values match what was last known from server)
-                if (!editingTopicRef.current[modal.id] && localTopic === currentLocalTopic && serverTopic !== currentLocalTopic) {
+
+                // Update local input state only when not editing and server has newer value
+                if (!editingTopicRef.current[modal.id] && localTopic === currentLocalTopic && serverTopic !== localTopic) {
                   setLessonTopic(prev => ({ ...prev, [modal.id]: serverTopic }));
                 }
-                if (!editingNotesRef.current[modal.id] && localNotes === currentLocalNotes && serverNotes !== currentLocalNotes) {
+                if (!editingNotesRef.current[modal.id] && localNotes === currentLocalNotes && serverNotes !== localNotes) {
                   setLessonNotes(prev => ({ ...prev, [modal.id]: serverNotes }));
                 }
                 
