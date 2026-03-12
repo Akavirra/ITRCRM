@@ -620,7 +620,7 @@ export default function GroupDetailsPage() {
                       </div>
                       {isAdmin && (
                         <button
-                          onClick={() => handleRemoveStudent(student.student_group_id, student.full_name)}
+                          onClick={(e) => { e.stopPropagation(); handleRemoveStudent(student.student_group_id, student.full_name); }}
                           style={{
                             padding: '0.375rem 0.625rem',
                             background: 'var(--gray-100)',
