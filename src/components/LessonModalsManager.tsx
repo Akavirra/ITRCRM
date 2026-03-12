@@ -406,7 +406,6 @@ export default function LessonModalsManager() {
       if (res.ok) {
         const data = await res.json();
         setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
-        // Also update local topic state
         setLessonTopic(prev => ({ ...prev, [lessonId]: newTopic }));
         updateModalState(lessonId, {
           lessonData: {
@@ -417,6 +416,9 @@ export default function LessonModalsManager() {
             topicSetAt: data.lesson.topicSetAt,
           }
         });
+        if (data.changeHistory) {
+          setChangeHistory(prev => ({ ...prev, [lessonId]: data.changeHistory }));
+        }
         window.dispatchEvent(new Event('itrobot-lesson-updated'));
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -475,6 +477,9 @@ export default function LessonModalsManager() {
             notesSetAt: data.lesson.notesSetAt,
           }
         });
+        if (data.changeHistory) {
+          setChangeHistory(prev => ({ ...prev, [lessonId]: data.changeHistory }));
+        }
         window.dispatchEvent(new Event('itrobot-lesson-updated'));
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -553,7 +558,12 @@ export default function LessonModalsManager() {
                 if (!editingNotesRef.current[modal.id] && localNotes === currentLocalNotes && serverNotes !== localNotes) {
                   setLessonNotes(prev => ({ ...prev, [modal.id]: serverNotes }));
                 }
-                
+
+                // Update change history (used by "Інформація про передачу даних")
+                if (data.changeHistory) {
+                  setChangeHistory(prev => ({ ...prev, [modal.id]: data.changeHistory }));
+                }
+
                 // Refresh attendance data
                 loadAttendance(modal.id);
               }

@@ -415,15 +415,6 @@ export async function PATCH(
       [lessonId]
     );
     
-    console.log('API Debug - lessonWithDetails:', updatedLessonRaw);
-  
-  // Debug telegram_user_info field
-  if ((updatedLessonRaw as any)?.telegram_user_info) {
-    console.log('API Debug - telegram_user_info found:', (updatedLessonRaw as any).telegram_user_info);
-  } else {
-    console.log('API Debug - telegram_user_info is null/undefined');
-  }
-  
     // Transform to camelCase format - handle null teacher_id and date conversion
     const formatTimestamp = (timestamp: string | null): string | null => {
       if (!timestamp) return null;
@@ -453,9 +444,12 @@ export async function PATCH(
       telegramUserInfo: (updatedLessonRaw as any).telegram_user_info,
     } : null;
     
+    const updatedChangeHistory = await getLessonChangeHistory(lessonId);
+
     return NextResponse.json({
       message: 'Заняття оновлено',
       lesson: updatedLesson,
+      changeHistory: updatedChangeHistory || [],
     });
   } catch (error) {
     console.error('Update lesson error:', error);

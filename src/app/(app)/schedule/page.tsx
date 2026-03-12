@@ -177,7 +177,7 @@ export default function SchedulePage() {
 
   const handleGroupClick = (e: React.MouseEvent, lesson: Lesson) => {
     e.stopPropagation();
-    openGroupModal(lesson.groupId, lesson.groupTitle);
+    if (lesson.groupId) openGroupModal(lesson.groupId, lesson.groupTitle);
   };
 
   const handleCourseClick = (e: React.MouseEvent, lesson: Lesson) => {
