@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
+import { useLessonModals } from '@/components/LessonModalsContext';
 
 type AttendanceStatus = 'present' | 'absent' | 'makeup_planned' | 'makeup_done';
 
@@ -186,8 +187,27 @@ const selectStyle: React.CSSProperties = {
   fontSize: '0.875rem', color: '#374151', backgroundColor: 'white', cursor: 'pointer',
 };
 
+const OpenLessonBtn = ({ lessonId }: { lessonId: number }) => {
+  const { openLessonModal } = useLessonModals();
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); openLessonModal(lessonId, `Заняття #${lessonId}`, undefined); }}
+      style={{ padding:'0.375rem', borderRadius:'0.5rem', backgroundColor:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', display:'flex', alignItems:'center' }}
+      onMouseEnter={e => { e.currentTarget.style.backgroundColor='#eef2ff'; e.currentTarget.style.color='#6366f1'; }}
+      onMouseLeave={e => { e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color='#94a3b8'; }}
+      title="Відкрити в модальному вікні"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+    </button>
+  );
+};
+
 export default function AttendancePage() {
   const router = useRouter();
+  const { openLessonModal } = useLessonModals();
 
   const [user,          setUser]          = useState<{ id:number; name:string; email:string; role:'admin'|'teacher' }|null>(null);
   const [year,          setYear]          = useState(now.getFullYear());
@@ -744,7 +764,11 @@ export default function AttendancePage() {
                         <tr style={{ backgroundColor:'#fafafa', borderBottom:'1px solid #f3f4f6' }}>
                           <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', position:'sticky', left:0, backgroundColor:'#fafafa', minWidth:160, whiteSpace:'nowrap' }}>Учень</th>
                           {g.lessons.map(l => (
-                            <th key={l.lesson_id} style={{ padding:'0.375rem 0.625rem', textAlign:'center', fontWeight:600, color:'#374151', whiteSpace:'nowrap' }} title={l.topic||undefined}>
+                            <th key={l.lesson_id} style={{ padding:'0.375rem 0.625rem', textAlign:'center', fontWeight:600, color:'#374151', whiteSpace:'nowrap', cursor:'pointer' }}
+                              title={l.topic ? `${l.topic} — відкрити заняття` : 'Відкрити заняття'}
+                              onClick={() => openLessonModal(l.lesson_id, `Заняття #${l.lesson_id}`, undefined)}
+                              onMouseEnter={e => (e.currentTarget.style.backgroundColor='#eef2ff')}
+                              onMouseLeave={e => (e.currentTarget.style.backgroundColor='')}>
                               <div style={{ fontSize:'0.65rem', color:'#9ca3af', fontWeight:500 }}>{getWeekdayShort(l.lesson_date)}</div>
                               <div style={{ fontSize:'0.75rem' }}>{formatDateShort(l.lesson_date)}</div>
                               {l.topic && <div style={{ fontSize:'0.55rem', color:'#9ca3af', fontWeight:400, maxWidth:44, overflow:'hidden', textOverflow:'ellipsis' }}>{l.topic}</div>}
@@ -797,6 +821,7 @@ export default function AttendancePage() {
                     <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Викладач</th>
                     <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem' }}>Учні та відвідуваність</th>
                     <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem' }}>Тема</th>
+                    <th style={{ padding:'0.625rem 0.5rem', width:36 }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -827,6 +852,9 @@ export default function AttendancePage() {
                       </td>
                       <td style={{ padding:'0.75rem 1.25rem', color:'#6b7280', fontSize:'0.8125rem', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={il.topic||undefined}>
                         {il.topic||<span style={{ color:'#9ca3af' }}>—</span>}
+                      </td>
+                      <td style={{ padding:'0.75rem 0.5rem' }}>
+                        <OpenLessonBtn lessonId={il.lesson_id} />
                       </td>
                     </tr>
                   ))}
@@ -904,7 +932,11 @@ export default function AttendancePage() {
                           <tr style={{ backgroundColor:'#f9fafb' }}>
                             <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', borderBottom:'2px solid #e5e7eb', position:'sticky', left:0, backgroundColor:'#f9fafb', minWidth:160, whiteSpace:'nowrap' }}>Учень</th>
                             {m.lessons.map(l => (
-                              <th key={l.lesson_id} style={{ padding:'0.375rem 0.625rem', textAlign:'center', fontWeight:600, color:'#374151', borderBottom:'2px solid #e5e7eb', whiteSpace:'nowrap', minWidth:44 }} title={[l.topic, l.teacher_name].filter(Boolean).join(' · ') || undefined}>
+                              <th key={l.lesson_id} style={{ padding:'0.375rem 0.625rem', textAlign:'center', fontWeight:600, color:'#374151', borderBottom:'2px solid #e5e7eb', whiteSpace:'nowrap', minWidth:44, cursor:'pointer' }}
+                                title={[l.topic, l.teacher_name].filter(Boolean).join(' · ') || 'Відкрити заняття'}
+                                onClick={() => openLessonModal(l.lesson_id, `Заняття #${l.lesson_id}`, undefined)}
+                                onMouseEnter={e => (e.currentTarget.style.backgroundColor='#eef2ff')}
+                                onMouseLeave={e => (e.currentTarget.style.backgroundColor='')}>
                                 <div style={{ fontSize:'0.6rem', color:'#9ca3af', fontWeight:500 }}>{getWeekdayShort(l.lesson_date)}</div>
                                 <div>{formatDateShort(l.lesson_date)}</div>
                                 {l.topic && <div style={{ fontSize:'0.55rem', color:'#9ca3af', fontWeight:400, maxWidth:44, overflow:'hidden', textOverflow:'ellipsis' }}>{l.topic}</div>}
@@ -1025,6 +1057,7 @@ export default function AttendancePage() {
               <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151' }}>Учень</th>
               <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151' }}>Тема</th>
               <th style={{ padding:'0.75rem 1.25rem', textAlign:'center', fontWeight:600, color:'#374151' }}>Статус</th>
+              <th style={{ padding:'0.75rem 0.5rem', width:36 }}></th>
             </tr>
           </thead>
           <tbody>
@@ -1057,6 +1090,9 @@ export default function AttendancePage() {
                 <td style={{ padding:'0.625rem 0.75rem', color:'#6b7280', fontSize:'0.8125rem', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={r.topic||undefined}>{r.topic||'—'}</td>
                 <td style={{ padding:'0.625rem 1.25rem', textAlign:'center' }}>
                   <StatusLabel status={r.status} />
+                </td>
+                <td style={{ padding:'0.625rem 0.5rem' }}>
+                  <OpenLessonBtn lessonId={r.lesson_id} />
                 </td>
               </tr>
             ))}
