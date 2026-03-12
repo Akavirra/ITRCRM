@@ -212,12 +212,16 @@ export async function POST(
     );
     
     // Log attendance change from Telegram
+    const studentName = await queryOne(
+      `SELECT full_name FROM students WHERE id = $1`,
+      [studentId]
+    ) as { full_name: string } | null;
     await logLessonChange(
       lessonId,
       'attendance',
       null,
-      `Відвідуваність відмічено (Telegram): ${dbStatus}`,
-      -teacher.id,
+      `${studentName?.full_name || `Учень #${studentId}`}: ${dbStatus === 'present' ? 'присутній' : 'відсутній'}`,
+      teacher.id,
       teacher.name,
       'telegram',
       telegramId

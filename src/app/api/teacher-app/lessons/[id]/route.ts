@@ -268,7 +268,11 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { topic, notes, status } = body;
+    const { topic: rawTopic, notes: rawNotes, status } = body;
+
+    // Normalize empty strings to null
+    const topic = rawTopic !== undefined ? (rawTopic === '' ? null : rawTopic) : undefined;
+    const notes = rawNotes !== undefined ? (rawNotes === '' ? null : rawNotes) : undefined;
 
     // Get old values for logging
     const oldLesson = await queryOne(
@@ -347,8 +351,8 @@ export async function PATCH(
 
     const result = await queryOne(updateQuery, values);
 
-    // Log changes if topic or notes were updated
-    if (topic !== undefined && oldLesson) {
+    // Log changes if topic or notes were actually changed
+    if (topic !== undefined && oldLesson && topic !== oldLesson.topic) {
       await logLessonChange(
         lessonId,
         'topic',
@@ -361,7 +365,7 @@ export async function PATCH(
       );
     }
 
-    if (notes !== undefined && oldLesson) {
+    if (notes !== undefined && oldLesson && notes !== oldLesson.notes) {
       await logLessonChange(
         lessonId,
         'notes',
