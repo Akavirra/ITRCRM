@@ -242,6 +242,7 @@ export default function AttendancePage() {
   const [journalData,   setJournalData]   = useState<GroupAllTimeData | null>(null);
   const [openMonths,    setOpenMonths]    = useState<Set<string>>(new Set());
   // all-time extra filters
+  const [statusFilter, setStatusFilter] = useState('');
   const [atYear,      setAtYear]      = useState('');
   const [atMonth,     setAtMonth]     = useState('');
   const [atStartDate, setAtStartDate] = useState('');
@@ -366,6 +367,7 @@ export default function AttendancePage() {
   const toggleAllTime = () => {
     setAllTime(v => !v);
     setJournalMode(false);
+    setStatusFilter('');
     // reset all-time specific filters when toggling off
     if (allTime) { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); setSelectedTeacher(''); }
   };
@@ -594,11 +596,24 @@ export default function AttendancePage() {
                   </div>
                 </div>
 
+                {/* Status filter */}
+                <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
+                  <label style={{ fontSize:'0.6875rem', color:'#6b7280', fontWeight:500 }}>Статус</label>
+                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}>
+                    <option value="">Всі статуси</option>
+                    <option value="absent">Відсутній</option>
+                    <option value="present">Присутній</option>
+                    <option value="makeup_planned">Відпрацювання</option>
+                    <option value="makeup_done">Відпрацьовано</option>
+                    <option value="null">Не відмічено</option>
+                  </select>
+                </div>
+
                 {/* Reset button */}
-                {(atYear || atMonth || atStartDate || atEndDate || selectedCourse || selectedTeacher || selectedGroup || search) && (
+                {(atYear || atMonth || atStartDate || atEndDate || selectedCourse || selectedTeacher || selectedGroup || search || statusFilter) && (
                   <div style={{ display:'flex', flexDirection:'column', gap:'0.25rem' }}>
                     <label style={{ fontSize:'0.6875rem', color:'transparent', fontWeight:500 }}>.</label>
-                    <button onClick={() => { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); setSelectedTeacher(''); setSelectedGroup(''); setSearch(''); }}
+                    <button onClick={() => { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); setSelectedTeacher(''); setSelectedGroup(''); setSearch(''); setStatusFilter(''); }}
                       style={{ padding:'0.5rem 0.875rem', border:'1px solid #fca5a5', borderRadius:'0.5rem', backgroundColor:'#fef2f2', color:'#dc2626', fontSize:'0.8125rem', fontWeight:500, cursor:'pointer', whiteSpace:'nowrap' as const }}>
                       ✕ Скинути
                     </button>
@@ -673,7 +688,7 @@ export default function AttendancePage() {
               <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'1rem 1.5rem', borderBottom:'1px solid #e5e7eb', flexWrap:'wrap' }}>
                 <div style={{ display:'flex', border:'1px solid #e5e7eb', borderRadius:'0.625rem', overflow:'hidden', flexShrink:0 }}>
                   {(['grouped','summary'] as const).map(mode => (
-                    <button key={mode} onClick={() => setViewMode(mode)} style={{
+                    <button key={mode} onClick={() => { setViewMode(mode); setStatusFilter(''); }} style={{
                       padding:'0.5rem 1rem', border:'none', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
                       backgroundColor: viewMode === mode ? '#1565c0' : 'white',
                       color: viewMode === mode ? 'white' : '#374151',
@@ -721,6 +736,17 @@ export default function AttendancePage() {
                       </div>
                     )}
                   </div>
+                )}
+
+                {viewMode === 'summary' && (
+                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}>
+                    <option value="">Всі статуси</option>
+                    <option value="absent">Відсутній</option>
+                    <option value="present">Присутній</option>
+                    <option value="makeup_planned">Відпрацювання</option>
+                    <option value="makeup_done">Відпрацьовано</option>
+                    <option value="null">Не відмічено</option>
+                  </select>
                 )}
               </div>
 
@@ -1060,7 +1086,12 @@ export default function AttendancePage() {
   // ── Summary / All-time flat list ──────────────────────────────────────────
 
   function renderSummaryView() {
-    if (lessonRecords.length === 0) {
+    const filteredRecords = statusFilter === 'null'
+      ? lessonRecords.filter(r => r.status === null)
+      : statusFilter
+        ? lessonRecords.filter(r => r.status === statusFilter)
+        : lessonRecords;
+    if (filteredRecords.length === 0) {
       return <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>
         <p style={{ margin:'0 0 0.5rem 0' }}>Даних про відвідуваність немає</p>
         <p style={{ margin:0, fontSize:'0.8125rem' }}>
@@ -1071,7 +1102,10 @@ export default function AttendancePage() {
     return (
       <div style={{ overflowX:'auto' }}>
         <div style={{ padding:'0.5rem 1.25rem', borderBottom:'1px solid #f3f4f6', backgroundColor:'#fafafa', fontSize:'0.75rem', color:'#6b7280' }}>
-          Знайдено: <strong style={{ color:'#374151' }}>{lessonRecords.length}</strong> записів
+          Знайдено: <strong style={{ color:'#374151' }}>{filteredRecords.length}</strong> записів
+          {statusFilter && lessonRecords.length !== filteredRecords.length && (
+            <span style={{ marginLeft:'0.5rem', color:'#9ca3af' }}>(з {lessonRecords.length})</span>
+          )}
         </div>
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.875rem' }}>
           <thead>
@@ -1088,7 +1122,7 @@ export default function AttendancePage() {
             </tr>
           </thead>
           <tbody>
-            {lessonRecords.map((r, i) => (
+            {filteredRecords.map((r, i) => (
               <tr key={`${r.lesson_id}-${r.student_id}-${i}`}
                 style={{ borderBottom:'1px solid #f3f4f6' }}
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor='#f9fafb')}
