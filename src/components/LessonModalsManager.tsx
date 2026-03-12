@@ -57,6 +57,7 @@ interface MakeupForItem {
   original_lesson_id: number;
   original_lesson_date: string;
   original_start_time: string | null;
+  original_lesson_topic: string | null;
   original_group_id: number | null;
   original_group_title: string | null;
   original_course_title: string | null;
@@ -1051,14 +1052,26 @@ export default function LessonModalsManager() {
                                 const dateLabel = new Date(dateStr + 'T00:00:00').toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' });
                                 const context = [item.original_group_title, item.original_course_title].filter(Boolean).join(' / ');
                                 return (
-                                  <div key={item.attendance_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                                      {dateLabel}{item.original_start_time ? `, ${item.original_start_time}` : ''}{context ? ` · ${context}` : ''}
-                                    </span>
+                                  <div key={item.attendance_id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                    <div style={{ minWidth: 0 }}>
+                                      <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                        {dateLabel}{item.original_start_time ? `, ${item.original_start_time}` : ''}{context ? ` · ${context}` : ''}
+                                      </div>
+                                      {item.original_lesson_topic ? (
+                                        <div style={{ fontSize: '0.75rem', color: '#374151', marginTop: '0.125rem', display: 'flex', alignItems: 'flex-start', gap: '0.25rem' }}>
+                                          <BookOpen size={10} style={{ color: '#9ca3af', marginTop: '0.2rem', flexShrink: 0 }} />
+                                          <span>{item.original_lesson_topic}</span>
+                                        </div>
+                                      ) : (
+                                        <div style={{ fontSize: '0.75rem', color: '#d1d5db', marginTop: '0.125rem', fontStyle: 'italic' }}>
+                                          Тема не вказана
+                                        </div>
+                                      )}
+                                    </div>
                                     <button
                                       onClick={() => openLessonModal(item.original_lesson_id, `Заняття #${item.original_lesson_id}`, undefined)}
                                       title="Відкрити заняття"
-                                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fb923c', padding: '0.125rem', display: 'flex', flexShrink: 0 }}
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fb923c', padding: '0.125rem', display: 'flex', flexShrink: 0, marginTop: '0.125rem' }}
                                     >
                                       <ExternalLink size={12} />
                                     </button>
@@ -1352,8 +1365,8 @@ export default function LessonModalsManager() {
                   )}
                 </div>
                 
-                {/* Topic field */}
-                <div style={{ marginBottom: '1rem' }}>
+                {/* Topic field — hidden for makeup lessons (topic lives on the original lessons) */}
+                {!lesson.isMakeup && (<div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
                     <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>
                       Тема заняття
@@ -1453,8 +1466,8 @@ export default function LessonModalsManager() {
                       {currentTopic || 'Тема не вказана'}
                     </div>
                   )}
-                </div>
-                
+                </div>)}
+
                 {/* Notes field */}
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.375rem' }}>

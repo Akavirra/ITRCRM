@@ -192,6 +192,7 @@ export async function GET(
       original_lesson_id: number;
       original_lesson_date: string;
       original_start_time: string | null;
+      original_lesson_topic: string | null;
       original_group_id: number | null;
       original_group_title: string | null;
       original_course_title: string | null;
@@ -206,6 +207,7 @@ export async function GET(
            orig_l.id              AS original_lesson_id,
            orig_l.lesson_date     AS original_lesson_date,
            TO_CHAR(orig_l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') AS original_start_time,
+           orig_l.topic           AS original_lesson_topic,
            orig_l.group_id        AS original_group_id,
            orig_g.title           AS original_group_title,
            COALESCE(c_grp.title, c_les.title) AS original_course_title
