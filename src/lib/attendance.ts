@@ -916,6 +916,7 @@ export interface GroupedMonthlyGroup {
   group_id: number;
   group_title: string;
   course_title: string | null;
+  teacher_name: string | null;
   weekly_day: number | null;
   start_time: string | null;
   duration_minutes: number;
@@ -937,6 +938,7 @@ export interface GroupedMonthlyIndividual {
   start_time: string | null;
   topic: string | null;
   course_title: string | null;
+  teacher_name: string | null;
   students: Array<{
     student_id: number;
     student_name: string;
@@ -968,12 +970,15 @@ export async function getGlobalMonthlyGroupedStats(
 
   const groupInfoRows = await all<{
     group_id: number; group_title: string; course_title: string | null;
+    teacher_name: string | null;
     weekly_day: number | null; start_time: string | null; duration_minutes: number;
   }>(
     `SELECT g.id as group_id, g.title as group_title, c.title as course_title,
+            t.name as teacher_name,
             g.weekly_day, g.start_time, g.duration_minutes
      FROM groups g
      LEFT JOIN courses c ON g.course_id = c.id
+     LEFT JOIN teachers t ON g.teacher_id = t.id
      WHERE g.id IN (
        SELECT DISTINCT l.group_id FROM lessons l
        JOIN groups g ON l.group_id = g.id
@@ -1084,16 +1089,17 @@ export async function getGlobalMonthlyGroupedStats(
 
     const lessonRows = await all<{
       lesson_id: number; lesson_date: string; start_time_formatted: string | null;
-      topic: string | null; course_title: string | null;
+      topic: string | null; course_title: string | null; teacher_name: string | null;
       student_id: number; student_name: string; att_status: AttendanceStatus | null;
     }>(
       `SELECT
         l.id as lesson_id, l.lesson_date,
         TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as start_time_formatted,
-        l.topic, c.title as course_title,
+        l.topic, c.title as course_title, t.name as teacher_name,
         s.id as student_id, s.full_name as student_name, a.status as att_status
        FROM lessons l
        LEFT JOIN courses c ON l.course_id = c.id
+       LEFT JOIN teachers t ON l.teacher_id = t.id
        JOIN attendance a ON a.lesson_id = l.id
        JOIN students s ON a.student_id = s.id
        WHERE ${iWhere}
@@ -1107,7 +1113,7 @@ export async function getGlobalMonthlyGroupedStats(
         lessonMap.set(row.lesson_id, {
           lesson_id: row.lesson_id, lesson_date: row.lesson_date,
           start_time: row.start_time_formatted, topic: row.topic,
-          course_title: row.course_title, students: [],
+          course_title: row.course_title, teacher_name: row.teacher_name, students: [],
         });
       }
       const lesson = lessonMap.get(row.lesson_id)!;
@@ -1131,6 +1137,7 @@ export interface MonthlyLessonRecord {
   group_id: number | null;
   group_title: string;
   course_title: string | null;
+  teacher_name: string | null;
   student_id: number;
   student_name: string;
   status: AttendanceStatus | null;
@@ -1177,11 +1184,14 @@ export async function getGlobalMonthlyLessonRecords(
       l.topic,
       g.id as group_id, g.title as group_title,
       c.title as course_title,
+      COALESCE(lt.name, gt.name) as teacher_name,
       s.id as student_id, s.full_name as student_name,
       a.status
      FROM lessons l
      JOIN groups g ON l.group_id = g.id
      LEFT JOIN courses c ON g.course_id = c.id
+     LEFT JOIN teachers lt ON l.teacher_id = lt.id
+     LEFT JOIN teachers gt ON g.teacher_id = gt.id
      JOIN student_groups sg ON sg.group_id = g.id AND sg.is_active = TRUE
      JOIN students s ON sg.student_id = s.id AND s.is_active = TRUE
      LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = s.id
@@ -1212,10 +1222,12 @@ export async function getGlobalMonthlyLessonRecords(
         l.topic,
         NULL as group_id, 'Індивідуальне' as group_title,
         c.title as course_title,
+        t.name as teacher_name,
         s.id as student_id, s.full_name as student_name,
         a.status
        FROM lessons l
        LEFT JOIN courses c ON l.course_id = c.id
+       LEFT JOIN teachers t ON l.teacher_id = t.id
        JOIN attendance a ON a.lesson_id = l.id
        JOIN students s ON a.student_id = s.id
        WHERE l.group_id IS NULL AND l.status != 'canceled'
@@ -1240,6 +1252,7 @@ export interface GroupRegisterLesson {
   lesson_id: number;
   lesson_date: string;
   topic: string | null;
+  teacher_name: string | null;
 }
 
 export interface GroupRegisterStudent {
@@ -1262,14 +1275,15 @@ export async function getGroupMonthlyRegister(
   year: number,
   month: number
 ): Promise<GroupRegister> {
-  const lessons = await all<{ lesson_id: number; lesson_date: string; topic: string | null }>(
-    `SELECT id as lesson_id, lesson_date, topic
-     FROM lessons
-     WHERE group_id = $1
-       AND status != 'canceled'
-       AND EXTRACT(YEAR FROM lesson_date) = $2
-       AND EXTRACT(MONTH FROM lesson_date) = $3
-     ORDER BY lesson_date`,
+  const lessons = await all<{ lesson_id: number; lesson_date: string; topic: string | null; teacher_name: string | null }>(
+    `SELECT l.id as lesson_id, l.lesson_date, l.topic, t.name as teacher_name
+     FROM lessons l
+     LEFT JOIN teachers t ON l.teacher_id = t.id
+     WHERE l.group_id = $1
+       AND l.status != 'canceled'
+       AND EXTRACT(YEAR FROM l.lesson_date) = $2
+       AND EXTRACT(MONTH FROM l.lesson_date) = $3
+     ORDER BY l.lesson_date`,
     [groupId, year, month]
   );
 
@@ -1352,11 +1366,12 @@ export async function getGroupAllTimeRegister(groupId: number): Promise<GroupAll
     [groupId]
   );
 
-  const lessons = await all<{ lesson_id: number; lesson_date: string; topic: string | null }>(
-    `SELECT id as lesson_id, lesson_date, topic
-     FROM lessons
-     WHERE group_id = $1 AND status != 'canceled' AND lesson_date <= CURRENT_DATE
-     ORDER BY lesson_date`,
+  const lessons = await all<{ lesson_id: number; lesson_date: string; topic: string | null; teacher_name: string | null }>(
+    `SELECT l.id as lesson_id, l.lesson_date, l.topic, t.name as teacher_name
+     FROM lessons l
+     LEFT JOIN teachers t ON l.teacher_id = t.id
+     WHERE l.group_id = $1 AND l.status != 'canceled' AND l.lesson_date <= CURRENT_DATE
+     ORDER BY l.lesson_date`,
     [groupId]
   );
 

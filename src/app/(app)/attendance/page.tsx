@@ -23,6 +23,7 @@ interface RegisterLesson {
   lesson_id: number;
   lesson_date: string;
   topic: string | null;
+  teacher_name: string | null;
 }
 
 interface RegisterStudent {
@@ -54,6 +55,7 @@ interface GroupedGroup {
   group_id: number;
   group_title: string;
   course_title: string | null;
+  teacher_name: string | null;
   weekly_day: number | null;
   start_time: string | null;
   duration_minutes: number;
@@ -68,6 +70,7 @@ interface IndividualLesson {
   start_time: string | null;
   topic: string | null;
   course_title: string | null;
+  teacher_name: string | null;
   students: Array<{
     student_id: number;
     student_name: string;
@@ -83,6 +86,7 @@ interface LessonRecord {
   group_id: number | null;
   group_title: string;
   course_title: string | null;
+  teacher_name: string | null;
   student_id: number;
   student_name: string;
   status: AttendanceStatus | null;
@@ -723,6 +727,7 @@ export default function AttendancePage() {
                       <div style={{ fontWeight:600, fontSize:'1rem', color:'#111827' }}>{g.group_title}</div>
                       <div style={{ fontSize:'0.8125rem', color:'#6b7280', marginTop:2, display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
                         {g.course_title && <span>{g.course_title}</span>}
+                        {g.teacher_name && <span style={{ padding:'2px 8px', backgroundColor:'#fef3c7', borderRadius:6, fontSize:'0.75rem', color:'#92400e', fontWeight:500 }}>{g.teacher_name}</span>}
                         <span style={{ padding:'2px 8px', backgroundColor:'#f3f4f6', borderRadius:6, fontSize:'0.75rem', color:'#6b7280' }}>
                           {g.lessons.length} {g.lessons.length === 1 ? 'заняття' : 'занять'} у місяці
                         </span>
@@ -789,6 +794,7 @@ export default function AttendancePage() {
                   <tr style={{ backgroundColor:'#f5eeff', borderBottom:'1px solid #e8d5ff' }}>
                     <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Дата</th>
                     <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Час</th>
+                    <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Викладач</th>
                     <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem' }}>Учні та відвідуваність</th>
                     <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem' }}>Тема</th>
                   </tr>
@@ -804,6 +810,9 @@ export default function AttendancePage() {
                         {il.start_time
                           ? <span style={{ padding:'2px 8px', borderRadius:6, backgroundColor:'#f3e8ff', color:'#7c3aed', fontSize:'0.8125rem', fontWeight:600 }}>{il.start_time}</span>
                           : <span style={{ color:'#9ca3af' }}>—</span>}
+                      </td>
+                      <td style={{ padding:'0.75rem 0.75rem', whiteSpace:'nowrap', fontSize:'0.8125rem', color:'#92400e' }}>
+                        {il.teacher_name || <span style={{ color:'#9ca3af' }}>—</span>}
                       </td>
                       <td style={{ padding:'0.75rem 0.75rem' }}>
                         <div style={{ display:'flex', flexDirection:'column', gap:'0.375rem' }}>
@@ -895,10 +904,11 @@ export default function AttendancePage() {
                           <tr style={{ backgroundColor:'#f9fafb' }}>
                             <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', borderBottom:'2px solid #e5e7eb', position:'sticky', left:0, backgroundColor:'#f9fafb', minWidth:160, whiteSpace:'nowrap' }}>Учень</th>
                             {m.lessons.map(l => (
-                              <th key={l.lesson_id} style={{ padding:'0.375rem 0.625rem', textAlign:'center', fontWeight:600, color:'#374151', borderBottom:'2px solid #e5e7eb', whiteSpace:'nowrap', minWidth:44 }} title={l.topic || undefined}>
+                              <th key={l.lesson_id} style={{ padding:'0.375rem 0.625rem', textAlign:'center', fontWeight:600, color:'#374151', borderBottom:'2px solid #e5e7eb', whiteSpace:'nowrap', minWidth:44 }} title={[l.topic, l.teacher_name].filter(Boolean).join(' · ') || undefined}>
                                 <div style={{ fontSize:'0.6rem', color:'#9ca3af', fontWeight:500 }}>{getWeekdayShort(l.lesson_date)}</div>
                                 <div>{formatDateShort(l.lesson_date)}</div>
                                 {l.topic && <div style={{ fontSize:'0.55rem', color:'#9ca3af', fontWeight:400, maxWidth:44, overflow:'hidden', textOverflow:'ellipsis' }}>{l.topic}</div>}
+                                {l.teacher_name && <div style={{ fontSize:'0.5rem', color:'#92400e', fontWeight:500, maxWidth:44, overflow:'hidden', textOverflow:'ellipsis' }}>{l.teacher_name}</div>}
                               </th>
                             ))}
                             <th style={{ padding:'0.625rem 0.875rem', textAlign:'center', fontWeight:600, color:'#374151', borderBottom:'2px solid #e5e7eb', whiteSpace:'nowrap' }}>За місяць</th>
@@ -1011,6 +1021,7 @@ export default function AttendancePage() {
               <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', whiteSpace:'nowrap' }}>Час</th>
               <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151' }}>Тип / Група</th>
               {allTime && <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151' }}>Курс</th>}
+              <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151' }}>Викладач</th>
               <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151' }}>Учень</th>
               <th style={{ padding:'0.75rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151' }}>Тема</th>
               <th style={{ padding:'0.75rem 1.25rem', textAlign:'center', fontWeight:600, color:'#374151' }}>Статус</th>
@@ -1041,6 +1052,7 @@ export default function AttendancePage() {
                   </div>
                 </td>
                 {allTime && <td style={{ padding:'0.625rem 0.75rem', color:'#6b7280', fontSize:'0.8125rem' }}>{r.course_title||'—'}</td>}
+                <td style={{ padding:'0.625rem 0.75rem', fontSize:'0.8125rem', color:'#92400e', whiteSpace:'nowrap' }}>{r.teacher_name||'—'}</td>
                 <td style={{ padding:'0.625rem 0.75rem', fontWeight:500, color:'#111827' }}>{r.student_name}</td>
                 <td style={{ padding:'0.625rem 0.75rem', color:'#6b7280', fontSize:'0.8125rem', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={r.topic||undefined}>{r.topic||'—'}</td>
                 <td style={{ padding:'0.625rem 1.25rem', textAlign:'center' }}>
