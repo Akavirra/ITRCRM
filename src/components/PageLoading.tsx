@@ -3,11 +3,10 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect } from 'react';
 
-// SVG Icons for each theme
 const ProcessorIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
-    <rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <rect x="8" y="8" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+    <rect x="8" y="8" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.5"/>
     <path d="M12 2V4M12 20V22M2 12H4M20 12H22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
 );
@@ -22,273 +21,170 @@ const CodeIcon = () => (
 
 const LegoIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
-    <rect x="3" y="10" width="18" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <circle cx="12" cy="7" r="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <circle cx="17" cy="7" r="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <rect x="3" y="10" width="18" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+    <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.5"/>
+    <circle cx="12" cy="7" r="2" stroke="currentColor" strokeWidth="1.5"/>
+    <circle cx="17" cy="7" r="2" stroke="currentColor" strokeWidth="1.5"/>
   </svg>
 );
 
 const PaletteIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
-    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <circle cx="12" cy="8" r="2" fill="currentColor"/>
-    <circle cx="8" cy="12" r="2" fill="currentColor"/>
-    <circle cx="16" cy="12" r="2" fill="currentColor"/>
-    <circle cx="10" cy="15" r="1.5" fill="currentColor"/>
+    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5"/>
+    <circle cx="12" cy="8"  r="1.5" fill="currentColor"/>
+    <circle cx="8"  cy="13" r="1.5" fill="currentColor"/>
+    <circle cx="16" cy="13" r="1.5" fill="currentColor"/>
+    <circle cx="10" cy="16" r="1.5" fill="currentColor"/>
   </svg>
 );
 
 const PencilIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
-    <path d="M17 3L21 7L11 17H7V13L17 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none"/>
+    <path d="M17 3L21 7L11 17H7V13L17 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
     <path d="M8 14L3 21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
 );
 
 const VideoCameraIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
-    <rect x="2" y="6" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <path d="M16 10L22 7V17L16 14V10Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none"/>
+    <rect x="2" y="6" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M16 10L22 7V17L16 14V10Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
   </svg>
 );
 
-const icons = [
-  { Icon: ProcessorIcon, color: '#3b82f6', name: 'Робототехніка' },
-  { Icon: CodeIcon, color: '#fbbf24', name: 'Програмування' },
-  { Icon: LegoIcon, color: '#2563eb', name: 'LEGO-конструювання' },
-  { Icon: PaletteIcon, color: '#facc15', name: 'Дизайн' },
-  { Icon: PencilIcon, color: '#38bdf8', name: 'Малювання' },
-  { Icon: VideoCameraIcon, color: '#eab308', name: 'Відеозйомка' },
+const COURSES = [
+  { Icon: ProcessorIcon, color: '#3b82f6', bg: '#eff6ff', glow: 'rgba(59,130,246,0.12)',  name: 'Робототехніка' },
+  { Icon: CodeIcon,      color: '#f59e0b', bg: '#fffbeb', glow: 'rgba(245,158,11,0.12)',  name: 'Програмування' },
+  { Icon: LegoIcon,      color: '#2563eb', bg: '#eff6ff', glow: 'rgba(37,99,235,0.12)',   name: 'LEGO-конструювання' },
+  { Icon: PaletteIcon,   color: '#ec4899', bg: '#fdf2f8', glow: 'rgba(236,72,153,0.12)', name: 'Дизайн' },
+  { Icon: PencilIcon,    color: '#0ea5e9', bg: '#f0f9ff', glow: 'rgba(14,165,233,0.12)', name: 'Малювання' },
+  { Icon: VideoCameraIcon, color: '#d97706', bg: '#fffbeb', glow: 'rgba(217,119,6,0.12)', name: 'Відеомонтаж' },
 ];
 
-// Orbital element component
-const OrbitalElement = ({ delay }: { delay: number }) => {
+export const PageLoading = () => {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % COURSES.length), 1100);
+    return () => clearInterval(t);
+  }, []);
+
+  const { Icon, color, bg, glow, name } = COURSES[idx];
+
   return (
     <div style={{
-      position: 'absolute',
-      width: '400px',
-      height: '400px',
-      pointerEvents: 'none',
+      position: 'fixed', inset: 0,
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: '#ffffff',
+      zIndex: 1000,
     }}>
+
+      {/* Ambient soft glow that follows the current course colour */}
       <motion.div
+        animate={{ opacity: [0.6, 1, 0.6], scale: [0.95, 1.05, 0.95] }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
         style={{
           position: 'absolute',
-          top: '50%',
-          left: '50%',
-          width: 8,
-          height: 8,
-          backgroundColor: '#fbbf24',
-          borderRadius: '2px',
-          boxShadow: '0 2px 8px rgba(251, 191, 36, 0.5)',
+          width: 280, height: 280,
+          borderRadius: '50%',
+          background: `radial-gradient(circle, ${glow} 0%, transparent 70%)`,
+          transition: 'background 0.8s ease',
+          pointerEvents: 'none',
         }}
-        animate={{ rotate: 360 }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'linear', delay }}
+      />
+
+      {/* Floating card */}
+      <motion.div
+        animate={{ y: [0, -7, 0] }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+        style={{
+          width: 104, height: 104,
+          borderRadius: 28,
+          backgroundColor: bg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: `0 16px 48px ${glow}, 0 4px 12px rgba(0,0,0,0.06)`,
+          position: 'relative', overflow: 'hidden',
+          transition: 'background-color 0.7s ease, box-shadow 0.7s ease',
+          zIndex: 1,
+        }}
       >
+        {/* Gloss overlay */}
         <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          width: 8,
-          height: 8,
-          backgroundColor: '#fbbf24',
-          borderRadius: '2px',
-          transform: 'translate(-50%, -50%) translateY(-150px)',
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(145deg, rgba(255,255,255,0.55) 0%, transparent 60%)',
+          borderRadius: 28, pointerEvents: 'none',
         }} />
+
+        {/* Icon */}
+        <div style={{ width: 52, height: 52, position: 'relative', zIndex: 1 }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, scale: 0.65, y: 10 }}
+              animate={{ opacity: 1, scale: 1,    y: 0  }}
+              exit={  { opacity: 0, scale: 0.65, y: -10 }}
+              transition={{ duration: 0.28, ease: [0.34, 1.2, 0.64, 1] }}
+              style={{ position: 'absolute', inset: 0, color }}
+            >
+              <Icon />
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </motion.div>
-    </div>
-  );
-};
 
-export const PageLoading = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [progress, setProgress] = useState(0);
-
-  // Cycle through icons every 0.8 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % icons.length);
-    }, 800);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Progress bar animation - fills from 0 to 100% every 2 seconds
-  useEffect(() => {
-    const duration = 2000;
-    const interval = 50;
-    const increment = 100 / (duration / interval);
-    
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) return 0;
-        return prev + increment;
-      });
-    }, interval);
-    
-    return () => clearInterval(progressInterval);
-  }, []);
-
-  const { Icon: CurrentIcon, color } = icons[currentIndex];
-
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'rgba(255, 255, 255, 0.98)',
-      backdropFilter: 'blur(10px)',
-      WebkitBackdropFilter: 'blur(10px)',
-      zIndex: 1000,
-      overflow: 'hidden',
-    }}>
-      {/* Container for all animated elements */}
-      <div style={{ position: 'relative', width: 400, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        
-        {/* Outer dashed ring */}
-        <motion.div
-          style={{
-            position: 'absolute',
-            width: '300px',
-            height: '300px',
-            borderRadius: '50%',
-            border: '2px dashed #93c5fd',
-            opacity: 0.5,
-          }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
-        />
-
-        {/* Orbital elements - three yellow squares rotating around center */}
-        <OrbitalElement delay={0} />
-        <OrbitalElement delay={1.33} />
-        <OrbitalElement delay={2.66} />
-
-        {/* Central block */}
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5, type: 'spring', stiffness: 200, damping: 20 }}
-          style={{
-            width: '120px',
-            height: '120px',
-            borderRadius: '32px',
-            backgroundColor: '#ffffff',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-            zIndex: 1,
-          }}
-        >
-          {/* Scanning beam */}
-          <motion.div
+      {/* Course name */}
+      <div style={{ height: 22, marginTop: 18, overflow: 'hidden' }}>
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={`n-${idx}`}
+            initial={{ opacity: 0, y: 8  }}
+            animate={{ opacity: 1, y: 0  }}
+            exit={  { opacity: 0, y: -8  }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
             style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              height: '2px',
-              background: 'linear-gradient(90deg, transparent, #3b82f6, transparent)',
-              opacity: 0.6,
+              display: 'block',
+              fontSize: 13, fontWeight: 600,
+              color, letterSpacing: '0.01em',
             }}
-            animate={{
-              top: ['0%', '100%', '100%', '0%'],
-              opacity: [0.6, 0.6, 0, 0],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          />
-
-          {/* Morphing icon */}
-          <div style={{ width: '56px', height: '56px', position: 'relative' }}>
-            <AnimatePresence mode="popLayout">
-              <motion.div
-                key={currentIndex}
-                initial={{ 
-                  opacity: 0, 
-                  scale: 0.5, 
-                  rotate: -180,
-                }}
-                animate={{ 
-                  opacity: 1, 
-                  scale: 1, 
-                  rotate: 0,
-                }}
-                exit={{ 
-                  opacity: 0, 
-                  scale: 1.5, 
-                  rotate: 180,
-                }}
-                transition={{ 
-                  duration: 0.4, 
-                  type: 'spring',
-                  stiffness: 300,
-                  damping: 25,
-                }}
-                style={{
-                  position: 'absolute',
-                  width: '100%',
-                  height: '100%',
-                  color: color,
-                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
-                }}
-              >
-                <CurrentIcon />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </motion.div>
+          >
+            {name}
+          </motion.span>
+        </AnimatePresence>
       </div>
 
-      {/* Progress bar */}
-      <motion.div
-        style={{
-          marginTop: '48px',
-          width: '200px',
-          height: '2px',
-          backgroundColor: '#e5e7eb',
-          borderRadius: '1px',
-          overflow: 'hidden',
-        }}
-      >
-        <motion.div
-          style={{
-            height: '100%',
-            backgroundColor: '#3b82f6',
-            borderRadius: '1px',
-          }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.05, ease: 'linear' }}
-        />
-      </motion.div>
+      {/* Three breathing dots */}
+      <div style={{ display: 'flex', gap: 7, marginTop: 22 }}>
+        {[0, 1, 2].map(i => (
+          <motion.div
+            key={i}
+            animate={{ scale: [1, 1.5, 1], opacity: [0.25, 1, 0.25] }}
+            transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.22, ease: 'easeInOut' }}
+            style={{
+              width: 5, height: 5, borderRadius: '50%',
+              backgroundColor: '#3b82f6',
+            }}
+          />
+        ))}
+      </div>
 
-      {/* System initializing text */}
-      <motion.div
+      {/* Label */}
+      <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
+        transition={{ delay: 0.35 }}
         style={{
-          marginTop: '16px',
-          fontFamily: "'Roboto', 'Segoe UI', sans-serif",
-          fontSize: '11px',
-          fontWeight: 500,
-          letterSpacing: '0.25em',
-          color: '#9ca3af',
+          marginTop: 14,
+          fontSize: 11, fontWeight: 500,
+          color: '#b0b8c4',
+          letterSpacing: '0.08em',
           textTransform: 'uppercase',
+          margin: '14px 0 0',
         }}
       >
-        System Initializing
-      </motion.div>
+        Завантаження
+      </motion.p>
+
     </div>
   );
 };
