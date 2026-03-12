@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, forbidden, checkGroupAccess } from '@/lib/api-utils';
 import { getAttendanceForLessonWithStudents, setAttendance, setAttendanceForAll, clearAttendanceForLesson, copyAttendanceFromPreviousLesson } from '@/lib/attendance';
-import { get, run } from '@/db';
+import { get, run, all } from '@/db';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
 import { logLessonChange } from '@/lib/lessons';
 
@@ -100,27 +100,51 @@ export async function POST(
         }
         await setAttendance(lessonId, parseInt(studentId), status, user.id, comment, makeupLessonId);
 
-        // If this is a makeup lesson, sync original absence record
+        // If this is a makeup lesson, sync original absence record and log it
         {
-          const makeupLesson = await get<{ is_makeup: boolean | null }>(
-            `SELECT is_makeup FROM lessons WHERE id = $1`,
+          const makeupLesson = await get<{ is_makeup: boolean | null; lesson_date: string }>(
+            `SELECT is_makeup, lesson_date FROM lessons WHERE id = $1`,
             [lessonId]
           );
           if (makeupLesson?.is_makeup) {
+            const origRecords = await all<{ lesson_id: number }>(
+              `SELECT lesson_id FROM attendance WHERE makeup_lesson_id = $1 AND student_id = $2`,
+              [lessonId, parseInt(studentId)]
+            );
+            const studentRow = await get<{ full_name: string }>(
+              `SELECT full_name FROM students WHERE id = $1`,
+              [parseInt(studentId)]
+            );
+            const studentLabel = studentRow?.full_name || `Учень #${studentId}`;
+            const makeupDate = new Date(makeupLesson.lesson_date);
+            const makeupDateStr = `${String(makeupDate.getUTCDate()).padStart(2,'0')}.${String(makeupDate.getUTCMonth()+1).padStart(2,'0')}.${makeupDate.getUTCFullYear()}`;
+
             if (status === 'present') {
-              // Mark original absence as makeup_done
               await run(
                 `UPDATE attendance SET status = 'makeup_done', updated_by = $1, updated_at = NOW()
                  WHERE makeup_lesson_id = $2 AND student_id = $3`,
                 [user.id, lessonId, parseInt(studentId)]
               );
+              for (const rec of origRecords) {
+                await logLessonChange(
+                  rec.lesson_id, 'attendance', null,
+                  `${studentLabel}: відпрацював пропуск (відпрацювання від ${makeupDateStr})`,
+                  user.id, user.name, 'admin'
+                );
+              }
             } else if (status === 'absent') {
-              // Revert original absence back to makeup_planned
               await run(
                 `UPDATE attendance SET status = 'makeup_planned', updated_by = $1, updated_at = NOW()
                  WHERE makeup_lesson_id = $2 AND student_id = $3 AND status = 'makeup_done'`,
                 [user.id, lessonId, parseInt(studentId)]
               );
+              for (const rec of origRecords) {
+                await logLessonChange(
+                  rec.lesson_id, 'attendance', null,
+                  `${studentLabel}: відпрацювання скасовано`,
+                  user.id, user.name, 'admin'
+                );
+              }
             }
           }
         }

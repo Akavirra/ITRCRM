@@ -211,32 +211,56 @@ export async function POST(
       [lessonId, studentId, dbStatus, teacher.id]
     );
     
-    // If this is a makeup lesson, sync original absence record
+    // Fetch student name (needed for logs below)
+    const studentName = await queryOne(
+      `SELECT full_name FROM students WHERE id = $1`,
+      [studentId]
+    ) as { full_name: string } | null;
+
+    // If this is a makeup lesson, sync original absence record and log it
     const makeupLesson = await queryOne(
-      `SELECT is_makeup FROM lessons WHERE id = $1`,
+      `SELECT is_makeup, lesson_date FROM lessons WHERE id = $1`,
       [lessonId]
-    ) as { is_makeup: boolean | null } | null;
+    ) as { is_makeup: boolean | null; lesson_date: string } | null;
     if (makeupLesson?.is_makeup) {
+      const origRecords = await query(
+        `SELECT lesson_id FROM attendance WHERE makeup_lesson_id = $1 AND student_id = $2`,
+        [lessonId, studentId]
+      ) as Array<{ lesson_id: number }>;
+      const makeupDate = new Date(makeupLesson.lesson_date);
+      const makeupDateStr = `${String(makeupDate.getUTCDate()).padStart(2,'0')}.${String(makeupDate.getUTCMonth()+1).padStart(2,'0')}.${makeupDate.getUTCFullYear()}`;
+      const studentLabel = studentName?.full_name || `Учень #${studentId}`;
+
       if (dbStatus === 'present') {
         await query(
           `UPDATE attendance SET status = 'makeup_done', updated_by = $1, updated_at = NOW()
            WHERE makeup_lesson_id = $2 AND student_id = $3`,
           [teacher.id, lessonId, studentId]
         );
+        for (const rec of (origRecords || [])) {
+          await logLessonChange(
+            rec.lesson_id, 'attendance', null,
+            `${studentLabel}: відпрацював пропуск (відпрацювання від ${makeupDateStr})`,
+            teacher.id, teacher.name, 'telegram', telegramId
+          );
+        }
       } else if (dbStatus === 'absent') {
         await query(
           `UPDATE attendance SET status = 'makeup_planned', updated_by = $1, updated_at = NOW()
            WHERE makeup_lesson_id = $2 AND student_id = $3 AND status = 'makeup_done'`,
           [teacher.id, lessonId, studentId]
         );
+        for (const rec of (origRecords || [])) {
+          await logLessonChange(
+            rec.lesson_id, 'attendance', null,
+            `${studentLabel}: відпрацювання скасовано`,
+            teacher.id, teacher.name, 'telegram', telegramId
+          );
+        }
       }
     }
 
     // Log attendance change from Telegram
-    const studentName = await queryOne(
-      `SELECT full_name FROM students WHERE id = $1`,
-      [studentId]
-    ) as { full_name: string } | null;
     await logLessonChange(
       lessonId,
       'attendance',
