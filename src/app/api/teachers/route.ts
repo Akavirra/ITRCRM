@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Error creating teacher:', error);
     if (error.code === '23505' || error.code === 'SQLITE_CONSTRAINT' || error.message?.includes('unique constraint') || error.message?.includes('UNIQUE constraint')) {
-      return badRequest('Email already exists');
+      return badRequest('Викладач з таким email вже існує');
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

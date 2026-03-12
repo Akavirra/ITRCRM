@@ -81,6 +81,7 @@ export default function TeachersPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -308,17 +309,23 @@ export default function TeachersPage() {
     closeGroupModal(groupId);
   };
 
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Combine name from first_name, last_name and patronymic
     const fullName = [formData.first_name, formData.last_name, formData.patronymic].filter(Boolean).join(' ');
-    
+
     if (!fullName || !formData.email) {
-      setToast({ message: 'Заповніть обов\'язкові поля', type: 'error' });
+      showToast('Заповніть обов\'язкові поля', 'error');
       return;
     }
 
+    setSubmitting(true);
     try {
       const url = editingTeacher ? `/api/teachers/${editingTeacher.id}` : '/api/teachers';
       const method = editingTeacher ? 'PUT' : 'POST';
@@ -344,7 +351,7 @@ export default function TeachersPage() {
       });
 
       if (response.ok) {
-        setToast({ message: editingTeacher ? 'Викладача оновлено' : 'Викладача створено', type: 'success' });
+        showToast(editingTeacher ? 'Викладача оновлено' : 'Викладача створено', 'success');
         setShowModal(false);
         setFormData({
           first_name: '',
@@ -360,10 +367,12 @@ export default function TeachersPage() {
         loadTeachers();
       } else {
         const error = await response.json();
-        setToast({ message: error.error || 'Помилка', type: 'error' });
+        showToast(error.error || 'Помилка', 'error');
       }
     } catch (error) {
-      setToast({ message: 'Помилка збереження', type: 'error' });
+      showToast('Помилка збереження', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -986,6 +995,9 @@ export default function TeachersPage() {
                 from { opacity: 0; transform: translateY(-20px) scale(0.95); }
                 to { opacity: 1; transform: translateY(0) scale(1); }
               }
+              @keyframes spin {
+                to { transform: rotate(360deg); }
+              }
             `}</style>
             <h2 style={{ marginTop: 0, marginBottom: '1.75rem', fontSize: '1.375rem', fontWeight: 600, color: '#111827', letterSpacing: '-0.01em' }}>
               {editingTeacher ? 'Редагувати викладача' : 'Новий викладач'}
@@ -1152,11 +1164,19 @@ export default function TeachersPage() {
                 >
                   Скасувати
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="btn btn-primary"
-                  style={{ padding: '0.625rem 1.5rem' }}
+                  disabled={submitting}
+                  style={{ padding: '0.625rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: submitting ? 0.7 : 1 }}
                 >
+                  {submitting && (
+                    <span style={{
+                      width: '1rem', height: '1rem', border: '2px solid rgba(255,255,255,0.4)',
+                      borderTopColor: 'white', borderRadius: '50%',
+                      display: 'inline-block', animation: 'spin 0.7s linear infinite'
+                    }} />
+                  )}
                   {editingTeacher ? 'Зберегти' : 'Створити'}
                 </button>
               </div>
