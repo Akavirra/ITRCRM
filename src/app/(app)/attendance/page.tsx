@@ -503,7 +503,7 @@ export default function AttendancePage() {
 
             {/* Filter panel */}
             <div style={{ padding:'0.875rem 1.25rem', borderBottom:'1px solid #e5e7eb', backgroundColor:'#fafafa' }}>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:'0.5rem', alignItems:'center' }}>
+              <div style={{ display:'flex', flexWrap:'nowrap', gap:'0.5rem', alignItems:'center', overflowX:'auto', paddingBottom:'0.125rem' }}>
 
                 {/* Period group */}
                 <select value={atYear} onChange={e => setYearFilter(e.target.value)} style={selectStyle}>
