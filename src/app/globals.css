@@ -947,6 +947,64 @@ a:hover {
 .skeleton-card-enter:nth-child(2) { animation-delay: 0.42s; }
 .skeleton-card-enter:nth-child(3) { animation-delay: 0.54s; }
 
+/* Student loader — orbiting icons around avatar */
+@keyframes student-avatar-in {
+  0%   { opacity: 0; transform: scale(0.6); }
+  70%  { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes student-ring-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes student-ring-spin-rev {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+@keyframes student-orbit-cw {
+  from { transform: rotate(0deg)   translateX(52px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(52px) rotate(-360deg); }
+}
+
+@keyframes student-orbit-ccw {
+  from { transform: rotate(0deg)    translateX(52px) rotate(0deg); }
+  to   { transform: rotate(-360deg) translateX(52px) rotate(360deg); }
+}
+
+@keyframes student-orbit-slow {
+  from { transform: rotate(120deg)  translateX(52px) rotate(-120deg); }
+  to   { transform: rotate(480deg)  translateX(52px) rotate(-480deg); }
+}
+
+.student-loader-avatar {
+  animation: student-avatar-in 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+.student-loader-ring-outer {
+  animation: student-ring-spin 6s linear infinite;
+}
+
+.student-loader-ring-inner {
+  animation: student-ring-spin-rev 4s linear infinite;
+}
+
+.student-loader-orbit-1 {
+  animation: student-orbit-cw 3.6s linear infinite;
+}
+
+.student-loader-orbit-2 {
+  animation: student-orbit-ccw 4.8s linear infinite;
+  animation-delay: -1.6s;
+}
+
+.student-loader-orbit-3 {
+  animation: student-orbit-slow 5.4s linear infinite;
+  animation-delay: -2.7s;
+}
+
 /* ============================================
    SMALL MOBILE STYLES (up to 480px)
    ============================================ */

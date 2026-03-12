@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
-import PageLoading from '@/components/PageLoading';
 import { uk } from '@/i18n/uk';
 import { formatDateTimeKyiv, formatDateKyiv } from '@/lib/date-utils';
 import DraggableModal from '@/components/DraggableModal';
@@ -624,7 +623,141 @@ export default function StudentProfilePage() {
 
   // Show loading state
   if (loading) {
-    return <PageLoading />;
+    return (
+      <Layout user={{ id: 0, name: '', email: '', role: 'teacher' }}>
+        <div style={{ maxWidth: '100%' }}>
+
+          {/* Animated student icon */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem', paddingTop: '0.25rem' }}>
+            {/* Orbiting icons + central avatar */}
+            <div style={{ position: 'relative', width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.875rem' }}>
+              {/* Outer dashed ring */}
+              <div className="student-loader-ring-outer" style={{ position: 'absolute', width: 110, height: 110, borderRadius: '50%', border: '1.5px dashed #93c5fd', opacity: 0.6 }} />
+              {/* Inner dashed ring */}
+              <div className="student-loader-ring-inner" style={{ position: 'absolute', width: 84, height: 84, borderRadius: '50%', border: '1.5px dashed #bfdbfe', opacity: 0.5 }} />
+
+              {/* Orbiting icon 1 — book */}
+              <div className="student-loader-orbit-1" style={{ position: 'absolute', width: 24, height: 24, borderRadius: '50%', backgroundColor: '#eff6ff', border: '1.5px solid #bfdbfe', boxShadow: '0 2px 6px rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+              </div>
+
+              {/* Orbiting icon 2 — star */}
+              <div className="student-loader-orbit-2" style={{ position: 'absolute', width: 22, height: 22, borderRadius: '50%', backgroundColor: '#fefce8', border: '1.5px solid #fde68a', boxShadow: '0 2px 6px rgba(251,191,36,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" strokeWidth="1.5">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </div>
+
+              {/* Orbiting icon 3 — pencil */}
+              <div className="student-loader-orbit-3" style={{ position: 'absolute', width: 22, height: 22, borderRadius: '50%', backgroundColor: '#f0fdf4', border: '1.5px solid #bbf7d0', boxShadow: '0 2px 6px rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5">
+                  <path d="M17 3L21 7L11 17H7V13L17 3Z" strokeLinejoin="round"/>
+                </svg>
+              </div>
+
+              {/* Central avatar */}
+              <div className="student-loader-avatar" style={{ width: 64, height: 64, borderRadius: '50%', backgroundColor: '#3b82f6', border: '3px solid white', boxShadow: '0 4px 16px rgba(59,130,246,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+            </div>
+            {/* Name skeleton */}
+            <div className="skeleton" style={{ height: 13, width: 96, borderRadius: 6 }} />
+          </div>
+
+          {/* Header skeleton */}
+          <div className="skeleton-card-enter" style={{ animationDelay: '0.28s', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <div className="skeleton" style={{ height: 26, width: 88, borderRadius: 6 }} />
+              <div className="skeleton" style={{ height: 22, width: 110, borderRadius: 999 }} />
+            </div>
+            <div className="skeleton" style={{ height: 40, width: 130, borderRadius: 8 }} />
+          </div>
+
+          {/* Two-column layout skeleton */}
+          <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '2.5rem', alignItems: 'start' }}>
+
+            {/* Left: profile card */}
+            <div className="card skeleton-card-enter" style={{ animationDelay: '0.38s', padding: '2rem', overflow: 'hidden', borderRadius: '1.25rem' }}>
+              {/* Big avatar circle */}
+              <div className="skeleton" style={{ width: '100%', aspectRatio: '1', borderRadius: '50%', marginBottom: '1.5rem' }} />
+              {/* Name */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.625rem', marginBottom: '1.5rem' }}>
+                <div className="skeleton" style={{ height: 28, width: '70%', borderRadius: 7 }} />
+                <div className="skeleton" style={{ height: 20, width: '45%', borderRadius: 999 }} />
+              </div>
+              {/* Info lines */}
+              {[90, 75, 80].map((w, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', padding: '0.75rem', backgroundColor: 'var(--gray-50)', borderRadius: '0.5rem' }}>
+                  <div className="skeleton" style={{ width: 16, height: 16, borderRadius: '50%', flexShrink: 0 }} />
+                  <div className="skeleton" style={{ height: 13, width: `${w}%`, borderRadius: 4 }} />
+                </div>
+              ))}
+            </div>
+
+            {/* Right: detail cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {/* Groups card */}
+              <div className="card skeleton-card-enter" style={{ animationDelay: '0.48s', padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                  <div className="skeleton" style={{ width: 20, height: 20, borderRadius: 4 }} />
+                  <div className="skeleton" style={{ height: 18, width: 100, borderRadius: 5 }} />
+                </div>
+                {[1, 2].map(i => (
+                  <div key={i} style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div className="skeleton" style={{ height: 15, width: 160, borderRadius: 4, marginBottom: 6 }} />
+                      <div className="skeleton" style={{ height: 12, width: 110, borderRadius: 4 }} />
+                    </div>
+                    <div className="skeleton" style={{ height: 22, width: 70, borderRadius: 999 }} />
+                  </div>
+                ))}
+              </div>
+
+              {/* Attendance card */}
+              <div className="card skeleton-card-enter" style={{ animationDelay: '0.54s', padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                  <div className="skeleton" style={{ width: 20, height: 20, borderRadius: '50%' }} />
+                  <div className="skeleton" style={{ height: 18, width: 130, borderRadius: 5 }} />
+                </div>
+                <div style={{ padding: '1rem 1.25rem', display: 'flex', gap: '1rem' }}>
+                  {[1, 2, 3].map(i => (
+                    <div key={i} style={{ flex: 1, padding: '0.875rem', backgroundColor: 'var(--gray-50)', borderRadius: '0.5rem', textAlign: 'center' }}>
+                      <div className="skeleton" style={{ height: 24, width: '60%', borderRadius: 5, margin: '0 auto 6px' }} />
+                      <div className="skeleton" style={{ height: 11, width: '80%', borderRadius: 3, margin: '0 auto' }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Payments card */}
+              <div className="card skeleton-card-enter" style={{ animationDelay: '0.60s', padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                  <div className="skeleton" style={{ width: 20, height: 20, borderRadius: 4 }} />
+                  <div className="skeleton" style={{ height: 18, width: 90, borderRadius: 5 }} />
+                </div>
+                {[1, 2].map(i => (
+                  <div key={i} style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                      <div className="skeleton" style={{ width: 36, height: 36, borderRadius: '50%' }} />
+                      <div>
+                        <div className="skeleton" style={{ height: 14, width: 90, borderRadius: 4, marginBottom: 5 }} />
+                        <div className="skeleton" style={{ height: 11, width: 70, borderRadius: 4 }} />
+                      </div>
+                    </div>
+                    <div className="skeleton" style={{ height: 18, width: 60, borderRadius: 4 }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </Layout>
+    );
   }
 
   // Redirect if not authenticated
