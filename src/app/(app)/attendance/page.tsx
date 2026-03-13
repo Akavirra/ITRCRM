@@ -257,6 +257,7 @@ export default function AttendancePage() {
   const [month,         setMonth]         = useState(now.getMonth() + 1);
   const [viewMode,      setViewMode]      = useState<'grouped'|'summary'>('grouped');
   const [makeupTab,     setMakeupTab]     = useState(false);
+  const [individualTab, setIndividualTab] = useState(false);
   const [makeupData,    setMakeupData]    = useState<MakeupLessonEntry[]>([]);
   const [makeupLoading, setMakeupLoading] = useState(false);
   const [totals,        setTotals]        = useState<Totals|null>(null);
@@ -477,17 +478,19 @@ export default function AttendancePage() {
   // ── Export CSV ──
   const exportCSV = () => {
     let csvRows: (string|number)[][];
-    if (!allTime && viewMode === 'grouped' && groupedData) {
-      csvRows = [['Тип', 'Група', 'Учень', 'Дата', 'День', 'Статус']];
+    if (!allTime && individualTab && groupedData) {
+      csvRows = [['Дата', 'День', 'Час', 'Курс', 'Викладач', 'Учень', 'Тема', 'Статус']];
+      for (const il of groupedData.individual_lessons)
+        for (const s of il.students)
+          csvRows.push([formatDateShort(il.lesson_date), getWeekdayShort(il.lesson_date), il.start_time||'', il.course_title||'', il.teacher_name||'', s.student_name, il.topic||'', !s.status ? '—' : s.status === 'present' ? 'П' : s.status === 'absent' ? 'В' : 'Відп']);
+    } else if (!allTime && viewMode === 'grouped' && groupedData) {
+      csvRows = [['Група', 'Учень', 'Дата', 'День', 'Статус']];
       for (const g of groupedData.groups)
         for (const s of g.students)
           for (const l of g.lessons) {
             const st = s.attendance[l.lesson_id];
-            csvRows.push(['Групове', g.group_title, s.student_name, formatDateShort(l.lesson_date), getWeekdayShort(l.lesson_date), !st ? '—' : st === 'present' ? 'П' : st === 'absent' ? 'В' : 'Відп']);
+            csvRows.push([g.group_title, s.student_name, formatDateShort(l.lesson_date), getWeekdayShort(l.lesson_date), !st ? '—' : st === 'present' ? 'П' : st === 'absent' ? 'В' : 'Відп']);
           }
-      for (const il of groupedData.individual_lessons)
-        for (const s of il.students)
-          csvRows.push(['Індивідуальне', il.topic||'—', s.student_name, formatDateShort(il.lesson_date), getWeekdayShort(il.lesson_date), !s.status ? '—' : s.status === 'present' ? 'П' : s.status === 'absent' ? 'В' : 'Відп']);
     } else {
       csvRows = [['Дата', 'День', 'Час', 'Тип', 'Курс', 'Група', 'Учень', 'Тема', 'Статус']];
       for (const r of lessonRecords) {
@@ -692,22 +695,26 @@ export default function AttendancePage() {
             <div className="card" style={{ borderRadius:'1rem', overflow:'hidden' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'1rem 1.5rem', borderBottom:'1px solid #e5e7eb', flexWrap:'wrap' }}>
                 <div style={{ display:'flex', border:'1px solid #e5e7eb', borderRadius:'0.625rem', overflow:'hidden', flexShrink:0 }}>
-                  {(['grouped','summary'] as const).map(mode => (
-                    <button key={mode} onClick={() => { setViewMode(mode); setStatusFilter(''); setMakeupTab(false); }} style={{
-                      padding:'0.5rem 1rem', border:'none', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
-                      backgroundColor: !makeupTab && viewMode === mode ? '#1565c0' : 'white',
-                      color: !makeupTab && viewMode === mode ? 'white' : '#374151',
-                    }}>
-                      {mode === 'grouped' ? 'По групах' : 'Загальна таблиця'}
-                    </button>
-                  ))}
-                  <button onClick={() => { setMakeupTab(true); setStatusFilter(''); }} style={{
+                  <button onClick={() => { setViewMode('grouped'); setStatusFilter(''); setMakeupTab(false); setIndividualTab(false); }} style={{
+                    padding:'0.5rem 1rem', border:'none', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
+                    backgroundColor: !makeupTab && !individualTab && viewMode === 'grouped' ? '#1565c0' : 'white',
+                    color: !makeupTab && !individualTab && viewMode === 'grouped' ? 'white' : '#374151',
+                  }}>По групах</button>
+                  <button onClick={() => { setIndividualTab(true); setMakeupTab(false); setStatusFilter(''); }} style={{
+                    padding:'0.5rem 1rem', border:'none', borderLeft:'1px solid #e5e7eb', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
+                    backgroundColor: individualTab ? '#1565c0' : 'white',
+                    color: individualTab ? 'white' : '#374151',
+                  }}>Індивідуальні</button>
+                  <button onClick={() => { setMakeupTab(true); setIndividualTab(false); setStatusFilter(''); }} style={{
                     padding:'0.5rem 1rem', border:'none', borderLeft:'1px solid #e5e7eb', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
                     backgroundColor: makeupTab ? '#1565c0' : 'white',
                     color: makeupTab ? 'white' : '#374151',
-                  }}>
-                    Відпрацювання
-                  </button>
+                  }}>Відпрацювання</button>
+                  <button onClick={() => { setViewMode('summary'); setStatusFilter(''); setMakeupTab(false); setIndividualTab(false); }} style={{
+                    padding:'0.5rem 1rem', border:'none', borderLeft:'1px solid #e5e7eb', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
+                    backgroundColor: !makeupTab && !individualTab && viewMode === 'summary' ? '#1565c0' : 'white',
+                    color: !makeupTab && !individualTab && viewMode === 'summary' ? 'white' : '#374151',
+                  }}>Загальна таблиця</button>
                 </div>
 
                 <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)} style={selectStyle}>
@@ -766,6 +773,10 @@ export default function AttendancePage() {
                 makeupLoading
                   ? <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>Завантаження...</div>
                   : renderMakeupView()
+              ) : individualTab ? (
+                loading
+                  ? <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>Завантаження...</div>
+                  : renderIndividualView()
               ) : loading ? (
                 <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>Завантаження...</div>
               ) : viewMode === 'grouped' ? renderGroupedView()
@@ -781,7 +792,7 @@ export default function AttendancePage() {
   // ── Grouped view ─────────────────────────────────────────────────────────
 
   function renderGroupedView() {
-    if (!groupedData || (groupedData.groups.length === 0 && groupedData.individual_lessons.length === 0)) {
+    if (!groupedData || groupedData.groups.length === 0) {
       return <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>
         <p style={{ margin:'0 0 0.5rem 0' }}>Даних про відвідуваність немає</p>
         <p style={{ margin:0, fontSize:'0.8125rem' }}>Відвідуваність з&apos;явиться після проведення занять</p>
@@ -878,76 +889,85 @@ export default function AttendancePage() {
           </div>
         )}
 
-        {groupedData.individual_lessons.length > 0 && (
-          <div>
-            <div style={{ fontSize:'0.6875rem', fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'0.75rem' }}>
-              Індивідуальні заняття ({groupedData.individual_lessons.length})
-            </div>
-            <div style={{ border:'1px solid #e8d5ff', borderRadius:'0.875rem', overflow:'hidden', backgroundColor:'#fdf8ff' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.875rem' }}>
-                <thead>
-                  <tr style={{ backgroundColor:'#f5eeff', borderBottom:'1px solid #e8d5ff' }}>
-                    <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Дата</th>
-                    <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Час</th>
-                    <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Викладач</th>
-                    <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Курс</th>
-                    <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem' }}>Учні та відвідуваність</th>
-                    <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem' }}>Тема</th>
-                    <th style={{ padding:'0.625rem 0.5rem', width:36 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groupedData.individual_lessons.map(il => (
-                    <tr key={il.lesson_id} style={{ borderBottom:'1px solid #f3e8ff' }}>
-                      <td style={{ padding:'0.75rem 1.25rem', whiteSpace:'nowrap' }}>
-                        <div style={{ fontWeight:600, fontSize:'0.875rem', color:'#111827' }}>{formatDateShort(il.lesson_date)}</div>
-                        <div style={{ fontSize:'0.7rem', color:'#9ca3af', marginTop:1 }}>{getWeekdayShort(il.lesson_date)}</div>
-                      </td>
-                      <td style={{ padding:'0.75rem 0.75rem', whiteSpace:'nowrap' }}>
-                        {il.start_time
-                          ? <span style={{ padding:'2px 8px', borderRadius:6, backgroundColor:'#f3e8ff', color:'#7c3aed', fontSize:'0.8125rem', fontWeight:600 }}>{il.start_time}</span>
-                          : <span style={{ color:'#9ca3af' }}>—</span>}
-                      </td>
-                      <td style={{ padding:'0.75rem 0.75rem', whiteSpace:'nowrap', fontSize:'0.8125rem' }}>
-                        {il.teacher_name
-                          ? <span style={{ color:'#92400e', cursor:'pointer', fontWeight:500 }}
-                              onClick={() => il.teacher_id && openTeacherModal(il.teacher_id, il.teacher_name!)}
-                              onMouseEnter={e => (e.currentTarget.style.textDecoration='underline')}
-                              onMouseLeave={e => (e.currentTarget.style.textDecoration='none')}>{il.teacher_name}</span>
-                          : <span style={{ color:'#9ca3af' }}>—</span>}
-                      </td>
-                      <td style={{ padding:'0.75rem 0.75rem', whiteSpace:'nowrap', fontSize:'0.8125rem' }}>
-                        {il.course_title
-                          ? <span style={{ padding:'2px 8px', borderRadius:6, backgroundColor:'#f0fdf4', color:'#166534', fontSize:'0.75rem', fontWeight:600, cursor: il.course_id ? 'pointer' : 'default' }}
-                              onClick={() => il.course_id && openCourseModal(il.course_id, il.course_title!)}
-                              onMouseEnter={e => { if (il.course_id) e.currentTarget.style.textDecoration='underline'; }}
-                              onMouseLeave={e => (e.currentTarget.style.textDecoration='none')}>{il.course_title}</span>
-                          : <span style={{ color:'#9ca3af' }}>—</span>}
-                      </td>
-                      <td style={{ padding:'0.75rem 0.75rem' }}>
-                        <div style={{ display:'flex', flexDirection:'column', gap:'0.375rem' }}>
-                          {il.students.map(s => (
-                            <div key={s.student_id} style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                              <StatusBadge status={s.status} />
-                              <span style={{ fontSize:'0.8125rem', color:'#1d4ed8', cursor:'pointer', fontWeight:500 }}
-                                onClick={() => openStudentModal(s.student_id, s.student_name)}>{s.student_name}</span>
-                            </div>
-                          ))}
+      </div>
+    );
+  }
+
+  // ── Individual lessons view ───────────────────────────────────────────────
+
+  function renderIndividualView() {
+    const lessons = groupedData?.individual_lessons ?? [];
+    if (lessons.length === 0) {
+      return <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>
+        <p style={{ margin:'0 0 0.5rem 0' }}>Індивідуальних занять немає</p>
+        <p style={{ margin:0, fontSize:'0.8125rem' }}>Заняття без групи з&apos;являться тут після їх проведення</p>
+      </div>;
+    }
+    return (
+      <div style={{ padding:'1.25rem 1.5rem' }}>
+        <div style={{ border:'1px solid #e8d5ff', borderRadius:'0.875rem', overflow:'hidden', backgroundColor:'#fdf8ff' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.875rem' }}>
+            <thead>
+              <tr style={{ backgroundColor:'#f5eeff', borderBottom:'1px solid #e8d5ff' }}>
+                <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Дата</th>
+                <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Час</th>
+                <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Викладач</th>
+                <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Курс</th>
+                <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem' }}>Учні та відвідуваність</th>
+                <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem' }}>Тема</th>
+                <th style={{ padding:'0.625rem 0.5rem', width:36 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {lessons.map(il => (
+                <tr key={il.lesson_id} style={{ borderBottom:'1px solid #f3e8ff' }}>
+                  <td style={{ padding:'0.75rem 1.25rem', whiteSpace:'nowrap' }}>
+                    <div style={{ fontWeight:600, fontSize:'0.875rem', color:'#111827' }}>{formatDateShort(il.lesson_date)}</div>
+                    <div style={{ fontSize:'0.7rem', color:'#9ca3af', marginTop:1 }}>{getWeekdayShort(il.lesson_date)}</div>
+                  </td>
+                  <td style={{ padding:'0.75rem 0.75rem', whiteSpace:'nowrap' }}>
+                    {il.start_time
+                      ? <span style={{ padding:'2px 8px', borderRadius:6, backgroundColor:'#f3e8ff', color:'#7c3aed', fontSize:'0.8125rem', fontWeight:600 }}>{il.start_time}</span>
+                      : <span style={{ color:'#9ca3af' }}>—</span>}
+                  </td>
+                  <td style={{ padding:'0.75rem 0.75rem', whiteSpace:'nowrap', fontSize:'0.8125rem' }}>
+                    {il.teacher_name
+                      ? <span style={{ color:'#92400e', cursor:'pointer', fontWeight:500 }}
+                          onClick={() => il.teacher_id && openTeacherModal(il.teacher_id, il.teacher_name!)}
+                          onMouseEnter={e => (e.currentTarget.style.textDecoration='underline')}
+                          onMouseLeave={e => (e.currentTarget.style.textDecoration='none')}>{il.teacher_name}</span>
+                      : <span style={{ color:'#9ca3af' }}>—</span>}
+                  </td>
+                  <td style={{ padding:'0.75rem 0.75rem', whiteSpace:'nowrap', fontSize:'0.8125rem' }}>
+                    {il.course_title
+                      ? <span style={{ padding:'2px 8px', borderRadius:6, backgroundColor:'#f0fdf4', color:'#166534', fontSize:'0.75rem', fontWeight:600, cursor: il.course_id ? 'pointer' : 'default' }}
+                          onClick={() => il.course_id && openCourseModal(il.course_id, il.course_title!)}
+                          onMouseEnter={e => { if (il.course_id) e.currentTarget.style.textDecoration='underline'; }}
+                          onMouseLeave={e => (e.currentTarget.style.textDecoration='none')}>{il.course_title}</span>
+                      : <span style={{ color:'#9ca3af' }}>—</span>}
+                  </td>
+                  <td style={{ padding:'0.75rem 0.75rem' }}>
+                    <div style={{ display:'flex', flexDirection:'column', gap:'0.375rem' }}>
+                      {il.students.map(s => (
+                        <div key={s.student_id} style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                          <StatusBadge status={s.status} />
+                          <span style={{ fontSize:'0.8125rem', color:'#1d4ed8', cursor:'pointer', fontWeight:500 }}
+                            onClick={() => openStudentModal(s.student_id, s.student_name)}>{s.student_name}</span>
                         </div>
-                      </td>
-                      <td style={{ padding:'0.75rem 1.25rem', color:'#6b7280', fontSize:'0.8125rem', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={il.topic||undefined}>
-                        {il.topic||<span style={{ color:'#9ca3af' }}>—</span>}
-                      </td>
-                      <td style={{ padding:'0.75rem 0.5rem' }}>
-                        <OpenLessonBtn lessonId={il.lesson_id} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+                      ))}
+                    </div>
+                  </td>
+                  <td style={{ padding:'0.75rem 1.25rem', color:'#6b7280', fontSize:'0.8125rem', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={il.topic||undefined}>
+                    {il.topic||<span style={{ color:'#9ca3af' }}>—</span>}
+                  </td>
+                  <td style={{ padding:'0.75rem 0.5rem' }}>
+                    <OpenLessonBtn lessonId={il.lesson_id} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
