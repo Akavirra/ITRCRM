@@ -8,6 +8,7 @@ import { uk } from '@/i18n/uk';
 import { formatDateTimeKyiv, formatDateKyiv } from '@/lib/date-utils';
 import DraggableModal from '@/components/DraggableModal';
 import { useStudentModals } from '@/components/StudentModalsContext';
+import { useLessonModals } from '@/components/LessonModalsContext';
 import StudentAttendancePanel from '@/components/StudentAttendancePanel';
 
 interface User {
@@ -246,6 +247,7 @@ export default function StudentProfilePage() {
   
   // Student modals - close modal when navigating to this student profile
   const { closeStudentModal } = useStudentModals();
+  const { openLessonModal } = useLessonModals();
   
   // Close modal when this page mounts
   useEffect(() => {
@@ -2398,7 +2400,10 @@ export default function StudentProfilePage() {
             </div>
 
             {/* Attendance Panel */}
-            <StudentAttendancePanel studentId={student.id} />
+            <StudentAttendancePanel
+              studentId={student.id}
+              onOpenLesson={(lessonId) => openLessonModal(lessonId, `Заняття #${lessonId}`, undefined)}
+            />
 
           </div>
         </div>
