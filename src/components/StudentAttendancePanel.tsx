@@ -126,6 +126,10 @@ export default function StudentAttendancePanel({
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
+  const [sectionsCollapsed, setSectionsCollapsed] = useState<{ group: boolean; individual: boolean; makeup: boolean }>({ group: false, individual: false, makeup: false });
+
+  const toggleSection = (key: 'group' | 'individual' | 'makeup') =>
+    setSectionsCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
 
   const toggleGroup = (groupId: number) => {
     setCollapsedGroups(prev => {
@@ -236,10 +240,19 @@ export default function StudentAttendancePanel({
             {/* ── Group lessons ── */}
             {groupLessons.length > 0 && (
               <div>
-                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>
-                  Групові заняття ({groupLessons.length} {groupLessons.length === 1 ? 'група' : groupLessons.length < 5 ? 'групи' : 'груп'})
+                <div
+                  onClick={() => toggleSection('group')}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: sectionsCollapsed.group ? 0 : '0.5rem', cursor: 'pointer', userSelect: 'none', padding: '2px 0' }}
+                >
+                  <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Групові заняття ({groupLessons.length} {groupLessons.length === 1 ? 'група' : groupLessons.length < 5 ? 'групи' : 'груп'})
+                  </span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2.5"
+                    style={{ transition: 'transform 0.2s', transform: sectionsCollapsed.group ? 'rotate(-90deg)' : 'rotate(0deg)', flexShrink: 0 }}>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                {!sectionsCollapsed.group && <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                   {groupLessons.map(g => {
                     const isCollapsed = collapsedGroups.has(g.group_id!);
                     return (
@@ -299,17 +312,26 @@ export default function StudentAttendancePanel({
                       </div>
                     );
                   })}
-                </div>
+                </div>}
               </div>
             )}
 
             {/* ── Individual lessons ── */}
             {individualGroup && individualGroup.lessons.length > 0 && (
               <div>
-                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>
-                  Індивідуальні заняття ({individualGroup.lessons.length})
+                <div
+                  onClick={() => toggleSection('individual')}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: sectionsCollapsed.individual ? 0 : '0.5rem', cursor: 'pointer', userSelect: 'none', padding: '2px 0' }}
+                >
+                  <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Індивідуальні заняття ({individualGroup.lessons.length})
+                  </span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2.5"
+                    style={{ transition: 'transform 0.2s', transform: sectionsCollapsed.individual ? 'rotate(-90deg)' : 'rotate(0deg)', flexShrink: 0 }}>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
                 </div>
-                <div style={{ border: '1px solid #e8d5ff', borderRadius: '0.75rem', overflow: 'hidden', backgroundColor: '#fdf8ff' }}>
+                {!sectionsCollapsed.individual && <div style={{ border: '1px solid #e8d5ff', borderRadius: '0.75rem', overflow: 'hidden', backgroundColor: '#fdf8ff' }}>
                   {individualGroup.lessons.map((l, i) => (
                     <div
                       key={l.lesson_id}
@@ -359,17 +381,26 @@ export default function StudentAttendancePanel({
                       )}
                     </div>
                   ))}
-                </div>
+                </div>}
               </div>
             )}
 
             {/* ── Makeup lessons (відпрацювання) ── */}
             {makeupGroup && makeupGroup.lessons.length > 0 && (
               <div>
-                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>
-                  Відпрацювання ({makeupGroup.lessons.length})
+                <div
+                  onClick={() => toggleSection('makeup')}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: sectionsCollapsed.makeup ? 0 : '0.5rem', cursor: 'pointer', userSelect: 'none', padding: '2px 0' }}
+                >
+                  <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Відпрацювання ({makeupGroup.lessons.length})
+                  </span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fcd34d" strokeWidth="2.5"
+                    style={{ transition: 'transform 0.2s', transform: sectionsCollapsed.makeup ? 'rotate(-90deg)' : 'rotate(0deg)', flexShrink: 0 }}>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
                 </div>
-                <div style={{ border: '1px solid #fde68a', borderRadius: '0.75rem', overflow: 'hidden', backgroundColor: '#fffbeb' }}>
+                {!sectionsCollapsed.makeup && <div style={{ border: '1px solid #fde68a', borderRadius: '0.75rem', overflow: 'hidden', backgroundColor: '#fffbeb' }}>
                   {makeupGroup.lessons.map((l, i) => (
                     <div
                       key={l.lesson_id}
@@ -415,7 +446,7 @@ export default function StudentAttendancePanel({
                       )}
                     </div>
                   ))}
-                </div>
+                </div>}
               </div>
             )}
 
