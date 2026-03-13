@@ -354,12 +354,8 @@ export default function StudentAttendancePanel({
         const weekday = WEEKDAY_MON_FIRST[(jsDate.getDay() + 6) % 7];
         return (
           <div
-            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+            style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 1000, backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', width: 380, maxWidth: 'calc(100vw - 2rem)', overflow: 'hidden' }}
           >
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', width: '100%', maxWidth: 400, overflow: 'hidden' }}
-            >
               {/* Modal header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderBottom: '1px solid #f3f4f6' }}>
                 <div>
@@ -420,7 +416,6 @@ export default function StudentAttendancePanel({
                   </div>
                 );
               })}
-            </div>
           </div>
         );
       })()}
