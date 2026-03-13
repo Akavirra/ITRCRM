@@ -8,6 +8,7 @@ import { useStudentModals } from '@/components/StudentModalsContext';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useCourseModals } from '@/components/CourseModalsContext';
 import { useTeacherModals } from '@/components/TeacherModalsContext';
+import CreateLessonModal from '@/components/CreateLessonModal';
 
 type AttendanceStatus = 'present' | 'absent' | 'makeup_planned' | 'makeup_done';
 
@@ -52,6 +53,7 @@ interface GroupedStudent {
   student_name: string;
   attendance: Record<number, AttendanceStatus | null>;
   makeup_lesson_ids?: Record<number, number | null>;
+  attendance_ids?: Record<number, number | null>;
   present: number;
   absent: number;
   rate: number;
@@ -194,10 +196,33 @@ function RateBar({ rate }: { rate: number }) {
   );
 }
 
-function AttCell({ status, makeupLessonId, onMakeupClick }: { status: AttendanceStatus | null; makeupLessonId?: number | null; onMakeupClick?: () => void }) {
+function AttCell({ status, makeupLessonId, onMakeupClick, onAbsenceClick }: { status: AttendanceStatus | null; makeupLessonId?: number | null; onMakeupClick?: () => void; onAbsenceClick?: () => void }) {
   if (!status) return <span style={{ color: '#d1d5db' }}>○</span>;
   if (status === 'present')     return <span style={{ color: '#16a34a', fontWeight: 700 }}>✓</span>;
-  if (status === 'absent')      return <span style={{ color: '#dc2626', fontWeight: 700 }}>✗</span>;
+  if (status === 'absent') {
+    if (onAbsenceClick) {
+      return (
+        <span
+          onClick={(e) => { e.stopPropagation(); onAbsenceClick(); }}
+          style={{ color: '#dc2626', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted' }}
+          title="Пропуск — створити відпрацювання"
+        >✗</span>
+      );
+    }
+    return <span style={{ color: '#dc2626', fontWeight: 700 }}>✗</span>;
+  }
+  if (status === 'makeup_planned') {
+    if (onAbsenceClick) {
+      return (
+        <span
+          onClick={(e) => { e.stopPropagation(); onAbsenceClick(); }}
+          style={{ color: '#d97706', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted' }}
+          title="Відпрацювання заплановано — відкрити форму"
+        >↺</span>
+      );
+    }
+    return <span style={{ color: '#d97706', fontWeight: 700 }}>↺</span>;
+  }
   if (status === 'makeup_done') {
     if (makeupLessonId && onMakeupClick) {
       return (
@@ -210,7 +235,7 @@ function AttCell({ status, makeupLessonId, onMakeupClick }: { status: Attendance
     }
     return <span style={{ color: '#a16207', fontWeight: 700 }}>✓</span>;
   }
-  return <span style={{ color: '#d97706', fontWeight: 700 }}>↺</span>;
+  return null;
 }
 
 function StatusBadge({ status }: { status: AttendanceStatus | null }) {
@@ -297,6 +322,8 @@ export default function AttendancePage() {
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [selectedCalDay, setSelectedCalDay] = useState<string | null>(null);
   const [calTooltip, setCalTooltip] = useState<{ dateKey: string; x: number; y: number } | null>(null);
+  const [makeupCreateOpen, setMakeupCreateOpen] = useState(false);
+  const [makeupCreateAbsenceIds, setMakeupCreateAbsenceIds] = useState<number[]>([]);
   // all-time extra filters
   const [statusFilter, setStatusFilter] = useState('');
   const [atYear,      setAtYear]      = useState('');
@@ -833,6 +860,13 @@ export default function AttendancePage() {
           </>
         )}
       </div>
+      <CreateLessonModal
+        isOpen={makeupCreateOpen}
+        onClose={() => setMakeupCreateOpen(false)}
+        onSuccess={() => { setMakeupCreateOpen(false); loadData(); }}
+        initialTab="makeup"
+        initialAbsenceIds={makeupCreateAbsenceIds}
+      />
     </Layout>
   );
 
@@ -1156,12 +1190,16 @@ export default function AttendancePage() {
                               onClick={() => openStudentModal(s.student_id, s.student_name)}>{s.student_name}</td>
                             {g.lessons.map(l => {
                               const makeupId = s.makeup_lesson_ids?.[l.lesson_id];
+                              const attId = s.attendance_ids?.[l.lesson_id];
+                              const st = s.attendance[l.lesson_id] ?? null;
+                              const isAbsence = st === 'absent' || st === 'makeup_planned';
                               return (
                                 <td key={l.lesson_id} style={{ padding:'0.5rem 0.625rem', textAlign:'center' }}>
                                   <AttCell
-                                    status={s.attendance[l.lesson_id]??null}
+                                    status={st}
                                     makeupLessonId={makeupId}
                                     onMakeupClick={makeupId ? () => openLessonModal(makeupId, `Заняття #${makeupId}`, undefined) : undefined}
+                                    onAbsenceClick={isAbsence && attId ? () => { setMakeupCreateAbsenceIds([attId]); setMakeupCreateOpen(true); } : undefined}
                                   />
                                 </td>
                               );

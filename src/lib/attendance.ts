@@ -988,6 +988,7 @@ export interface GroupedMonthlyGroup {
     student_name: string;
     attendance: Record<number, AttendanceStatus | null>;
     makeup_lesson_ids: Record<number, number | null>;
+    attendance_ids: Record<number, number | null>;
     present: number;
     absent: number;
     rate: number;
@@ -1082,17 +1083,17 @@ export async function getGlobalMonthlyGroupedStats(
 
     // --- 4. Get all attendance for these lessons (1 query) ---
     const allLessonIds = allLessons.map(l => l.lesson_id);
-    let attRows: Array<{ lesson_id: number; student_id: number; status: AttendanceStatus; makeup_lesson_id: number | null }> = [];
+    let attRows: Array<{ attendance_id: number; lesson_id: number; student_id: number; status: AttendanceStatus; makeup_lesson_id: number | null }> = [];
     if (allLessonIds.length > 0) {
-      attRows = await all<{ lesson_id: number; student_id: number; status: AttendanceStatus; makeup_lesson_id: number | null }>(
-        `SELECT lesson_id, student_id, status, makeup_lesson_id FROM attendance WHERE lesson_id IN (${allLessonIds.join(',')})`,
+      attRows = await all<{ attendance_id: number; lesson_id: number; student_id: number; status: AttendanceStatus; makeup_lesson_id: number | null }>(
+        `SELECT id as attendance_id, lesson_id, student_id, status, makeup_lesson_id FROM attendance WHERE lesson_id IN (${allLessonIds.join(',')})`,
         []
       );
     }
 
     // --- Aggregate in JS ---
-    const attMap = new Map<string, { status: AttendanceStatus; makeup_lesson_id: number | null }>();
-    for (const a of attRows) { attMap.set(`${a.lesson_id}-${a.student_id}`, { status: a.status, makeup_lesson_id: a.makeup_lesson_id }); }
+    const attMap = new Map<string, { attendance_id: number; status: AttendanceStatus; makeup_lesson_id: number | null }>();
+    for (const a of attRows) { attMap.set(`${a.lesson_id}-${a.student_id}`, { attendance_id: a.attendance_id, status: a.status, makeup_lesson_id: a.makeup_lesson_id }); }
 
     const lessonsByGroup = new Map<number, Array<{ lesson_id: number; lesson_date: string; topic: string | null }>>();
     for (const l of allLessons) {
@@ -1116,12 +1117,14 @@ export async function getGlobalMonthlyGroupedStats(
       const studentRows = students.map(s => {
         const attendance: Record<number, AttendanceStatus | null> = {};
         const makeup_lesson_ids: Record<number, number | null> = {};
+        const attendance_ids: Record<number, number | null> = {};
         let present = 0, absent = 0;
         for (const l of lessons) {
           const entry = attMap.get(`${l.lesson_id}-${s.student_id}`) ?? null;
           const st = entry?.status ?? null;
           attendance[l.lesson_id] = st;
           makeup_lesson_ids[l.lesson_id] = entry?.makeup_lesson_id ?? null;
+          attendance_ids[l.lesson_id] = entry?.attendance_id ?? null;
           if (st === 'present' || st === 'makeup_done') present++;
           else if (st === 'absent' || st === 'makeup_planned') absent++;
         }
@@ -1130,6 +1133,7 @@ export async function getGlobalMonthlyGroupedStats(
           student_name: s.student_name,
           attendance,
           makeup_lesson_ids,
+          attendance_ids,
           present,
           absent,
           rate: lessons.length > 0 ? Math.round((present / lessons.length) * 100) : 0,
