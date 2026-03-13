@@ -3,7 +3,7 @@ import { getAuthUser, unauthorized, isAdmin, forbidden, notFound } from '@/lib/a
 import { getStudentById, getStudentWithGroups, updateStudent, archiveStudent, restoreStudent, deleteStudent, getStudentAttendanceHistory, getStudentPaymentHistory, getStudentActiveGroups, safeDeleteStudent, forceDeleteStudent } from '@/lib/students';
 import { verifyPassword } from '@/lib/auth';
 import { get } from '@/db';
-import { addStudentHistoryEntry, formatFieldEditedDescription } from '@/lib/student-history';
+import { safeAddStudentHistoryEntry, formatFieldEditedDescription } from '@/lib/student-history';
 
 export const dynamic = 'force-dynamic';
 
@@ -156,7 +156,7 @@ export async function PUT(
 
     if (changedFields.length > 0) {
       for (const { field, oldVal, newVal } of changedFields) {
-        await addStudentHistoryEntry(
+        await safeAddStudentHistoryEntry(
           studentId,
           'edited',
           formatFieldEditedDescription(field, oldVal, newVal),
@@ -167,7 +167,7 @@ export async function PUT(
         );
       }
     } else {
-      await addStudentHistoryEntry(studentId, 'edited', 'Дані учня оновлено', user.id, user.name);
+      await safeAddStudentHistoryEntry(studentId, 'edited', 'Дані учня оновлено', user.id, user.name);
     }
 
     return NextResponse.json({ message: 'Дані учня успішно оновлено' });
@@ -291,7 +291,7 @@ export async function DELETE(
   
   // Default: archive the student
   await archiveStudent(studentId);
-  await addStudentHistoryEntry(studentId, 'archived', 'Учня архівовано', user.id, user.name);
+  await safeAddStudentHistoryEntry(studentId, 'archived', 'Учня архівовано', user.id, user.name);
   return NextResponse.json({ message: 'Учня успішно архівовано' });
 }
 
@@ -323,7 +323,7 @@ export async function PATCH(
   }
   
   await restoreStudent(studentId);
-  await addStudentHistoryEntry(studentId, 'restored', 'Учня відновлено', user.id, user.name);
+  await safeAddStudentHistoryEntry(studentId, 'restored', 'Учня відновлено', user.id, user.name);
 
   return NextResponse.json({ message: 'Учня успішно відновлено' });
 }

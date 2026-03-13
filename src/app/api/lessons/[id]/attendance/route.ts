@@ -4,7 +4,7 @@ import { getAttendanceForLessonWithStudents, setAttendance, setAttendanceForAll,
 import { get, run, all } from '@/db';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
 import { logLessonChange } from '@/lib/lessons';
-import { addStudentHistoryEntry, formatAttendanceDescription, StudentHistoryActionType } from '@/lib/student-history';
+import { safeAddStudentHistoryEntry, formatAttendanceDescription, StudentHistoryActionType } from '@/lib/student-history';
 
 export const dynamic = 'force-dynamic';
 
@@ -197,7 +197,7 @@ export async function POST(
           const isIndividual = lessonInfo.group_id === null;
           const description = formatAttendanceDescription(status, lessonInfo.lesson_date, groupTitle, lessonInfo.topic, isIndividual);
 
-          await addStudentHistoryEntry(parseInt(studentId), historyActionType, description, user.id, user.name);
+          await safeAddStudentHistoryEntry(parseInt(studentId), historyActionType, description, user.id, user.name);
         }
 
         // Log attendance change

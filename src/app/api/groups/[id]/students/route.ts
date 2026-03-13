@@ -10,7 +10,7 @@ import {
   reactivateStudentInGroup,
 } from '@/lib/groups';
 import { addGroupHistoryEntry, formatStudentAddedDescription, formatStudentRemovedDescription } from '@/lib/group-history';
-import { addStudentHistoryEntry, formatGroupJoinedDescription, formatGroupLeftDescription } from '@/lib/student-history';
+import { safeAddStudentHistoryEntry, formatGroupJoinedDescription, formatGroupLeftDescription } from '@/lib/student-history';
 import { get } from '@/db';
 
 export const dynamic = 'force-dynamic';
@@ -121,7 +121,7 @@ export async function POST(
       // Log group joined in student history
       const group = await get<{ title: string }>(`SELECT title FROM groups WHERE id = $1`, [groupId]);
       if (group) {
-        await addStudentHistoryEntry(studentId, 'group_joined', formatGroupJoinedDescription(group.title), user.id, user.name);
+        await safeAddStudentHistoryEntry(studentId, 'group_joined', formatGroupJoinedDescription(group.title), user.id, user.name);
       }
 
       return NextResponse.json({
@@ -151,7 +151,7 @@ export async function POST(
     // Log group joined in student history
     const group = await get<{ title: string }>(`SELECT title FROM groups WHERE id = $1`, [groupId]);
     if (group) {
-      await addStudentHistoryEntry(studentId, 'group_joined', formatGroupJoinedDescription(group.title), user.id, user.name);
+      await safeAddStudentHistoryEntry(studentId, 'group_joined', formatGroupJoinedDescription(group.title), user.id, user.name);
     }
     
     return NextResponse.json({
@@ -235,7 +235,7 @@ export async function DELETE(
   if (numericStudentId && studentName) {
     const group = await get<{ title: string }>(`SELECT title FROM groups WHERE id = $1`, [groupId]);
     if (group) {
-      await addStudentHistoryEntry(numericStudentId, 'group_left', formatGroupLeftDescription(group.title), user.id, user.name);
+      await safeAddStudentHistoryEntry(numericStudentId, 'group_left', formatGroupLeftDescription(group.title), user.id, user.name);
     }
   }
 

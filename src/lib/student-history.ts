@@ -53,6 +53,23 @@ export async function addStudentHistoryEntry(
   return Number(result[0]?.id);
 }
 
+// Non-fatal wrapper — history logging must never break the main operation
+export async function safeAddStudentHistoryEntry(
+  studentId: number,
+  actionType: StudentHistoryActionType,
+  actionDescription: string,
+  userId: number,
+  userName: string,
+  oldValue?: string | null,
+  newValue?: string | null
+): Promise<void> {
+  try {
+    await addStudentHistoryEntry(studentId, actionType, actionDescription, userId, userName, oldValue, newValue);
+  } catch (err) {
+    console.error('[student-history] Failed to log entry:', err);
+  }
+}
+
 // Get student history entries
 export async function getStudentHistory(studentId: number, limit?: number): Promise<StudentHistoryEntry[]> {
   const sql = limit
