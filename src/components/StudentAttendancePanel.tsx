@@ -983,6 +983,26 @@ export default function StudentAttendancePanel({
               </div>
             ))}
 
+            {individualGroup && individualGroup.lessons.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', minHeight: 34 }}>
+                <span style={{
+                  fontSize: '0.75rem', fontWeight: 600, color: '#7c3aed',
+                  minWidth: 110, maxWidth: 110, flexShrink: 0,
+                }}>Індивідуальні</span>
+                <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', flex: 1 }}>
+                  {individualGroup.lessons.map(l => (
+                    <StatusDot
+                      key={l.lesson_id}
+                      status={l.attendance_status}
+                      size="sm"
+                      onClick={onOpenLesson ? () => onOpenLesson(l.lesson_id) : undefined}
+                      title={lessonTitle(l)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {makeupGroup && makeupGroup.lessons.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', minHeight: 34 }}>
                 <span style={{
@@ -1003,26 +1023,6 @@ export default function StudentAttendancePanel({
                       />
                     );
                   })}
-                </div>
-              </div>
-            )}
-
-            {individualGroup && individualGroup.lessons.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', minHeight: 34 }}>
-                <span style={{
-                  fontSize: '0.75rem', fontWeight: 600, color: '#7c3aed',
-                  minWidth: 110, maxWidth: 110, flexShrink: 0,
-                }}>Індивідуальні</span>
-                <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', flex: 1 }}>
-                  {individualGroup.lessons.map(l => (
-                    <StatusDot
-                      key={l.lesson_id}
-                      status={l.attendance_status}
-                      size="sm"
-                      onClick={onOpenLesson ? () => onOpenLesson(l.lesson_id) : undefined}
-                      title={lessonTitle(l)}
-                    />
-                  ))}
                 </div>
               </div>
             )}
