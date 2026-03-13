@@ -344,6 +344,88 @@ export default function StudentAttendancePanel({
 
   return (
     <>
+      {/* Day detail modal */}
+      {selectedDay && (() => {
+        const lessons = calData[selectedDay] || [];
+        if (!lessons.length) return null;
+        const [dy, dm, dd] = selectedDay.split('-');
+        const dateLabel = `${dd}.${dm}.${dy}`;
+        const jsDate = new Date(parseInt(dy), parseInt(dm) - 1, parseInt(dd));
+        const weekday = WEEKDAY_MON_FIRST[(jsDate.getDay() + 6) % 7];
+        return (
+          <div
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+            onClick={() => setSelectedDay(null)}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', width: '100%', maxWidth: 400, overflow: 'hidden' }}
+            >
+              {/* Modal header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderBottom: '1px solid #f3f4f6' }}>
+                <div>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#111827' }}>{weekday}, {dateLabel}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2 }}>
+                    {lessons.length} {lessons.length === 1 ? 'заняття' : lessons.length < 5 ? 'заняття' : 'занять'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedDay(null)}
+                  style={{ width: 32, height: 32, border: '1px solid #e5e7eb', borderRadius: '50%', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '1.125rem', lineHeight: 1, flexShrink: 0 }}
+                >×</button>
+              </div>
+              {/* Lessons list */}
+              {lessons.map((l, i) => {
+                const ds = getDayStyle([l]);
+                return (
+                  <div
+                    key={l.lesson_id}
+                    onClick={onOpenLesson ? () => { onOpenLesson(l.lesson_id); setSelectedDay(null); } : undefined}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '0.875rem',
+                      padding: '0.875rem 1.25rem',
+                      borderBottom: i < lessons.length - 1 ? '1px solid #f3f4f6' : 'none',
+                      cursor: onOpenLesson ? 'pointer' : 'default',
+                      transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={onOpenLesson ? e => { e.currentTarget.style.background = '#f9fafb'; } : undefined}
+                    onMouseLeave={onOpenLesson ? e => { e.currentTarget.style.background = 'transparent'; } : undefined}
+                  >
+                    <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: ds?.bg || '#f3f4f6', border: `1.5px solid ${ds?.border || '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 700, color: ds?.color || '#6b7280', flexShrink: 0 }}>
+                      {l.attendance_status === 'present' ? '✓' : l.attendance_status === 'absent' ? '✗' : l.attendance_status === 'makeup_planned' ? '↺' : l.attendance_status === 'makeup_done' ? '✓' : '○'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {l.is_makeup ? '↺ Відпрацювання' : l.group_title || 'Індивідуальне'}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: 2, flexWrap: 'wrap' }}>
+                        {l.start_time_kyiv && (
+                          <span style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600 }}>{l.start_time_kyiv}</span>
+                        )}
+                        {l.course_title && (
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{l.course_title}</span>
+                        )}
+                        {l.topic && (
+                          <span style={{ fontSize: '0.75rem', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>· {l.topic}</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: ds?.color || '#9ca3af', marginTop: 2 }}>{statusLabel(l.attendance_status)}</div>
+                    </div>
+                    {onOpenLesson && (
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ flexShrink: 0 }}>
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Tooltip (fixed, outside card flow) */}
       {tooltip && (() => {
         const lessons = calData[tooltip.dateKey] || [];
@@ -388,7 +470,7 @@ export default function StudentAttendancePanel({
         );
       })()}
 
-      <div className="card" style={{ marginBottom: '2rem', borderRadius: '1rem', overflow: viewMode === 'calendar' && selectedDay ? 'visible' : 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+      <div className="card" style={{ marginBottom: '2rem', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
 
         {/* Header — clickable to expand/collapse */}
         <div
@@ -734,75 +816,6 @@ export default function StudentAttendancePanel({
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem 1rem' }}>
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => renderMiniMonth(m))}
                 </div>
-
-                {/* Day detail panel */}
-                {selectedDay && (() => {
-                  const lessons = calData[selectedDay] || [];
-                  if (!lessons.length) return null;
-                  const [dy, dm, dd] = selectedDay.split('-');
-                  const dateLabel = `${dd}.${dm}.${dy}`;
-                  const jsDate = new Date(parseInt(dy), parseInt(dm) - 1, parseInt(dd));
-                  const weekday = WEEKDAY_MON_FIRST[(jsDate.getDay() + 6) % 7];
-
-                  return (
-                    <div style={{ marginTop: '1.25rem', border: '1px solid #e5e7eb', borderRadius: '0.75rem', overflow: 'hidden', backgroundColor: '#f9fafb' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 1rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f3f4f6' }}>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#374151' }}>
-                          {weekday}, {dateLabel} · {lessons.length} {lessons.length === 1 ? 'заняття' : 'занять'}
-                        </span>
-                        <button
-                          onClick={() => setSelectedDay(null)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 2, lineHeight: 1, fontSize: '1rem' }}
-                        >×</button>
-                      </div>
-                      {lessons.map((l, i) => {
-                        const style = getDayStyle([l]);
-                        return (
-                          <div
-                            key={l.lesson_id}
-                            onClick={onOpenLesson ? () => { onOpenLesson(l.lesson_id); setSelectedDay(null); } : undefined}
-                            style={{
-                              display: 'flex', alignItems: 'center', gap: '0.75rem',
-                              padding: '0.625rem 1rem',
-                              borderBottom: i < lessons.length - 1 ? '1px solid #e5e7eb' : 'none',
-                              cursor: onOpenLesson ? 'pointer' : 'default',
-                              transition: 'background 0.1s',
-                            }}
-                            onMouseEnter={onOpenLesson ? e => { e.currentTarget.style.background = '#f0f0f0'; } : undefined}
-                            onMouseLeave={onOpenLesson ? e => { e.currentTarget.style.background = 'transparent'; } : undefined}
-                          >
-                            <div style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: style?.bg || '#f3f4f6', border: `1.5px solid ${style?.border || '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, color: style?.color || '#6b7280', flexShrink: 0 }}>
-                              {l.attendance_status === 'present' ? '✓' : l.attendance_status === 'absent' ? '✗' : l.attendance_status === 'makeup_planned' ? '↺' : l.attendance_status === 'makeup_done' ? '✓' : '○'}
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827' }}>
-                                {l.is_makeup ? '↺ Відпрацювання' : l.group_title || 'Індивідуальне'}
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: 2, flexWrap: 'wrap' }}>
-                                {l.start_time_kyiv && (
-                                  <span style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600 }}>{l.start_time_kyiv}</span>
-                                )}
-                                {l.course_title && (
-                                  <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{l.course_title}</span>
-                                )}
-                                {l.topic && (
-                                  <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>· {l.topic}</span>
-                                )}
-                              </div>
-                            </div>
-                            {onOpenLesson && (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ flexShrink: 0 }}>
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                                <polyline points="15 3 21 3 21 9" />
-                                <line x1="10" y1="14" x2="21" y2="3" />
-                              </svg>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
               </div>
             )}
           </>
