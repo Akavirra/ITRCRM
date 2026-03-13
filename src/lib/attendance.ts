@@ -613,6 +613,7 @@ export interface MonthlyLessonItem {
   topic: string | null;
   lesson_status: string;
   attendance_status: AttendanceStatus | null;
+  is_makeup: boolean;
 }
 
 export interface MonthlyGroupAttendance {
@@ -628,6 +629,8 @@ export interface MonthlyGroupAttendance {
   not_marked: number;
   makeup: number;
   rate: number;
+  is_individual: boolean;
+  is_makeup_group: boolean;
 }
 
 // Get all lessons for a student in a specific month, grouped by group
@@ -649,6 +652,7 @@ export async function getStudentMonthlyAttendance(
     weekly_day: number | null;
     start_time: string | null;
     attendance_status: AttendanceStatus | null;
+    is_makeup: boolean;
   }>(
     `SELECT
       l.id as lesson_id,
@@ -662,7 +666,8 @@ export async function getStudentMonthlyAttendance(
       c.title as course_title,
       g.weekly_day,
       g.start_time,
-      a.status as attendance_status
+      a.status as attendance_status,
+      COALESCE(l.is_makeup, FALSE) as is_makeup
      FROM lessons l
      LEFT JOIN groups g ON l.group_id = g.id
      LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
@@ -680,14 +685,23 @@ export async function getStudentMonthlyAttendance(
            WHERE a2.lesson_id = l.id AND a2.student_id = $1
          )
        )
-     ORDER BY l.group_id NULLS LAST, l.lesson_date`,
+     ORDER BY l.group_id NULLS LAST, l.is_makeup, l.lesson_date`,
     [studentId, year, month]
   );
 
-  const groupsMap = new Map<number | null, MonthlyGroupAttendance>();
+  // Keys: group_id for group lessons, null for individual, 'makeup' for makeup lessons
+  const groupsMap = new Map<number | string | null, MonthlyGroupAttendance>();
 
   for (const row of rows) {
-    const key = row.group_id ?? null;
+    let key: number | string | null;
+    if (row.group_id !== null) {
+      key = row.group_id;
+    } else if (row.is_makeup) {
+      key = 'makeup';
+    } else {
+      key = null;
+    }
+
     if (!groupsMap.has(key)) {
       groupsMap.set(key, {
         group_id: row.group_id,
@@ -702,6 +716,8 @@ export async function getStudentMonthlyAttendance(
         not_marked: 0,
         makeup: 0,
         rate: 0,
+        is_individual: key === null,
+        is_makeup_group: key === 'makeup',
       });
     }
     const g = groupsMap.get(key)!;
@@ -713,6 +729,7 @@ export async function getStudentMonthlyAttendance(
       topic: row.topic,
       lesson_status: row.lesson_status,
       attendance_status: row.attendance_status,
+      is_makeup: row.is_makeup,
     });
     g.total++;
     if (row.attendance_status === 'present') g.present++;

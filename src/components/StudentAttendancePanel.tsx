@@ -12,6 +12,7 @@ interface MonthlyLessonItem {
   topic: string | null;
   lesson_status: string;
   attendance_status: AttendanceStatus | null;
+  is_makeup: boolean;
 }
 
 interface MonthlyGroupAttendance {
@@ -27,6 +28,8 @@ interface MonthlyGroupAttendance {
   not_marked: number;
   makeup: number;
   rate: number;
+  is_individual: boolean;
+  is_makeup_group: boolean;
 }
 
 const WEEKDAY_UK = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
@@ -146,11 +149,14 @@ export default function StudentAttendancePanel({
 
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
   const groupLessons = groups.filter(g => g.group_id !== null);
-  const individualGroup = groups.find(g => g.group_id === null);
+  const individualGroup = groups.find(g => g.is_individual);
+  const makeupGroup = groups.find(g => g.is_makeup_group);
 
-  const totalPresent = groups.reduce((s, g) => s + g.present, 0);
-  const totalAbsent = groups.reduce((s, g) => s + g.absent, 0);
-  const totalLessons = groups.reduce((s, g) => s + g.total, 0);
+  // Stats exclude makeup group (відпрацювання not counted in rate)
+  const statGroups = groups.filter(g => !g.is_makeup_group);
+  const totalPresent = statGroups.reduce((s, g) => s + g.present, 0);
+  const totalAbsent = statGroups.reduce((s, g) => s + g.absent, 0);
+  const totalLessons = statGroups.reduce((s, g) => s + g.total, 0);
   const overallRate = totalLessons > 0 ? Math.round((totalPresent / totalLessons) * 100) : 0;
 
   const lessonTitle = (l: MonthlyLessonItem) =>
@@ -274,6 +280,53 @@ export default function StudentAttendancePanel({
               </div>
             )}
 
+            {/* Makeup lessons (відпрацювання) */}
+            {makeupGroup && makeupGroup.lessons.length > 0 && (
+              <div>
+                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>
+                  Відпрацювання ({makeupGroup.lessons.length})
+                </div>
+                <div style={{ border: '1px solid #fde68a', borderRadius: '0.75rem', overflow: 'hidden', backgroundColor: '#fffbeb' }}>
+                  {makeupGroup.lessons.map((l, i) => (
+                    <div
+                      key={l.lesson_id}
+                      onClick={onOpenLesson ? () => onOpenLesson(l.lesson_id) : undefined}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 1rem',
+                        borderBottom: i < makeupGroup.lessons.length - 1 ? '1px solid #fef3c7' : 'none',
+                        cursor: onOpenLesson ? 'pointer' : 'default',
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={onOpenLesson ? e => { e.currentTarget.style.background = '#fef3c7'; } : undefined}
+                      onMouseLeave={onOpenLesson ? e => { e.currentTarget.style.background = 'transparent'; } : undefined}
+                    >
+                      <StatusDot status={l.attendance_status} size="sm" />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+                            {getWeekday(l.lesson_date)}, {formatDate(l.lesson_date)}
+                          </span>
+                          {l.start_time_kyiv && (
+                            <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, padding: '1px 6px', backgroundColor: '#fef3c7', borderRadius: 4 }}>
+                              {l.start_time_kyiv}
+                            </span>
+                          )}
+                        </div>
+                        {l.topic && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{l.topic}</div>}
+                      </div>
+                      {onOpenLesson && (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ flexShrink: 0 }}>
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                          <polyline points="15 3 21 3 21 9" />
+                          <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Individual lessons */}
             {individualGroup && individualGroup.lessons.length > 0 && (
               <div>
@@ -353,6 +406,27 @@ export default function StudentAttendancePanel({
               </span>
             </div>
           ))}
+
+          {/* Makeup lessons — compact dot row */}
+          {makeupGroup && makeupGroup.lessons.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', minHeight: 34 }}>
+              <span style={{
+                fontSize: '0.75rem', fontWeight: 600, color: '#d97706',
+                minWidth: 110, maxWidth: 110, flexShrink: 0,
+              }}>Відпрацювання</span>
+              <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', flex: 1 }}>
+                {makeupGroup.lessons.map(l => (
+                  <StatusDot
+                    key={l.lesson_id}
+                    status={l.attendance_status}
+                    size="sm"
+                    onClick={onOpenLesson ? () => onOpenLesson(l.lesson_id) : undefined}
+                    title={lessonTitle(l)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Individual lessons — compact dot row */}
           {individualGroup && individualGroup.lessons.length > 0 && (
