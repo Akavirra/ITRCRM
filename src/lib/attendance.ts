@@ -614,6 +614,11 @@ export interface MonthlyLessonItem {
   lesson_status: string;
   attendance_status: AttendanceStatus | null;
   is_makeup: boolean;
+  // For makeup lessons: info about the original missed lesson
+  original_lesson_date: string | null;
+  original_group_id: number | null;   // null = individual original lesson
+  original_group_title: string | null;
+  original_course_title: string | null;
 }
 
 export interface MonthlyGroupAttendance {
@@ -653,6 +658,10 @@ export async function getStudentMonthlyAttendance(
     start_time: string | null;
     attendance_status: AttendanceStatus | null;
     is_makeup: boolean;
+    original_lesson_date: string | null;
+    original_group_id: number | null;
+    original_group_title: string | null;
+    original_course_title: string | null;
   }>(
     `SELECT
       l.id as lesson_id,
@@ -667,11 +676,21 @@ export async function getStudentMonthlyAttendance(
       g.weekly_day,
       g.start_time,
       a.status as attendance_status,
-      COALESCE(l.is_makeup, FALSE) as is_makeup
+      COALESCE(l.is_makeup, FALSE) as is_makeup,
+      orig_l.lesson_date as original_lesson_date,
+      orig_l.group_id as original_group_id,
+      orig_g.title as original_group_title,
+      orig_c.title as original_course_title
      FROM lessons l
      LEFT JOIN groups g ON l.group_id = g.id
      LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
      LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = $1
+     -- For makeup lessons: find which original lesson this makes up
+     LEFT JOIN attendance orig_att ON COALESCE(l.is_makeup, FALSE) = TRUE
+       AND orig_att.makeup_lesson_id = l.id AND orig_att.student_id = $1
+     LEFT JOIN lessons orig_l ON orig_att.lesson_id = orig_l.id
+     LEFT JOIN groups orig_g ON orig_l.group_id = orig_g.id
+     LEFT JOIN courses orig_c ON COALESCE(orig_l.course_id, orig_g.course_id) = orig_c.id
      WHERE l.status != 'canceled'
        AND EXTRACT(YEAR FROM l.lesson_date) = $2
        AND EXTRACT(MONTH FROM l.lesson_date) = $3
@@ -730,6 +749,10 @@ export async function getStudentMonthlyAttendance(
       lesson_status: row.lesson_status,
       attendance_status: row.attendance_status,
       is_makeup: row.is_makeup,
+      original_lesson_date: row.original_lesson_date,
+      original_group_id: row.original_group_id,
+      original_group_title: row.original_group_title,
+      original_course_title: row.original_course_title,
     });
     g.total++;
     if (row.attendance_status === 'present') g.present++;

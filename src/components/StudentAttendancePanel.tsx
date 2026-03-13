@@ -13,6 +13,10 @@ interface MonthlyLessonItem {
   lesson_status: string;
   attendance_status: AttendanceStatus | null;
   is_makeup: boolean;
+  original_lesson_date: string | null;
+  original_group_id: number | null;
+  original_group_title: string | null;
+  original_course_title: string | null;
 }
 
 interface MonthlyGroupAttendance {
@@ -161,6 +165,15 @@ export default function StudentAttendancePanel({
 
   const lessonTitle = (l: MonthlyLessonItem) =>
     `${getWeekday(l.lesson_date)} ${formatDate(l.lesson_date)}${l.topic ? ' — ' + l.topic : ''} — відкрити заняття`;
+
+  const originalLessonLabel = (l: MonthlyLessonItem): string | null => {
+    if (!l.original_lesson_date) return null;
+    const dateStr = formatDate(l.original_lesson_date);
+    const day = getWeekday(l.original_lesson_date);
+    const type = l.original_group_id !== null ? (l.original_group_title || 'Групове') : 'Індивідуальне';
+    const course = l.original_course_title ? ` · ${l.original_course_title}` : '';
+    return `${day} ${dateStr} · ${type}${course}`;
+  };
 
   return (
     <div className="card" style={{ marginBottom: '2rem', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -312,6 +325,15 @@ export default function StudentAttendancePanel({
                             </span>
                           )}
                         </div>
+                        {(() => {
+                          const orig = originalLessonLabel(l);
+                          return orig ? (
+                            <div style={{ fontSize: '0.75rem', color: '#92400e', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ opacity: 0.6 }}>↩</span>
+                              <span>{orig}</span>
+                            </div>
+                          ) : null;
+                        })()}
                         {l.topic && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{l.topic}</div>}
                       </div>
                       {onOpenLesson && (
@@ -415,15 +437,19 @@ export default function StudentAttendancePanel({
                 minWidth: 110, maxWidth: 110, flexShrink: 0,
               }}>Відпрацювання</span>
               <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', flex: 1 }}>
-                {makeupGroup.lessons.map(l => (
-                  <StatusDot
-                    key={l.lesson_id}
-                    status={l.attendance_status}
-                    size="sm"
-                    onClick={onOpenLesson ? () => onOpenLesson(l.lesson_id) : undefined}
-                    title={lessonTitle(l)}
-                  />
-                ))}
+                {makeupGroup.lessons.map(l => {
+                  const orig = originalLessonLabel(l);
+                  const tip = `${getWeekday(l.lesson_date)} ${formatDate(l.lesson_date)}${orig ? ' ↩ ' + orig : ''} — відкрити`;
+                  return (
+                    <StatusDot
+                      key={l.lesson_id}
+                      status={l.attendance_status}
+                      size="sm"
+                      onClick={onOpenLesson ? () => onOpenLesson(l.lesson_id) : undefined}
+                      title={tip}
+                    />
+                  );
+                })}
               </div>
             </div>
           )}
