@@ -185,6 +185,7 @@ export default function StudentAttendancePanel({
   const [absencesList, setAbsencesList] = useState<AbsenceLesson[]>([]);
   const [absencesLoading, setAbsencesLoading] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
   // Makeup modal state (opened from absences panel)
   const [makeupModalOpen, setMakeupModalOpen] = useState(false);
@@ -531,44 +532,63 @@ export default function StudentAttendancePanel({
                     </svg>
                   )}
                   {/* 3-dot menu */}
-                  <div style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                  <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                     <button
-                      onClick={() => setOpenMenuId(openMenuId === l.lesson_id ? null : l.lesson_id)}
+                      onClick={(e) => {
+                        if (openMenuId === l.lesson_id) {
+                          setOpenMenuId(null);
+                          setMenuPos(null);
+                        } else {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setOpenMenuId(l.lesson_id);
+                          setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                        }
+                      }}
                       title="Дії"
                       style={{ width: 28, height: 28, border: '1px solid #e5e7eb', borderRadius: 6, background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '1rem', lineHeight: 1, flexShrink: 0, padding: 0 }}
                     >
                       ···
                     </button>
-                    {openMenuId === l.lesson_id && (
-                      <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 10, minWidth: 200, overflow: 'hidden' }}>
-                        <button
-                          onClick={() => {
-                            setOpenMenuId(null);
-                            setAbsencesOpen(false);
-                            setMakeupPreselectedIds([l.attendance_id]);
-                            setMakeupModalOpen(true);
-                          }}
-                          style={{ width: '100%', padding: '0.625rem 1rem', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '0.875rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#f0fdf4'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'white'; }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" style={{ flexShrink: 0 }}>
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="16" y1="2" x2="16" y2="6"/>
-                            <line x1="8" y1="2" x2="8" y2="6"/>
-                            <line x1="3" y1="10" x2="21" y2="10"/>
-                            <polyline points="9 16 11 18 15 14"/>
-                          </svg>
-                          Призначити відпрацювання
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
+      )}
+
+      {/* 3-dot dropdown (fixed, outside overflow containers) */}
+      {openMenuId !== null && menuPos && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 8500 }} onClick={() => { setOpenMenuId(null); setMenuPos(null); }} />
+          <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.14)', zIndex: 8501, minWidth: 210, overflow: 'hidden' }}>
+            <button
+              onClick={() => {
+                const id = openMenuId;
+                const absence = absencesList.find(l => l.lesson_id === id);
+                setOpenMenuId(null);
+                setMenuPos(null);
+                if (absence) {
+                  setAbsencesOpen(false);
+                  setMakeupPreselectedIds([absence.attendance_id]);
+                  setMakeupModalOpen(true);
+                }
+              }}
+              style={{ width: '100%', padding: '0.625rem 1rem', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '0.875rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#f0fdf4'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'white'; }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" style={{ flexShrink: 0 }}>
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+                <polyline points="9 16 11 18 15 14"/>
+              </svg>
+              Призначити відпрацювання
+            </button>
+          </div>
+        </>
       )}
 
       {/* Makeup creation modal (opened from absences panel) */}
