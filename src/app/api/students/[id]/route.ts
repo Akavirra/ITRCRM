@@ -132,6 +132,12 @@ export async function PUT(
       source !== undefined ? source?.trim() : existingStudent.source
     );
 
+    // Normalize dates to YYYY-MM-DD for comparison (DB returns full timestamp, form sends ISO string)
+    const normalizeDate = (val: string | null | undefined): string | null => {
+      if (!val) return null;
+      try { return new Date(val).toISOString().slice(0, 10); } catch { return val; }
+    };
+
     // Log field-by-field changes
     const trackedFields: Array<{ field: string; oldVal: string | null; newVal: string | null }> = [
       { field: 'full_name', oldVal: existingStudent.full_name ?? null, newVal: finalFullName ?? null },
@@ -139,7 +145,7 @@ export async function PUT(
       { field: 'email', oldVal: existingStudent.email ?? null, newVal: email !== undefined ? (email?.trim() ?? null) : (existingStudent.email ?? null) },
       { field: 'parent_name', oldVal: existingStudent.parent_name ?? null, newVal: parent_name !== undefined ? (parent_name?.trim() ?? null) : (existingStudent.parent_name ?? null) },
       { field: 'parent_phone', oldVal: existingStudent.parent_phone ?? null, newVal: parent_phone !== undefined ? (parent_phone?.trim() ?? null) : (existingStudent.parent_phone ?? null) },
-      { field: 'birth_date', oldVal: existingStudent.birth_date ?? null, newVal: birth_date !== undefined ? (birth_date ?? null) : (existingStudent.birth_date ?? null) },
+      { field: 'birth_date', oldVal: normalizeDate(existingStudent.birth_date), newVal: birth_date !== undefined ? normalizeDate(birth_date) : normalizeDate(existingStudent.birth_date) },
       { field: 'school', oldVal: existingStudent.school ?? null, newVal: school !== undefined ? (school?.trim() ?? null) : (existingStudent.school ?? null) },
       { field: 'discount', oldVal: existingStudent.discount ?? null, newVal: discount !== undefined ? (discount?.trim() ?? null) : (existingStudent.discount ?? null) },
       { field: 'notes', oldVal: existingStudent.notes ?? null, newVal: notes !== undefined ? (notes?.trim() ?? null) : (existingStudent.notes ?? null) },
@@ -154,18 +160,20 @@ export async function PUT(
       ({ oldVal, newVal }) => String(oldVal ?? '') !== String(newVal ?? '')
     );
 
-    if (changedFields.length > 0) {
-      for (const { field, oldVal, newVal } of changedFields) {
-        await safeAddStudentHistoryEntry(
-          studentId,
-          'edited',
-          formatFieldEditedDescription(field, oldVal, newVal),
-          user.id,
-          user.name,
-          String(oldVal ?? null),
-          String(newVal ?? null)
-        );
-      }
+    const historyEntries: Promise<void>[] = changedFields.map(({ field, oldVal, newVal }) =>
+      safeAddStudentHistoryEntry(studentId, 'edited', formatFieldEditedDescription(field, oldVal, newVal), user.id, user.name, String(oldVal ?? null), String(newVal ?? null))
+    );
+
+    // Photo tracked separately — don't show raw URLs in description
+    if (photo !== undefined && photo !== existingStudent.photo) {
+      const hadPhoto = !!existingStudent.photo;
+      const hasPhoto = !!photo;
+      const photoDesc = !hadPhoto && hasPhoto ? 'Додано фото' : hadPhoto && !hasPhoto ? 'Видалено фото' : 'Оновлено фото';
+      historyEntries.push(safeAddStudentHistoryEntry(studentId, 'edited', photoDesc, user.id, user.name));
+    }
+
+    if (historyEntries.length > 0) {
+      await Promise.all(historyEntries);
     } else {
       await safeAddStudentHistoryEntry(studentId, 'edited', 'Дані учня оновлено', user.id, user.name);
     }
