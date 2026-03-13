@@ -843,8 +843,11 @@ export default function AttendancePage() {
     const MONTH_UK_SHORT = ['','Січ','Лют','Бер','Квіт','Трав','Черв','Лип','Серп','Вер','Жовт','Лист','Груд'];
     const todayKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-    function getDayStyle(lessons: CalendarLesson[]): { bg:string; color:string; border:string } | null {
+    const PLANNED = { bg:'#dbeafe', color:'#1d4ed8', border:'#93c5fd' } as const;
+
+    function getDayStyle(lessons: CalendarLesson[], dateKey: string): { bg:string; color:string; border:string } | null {
       if (!lessons.length) return null;
+      if (dateKey > todayKey) return PLANNED;
       if (lessons.some(l => l.absent_count > 0))
         return { bg:'#fee2e2', color:'#dc2626', border:'#fca5a5' };
       if (lessons.some(l => l.not_marked_count > 0))
@@ -854,7 +857,8 @@ export default function AttendancePage() {
       return { bg:'#dcfce7', color:'#16a34a', border:'#86efac' };
     }
 
-    function getLessonIcon(l: CalendarLesson) {
+    function getLessonIcon(l: CalendarLesson, dateKey: string) {
+      if (dateKey > todayKey) return { icon:'◷', color:'#1d4ed8', bg:'#dbeafe', border:'#93c5fd' };
       if (l.absent_count > 0) return { icon:'✗', color:'#dc2626', bg:'#fee2e2', border:'#fca5a5' };
       if (l.total_students === 0) return { icon:'·', color:'#7c3aed', bg:'#ede9fe', border:'#c4b5fd' };
       if (l.not_marked_count > 0) return { icon:'○', color:'#6b7280', bg:'#f3f4f6', border:'#e5e7eb' };
@@ -884,7 +888,7 @@ export default function AttendancePage() {
               if (!day) return <div key={idx} />;
               const dateKey = `${year}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
               const lessons = calendarData[dateKey] || [];
-              const s = getDayStyle(lessons);
+              const s = getDayStyle(lessons, dateKey);
               const isToday = dateKey === todayKey;
               const isSelected = selectedCalDay === dateKey;
               const colIdx = (startOffset + day - 1) % 7;
@@ -941,10 +945,10 @@ export default function AttendancePage() {
           {/* Legend */}
           <div style={{ display:'flex', gap:'1rem', justifyContent:'center', marginBottom:'1.25rem', flexWrap:'wrap' }}>
             {[
+              { bg:'#dbeafe', color:'#1d4ed8', border:'#93c5fd', label:'Заплановано' },
               { bg:'#dcfce7', color:'#16a34a', border:'#86efac', label:'Всі присутні' },
               { bg:'#fee2e2', color:'#dc2626', border:'#fca5a5', label:'Є відсутні' },
               { bg:'#f3f4f6', color:'#6b7280', border:'#e5e7eb', label:'Не відмічено' },
-              { bg:'#ede9fe', color:'#7c3aed', border:'#c4b5fd', label:'Без учнів' },
             ].map(item => (
               <div key={item.label} style={{ display:'flex', alignItems:'center', gap:'0.375rem' }}>
                 <div style={{ width:14, height:14, borderRadius:3, backgroundColor:item.bg, border:`1px solid ${item.border}` }} />
@@ -979,7 +983,8 @@ export default function AttendancePage() {
                 </div>
                 <div style={{ maxHeight:'60vh', overflowY:'auto' }}>
                   {dayLessons.map((l, i) => {
-                    const s = getLessonIcon(l);
+                    const s = getLessonIcon(l, selectedCalDay!);
+                    const isFuture = selectedCalDay! > todayKey;
                     return (
                       <div
                         key={l.lesson_id}
@@ -999,7 +1004,7 @@ export default function AttendancePage() {
                             {l.topic && <span style={{ fontSize:'0.75rem', color:'#9ca3af', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>· {l.topic}</span>}
                           </div>
                           <div style={{ fontSize:'0.6875rem', marginTop:2, color:s.color }}>
-                            {l.total_students === 0 ? 'Без учнів' : `${l.present_count}/${l.total_students} прис.${l.absent_count > 0 ? `, ${l.absent_count} відс.` : ''}`}
+                            {isFuture ? 'Заплановано' : l.total_students === 0 ? 'Без учнів' : `${l.present_count}/${l.total_students} прис.${l.absent_count > 0 ? `, ${l.absent_count} відс.` : ''}`}
                           </div>
                         </div>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ flexShrink:0 }}>
@@ -1042,7 +1047,8 @@ export default function AttendancePage() {
                 {dateLabel} · {tipLessons.length} {tipLessons.length === 1 ? 'заняття' : tipLessons.length < 5 ? 'заняття' : 'занять'}
               </div>
               {tipLessons.map((l, i) => {
-                const s = getLessonIcon(l);
+                const s = getLessonIcon(l, calTooltip.dateKey);
+                const isFutureTip = calTooltip.dateKey > todayKey;
                 return (
                   <div key={l.lesson_id} style={{ padding:'0.5rem 0.75rem', borderBottom: i < tipLessons.length - 1 ? '1px solid #f9fafb' : 'none', display:'flex', gap:'0.5rem', alignItems:'flex-start' }}>
                     <div style={{ width:22, height:22, borderRadius:6, backgroundColor:s.bg, border:`1.5px solid ${s.border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.6875rem', fontWeight:700, color:s.color, flexShrink:0, marginTop:1 }}>{s.icon}</div>
@@ -1062,7 +1068,7 @@ export default function AttendancePage() {
                         </div>
                       )}
                       <div style={{ fontSize:'0.6875rem', color:s.color, marginTop:1 }}>
-                        {l.total_students === 0
+                        {isFutureTip ? 'Заплановано' : l.total_students === 0
                           ? 'Без учнів'
                           : `${l.present_count}/${l.total_students} прис.${l.absent_count > 0 ? `, ${l.absent_count} відс.` : ''}${l.not_marked_count > 0 ? `, ${l.not_marked_count} не відм.` : ''}`}
                       </div>
