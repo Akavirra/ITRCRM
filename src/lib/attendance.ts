@@ -1009,6 +1009,7 @@ export interface GroupedMonthlyIndividual {
     student_id: number;
     student_name: string;
     status: AttendanceStatus | null;
+    attendance_id: number | null;
   }>;
 }
 
@@ -1163,13 +1164,13 @@ export async function getGlobalMonthlyGroupedStats(
     const lessonRows = await all<{
       lesson_id: number; lesson_date: string; start_time_formatted: string | null;
       topic: string | null; course_id: number | null; course_title: string | null; teacher_id: number | null; teacher_name: string | null;
-      student_id: number; student_name: string; att_status: AttendanceStatus | null;
+      student_id: number; student_name: string; att_status: AttendanceStatus | null; attendance_id: number | null;
     }>(
       `SELECT
         l.id as lesson_id, l.lesson_date,
         TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as start_time_formatted,
         l.topic, l.course_id, c.title as course_title, l.teacher_id, t.name as teacher_name,
-        s.id as student_id, s.full_name as student_name, a.status as att_status
+        s.id as student_id, s.full_name as student_name, a.status as att_status, a.id as attendance_id
        FROM lessons l
        LEFT JOIN courses c ON l.course_id = c.id
        LEFT JOIN users t ON l.teacher_id = t.id
@@ -1191,7 +1192,7 @@ export async function getGlobalMonthlyGroupedStats(
       }
       const lesson = lessonMap.get(row.lesson_id)!;
       if (!search || row.student_name.toLowerCase().includes(search.toLowerCase())) {
-        lesson.students.push({ student_id: row.student_id, student_name: row.student_name, status: row.att_status });
+        lesson.students.push({ student_id: row.student_id, student_name: row.student_name, status: row.att_status, attendance_id: row.attendance_id });
       }
     }
     indivLessons = Array.from(lessonMap.values()).filter(l => l.students.length > 0);

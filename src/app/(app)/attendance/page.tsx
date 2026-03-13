@@ -105,6 +105,7 @@ interface IndividualLesson {
     student_id: number;
     student_name: string;
     status: AttendanceStatus | null;
+    attendance_id: number | null;
   }>;
 }
 
@@ -1291,13 +1292,26 @@ export default function AttendancePage() {
                   </td>
                   <td style={{ padding:'0.75rem 0.75rem' }}>
                     <div style={{ display:'flex', flexDirection:'column', gap:'0.375rem' }}>
-                      {il.students.map(s => (
-                        <div key={s.student_id} style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                          <StatusBadge status={s.status} />
-                          <span style={{ fontSize:'0.8125rem', color:'#1d4ed8', cursor:'pointer', fontWeight:500 }}
-                            onClick={() => openStudentModal(s.student_id, s.student_name)}>{s.student_name}</span>
-                        </div>
-                      ))}
+                      {il.students.map(s => {
+                        const isAbsence = s.status === 'absent' || s.status === 'makeup_planned';
+                        return (
+                          <div key={s.student_id} style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                            {isAbsence && s.attendance_id ? (
+                              <span
+                                onClick={() => { setMakeupCreateAbsenceIds([s.attendance_id!]); setMakeupCreateOpen(true); }}
+                                style={{ cursor:'pointer' }}
+                                title="Пропуск — створити відпрацювання"
+                              >
+                                <StatusBadge status={s.status} />
+                              </span>
+                            ) : (
+                              <StatusBadge status={s.status} />
+                            )}
+                            <span style={{ fontSize:'0.8125rem', color:'#1d4ed8', cursor:'pointer', fontWeight:500 }}
+                              onClick={() => openStudentModal(s.student_id, s.student_name)}>{s.student_name}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </td>
                   <td style={{ padding:'0.75rem 1.25rem', color:'#6b7280', fontSize:'0.8125rem', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={il.topic||undefined}>
