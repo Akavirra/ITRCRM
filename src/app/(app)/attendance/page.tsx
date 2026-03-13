@@ -94,6 +94,7 @@ interface IndividualLesson {
   lesson_date: string;
   start_time: string | null;
   topic: string | null;
+  course_id: number | null;
   course_title: string | null;
   teacher_id: number | null;
   teacher_name: string | null;
@@ -917,7 +918,10 @@ export default function AttendancePage() {
                       </td>
                       <td style={{ padding:'0.75rem 0.75rem', whiteSpace:'nowrap', fontSize:'0.8125rem' }}>
                         {il.course_title
-                          ? <span style={{ padding:'2px 8px', borderRadius:6, backgroundColor:'#f0fdf4', color:'#166534', fontSize:'0.75rem', fontWeight:600 }}>{il.course_title}</span>
+                          ? <span style={{ padding:'2px 8px', borderRadius:6, backgroundColor:'#f0fdf4', color:'#166534', fontSize:'0.75rem', fontWeight:600, cursor: il.course_id ? 'pointer' : 'default' }}
+                              onClick={() => il.course_id && openCourseModal(il.course_id, il.course_title!)}
+                              onMouseEnter={e => { if (il.course_id) e.currentTarget.style.textDecoration='underline'; }}
+                              onMouseLeave={e => (e.currentTarget.style.textDecoration='none')}>{il.course_title}</span>
                           : <span style={{ color:'#9ca3af' }}>—</span>}
                       </td>
                       <td style={{ padding:'0.75rem 0.75rem' }}>

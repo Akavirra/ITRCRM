@@ -1000,6 +1000,7 @@ export interface GroupedMonthlyIndividual {
   lesson_date: string;
   start_time: string | null;
   topic: string | null;
+  course_id: number | null;
   course_title: string | null;
   teacher_id: number | null;
   teacher_name: string | null;
@@ -1157,13 +1158,13 @@ export async function getGlobalMonthlyGroupedStats(
 
     const lessonRows = await all<{
       lesson_id: number; lesson_date: string; start_time_formatted: string | null;
-      topic: string | null; course_title: string | null; teacher_id: number | null; teacher_name: string | null;
+      topic: string | null; course_id: number | null; course_title: string | null; teacher_id: number | null; teacher_name: string | null;
       student_id: number; student_name: string; att_status: AttendanceStatus | null;
     }>(
       `SELECT
         l.id as lesson_id, l.lesson_date,
         TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as start_time_formatted,
-        l.topic, c.title as course_title, l.teacher_id, t.name as teacher_name,
+        l.topic, l.course_id, c.title as course_title, l.teacher_id, t.name as teacher_name,
         s.id as student_id, s.full_name as student_name, a.status as att_status
        FROM lessons l
        LEFT JOIN courses c ON l.course_id = c.id
@@ -1181,7 +1182,7 @@ export async function getGlobalMonthlyGroupedStats(
         lessonMap.set(row.lesson_id, {
           lesson_id: row.lesson_id, lesson_date: row.lesson_date,
           start_time: row.start_time_formatted, topic: row.topic,
-          course_title: row.course_title, teacher_id: row.teacher_id, teacher_name: row.teacher_name, students: [],
+          course_id: row.course_id, course_title: row.course_title, teacher_id: row.teacher_id, teacher_name: row.teacher_name, students: [],
         });
       }
       const lesson = lessonMap.get(row.lesson_id)!;
