@@ -3,6 +3,7 @@ import { getAuthUser, unauthorized, isAdmin, forbidden, notFound } from '@/lib/a
 import { getStudentById, getStudentWithGroups, updateStudent, archiveStudent, restoreStudent, deleteStudent, getStudentAttendanceHistory, getStudentPaymentHistory, getStudentActiveGroups, safeDeleteStudent, forceDeleteStudent } from '@/lib/students';
 import { verifyPassword } from '@/lib/auth';
 import { get } from '@/db';
+import { addStudentHistoryEntry, formatFieldEditedDescription } from '@/lib/student-history';
 
 export const dynamic = 'force-dynamic';
 
@@ -130,7 +131,45 @@ export async function PUT(
       interested_courses !== undefined ? interested_courses : existingStudent.interested_courses,
       source !== undefined ? source?.trim() : existingStudent.source
     );
-    
+
+    // Log field-by-field changes
+    const trackedFields: Array<{ field: string; oldVal: string | null; newVal: string | null }> = [
+      { field: 'full_name', oldVal: existingStudent.full_name ?? null, newVal: finalFullName ?? null },
+      { field: 'phone', oldVal: existingStudent.phone ?? null, newVal: phone !== undefined ? (phone?.trim() ?? null) : (existingStudent.phone ?? null) },
+      { field: 'email', oldVal: existingStudent.email ?? null, newVal: email !== undefined ? (email?.trim() ?? null) : (existingStudent.email ?? null) },
+      { field: 'parent_name', oldVal: existingStudent.parent_name ?? null, newVal: parent_name !== undefined ? (parent_name?.trim() ?? null) : (existingStudent.parent_name ?? null) },
+      { field: 'parent_phone', oldVal: existingStudent.parent_phone ?? null, newVal: parent_phone !== undefined ? (parent_phone?.trim() ?? null) : (existingStudent.parent_phone ?? null) },
+      { field: 'birth_date', oldVal: existingStudent.birth_date ?? null, newVal: birth_date !== undefined ? (birth_date ?? null) : (existingStudent.birth_date ?? null) },
+      { field: 'school', oldVal: existingStudent.school ?? null, newVal: school !== undefined ? (school?.trim() ?? null) : (existingStudent.school ?? null) },
+      { field: 'discount', oldVal: existingStudent.discount ?? null, newVal: discount !== undefined ? (discount?.trim() ?? null) : (existingStudent.discount ?? null) },
+      { field: 'notes', oldVal: existingStudent.notes ?? null, newVal: notes !== undefined ? (notes?.trim() ?? null) : (existingStudent.notes ?? null) },
+      { field: 'source', oldVal: existingStudent.source ?? null, newVal: source !== undefined ? (source?.trim() ?? null) : (existingStudent.source ?? null) },
+      { field: 'parent_relation', oldVal: existingStudent.parent_relation ?? null, newVal: parent_relation !== undefined ? (parent_relation?.trim() ?? null) : (existingStudent.parent_relation ?? null) },
+      { field: 'parent2_name', oldVal: existingStudent.parent2_name ?? null, newVal: parent2_name !== undefined ? (parent2_name?.trim() ?? null) : (existingStudent.parent2_name ?? null) },
+      { field: 'parent2_relation', oldVal: existingStudent.parent2_relation ?? null, newVal: parent2_relation !== undefined ? (parent2_relation?.trim() ?? null) : (existingStudent.parent2_relation ?? null) },
+      { field: 'interested_courses', oldVal: existingStudent.interested_courses ?? null, newVal: interested_courses !== undefined ? (interested_courses != null ? String(interested_courses) : null) : (existingStudent.interested_courses ?? null) },
+    ];
+
+    const changedFields = trackedFields.filter(
+      ({ oldVal, newVal }) => String(oldVal ?? '') !== String(newVal ?? '')
+    );
+
+    if (changedFields.length > 0) {
+      for (const { field, oldVal, newVal } of changedFields) {
+        await addStudentHistoryEntry(
+          studentId,
+          'edited',
+          formatFieldEditedDescription(field, oldVal, newVal),
+          user.id,
+          user.name,
+          String(oldVal ?? null),
+          String(newVal ?? null)
+        );
+      }
+    } else {
+      await addStudentHistoryEntry(studentId, 'edited', 'Дані учня оновлено', user.id, user.name);
+    }
+
     return NextResponse.json({ message: 'Дані учня успішно оновлено' });
   } catch (error) {
     console.error('Update student error:', error);
@@ -252,6 +291,7 @@ export async function DELETE(
   
   // Default: archive the student
   await archiveStudent(studentId);
+  await addStudentHistoryEntry(studentId, 'archived', 'Учня архівовано', user.id, user.name);
   return NextResponse.json({ message: 'Учня успішно архівовано' });
 }
 
@@ -283,6 +323,7 @@ export async function PATCH(
   }
   
   await restoreStudent(studentId);
-  
+  await addStudentHistoryEntry(studentId, 'restored', 'Учня відновлено', user.id, user.name);
+
   return NextResponse.json({ message: 'Учня успішно відновлено' });
 }

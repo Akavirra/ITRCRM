@@ -10,6 +10,7 @@ import {
   reactivateStudentInGroup,
 } from '@/lib/groups';
 import { addGroupHistoryEntry, formatStudentAddedDescription, formatStudentRemovedDescription } from '@/lib/group-history';
+import { addStudentHistoryEntry, formatGroupJoinedDescription, formatGroupLeftDescription } from '@/lib/student-history';
 import { get } from '@/db';
 
 export const dynamic = 'force-dynamic';
@@ -104,7 +105,7 @@ export async function POST(
     // Check if student was previously in group (inactive) - reactivate them
     if (await wasStudentInGroup(studentId, groupId)) {
       const studentGroupId = await reactivateStudentInGroup(studentId, groupId, join_date);
-      
+
       // Get student name for history
       const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [studentId]);
       if (student) {
@@ -116,19 +117,25 @@ export async function POST(
           user.name
         );
       }
-      
+
+      // Log group joined in student history
+      const group = await get<{ title: string }>(`SELECT title FROM groups WHERE id = $1`, [groupId]);
+      if (group) {
+        await addStudentHistoryEntry(studentId, 'group_joined', formatGroupJoinedDescription(group.title), user.id, user.name);
+      }
+
       return NextResponse.json({
         id: studentGroupId,
         message: 'Учня успішно повторно додано до групи',
       });
     }
-    
+
     const studentGroupId = await addStudentToGroup(
       studentId,
       groupId,
       join_date
     );
-    
+
     // Get student name for history
     const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [studentId]);
     if (student) {
@@ -139,6 +146,12 @@ export async function POST(
         user.id,
         user.name
       );
+    }
+
+    // Log group joined in student history
+    const group = await get<{ title: string }>(`SELECT title FROM groups WHERE id = $1`, [groupId]);
+    if (group) {
+      await addStudentHistoryEntry(studentId, 'group_joined', formatGroupJoinedDescription(group.title), user.id, user.name);
     }
     
     return NextResponse.json({
@@ -182,17 +195,20 @@ export async function DELETE(
   // Support both studentGroupId and studentId for removal
   // Get student name before removal for history
   let studentName = '';
+  let numericStudentId: number | null = null;
   if (studentGroupId) {
     const studentInfo = await get<{ student_id: number }>(`SELECT student_id FROM student_groups WHERE id = $1`, [parseInt(studentGroupId)]);
     if (studentInfo) {
+      numericStudentId = studentInfo.student_id;
       const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [studentInfo.student_id]);
       studentName = student?.full_name || '';
     }
   } else if (studentId) {
-    const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [parseInt(studentId)]);
+    numericStudentId = parseInt(studentId);
+    const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [numericStudentId]);
     studentName = student?.full_name || '';
   }
-  
+
   if (studentGroupId) {
     await removeStudentFromGroup(parseInt(studentGroupId));
   } else if (studentId) {
@@ -203,7 +219,7 @@ export async function DELETE(
       { status: 400 }
     );
   }
-  
+
   // Add history entry for student removal
   if (studentName) {
     await addGroupHistoryEntry(
@@ -214,6 +230,14 @@ export async function DELETE(
       user.name
     );
   }
-  
+
+  // Log group left in student history
+  if (numericStudentId && studentName) {
+    const group = await get<{ title: string }>(`SELECT title FROM groups WHERE id = $1`, [groupId]);
+    if (group) {
+      await addStudentHistoryEntry(numericStudentId, 'group_left', formatGroupLeftDescription(group.title), user.id, user.name);
+    }
+  }
+
   return NextResponse.json({ message: 'Учня успішно видалено з групи' });
 }

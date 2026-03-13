@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
 import { getStudentsWithGroupCount, getStudents, createStudent, searchStudents, quickSearchStudents, getStudentsWithGroups, searchStudentsWithGroups } from '@/lib/students';
+import { addStudentHistoryEntry } from '@/lib/student-history';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,6 +125,14 @@ export async function POST(request: NextRequest) {
       source?.trim()
     );
     
+    await addStudentHistoryEntry(
+      result.id,
+      'created',
+      `Учня ${full_name.trim()} створено в системі`,
+      user.id,
+      user.name
+    );
+
     return NextResponse.json({
       id: result.id,
       public_id: result.public_id,

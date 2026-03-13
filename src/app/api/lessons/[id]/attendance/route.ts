@@ -4,6 +4,7 @@ import { getAttendanceForLessonWithStudents, setAttendance, setAttendanceForAll,
 import { get, run, all } from '@/db';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
 import { logLessonChange } from '@/lib/lessons';
+import { addStudentHistoryEntry, formatAttendanceDescription, StudentHistoryActionType } from '@/lib/student-history';
 
 export const dynamic = 'force-dynamic';
 
@@ -178,6 +179,27 @@ export async function POST(
           }
         }
         
+        // Log student history entry for attendance
+        if (lessonInfo && studentId) {
+          let historyActionType: StudentHistoryActionType;
+          if (status === 'present') historyActionType = 'lesson_attended';
+          else if (status === 'absent') historyActionType = 'lesson_missed';
+          else if (status === 'makeup_planned') historyActionType = 'lesson_makeup_planned';
+          else if (status === 'makeup_done') historyActionType = 'lesson_makeup_done';
+          else historyActionType = 'lesson_attended';
+
+          let groupTitle: string | null = null;
+          if (lessonInfo.group_id) {
+            const grp = await get<{ title: string }>(`SELECT title FROM groups WHERE id = $1`, [lessonInfo.group_id]);
+            groupTitle = grp?.title ?? null;
+          }
+
+          const isIndividual = lessonInfo.group_id === null;
+          const description = formatAttendanceDescription(status, lessonInfo.lesson_date, groupTitle, lessonInfo.topic, isIndividual);
+
+          await addStudentHistoryEntry(parseInt(studentId), historyActionType, description, user.id, user.name);
+        }
+
         // Log attendance change
         await logLessonChange(
           lessonId,
@@ -188,7 +210,7 @@ export async function POST(
           user.name,
           'admin'
         );
-        
+
         return NextResponse.json({ message: 'Відвідуваність успішно встановлена' });
         
       case 'setAll':

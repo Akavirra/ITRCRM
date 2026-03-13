@@ -10,6 +10,7 @@ import DraggableModal from '@/components/DraggableModal';
 import { useStudentModals } from '@/components/StudentModalsContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
 import StudentAttendancePanel from '@/components/StudentAttendancePanel';
+import StudentHistoryPanel from '@/components/StudentHistoryPanel';
 
 interface User {
   id: number;
@@ -2404,6 +2405,9 @@ export default function StudentProfilePage() {
               studentId={student.id}
               onOpenLesson={(lessonId) => openLessonModal(lessonId, `Заняття #${lessonId}`, undefined)}
             />
+
+            {/* History Panel */}
+            <StudentHistoryPanel studentId={String(student.id)} />
 
           </div>
         </div>
