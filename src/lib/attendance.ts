@@ -765,10 +765,10 @@ export async function getStudentMonthlyAttendance(
       original_course_title: row.original_course_title,
     });
     g.total++;
-    if (row.attendance_status === 'present') g.present++;
-    else if (row.attendance_status === 'absent') g.absent++;
-    else if (row.attendance_status === 'makeup_planned' || row.attendance_status === 'makeup_done') g.makeup++;
+    if (row.attendance_status === 'present' || row.attendance_status === 'makeup_done') g.present++;
+    else if (row.attendance_status === 'absent' || row.attendance_status === 'makeup_planned') g.absent++;
     else g.not_marked++;
+    // g.makeup stays 0 — makeup_done folds into present, makeup_planned into absent
   }
 
   Array.from(groupsMap.values()).forEach(g => {

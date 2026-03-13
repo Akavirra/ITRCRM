@@ -420,9 +420,13 @@ export default function StudentAttendancePanel({
                   />
                 ))}
               </div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: g.rate >= 80 ? '#16a34a' : g.rate >= 60 ? '#d97706' : '#dc2626', flexShrink: 0 }}>
-                {g.rate}%
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                {g.absent > 0 && (
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'white', backgroundColor: '#dc2626', padding: '1px 6px', borderRadius: 99, lineHeight: 1.6 }}>
+                    ✗ {g.absent}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
 
