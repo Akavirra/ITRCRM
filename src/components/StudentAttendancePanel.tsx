@@ -158,13 +158,6 @@ export default function StudentAttendancePanel({
   const individualGroup = groups.find(g => g.is_individual);
   const makeupGroup = groups.find(g => g.is_makeup_group);
 
-  // Stats exclude makeup group (відпрацювання not counted in rate)
-  const statGroups = groups.filter(g => !g.is_makeup_group);
-  const totalPresent = statGroups.reduce((s, g) => s + g.present, 0);
-  const totalAbsent = statGroups.reduce((s, g) => s + g.absent, 0);
-  const totalLessons = statGroups.reduce((s, g) => s + g.total, 0);
-  const overallRate = totalLessons > 0 ? Math.round((totalPresent / totalLessons) * 100) : 0;
-
   const lessonTitle = (l: MonthlyLessonItem) =>
     `${getWeekday(l.lesson_date)} ${formatDate(l.lesson_date)}${l.topic ? ' — ' + l.topic : ''} — відкрити заняття`;
 
@@ -196,17 +189,6 @@ export default function StudentAttendancePanel({
           )}
         </div>
         <div style={{ display: 'flex', gap: '0.375rem', alignItems: 'center' }}>
-          {totalLessons > 0 && (
-            <>
-              <span style={{ padding: '2px 8px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#dcfce7', color: '#16a34a' }}>✓ {totalPresent}</span>
-              <span style={{ padding: '2px 8px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#fee2e2', color: '#dc2626' }}>✗ {totalAbsent}</span>
-              <span style={{
-                padding: '2px 10px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 700,
-                backgroundColor: overallRate >= 80 ? '#16a34a' : overallRate >= 60 ? '#d97706' : '#dc2626',
-                color: 'white',
-              }}>{overallRate}%</span>
-            </>
-          )}
           <svg
             width="16" height="16" viewBox="0 0 24 24" fill="none"
             stroke="var(--gray-400)" strokeWidth="2"
