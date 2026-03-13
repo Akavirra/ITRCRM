@@ -315,7 +315,17 @@ export async function getStudentAttendanceLessons(
   let where = '';
 
   if (groupId) { where += ` AND l.group_id = $${idx++}`; params.push(groupId); }
-  if (status) { where += ` AND a.status = $${idx++}`; params.push(status); }
+  if (status) {
+    const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+    if (statuses.length === 1) {
+      where += ` AND a.status = $${idx++}`;
+      params.push(statuses[0]);
+    } else if (statuses.length > 1) {
+      const placeholders = statuses.map(() => `$${idx++}`).join(', ');
+      where += ` AND a.status IN (${placeholders})`;
+      params.push(...statuses);
+    }
+  }
   if (startDate) { where += ` AND l.lesson_date >= $${idx++}`; params.push(startDate); }
   if (endDate) { where += ` AND l.lesson_date <= $${idx++}`; params.push(endDate); }
 

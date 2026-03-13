@@ -243,7 +243,7 @@ export default function StudentAttendancePanel({
   useEffect(() => {
     if (!absencesOpen) return;
     setAbsencesLoading(true);
-    fetch(`/api/students/${studentId}/attendance?status=absent&limit=500`)
+    fetch(`/api/students/${studentId}/attendance?status=absent,makeup_planned&limit=500`)
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) setAbsencesList(data.lessons || []); })
       .finally(() => setAbsencesLoading(false));
@@ -596,6 +596,33 @@ export default function StudentAttendancePanel({
             )}
           </div>
           <div style={{ display: 'flex', gap: '0.375rem', alignItems: 'center' }}>
+            {/* Absences button */}
+            {(() => {
+              const totalAbsent = groups.reduce((s, g) => s + g.absent, 0);
+              if (totalAbsent === 0) return null;
+              return (
+                <button
+                  onClick={e => { e.stopPropagation(); setAbsencesOpen(true); }}
+                  title="Переглянути пропуски"
+                  style={{
+                    height: 28, paddingLeft: 9, paddingRight: 9,
+                    border: '1px solid #fca5a5', borderRadius: 6,
+                    backgroundColor: '#fef2f2',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+                    color: '#dc2626', flexShrink: 0, transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, lineHeight: 1 }}>{totalAbsent}</span>
+                </button>
+              );
+            })()}
             {/* Calendar / List toggle button */}
             <button
               onClick={e => {
@@ -1000,26 +1027,6 @@ export default function StudentAttendancePanel({
               </div>
             )}
 
-            {/* Absences summary row */}
-            {(() => {
-              const totalAbsent = groups.reduce((s, g) => s + g.absent, 0);
-              if (totalAbsent === 0) return null;
-              const label = totalAbsent === 1 ? 'пропуск' : totalAbsent < 5 ? 'пропуски' : 'пропусків';
-              return (
-                <div
-                  onClick={() => setAbsencesOpen(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 4, padding: '0.4rem 0.625rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, cursor: 'pointer', userSelect: 'none', transition: 'background 0.1s' }}
-                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
-                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
-                >
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#dc2626' }}>✗ {totalAbsent} {label}</span>
-                  <span style={{ flex: 1, fontSize: '0.75rem', color: '#ef4444' }}>цього місяця</span>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" style={{ flexShrink: 0 }}>
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </div>
-              );
-            })()}
 
           </div>
         )}
