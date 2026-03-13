@@ -1838,6 +1838,7 @@ export default function StudentProfilePage() {
                 </div>
               </div>
             </div>
+            <StudentHistoryPanel studentId={String(student.id)} />
           </div>
 
           {/* Right Column: Content */}
@@ -2405,9 +2406,6 @@ export default function StudentProfilePage() {
               studentId={student.id}
               onOpenLesson={(lessonId) => openLessonModal(lessonId, `Заняття #${lessonId}`, undefined)}
             />
-
-            {/* History Panel */}
-            <StudentHistoryPanel studentId={String(student.id)} />
 
           </div>
         </div>
