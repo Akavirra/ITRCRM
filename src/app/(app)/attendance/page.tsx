@@ -554,52 +554,47 @@ export default function AttendancePage() {
           <div className="card" style={{ borderRadius:'1rem', overflow:'hidden' }}>
 
             {/* Filter panel */}
-            <div style={{ padding:'0.875rem 1.25rem', borderBottom:'1px solid #e5e7eb', backgroundColor:'#fafafa' }}>
-              <div style={{ display:'flex', flexWrap:'nowrap', gap:'0.5rem', alignItems:'center', overflowX:'auto', paddingBottom:'0.125rem' }}>
+            <div style={{ padding:'0.75rem 1.25rem', borderBottom:'1px solid #e5e7eb', backgroundColor:'#fafafa', display:'flex', flexDirection:'column', gap:'0.5rem' }}>
 
-                {/* Period group */}
-                <select value={atYear} onChange={e => setYearFilter(e.target.value)} style={selectStyle}>
+              {/* Row 1: Period */}
+              <div style={{ display:'flex', flexWrap:'wrap', gap:'0.375rem', alignItems:'center' }}>
+                <span style={{ fontSize:'0.75rem', fontWeight:600, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.04em', flexShrink:0, width:52 }}>Період</span>
+                <select value={atYear} onChange={e => setYearFilter(e.target.value)} style={{ ...selectStyle, fontSize:'0.8125rem', padding:'0.375rem 0.625rem' }}>
                   <option value="">Всі роки</option>
                   {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
-
-                <select value={atMonth} onChange={e => setMonthFilter(e.target.value)} disabled={!atYear} style={{ ...selectStyle, opacity: atYear ? 1 : 0.5, cursor: atYear ? 'pointer' : 'not-allowed' }}>
+                <select value={atMonth} onChange={e => setMonthFilter(e.target.value)} disabled={!atYear} style={{ ...selectStyle, fontSize:'0.8125rem', padding:'0.375rem 0.625rem', opacity: atYear ? 1 : 0.5, cursor: atYear ? 'pointer' : 'not-allowed' }}>
                   <option value="">Всі місяці</option>
                   {MONTH_UK.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
                 </select>
-
-                <span style={{ color:'#d1d5db', fontSize:'0.75rem', flexShrink:0 }}>або</span>
-
+                <span style={{ color:'#d1d5db', fontSize:'0.75rem', flexShrink:0, padding:'0 0.125rem' }}>або</span>
                 <input type="date" value={atStartDate} onChange={e => setDateRange(e.target.value, atEndDate)}
-                  title="Дата від" style={{ ...selectStyle, minWidth: 130 }} />
-
+                  title="Дата від" style={{ ...selectStyle, fontSize:'0.8125rem', padding:'0.375rem 0.625rem' }} />
+                <span style={{ color:'#d1d5db', fontSize:'0.75rem', flexShrink:0 }}>—</span>
                 <input type="date" value={atEndDate} onChange={e => setDateRange(atStartDate, e.target.value)}
-                  title="Дата до" style={{ ...selectStyle, minWidth: 130 }} />
+                  title="Дата до" style={{ ...selectStyle, fontSize:'0.8125rem', padding:'0.375rem 0.625rem' }} />
+              </div>
 
-                {/* Vertical separator */}
-                <div style={{ width:1, height:28, backgroundColor:'#e5e7eb', flexShrink:0 }} />
-
-                {/* Entity filters */}
-                <select value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)} style={selectStyle}>
+              {/* Row 2: Entity filters */}
+              <div style={{ display:'flex', flexWrap:'wrap', gap:'0.375rem', alignItems:'center' }}>
+                <span style={{ fontSize:'0.75rem', fontWeight:600, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.04em', flexShrink:0, width:52 }}>Фільтри</span>
+                <select value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)} style={{ ...selectStyle, fontSize:'0.8125rem', padding:'0.375rem 0.625rem' }}>
                   <option value="">Всі курси</option>
                   {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                 </select>
-
-                <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} style={selectStyle}>
+                <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} style={{ ...selectStyle, fontSize:'0.8125rem', padding:'0.375rem 0.625rem' }}>
                   <option value="">Всі викладачі</option>
                   {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
-
-                <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)} style={selectStyle}>
+                <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)} style={{ ...selectStyle, fontSize:'0.8125rem', padding:'0.375rem 0.625rem' }}>
                   <option value="">Всі групи</option>
                   {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
                 </select>
-
-                <div ref={suggestBoxRef} style={{ position:'relative', width:160, flexShrink:1 }}>
-                  <input type="text" placeholder="Учень..." value={search}
+                <div ref={suggestBoxRef} style={{ position:'relative' }}>
+                  <input type="text" placeholder="Пошук учня..." value={search}
                     onChange={e => handleSearchChange(e.target.value)}
                     onFocus={() => { if (studentSuggestions.length > 0) setShowSuggestions(true); }}
-                    style={{ ...selectStyle, width:'100%', boxSizing:'border-box' }} />
+                    style={{ ...selectStyle, fontSize:'0.8125rem', padding:'0.375rem 0.625rem', width:160, boxSizing:'border-box' }} />
                   {showSuggestions && studentSuggestions.length > 0 && (
                     <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:100, backgroundColor:'white', border:'1px solid #e5e7eb', borderRadius:'0.5rem', boxShadow:'0 4px 12px rgba(0,0,0,0.1)', marginTop:2, overflow:'hidden' }}>
                       {studentSuggestions.map(s => (
@@ -613,44 +608,20 @@ export default function AttendancePage() {
                     </div>
                   )}
                 </div>
-
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}>
+                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ ...selectStyle, fontSize:'0.8125rem', padding:'0.375rem 0.625rem' }}>
                   <option value="">Всі статуси</option>
                   <option value="absent">Відсутній</option>
                   <option value="present">Присутній</option>
                   <option value="makeup_done">Відпрацьовано</option>
                   <option value="null">Не відмічено</option>
                 </select>
-
                 {(atYear || atMonth || atStartDate || atEndDate || selectedCourse || selectedTeacher || selectedGroup || search || statusFilter) && (
                   <button onClick={() => { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); setSelectedTeacher(''); setSelectedGroup(''); setSearch(''); setStatusFilter(''); }}
-                    style={{ padding:'0.5rem 0.75rem', border:'1px solid #fca5a5', borderRadius:'0.5rem', backgroundColor:'#fef2f2', color:'#dc2626', fontSize:'0.8125rem', fontWeight:500, cursor:'pointer', whiteSpace:'nowrap' as const, flexShrink:0 }}>
+                    style={{ padding:'0.375rem 0.625rem', border:'1px solid #fca5a5', borderRadius:'0.5rem', backgroundColor:'#fef2f2', color:'#dc2626', fontSize:'0.8125rem', fontWeight:500, cursor:'pointer', whiteSpace:'nowrap' as const, flexShrink:0 }}>
                     ✕ Скинути
                   </button>
                 )}
               </div>
-
-              {/* Active filter summary */}
-              {(atYear || atStartDate || atEndDate || selectedCourse || selectedTeacher || selectedGroup) && (
-                <div style={{ marginTop:'0.75rem', display:'flex', flexWrap:'wrap', gap:'0.375rem', alignItems:'center' }}>
-                  <span style={{ fontSize:'0.75rem', color:'#9ca3af' }}>Активні фільтри:</span>
-                  {atStartDate && atEndDate && <span style={{ padding:'2px 8px', borderRadius:99, backgroundColor:'#dbeafe', color:'#1d4ed8', fontSize:'0.75rem', fontWeight:500 }}>📅 {atStartDate} — {atEndDate}</span>}
-                  {atStartDate && !atEndDate  && <span style={{ padding:'2px 8px', borderRadius:99, backgroundColor:'#dbeafe', color:'#1d4ed8', fontSize:'0.75rem', fontWeight:500 }}>📅 від {atStartDate}</span>}
-                  {!atStartDate && atEndDate  && <span style={{ padding:'2px 8px', borderRadius:99, backgroundColor:'#dbeafe', color:'#1d4ed8', fontSize:'0.75rem', fontWeight:500 }}>📅 до {atEndDate}</span>}
-                  {atYear && !atStartDate && <span style={{ padding:'2px 8px', borderRadius:99, backgroundColor:'#dbeafe', color:'#1d4ed8', fontSize:'0.75rem', fontWeight:500 }}>
-                    📅 {atYear}{atMonth ? ` · ${MONTH_UK[Number(atMonth)]}` : ''}
-                  </span>}
-                  {selectedCourse && <span style={{ padding:'2px 8px', borderRadius:99, backgroundColor:'#ede9fe', color:'#7c3aed', fontSize:'0.75rem', fontWeight:500 }}>
-                    Курс: {courses.find(c => String(c.id) === selectedCourse)?.title}
-                  </span>}
-                  {selectedTeacher && <span style={{ padding:'2px 8px', borderRadius:99, backgroundColor:'#fef3c7', color:'#b45309', fontSize:'0.75rem', fontWeight:500 }}>
-                    Викладач: {teachers.find(t => String(t.id) === selectedTeacher)?.name}
-                  </span>}
-                  {selectedGroup && <span style={{ padding:'2px 8px', borderRadius:99, backgroundColor:'#dcfce7', color:'#16a34a', fontSize:'0.75rem', fontWeight:500 }}>
-                    Група: {groups.find(g => String(g.id) === selectedGroup)?.title}
-                  </span>}
-                </div>
-              )}
             </div>
 
             {/* Results */}
