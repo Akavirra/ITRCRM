@@ -39,6 +39,17 @@ interface MonthlyGroupAttendance {
   is_makeup_group: boolean;
 }
 
+interface AbsenceLesson {
+  lesson_id: number;
+  lesson_date: string;
+  start_datetime: string | null;
+  group_id: number | null;
+  group_title: string | null;
+  course_title: string | null;
+  topic: string | null;
+  status: AttendanceStatus | null;
+}
+
 interface YearlyDayLesson {
   lesson_id: number;
   lesson_date: string;
@@ -167,6 +178,11 @@ export default function StudentAttendancePanel({
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
   const [sectionsCollapsed, setSectionsCollapsed] = useState<{ group: boolean; individual: boolean; makeup: boolean }>({ group: false, individual: false, makeup: false });
 
+  // Absences modal state
+  const [absencesOpen, setAbsencesOpen] = useState(false);
+  const [absencesList, setAbsencesList] = useState<AbsenceLesson[]>([]);
+  const [absencesLoading, setAbsencesLoading] = useState(false);
+
   // Calendar (yearly) view state
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
   const [calYear, setCalYear] = useState(now.getFullYear());
@@ -222,6 +238,16 @@ export default function StudentAttendancePanel({
       loadCalendar(calYear);
     }
   }, [viewMode, calYear, expanded, loadCalendar]);
+
+  // Load all-time absences when modal opens
+  useEffect(() => {
+    if (!absencesOpen) return;
+    setAbsencesLoading(true);
+    fetch(`/api/students/${studentId}/attendance?status=absent&limit=500`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setAbsencesList(data.lessons || []); })
+      .finally(() => setAbsencesLoading(false));
+  }, [absencesOpen, studentId]);
 
   const prevMonth = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
@@ -419,6 +445,89 @@ export default function StudentAttendancePanel({
           </div>
         );
       })()}
+
+      {/* Absences modal */}
+      {absencesOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 8000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={() => setAbsencesOpen(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', width: '100%', maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
+              <div>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#111827' }}>Пропуски</div>
+                {!absencesLoading && (
+                  <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2 }}>
+                    {absencesList.length === 0 ? 'немає пропусків' : `${absencesList.length} ${absencesList.length === 1 ? 'пропуск' : absencesList.length < 5 ? 'пропуски' : 'пропусків'} за весь час`}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setAbsencesOpen(false)}
+                style={{ width: 32, height: 32, border: '1px solid #e5e7eb', borderRadius: '50%', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '1.125rem', lineHeight: 1, flexShrink: 0 }}
+              >×</button>
+            </div>
+            {/* Body */}
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {absencesLoading ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>Завантаження...</div>
+              ) : absencesList.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', fontSize: '0.9375rem' }}>Пропусків не знайдено</div>
+              ) : absencesList.map((l, i) => (
+                <div
+                  key={l.lesson_id}
+                  onClick={onOpenLesson ? () => onOpenLesson(l.lesson_id) : undefined}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.875rem',
+                    padding: '0.875rem 1.25rem',
+                    borderBottom: i < absencesList.length - 1 ? '1px solid #f3f4f6' : 'none',
+                    cursor: onOpenLesson ? 'pointer' : 'default',
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={onOpenLesson ? e => { e.currentTarget.style.background = '#fef2f2'; } : undefined}
+                  onMouseLeave={onOpenLesson ? e => { e.currentTarget.style.background = 'transparent'; } : undefined}
+                >
+                  <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#fee2e2', border: '1.5px solid #fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 700, color: '#dc2626', flexShrink: 0 }}>✗</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
+                        {getWeekday(l.lesson_date)}, {formatDate(l.lesson_date)}
+                      </span>
+                      {l.start_datetime && (
+                        <span style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600 }}>
+                          {new Date(l.start_datetime).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: 2, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151' }}>
+                        {l.group_title || 'Індивідуальне'}
+                      </span>
+                      {l.course_title && (
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>· {l.course_title}</span>
+                      )}
+                    </div>
+                    {l.topic && (
+                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.topic}</div>
+                    )}
+                  </div>
+                  {onOpenLesson && (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ flexShrink: 0 }}>
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                      <polyline points="15 3 21 3 21 9" />
+                      <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tooltip (fixed, outside card flow) */}
       {tooltip && (() => {
@@ -890,6 +999,27 @@ export default function StudentAttendancePanel({
                 </div>
               </div>
             )}
+
+            {/* Absences summary row */}
+            {(() => {
+              const totalAbsent = groups.reduce((s, g) => s + g.absent, 0);
+              if (totalAbsent === 0) return null;
+              const label = totalAbsent === 1 ? 'пропуск' : totalAbsent < 5 ? 'пропуски' : 'пропусків';
+              return (
+                <div
+                  onClick={() => setAbsencesOpen(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 4, padding: '0.4rem 0.625rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, cursor: 'pointer', userSelect: 'none', transition: 'background 0.1s' }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                >
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#dc2626' }}>✗ {totalAbsent} {label}</span>
+                  <span style={{ flex: 1, fontSize: '0.75rem', color: '#ef4444' }}>цього місяця</span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </div>
+              );
+            })()}
 
           </div>
         )}
