@@ -1532,6 +1532,7 @@ export interface MakeupLessonEntry {
   original_group_id: number | null;
   original_group_title: string | null;
   original_course_title: string | null;
+  original_course_id: number | null;
   teacher_id: number | null;
   teacher_name: string | null;
 }
@@ -1572,6 +1573,7 @@ export async function getMakeupLessonsData(options: {
       orig_g.id as original_group_id,
       orig_g.title as original_group_title,
       COALESCE(oc_les.title, oc_grp.title) as original_course_title,
+      COALESCE(oc_les.id, oc_grp.id) as original_course_id,
       t.id as teacher_id,
       t.name as teacher_name
     FROM attendance orig_att

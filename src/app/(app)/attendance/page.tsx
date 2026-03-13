@@ -70,6 +70,7 @@ interface MakeupLessonEntry {
   original_group_id: number | null;
   original_group_title: string | null;
   original_course_title: string | null;
+  original_course_id: number | null;
   teacher_id: number | null;
   teacher_name: string | null;
 }
@@ -260,6 +261,7 @@ export default function AttendancePage() {
   const [individualTab, setIndividualTab] = useState(false);
   const [makeupData,    setMakeupData]    = useState<MakeupLessonEntry[]>([]);
   const [makeupLoading, setMakeupLoading] = useState(false);
+  const [individualStatusFilter, setIndividualStatusFilter] = useState('');
   const [totals,        setTotals]        = useState<Totals|null>(null);
   const [lessonRecords, setLessonRecords] = useState<LessonRecord[]>([]);
   const [register,      setRegister]      = useState<{ lessons:RegisterLesson[]; students:RegisterStudent[] }|null>(null);
@@ -694,32 +696,34 @@ export default function AttendancePage() {
             <div className="card" style={{ borderRadius:'1rem', overflow:'hidden' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'1rem 1.5rem', borderBottom:'1px solid #e5e7eb', flexWrap:'wrap' }}>
                 <div style={{ display:'flex', border:'1px solid #e5e7eb', borderRadius:'0.625rem', overflow:'hidden', flexShrink:0 }}>
-                  <button onClick={() => { setViewMode('grouped'); setStatusFilter(''); setMakeupTab(false); setIndividualTab(false); }} style={{
+                  <button onClick={() => { setViewMode('grouped'); setStatusFilter(''); setMakeupTab(false); setIndividualTab(false); setIndividualStatusFilter(''); }} style={{
                     padding:'0.5rem 1rem', border:'none', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
                     backgroundColor: !makeupTab && !individualTab && viewMode === 'grouped' ? '#1565c0' : 'white',
                     color: !makeupTab && !individualTab && viewMode === 'grouped' ? 'white' : '#374151',
                   }}>По групах</button>
-                  <button onClick={() => { setIndividualTab(true); setMakeupTab(false); setStatusFilter(''); }} style={{
+                  <button onClick={() => { setIndividualTab(true); setMakeupTab(false); setStatusFilter(''); setIndividualStatusFilter(''); }} style={{
                     padding:'0.5rem 1rem', border:'none', borderLeft:'1px solid #e5e7eb', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
                     backgroundColor: individualTab ? '#1565c0' : 'white',
                     color: individualTab ? 'white' : '#374151',
                   }}>Індивідуальні</button>
-                  <button onClick={() => { setMakeupTab(true); setIndividualTab(false); setStatusFilter(''); }} style={{
+                  <button onClick={() => { setMakeupTab(true); setIndividualTab(false); setStatusFilter(''); setIndividualStatusFilter(''); }} style={{
                     padding:'0.5rem 1rem', border:'none', borderLeft:'1px solid #e5e7eb', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
                     backgroundColor: makeupTab ? '#1565c0' : 'white',
                     color: makeupTab ? 'white' : '#374151',
                   }}>Відпрацювання</button>
-                  <button onClick={() => { setViewMode('summary'); setStatusFilter(''); setMakeupTab(false); setIndividualTab(false); }} style={{
+                  <button onClick={() => { setViewMode('summary'); setStatusFilter(''); setMakeupTab(false); setIndividualTab(false); setIndividualStatusFilter(''); }} style={{
                     padding:'0.5rem 1rem', border:'none', borderLeft:'1px solid #e5e7eb', cursor:'pointer', fontSize:'0.875rem', fontWeight:500,
                     backgroundColor: !makeupTab && !individualTab && viewMode === 'summary' ? '#1565c0' : 'white',
                     color: !makeupTab && !individualTab && viewMode === 'summary' ? 'white' : '#374151',
                   }}>Загальна таблиця</button>
                 </div>
 
-                <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)} style={selectStyle}>
-                  <option value="">Всі групи</option>
-                  {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-                </select>
+                {!individualTab && (
+                  <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)} style={selectStyle}>
+                    <option value="">Всі групи</option>
+                    {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+                  </select>
+                )}
 
                 {(
                   <select value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)} style={selectStyle}>
@@ -756,8 +760,17 @@ export default function AttendancePage() {
                   </div>
                 )}
 
-                {viewMode === 'summary' && (
+                {viewMode === 'summary' && !makeupTab && !individualTab && (
                   <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}>
+                    <option value="">Всі статуси</option>
+                    <option value="absent">Відсутній</option>
+                    <option value="present">Присутній</option>
+                    <option value="makeup_done">Відпрацьовано</option>
+                    <option value="null">Не відмічено</option>
+                  </select>
+                )}
+                {individualTab && (
+                  <select value={individualStatusFilter} onChange={e => setIndividualStatusFilter(e.target.value)} style={selectStyle}>
                     <option value="">Всі статуси</option>
                     <option value="absent">Відсутній</option>
                     <option value="present">Присутній</option>
@@ -894,7 +907,15 @@ export default function AttendancePage() {
   // ── Individual lessons view ───────────────────────────────────────────────
 
   function renderIndividualView() {
-    const lessons = groupedData?.individual_lessons ?? [];
+    let lessons = groupedData?.individual_lessons ?? [];
+    if (selectedCourse) lessons = lessons.filter(il => il.course_id === parseInt(selectedCourse, 10));
+    if (selectedTeacher) lessons = lessons.filter(il => il.teacher_id === parseInt(selectedTeacher, 10));
+    if (search) lessons = lessons.filter(il => il.students.some(s => s.student_name.toLowerCase().includes(search.toLowerCase())));
+    if (individualStatusFilter) {
+      lessons = lessons.filter(il => il.students.some(s =>
+        individualStatusFilter === 'null' ? s.status === null : s.status === individualStatusFilter
+      ));
+    }
     if (lessons.length === 0) {
       return <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>
         <p style={{ margin:'0 0 0.5rem 0' }}>Індивідуальних занять немає</p>
@@ -904,6 +925,9 @@ export default function AttendancePage() {
     return (
       <div style={{ padding:'1.25rem 1.5rem' }}>
         <div style={{ border:'1px solid #e8d5ff', borderRadius:'0.875rem', overflow:'hidden', backgroundColor:'#fdf8ff' }}>
+          <div style={{ padding:'0.5rem 1.25rem', borderBottom:'1px solid #e8d5ff', backgroundColor:'#f5eeff', fontSize:'0.75rem', color:'#6b7280' }}>
+            Знайдено: <strong style={{ color:'#374151' }}>{lessons.length}</strong> {lessons.length === 1 ? 'заняття' : 'занять'}
+          </div>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.875rem' }}>
             <thead>
               <tr style={{ backgroundColor:'#f5eeff', borderBottom:'1px solid #e8d5ff' }}>
@@ -1235,7 +1259,12 @@ export default function AttendancePage() {
   // ── Makeup lessons view ───────────────────────────────────────────────────
 
   function renderMakeupView() {
-    if (makeupData.length === 0) {
+    let filtered = makeupData;
+    if (selectedGroup) filtered = filtered.filter(e => String(e.original_group_id) === selectedGroup);
+    if (selectedCourse) filtered = filtered.filter(e => String(e.original_course_id) === selectedCourse);
+    if (selectedTeacher) filtered = filtered.filter(e => String(e.teacher_id) === selectedTeacher);
+    if (search) filtered = filtered.filter(e => e.student_name.toLowerCase().includes(search.toLowerCase()));
+    if (filtered.length === 0) {
       return (
         <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>
           <p style={{ margin:'0 0 0.5rem 0' }}>Відпрацювань не знайдено</p>
@@ -1246,7 +1275,10 @@ export default function AttendancePage() {
     return (
       <div style={{ overflowX:'auto' }}>
         <div style={{ padding:'0.5rem 1.25rem', borderBottom:'1px solid #f3f4f6', backgroundColor:'#fafafa', fontSize:'0.75rem', color:'#6b7280' }}>
-          Знайдено: <strong style={{ color:'#374151' }}>{makeupData.length}</strong> відпрацювань
+          Знайдено: <strong style={{ color:'#374151' }}>{filtered.length}</strong> відпрацювань
+          {(selectedGroup || selectedCourse || selectedTeacher || search) && makeupData.length !== filtered.length && (
+            <span style={{ marginLeft:'0.5rem', color:'#9ca3af' }}>(з {makeupData.length})</span>
+          )}
         </div>
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.875rem' }}>
           <thead>
@@ -1262,7 +1294,7 @@ export default function AttendancePage() {
             </tr>
           </thead>
           <tbody>
-            {makeupData.map((entry, i) => (
+            {filtered.map((entry, i) => (
               <tr key={`${entry.makeup_lesson_id}-${entry.student_id}-${i}`}
                 style={{ borderBottom:'1px solid #f3f4f6' }}
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor='#f9fafb')}
