@@ -1591,6 +1591,42 @@ export async function getMakeupLessonsData(options: {
   return rows;
 }
 
+// ── Student absences list ──────────────────────────────────────────────────
+
+export interface StudentAbsence {
+  lesson_id: number;
+  lesson_date: string;
+  start_datetime: string | null;
+  group_id: number | null;
+  group_title: string | null;
+  course_title: string | null;
+  topic: string | null;
+  status: string;
+}
+
+export async function getStudentAbsences(studentId: number): Promise<StudentAbsence[]> {
+  return await all<StudentAbsence>(`
+    SELECT
+      l.id AS lesson_id,
+      l.lesson_date::text AS lesson_date,
+      l.start_datetime,
+      l.group_id,
+      g.title AS group_title,
+      COALESCE(c.title, c2.title) AS course_title,
+      l.topic,
+      a.status
+    FROM attendance a
+    JOIN lessons l ON l.id = a.lesson_id
+    LEFT JOIN groups g ON l.group_id = g.id
+    LEFT JOIN courses c ON l.course_id = c.id
+    LEFT JOIN courses c2 ON g.course_id = c2.id
+    WHERE a.student_id = $1
+      AND a.status IN ('absent', 'makeup_planned')
+      AND l.status != 'canceled'
+    ORDER BY l.lesson_date DESC, l.start_datetime DESC
+  `, [studentId]);
+}
+
 // ── Yearly calendar attendance ─────────────────────────────────────────────
 
 export interface YearlyDayLesson {

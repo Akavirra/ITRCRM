@@ -6,6 +6,7 @@ import {
   getStudentAttendanceStats,
   getStudentMonthlyAttendance,
   getStudentYearlyAttendance,
+  getStudentAbsences,
 } from '@/lib/attendance';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,11 @@ export async function GET(
       const month = parseInt(searchParams.get('month') || String(new Date().getMonth() + 1), 10);
       const groups = await getStudentMonthlyAttendance(studentId, year, month);
       return NextResponse.json({ groups, year, month });
+    }
+
+    if (view === 'absences') {
+      const absences = await getStudentAbsences(studentId);
+      return NextResponse.json({ absences });
     }
 
     if (view === 'yearly') {

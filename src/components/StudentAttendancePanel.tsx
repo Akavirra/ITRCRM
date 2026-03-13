@@ -243,9 +243,9 @@ export default function StudentAttendancePanel({
   useEffect(() => {
     if (!absencesOpen) return;
     setAbsencesLoading(true);
-    fetch(`/api/students/${studentId}/attendance?status=absent,makeup_planned&limit=500`)
+    fetch(`/api/students/${studentId}/attendance?view=absences`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) setAbsencesList(data.lessons || []); })
+      .then(data => { if (data) setAbsencesList(data.absences || []); })
       .finally(() => setAbsencesLoading(false));
   }, [absencesOpen, studentId]);
 
