@@ -355,7 +355,6 @@ export default function StudentAttendancePanel({
         return (
           <div
             style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-            onClick={() => setSelectedDay(null)}
           >
             <div
               onClick={e => e.stopPropagation()}
@@ -380,7 +379,7 @@ export default function StudentAttendancePanel({
                 return (
                   <div
                     key={l.lesson_id}
-                    onClick={onOpenLesson ? () => { onOpenLesson(l.lesson_id); setSelectedDay(null); } : undefined}
+                    onClick={onOpenLesson ? () => onOpenLesson(l.lesson_id) : undefined}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '0.875rem',
                       padding: '0.875rem 1.25rem',
