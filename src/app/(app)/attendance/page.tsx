@@ -214,7 +214,7 @@ function StatusLabel({ status }: { status: AttendanceStatus | null }) {
   const map: Record<AttendanceStatus, { label:string; color:string; bg:string }> = {
     present:        { label:'Присутній',     color:'#16a34a', bg:'#dcfce7' },
     absent:         { label:'Відсутній',     color:'#dc2626', bg:'#fee2e2' },
-    makeup_planned: { label:'Відпрацювання', color:'#d97706', bg:'#fef3c7' },
+    makeup_planned: { label:'Відсутній',     color:'#dc2626', bg:'#fee2e2' },
     makeup_done:    { label:'Відпрацьовано', color:'#a16207', bg:'#fef9c3' },
   };
   const s = map[status];
@@ -494,7 +494,7 @@ export default function AttendancePage() {
     } else {
       csvRows = [['Дата', 'День', 'Час', 'Тип', 'Курс', 'Група', 'Учень', 'Тема', 'Статус']];
       for (const r of lessonRecords) {
-        const statusLabel = r.status === 'present' ? 'Присутній' : r.status === 'absent' ? 'Відсутній' : r.status === 'makeup_done' ? 'Відпрацьовано' : r.status === 'makeup_planned' ? 'Відпрацювання' : 'Не відмічено';
+        const statusLabel = r.status === 'present' ? 'Присутній' : r.status === 'makeup_done' ? 'Відпрацьовано' : (r.status === 'absent' || r.status === 'makeup_planned') ? 'Відсутній' : 'Не відмічено';
         csvRows.push([formatDateShort(r.lesson_date), getWeekdayShort(r.lesson_date), r.start_time||'', r.group_id ? 'Групове' : 'Індивід.', r.course_title||'', r.group_title, r.student_name, r.topic||'', statusLabel]);
       }
     }
@@ -616,7 +616,6 @@ export default function AttendancePage() {
                   <option value="">Всі статуси</option>
                   <option value="absent">Відсутній</option>
                   <option value="present">Присутній</option>
-                  <option value="makeup_planned">Відпрацювання</option>
                   <option value="makeup_done">Відпрацьовано</option>
                   <option value="null">Не відмічено</option>
                 </select>
@@ -762,7 +761,6 @@ export default function AttendancePage() {
                     <option value="">Всі статуси</option>
                     <option value="absent">Відсутній</option>
                     <option value="present">Присутній</option>
-                    <option value="makeup_planned">Відпрацювання</option>
                     <option value="makeup_done">Відпрацьовано</option>
                     <option value="null">Не відмічено</option>
                   </select>
@@ -1140,9 +1138,11 @@ export default function AttendancePage() {
   function renderSummaryView() {
     const filteredRecords = statusFilter === 'null'
       ? lessonRecords.filter(r => r.status === null)
-      : statusFilter
-        ? lessonRecords.filter(r => r.status === statusFilter)
-        : lessonRecords;
+      : statusFilter === 'absent'
+        ? lessonRecords.filter(r => r.status === 'absent' || r.status === 'makeup_planned')
+        : statusFilter
+          ? lessonRecords.filter(r => r.status === statusFilter)
+          : lessonRecords;
     if (filteredRecords.length === 0) {
       return <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>
         <p style={{ margin:'0 0 0.5rem 0' }}>Даних про відвідуваність немає</p>
