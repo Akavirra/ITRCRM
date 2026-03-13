@@ -296,6 +296,7 @@ export default function AttendancePage() {
   const [calendarData,  setCalendarData]  = useState<Record<string, CalendarLesson[]>>({});
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [selectedCalDay, setSelectedCalDay] = useState<string | null>(null);
+  const [calTooltip, setCalTooltip] = useState<{ dateKey: string; x: number; y: number } | null>(null);
   // all-time extra filters
   const [statusFilter, setStatusFilter] = useState('');
   const [atYear,      setAtYear]      = useState('');
@@ -898,6 +899,11 @@ export default function AttendancePage() {
                     }
                     setSelectedCalDay(prev => prev === dateKey ? null : dateKey);
                   }}
+                  onMouseEnter={lessons.length ? e => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setCalTooltip({ dateKey, x: rect.left + rect.width / 2, y: rect.top });
+                  } : undefined}
+                  onMouseLeave={lessons.length ? () => setCalTooltip(null) : undefined}
                   style={{
                     aspectRatio:'1', display:'flex', alignItems:'center', justifyContent:'center',
                     borderRadius:4, fontSize:'0.5625rem', boxSizing:'border-box', position:'relative',
@@ -1005,6 +1011,66 @@ export default function AttendancePage() {
                 </div>
               </div>
             </>
+          );
+        })()}
+
+        {/* Hover tooltip */}
+        {calTooltip && (() => {
+          const tipLessons = calendarData[calTooltip.dateKey] || [];
+          if (!tipLessons.length) return null;
+          const [ty, tm, td] = calTooltip.dateKey.split('-');
+          const dateLabel = `${td}.${tm}.${ty}`;
+          const above = calTooltip.y > window.innerHeight / 2;
+          return (
+            <div
+              onMouseEnter={() => setCalTooltip(null)}
+              style={{
+                position:'fixed',
+                left: Math.min(Math.max(calTooltip.x - 130, 8), window.innerWidth - 276),
+                top: above ? calTooltip.y - 8 : calTooltip.y + 20,
+                transform: above ? 'translateY(-100%)' : 'none',
+                zIndex:1100,
+                backgroundColor:'white',
+                borderRadius:'0.75rem',
+                boxShadow:'0 4px 24px rgba(0,0,0,0.15)',
+                border:'1px solid #e5e7eb',
+                width:260,
+                pointerEvents:'none',
+              }}
+            >
+              <div style={{ padding:'0.5rem 0.75rem', borderBottom:'1px solid #f3f4f6', fontSize:'0.75rem', fontWeight:700, color:'#374151' }}>
+                {dateLabel} · {tipLessons.length} {tipLessons.length === 1 ? 'заняття' : tipLessons.length < 5 ? 'заняття' : 'занять'}
+              </div>
+              {tipLessons.map((l, i) => {
+                const s = getLessonIcon(l);
+                return (
+                  <div key={l.lesson_id} style={{ padding:'0.5rem 0.75rem', borderBottom: i < tipLessons.length - 1 ? '1px solid #f9fafb' : 'none', display:'flex', gap:'0.5rem', alignItems:'flex-start' }}>
+                    <div style={{ width:22, height:22, borderRadius:6, backgroundColor:s.bg, border:`1.5px solid ${s.border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.6875rem', fontWeight:700, color:s.color, flexShrink:0, marginTop:1 }}>{s.icon}</div>
+                    <div style={{ minWidth:0, flex:1 }}>
+                      <div style={{ fontSize:'0.8125rem', fontWeight:600, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                        {l.is_makeup ? '↺ Відпрацювання' : l.group_title || 'Індивідуальне'}
+                      </div>
+                      {(l.start_time || l.course_title) && (
+                        <div style={{ display:'flex', gap:'0.25rem', marginTop:1, flexWrap:'wrap' }}>
+                          {l.start_time && <span style={{ fontSize:'0.6875rem', color:'#4f46e5', fontWeight:600 }}>{l.start_time}</span>}
+                          {l.course_title && <span style={{ fontSize:'0.6875rem', color:'#6b7280' }}>{l.course_title}</span>}
+                        </div>
+                      )}
+                      {l.topic && (
+                        <div style={{ fontSize:'0.6875rem', color:'#9ca3af', marginTop:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                          {l.topic}
+                        </div>
+                      )}
+                      <div style={{ fontSize:'0.6875rem', color:s.color, marginTop:1 }}>
+                        {l.total_students === 0
+                          ? 'Без учнів'
+                          : `${l.present_count}/${l.total_students} прис.${l.absent_count > 0 ? `, ${l.absent_count} відс.` : ''}${l.not_marked_count > 0 ? `, ${l.not_marked_count} не відм.` : ''}`}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           );
         })()}
       </>
