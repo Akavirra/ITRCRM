@@ -889,6 +889,7 @@ export default function AttendancePage() {
                     <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Дата</th>
                     <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Час</th>
                     <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Викладач</th>
+                    <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem', whiteSpace:'nowrap' }}>Курс</th>
                     <th style={{ padding:'0.625rem 0.75rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem' }}>Учні та відвідуваність</th>
                     <th style={{ padding:'0.625rem 1.25rem', textAlign:'left', fontWeight:600, color:'#374151', fontSize:'0.8125rem' }}>Тема</th>
                     <th style={{ padding:'0.625rem 0.5rem', width:36 }}></th>
@@ -912,6 +913,11 @@ export default function AttendancePage() {
                               onClick={() => il.teacher_id && openTeacherModal(il.teacher_id, il.teacher_name!)}
                               onMouseEnter={e => (e.currentTarget.style.textDecoration='underline')}
                               onMouseLeave={e => (e.currentTarget.style.textDecoration='none')}>{il.teacher_name}</span>
+                          : <span style={{ color:'#9ca3af' }}>—</span>}
+                      </td>
+                      <td style={{ padding:'0.75rem 0.75rem', whiteSpace:'nowrap', fontSize:'0.8125rem' }}>
+                        {il.course_title
+                          ? <span style={{ padding:'2px 8px', borderRadius:6, backgroundColor:'#f0fdf4', color:'#166534', fontSize:'0.75rem', fontWeight:600 }}>{il.course_title}</span>
                           : <span style={{ color:'#9ca3af' }}>—</span>}
                       </td>
                       <td style={{ padding:'0.75rem 0.75rem' }}>
