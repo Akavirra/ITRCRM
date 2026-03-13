@@ -434,7 +434,7 @@ export default function GroupDetailsPage() {
     if (!status) return <span style={{ color: '#d1d5db' }}>○</span>;
     if (status === 'present') return <span style={{ color: '#16a34a', fontWeight: 700 }}>✓</span>;
     if (status === 'absent') return <span style={{ color: '#dc2626', fontWeight: 700 }}>✗</span>;
-    if (status === 'makeup_done') return <span style={{ color: '#2563eb', fontWeight: 700 }}>✓</span>;
+    if (status === 'makeup_done') return <span style={{ color: '#a16207', fontWeight: 700 }}>✓</span>;
     return <span style={{ color: '#d97706', fontWeight: 700 }}>↺</span>;
   };
 

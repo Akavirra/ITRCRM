@@ -186,12 +186,12 @@ function AttCell({ status, makeupLessonId, onMakeupClick }: { status: Attendance
       return (
         <span
           onClick={(e) => { e.stopPropagation(); onMakeupClick(); }}
-          style={{ color: '#2563eb', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted' }}
+          style={{ color: '#a16207', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted' }}
           title="Відпрацьовано — відкрити заняття відпрацювання"
         >✓</span>
       );
     }
-    return <span style={{ color: '#2563eb', fontWeight: 700 }}>✓</span>;
+    return <span style={{ color: '#a16207', fontWeight: 700 }}>✓</span>;
   }
   return <span style={{ color: '#d97706', fontWeight: 700 }}>↺</span>;
 }
@@ -202,7 +202,7 @@ function StatusBadge({ status }: { status: AttendanceStatus | null }) {
     present:        { bg:'#dcfce7', border:'#86efac', icon:'✓', color:'#16a34a', title:'Присутній' },
     absent:         { bg:'#fee2e2', border:'#fca5a5', icon:'✗', color:'#dc2626', title:'Відсутній' },
     makeup_planned: { bg:'#fef3c7', border:'#fcd34d', icon:'↺', color:'#d97706', title:'Відпрацювання' },
-    makeup_done:    { bg:'#dbeafe', border:'#93c5fd', icon:'✓', color:'#2563eb', title:'Відпрацьовано' },
+    makeup_done:    { bg:'#fef9c3', border:'#fde047', icon:'✓', color:'#a16207', title:'Відпрацьовано' },
   };
   const s = map[status];
   return <span title={s.title} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:24, height:24, borderRadius:'50%', backgroundColor:s.bg, border:`1px solid ${s.border}`, fontSize:'0.7rem', fontWeight:700, color:s.color }}>{s.icon}</span>;
@@ -214,7 +214,7 @@ function StatusLabel({ status }: { status: AttendanceStatus | null }) {
     present:        { label:'Присутній',     color:'#16a34a', bg:'#dcfce7' },
     absent:         { label:'Відсутній',     color:'#dc2626', bg:'#fee2e2' },
     makeup_planned: { label:'Відпрацювання', color:'#d97706', bg:'#fef3c7' },
-    makeup_done:    { label:'Відпрацьовано', color:'#2563eb', bg:'#dbeafe' },
+    makeup_done:    { label:'Відпрацьовано', color:'#a16207', bg:'#fef9c3' },
   };
   const s = map[status];
   return <span style={{ padding:'2px 8px', borderRadius:6, fontSize:'0.75rem', fontWeight:600, color:s.color, backgroundColor:s.bg }}>{s.label}</span>;

@@ -1645,14 +1645,14 @@ export default function LessonModalsManager() {
                             </span>
                             {att.status === 'makeup_done' && (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                                <span style={{ padding: '1px 6px', borderRadius: 4, backgroundColor: '#dbeafe', color: '#1d4ed8', fontSize: '0.6875rem', fontWeight: 600 }}>
+                                <span style={{ padding: '1px 6px', borderRadius: 4, backgroundColor: '#fef9c3', color: '#a16207', fontSize: '0.6875rem', fontWeight: 600 }}>
                                   ↺ Відпрацьовано
                                 </span>
                                 {att.makeup_lesson_id && (
                                   <button
                                     onClick={() => openLessonModal(att.makeup_lesson_id!, `Заняття #${att.makeup_lesson_id}`, undefined)}
                                     title="Відкрити заняття відпрацювання"
-                                    style={{ padding: '1px 5px', borderRadius: 4, backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', fontSize: '0.6875rem', cursor: 'pointer', fontWeight: 500 }}
+                                    style={{ padding: '1px 5px', borderRadius: 4, backgroundColor: '#fefce8', border: '1px solid #fde047', color: '#a16207', fontSize: '0.6875rem', cursor: 'pointer', fontWeight: 500 }}
                                   >
                                     →
                                   </button>

@@ -113,7 +113,7 @@ function StatusDot({ status, size = 'md', onClick, title }: {
     present:        { bg: '#dcfce7', border: '#86efac', icon: '✓', label: 'Присутній',    color: '#16a34a' },
     absent:         { bg: '#fee2e2', border: '#fca5a5', icon: '✗', label: 'Відсутній',    color: '#dc2626' },
     makeup_planned: { bg: '#fef3c7', border: '#fcd34d', icon: '↺', label: 'Відпрацювання', color: '#d97706' },
-    makeup_done:    { bg: '#dbeafe', border: '#93c5fd', icon: '✓', label: 'Відпрацьовано', color: '#2563eb' },
+    makeup_done:    { bg: '#fef9c3', border: '#fde047', icon: '✓', label: 'Відпрацьовано', color: '#a16207' },
   };
 
   if (!status) {
