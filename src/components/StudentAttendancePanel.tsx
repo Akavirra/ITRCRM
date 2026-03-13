@@ -125,6 +125,16 @@ export default function StudentAttendancePanel({
   const [groups, setGroups] = useState<MonthlyGroupAttendance[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
+
+  const toggleGroup = (groupId: number) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  };
 
   const load = useCallback(async (y: number, m: number) => {
     setLoading(true);
@@ -223,119 +233,77 @@ export default function StudentAttendancePanel({
         <>
           <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-            {/* Group lessons */}
+            {/* ── Group lessons ── */}
             {groupLessons.length > 0 && (
               <div>
                 <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>
                   Групові заняття ({groupLessons.length} {groupLessons.length === 1 ? 'група' : groupLessons.length < 5 ? 'групи' : 'груп'})
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {groupLessons.map(g => (
-                    <div key={g.group_id} style={{ border: '1px solid #e5e7eb', borderRadius: '0.75rem', overflow: 'hidden' }}>
-                      {/* Group header */}
-                      <div style={{ padding: '0.75rem 1rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.group_title}</div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: 3, flexWrap: 'wrap' }}>
-                            {g.course_title && <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{g.course_title}</span>}
-                            {g.weekly_day && g.start_time && (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 7px', backgroundColor: '#eef2ff', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, color: '#4f46e5', whiteSpace: 'nowrap' }}>
-                                📅 {WEEKDAY_UK[g.weekly_day]} {g.start_time.slice(0, 5)}
-                              </span>
-                            )}
-                            <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{g.total} занять</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                  {groupLessons.map(g => {
+                    const isCollapsed = collapsedGroups.has(g.group_id!);
+                    return (
+                      <div key={g.group_id} style={{ border: '1px solid #e5e7eb', borderRadius: '0.75rem', overflow: 'hidden' }}>
+                        {/* Group header — clickable to collapse */}
+                        <div
+                          onClick={() => toggleGroup(g.group_id!)}
+                          style={{ padding: '0.75rem 1rem', backgroundColor: '#f8fafc', borderBottom: isCollapsed ? 'none' : '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.group_title}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: 3, flexWrap: 'wrap' }}>
+                              {g.course_title && <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{g.course_title}</span>}
+                              {g.weekly_day && g.start_time && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 7px', backgroundColor: '#eef2ff', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, color: '#4f46e5', whiteSpace: 'nowrap' }}>
+                                  📅 {WEEKDAY_UK[g.weekly_day]} {g.start_time.slice(0, 5)}
+                                </span>
+                              )}
+                              <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{g.total} занять</span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexShrink: 0 }}>
+                            <span style={{ padding: '2px 7px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#dcfce7', color: '#16a34a' }}>✓ {g.present}</span>
+                            <span style={{ padding: '2px 7px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#fee2e2', color: '#dc2626' }}>✗ {g.absent}</span>
+                            {g.not_marked > 0 && <span style={{ padding: '2px 7px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#f3f4f6', color: '#6b7280' }}>○ {g.not_marked}</span>}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"
+                              style={{ marginLeft: 4, transition: 'transform 0.2s', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', flexShrink: 0 }}>
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
-                          <span style={{ padding: '2px 7px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#dcfce7', color: '#16a34a' }}>✓ {g.present}</span>
-                          <span style={{ padding: '2px 7px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#fee2e2', color: '#dc2626' }}>✗ {g.absent}</span>
-                          {g.not_marked > 0 && <span style={{ padding: '2px 7px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#f3f4f6', color: '#6b7280' }}>○ {g.not_marked}</span>}
-                        </div>
-                      </div>
-                      {/* Lesson dots */}
-                      <div style={{ padding: '0.875rem 1rem' }}>
-                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                          {g.lessons.map(l => (
-                            <div key={l.lesson_id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                              <StatusDot
-                                status={l.attendance_status}
-                                size="sm"
-                                onClick={onOpenLesson ? () => onOpenLesson(l.lesson_id) : undefined}
-                                title={lessonTitle(l)}
-                              />
-                              <span style={{ fontSize: '0.5625rem', color: '#9ca3af', fontWeight: 600, lineHeight: 1.2 }}>{getWeekday(l.lesson_date)}</span>
-                              <span style={{ fontSize: '0.5625rem', color: '#6b7280', fontWeight: 500, lineHeight: 1.2 }}>{formatDate(l.lesson_date)}</span>
-                              {l.topic && (
-                                <span style={{ fontSize: '0.5rem', color: '#9ca3af', maxWidth: 44, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.topic}>{l.topic}</span>
-                              )}
+                        {/* Lesson dots — hidden when collapsed */}
+                        {!isCollapsed && (
+                          <div style={{ padding: '0.875rem 1rem' }}>
+                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                              {g.lessons.map(l => (
+                                <div key={l.lesson_id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                                  <StatusDot
+                                    status={l.attendance_status}
+                                    size="sm"
+                                    onClick={onOpenLesson ? () => onOpenLesson(l.lesson_id) : undefined}
+                                    title={lessonTitle(l)}
+                                  />
+                                  <span style={{ fontSize: '0.5625rem', color: '#9ca3af', fontWeight: 600, lineHeight: 1.2 }}>{getWeekday(l.lesson_date)}</span>
+                                  <span style={{ fontSize: '0.5625rem', color: '#6b7280', fontWeight: 500, lineHeight: 1.2 }}>{formatDate(l.lesson_date)}</span>
+                                  {l.topic && (
+                                    <span style={{ fontSize: '0.5rem', color: '#9ca3af', maxWidth: 44, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.topic}>{l.topic}</span>
+                                  )}
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                        <RateBar rate={g.rate} />
+                            <RateBar rate={g.rate} />
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* Makeup lessons (відпрацювання) */}
-            {makeupGroup && makeupGroup.lessons.length > 0 && (
-              <div>
-                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>
-                  Відпрацювання ({makeupGroup.lessons.length})
-                </div>
-                <div style={{ border: '1px solid #fde68a', borderRadius: '0.75rem', overflow: 'hidden', backgroundColor: '#fffbeb' }}>
-                  {makeupGroup.lessons.map((l, i) => (
-                    <div
-                      key={l.lesson_id}
-                      onClick={onOpenLesson ? () => onOpenLesson(l.lesson_id) : undefined}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 1rem',
-                        borderBottom: i < makeupGroup.lessons.length - 1 ? '1px solid #fef3c7' : 'none',
-                        cursor: onOpenLesson ? 'pointer' : 'default',
-                        transition: 'background 0.1s',
-                      }}
-                      onMouseEnter={onOpenLesson ? e => { e.currentTarget.style.background = '#fef3c7'; } : undefined}
-                      onMouseLeave={onOpenLesson ? e => { e.currentTarget.style.background = 'transparent'; } : undefined}
-                    >
-                      <StatusDot status={l.attendance_status} size="sm" />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
-                            {getWeekday(l.lesson_date)}, {formatDate(l.lesson_date)}
-                          </span>
-                          {l.start_time_kyiv && (
-                            <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, padding: '1px 6px', backgroundColor: '#fef3c7', borderRadius: 4 }}>
-                              {l.start_time_kyiv}
-                            </span>
-                          )}
-                        </div>
-                        {(() => {
-                          const orig = originalLessonLabel(l);
-                          return orig ? (
-                            <div style={{ fontSize: '0.75rem', color: '#92400e', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ opacity: 0.6 }}>↩</span>
-                              <span>{orig}</span>
-                            </div>
-                          ) : null;
-                        })()}
-                        {l.topic && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{l.topic}</div>}
-                      </div>
-                      {onOpenLesson && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ flexShrink: 0 }}>
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                          <polyline points="15 3 21 3 21 9" />
-                          <line x1="10" y1="14" x2="21" y2="3" />
-                        </svg>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Individual lessons */}
+            {/* ── Individual lessons ── */}
             {individualGroup && individualGroup.lessons.length > 0 && (
               <div>
                 <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>
@@ -380,6 +348,62 @@ export default function StudentAttendancePanel({
                             )}
                           </div>
                         )}
+                        {l.topic && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{l.topic}</div>}
+                      </div>
+                      {onOpenLesson && (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ flexShrink: 0 }}>
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                          <polyline points="15 3 21 3 21 9" />
+                          <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Makeup lessons (відпрацювання) ── */}
+            {makeupGroup && makeupGroup.lessons.length > 0 && (
+              <div>
+                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>
+                  Відпрацювання ({makeupGroup.lessons.length})
+                </div>
+                <div style={{ border: '1px solid #fde68a', borderRadius: '0.75rem', overflow: 'hidden', backgroundColor: '#fffbeb' }}>
+                  {makeupGroup.lessons.map((l, i) => (
+                    <div
+                      key={l.lesson_id}
+                      onClick={onOpenLesson ? () => onOpenLesson(l.lesson_id) : undefined}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 1rem',
+                        borderBottom: i < makeupGroup.lessons.length - 1 ? '1px solid #fef3c7' : 'none',
+                        cursor: onOpenLesson ? 'pointer' : 'default',
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={onOpenLesson ? e => { e.currentTarget.style.background = '#fef3c7'; } : undefined}
+                      onMouseLeave={onOpenLesson ? e => { e.currentTarget.style.background = 'transparent'; } : undefined}
+                    >
+                      <StatusDot status={l.attendance_status} size="sm" />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+                            {getWeekday(l.lesson_date)}, {formatDate(l.lesson_date)}
+                          </span>
+                          {l.start_time_kyiv && (
+                            <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, padding: '1px 6px', backgroundColor: '#fef3c7', borderRadius: 4 }}>
+                              {l.start_time_kyiv}
+                            </span>
+                          )}
+                        </div>
+                        {(() => {
+                          const orig = originalLessonLabel(l);
+                          return orig ? (
+                            <div style={{ fontSize: '0.75rem', color: '#92400e', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ opacity: 0.6 }}>↩</span>
+                              <span>{orig}</span>
+                            </div>
+                          ) : null;
+                        })()}
                         {l.topic && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{l.topic}</div>}
                       </div>
                       {onOpenLesson && (
