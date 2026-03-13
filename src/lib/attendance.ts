@@ -1580,3 +1580,58 @@ export async function getMakeupLessonsData(options: {
 
   return rows;
 }
+
+// ── Yearly calendar attendance ─────────────────────────────────────────────
+
+export interface YearlyDayLesson {
+  lesson_id: number;
+  lesson_date: string;
+  start_time_kyiv: string | null;
+  group_id: number | null;
+  group_title: string | null;
+  course_title: string | null;
+  attendance_status: AttendanceStatus | null;
+  is_makeup: boolean;
+  topic: string | null;
+}
+
+export async function getStudentYearlyAttendance(
+  studentId: number,
+  year: number
+): Promise<Record<string, YearlyDayLesson[]>> {
+  const rows = await all<YearlyDayLesson>(`
+    SELECT
+      l.id AS lesson_id,
+      l.lesson_date::text AS lesson_date,
+      CASE WHEN l.start_datetime IS NOT NULL
+        THEN to_char(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI')
+        ELSE NULL
+      END AS start_time_kyiv,
+      l.group_id,
+      g.title AS group_title,
+      COALESCE(c.title, c2.title) AS course_title,
+      a.status AS attendance_status,
+      COALESCE(l.is_makeup, FALSE) AS is_makeup,
+      l.topic
+    FROM lessons l
+    LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = $1
+    LEFT JOIN groups g ON l.group_id = g.id
+    LEFT JOIN courses c ON l.course_id = c.id
+    LEFT JOIN courses c2 ON g.course_id = c2.id
+    WHERE EXTRACT(YEAR FROM l.lesson_date) = $2
+      AND l.status IN ('done', 'scheduled')
+      AND (
+        l.group_id IN (SELECT group_id FROM group_students WHERE student_id = $1)
+        OR a.student_id = $1
+      )
+    ORDER BY l.lesson_date, l.start_datetime
+  `, [studentId, year]);
+
+  const byDay: Record<string, YearlyDayLesson[]> = {};
+  for (const row of rows) {
+    const dateKey = row.lesson_date.slice(0, 10);
+    if (!byDay[dateKey]) byDay[dateKey] = [];
+    byDay[dateKey].push(row);
+  }
+  return byDay;
+}
