@@ -1619,10 +1619,10 @@ export async function getStudentYearlyAttendance(
     LEFT JOIN courses c ON l.course_id = c.id
     LEFT JOIN courses c2 ON g.course_id = c2.id
     WHERE EXTRACT(YEAR FROM l.lesson_date) = $2
-      AND l.status IN ('done', 'scheduled')
+      AND l.status != 'canceled'
       AND (
-        l.group_id IN (SELECT group_id FROM group_students WHERE student_id = $1)
-        OR a.student_id = $1
+        l.group_id IN (SELECT group_id FROM student_groups WHERE student_id = $1 AND is_active = TRUE)
+        OR EXISTS (SELECT 1 FROM attendance a2 WHERE a2.lesson_id = l.id AND a2.student_id = $1)
       )
     ORDER BY l.lesson_date, l.start_datetime
   `, [studentId, year]);
