@@ -1686,3 +1686,56 @@ export async function getStudentYearlyAttendance(
   }
   return byDay;
 }
+
+// ── Global calendar data (all lessons per day with attendance summary) ─────
+
+export interface CalendarLesson {
+  lesson_id: number;
+  lesson_date: string;
+  start_time: string | null;
+  group_id: number | null;
+  group_title: string | null;
+  course_title: string | null;
+  topic: string | null;
+  is_makeup: boolean;
+  total_students: number;
+  present_count: number;
+  absent_count: number;
+  not_marked_count: number;
+}
+
+export async function getCalendarData(year: number): Promise<Record<string, CalendarLesson[]>> {
+  const rows = await all<CalendarLesson>(
+    `SELECT
+      l.id as lesson_id,
+      l.lesson_date::text as lesson_date,
+      TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as start_time,
+      l.group_id,
+      g.title as group_title,
+      COALESCE(c_les.title, c_grp.title) as course_title,
+      l.topic,
+      COALESCE(l.is_makeup, false) as is_makeup,
+      COUNT(a.id)::int as total_students,
+      COUNT(a.id) FILTER (WHERE a.status IN ('present', 'makeup_done'))::int as present_count,
+      COUNT(a.id) FILTER (WHERE a.status IN ('absent', 'makeup_planned'))::int as absent_count,
+      COUNT(a.id) FILTER (WHERE a.status IS NULL)::int as not_marked_count
+    FROM lessons l
+    LEFT JOIN groups g ON l.group_id = g.id
+    LEFT JOIN courses c_les ON l.course_id = c_les.id
+    LEFT JOIN courses c_grp ON g.course_id = c_grp.id
+    LEFT JOIN attendance a ON a.lesson_id = l.id
+    WHERE l.status != 'canceled'
+      AND EXTRACT(YEAR FROM l.lesson_date) = $1
+    GROUP BY l.id, l.lesson_date, l.start_datetime, l.group_id, g.title, c_les.title, c_grp.title, l.topic, l.is_makeup
+    ORDER BY l.lesson_date, l.start_datetime`,
+    [year]
+  );
+
+  const result: Record<string, CalendarLesson[]> = {};
+  for (const row of rows) {
+    const key = row.lesson_date.substring(0, 10);
+    if (!result[key]) result[key] = [];
+    result[key].push(row);
+  }
+  return result;
+}

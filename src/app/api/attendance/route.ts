@@ -10,6 +10,7 @@ import {
   getGlobalMonthlyLessonRecords,
   getGroupAllTimeRegister,
   getMakeupLessonsData,
+  getCalendarData,
 } from '@/lib/attendance';
 
 export const dynamic = 'force-dynamic';
@@ -60,6 +61,11 @@ export async function GET(request: NextRequest) {
         { groupId, search, courseId, teacherId, startDate, endDate }
       );
       return NextResponse.json({ records });
+    }
+
+    if (view === 'calendarData') {
+      const days = await getCalendarData(year);
+      return NextResponse.json({ days });
     }
 
     if (view === 'makeupLessons') {

@@ -106,6 +106,21 @@ interface IndividualLesson {
   }>;
 }
 
+interface CalendarLesson {
+  lesson_id: number;
+  lesson_date: string;
+  start_time: string | null;
+  group_id: number | null;
+  group_title: string | null;
+  course_title: string | null;
+  topic: string | null;
+  is_makeup: boolean;
+  total_students: number;
+  present_count: number;
+  absent_count: number;
+  not_marked_count: number;
+}
+
 interface LessonRecord {
   lesson_id: number;
   lesson_date: string;
@@ -277,6 +292,10 @@ export default function AttendancePage() {
   const [journalMode,   setJournalMode]   = useState(false);
   const [journalData,   setJournalData]   = useState<GroupAllTimeData | null>(null);
   const [openMonths,    setOpenMonths]    = useState<Set<string>>(new Set());
+  const [calendarMode,  setCalendarMode]  = useState(false);
+  const [calendarData,  setCalendarData]  = useState<Record<string, CalendarLesson[]>>({});
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [selectedCalDay, setSelectedCalDay] = useState<string | null>(null);
   // all-time extra filters
   const [statusFilter, setStatusFilter] = useState('');
   const [atYear,      setAtYear]      = useState('');
@@ -346,6 +365,20 @@ export default function AttendancePage() {
   useEffect(() => {
     if (makeupTab) loadMakeupData();
   }, [makeupTab, loadMakeupData]);
+
+  const loadCalendarData = useCallback(async () => {
+    setCalendarLoading(true);
+    try {
+      const res = await fetch(`/api/attendance?view=calendarData&year=${year}`);
+      if (res.ok) { const d = await res.json(); setCalendarData(d.days || {}); }
+    } finally {
+      setCalendarLoading(false);
+    }
+  }, [year]);
+
+  useEffect(() => {
+    if (calendarMode) loadCalendarData();
+  }, [calendarMode, loadCalendarData]);
 
   // Load data
   const loadData = useCallback(async () => {
@@ -417,14 +450,22 @@ export default function AttendancePage() {
   const toggleAllTime = () => {
     setAllTime(v => !v);
     setJournalMode(false);
+    setCalendarMode(false);
     setStatusFilter('');
-    // reset all-time specific filters when toggling off
     if (allTime) { setAtYear(''); setAtMonth(''); setAtStartDate(''); setAtEndDate(''); setSelectedCourse(''); setSelectedTeacher(''); }
   };
 
   const toggleJournal = () => {
     setJournalMode(v => !v);
     setAllTime(false);
+    setCalendarMode(false);
+  };
+
+  const toggleCalendar = () => {
+    setCalendarMode(v => !v);
+    setAllTime(false);
+    setJournalMode(false);
+    setSelectedCalDay(null);
   };
 
   const handleSearchChange = (value: string) => {
@@ -542,6 +583,18 @@ export default function AttendancePage() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
               Журнал групи
             </button>
+            <button onClick={toggleCalendar} style={{
+              display:'flex', alignItems:'center', gap:'0.5rem',
+              padding:'0.625rem 1.25rem',
+              border:`1px solid ${calendarMode ? '#0891b2' : '#e5e7eb'}`,
+              borderRadius:'0.625rem',
+              backgroundColor: calendarMode ? '#0891b2' : 'white',
+              color: calendarMode ? 'white' : '#374151',
+              fontSize:'0.875rem', fontWeight:500, cursor:'pointer',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Календар
+            </button>
             <button onClick={exportCSV} style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.625rem 1.25rem', border:'1px solid #e5e7eb', borderRadius:'0.625rem', backgroundColor:'white', color:'#374151', fontSize:'0.875rem', fontWeight:500, cursor:'pointer' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Експорт CSV
@@ -631,7 +684,8 @@ export default function AttendancePage() {
             }
           </div>
 
-        ) : journalMode ? renderJournalView() : (
+        ) : calendarMode ? renderCalendarView()
+        : journalMode ? renderJournalView() : (
           /* ══ REGULAR MONTHLY MODE ══ */
           <>
             {/* Month navigation */}
@@ -780,6 +834,182 @@ export default function AttendancePage() {
       </div>
     </Layout>
   );
+
+  // ── Calendar view ────────────────────────────────────────────────────────
+
+  function renderCalendarView() {
+    const WEEKDAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+    const MONTH_UK_SHORT = ['','Січ','Лют','Бер','Квіт','Трав','Черв','Лип','Серп','Вер','Жовт','Лист','Груд'];
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+    function getDayStyle(lessons: CalendarLesson[]): { bg:string; color:string; border:string } | null {
+      if (!lessons.length) return null;
+      if (lessons.some(l => l.absent_count > 0))
+        return { bg:'#fee2e2', color:'#dc2626', border:'#fca5a5' };
+      if (lessons.some(l => l.not_marked_count > 0))
+        return { bg:'#f3f4f6', color:'#6b7280', border:'#e5e7eb' };
+      if (lessons.every(l => l.total_students === 0))
+        return { bg:'#ede9fe', color:'#7c3aed', border:'#c4b5fd' };
+      return { bg:'#dcfce7', color:'#16a34a', border:'#86efac' };
+    }
+
+    function getLessonIcon(l: CalendarLesson) {
+      if (l.absent_count > 0) return { icon:'✗', color:'#dc2626', bg:'#fee2e2', border:'#fca5a5' };
+      if (l.total_students === 0) return { icon:'·', color:'#7c3aed', bg:'#ede9fe', border:'#c4b5fd' };
+      if (l.not_marked_count > 0) return { icon:'○', color:'#6b7280', bg:'#f3f4f6', border:'#e5e7eb' };
+      return { icon:'✓', color:'#16a34a', bg:'#dcfce7', border:'#86efac' };
+    }
+
+    function renderMiniMonth(m: number) {
+      const firstDay = new Date(year, m - 1, 1);
+      const daysInMonth = new Date(year, m, 0).getDate();
+      const startOffset = (firstDay.getDay() + 6) % 7;
+      const cells: (number | null)[] = [];
+      for (let i = 0; i < startOffset; i++) cells.push(null);
+      for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+      return (
+        <div key={m} style={{ minWidth:0 }}>
+          <div style={{ fontSize:'0.75rem', fontWeight:700, color:'#374151', marginBottom:6, textAlign:'center' }}>
+            {MONTH_UK_SHORT[m]}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:2, marginBottom:3 }}>
+            {WEEKDAY_SHORT.map(wd => (
+              <div key={wd} style={{ fontSize:'0.5rem', color:'#d1d5db', textAlign:'center', fontWeight:700 }}>{wd[0]}</div>
+            ))}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:2 }}>
+            {cells.map((day, idx) => {
+              if (!day) return <div key={idx} />;
+              const dateKey = `${year}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+              const lessons = calendarData[dateKey] || [];
+              const s = getDayStyle(lessons);
+              const isToday = dateKey === todayKey;
+              const isSelected = selectedCalDay === dateKey;
+              const colIdx = (startOffset + day - 1) % 7;
+              return (
+                <div
+                  key={day}
+                  onClick={() => {
+                    if (!lessons.length) return;
+                    if (lessons.length === 1) {
+                      openLessonModal(lessons[0].lesson_id, `Заняття #${lessons[0].lesson_id}`, undefined);
+                      return;
+                    }
+                    setSelectedCalDay(prev => prev === dateKey ? null : dateKey);
+                  }}
+                  style={{
+                    aspectRatio:'1', display:'flex', alignItems:'center', justifyContent:'center',
+                    borderRadius:4, fontSize:'0.5625rem', boxSizing:'border-box', position:'relative',
+                    fontWeight: s ? 700 : 400,
+                    color: s ? s.color : (colIdx >= 5) ? '#e5e7eb' : '#9ca3af',
+                    backgroundColor: isSelected ? '#dbeafe' : s ? s.bg : 'transparent',
+                    border: isSelected ? '1.5px solid #93c5fd' : isToday ? '1.5px solid #6366f1' : s ? `1px solid ${s.border}` : 'none',
+                    cursor: lessons.length ? 'pointer' : 'default',
+                  }}
+                >
+                  {day}
+                  {lessons.length > 1 && (
+                    <span style={{ position:'absolute', bottom:1, right:1, width:3, height:3, borderRadius:'50%', backgroundColor:s?.color||'#6b7280', opacity:0.7 }} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    const dayLessons = selectedCalDay ? (calendarData[selectedCalDay] || []) : [];
+    const [dy, dm, dd] = (selectedCalDay || '--').split('-');
+
+    return (
+      <>
+        <div className="card" style={{ borderRadius:'1rem', padding:'1.25rem 1.5rem' }}>
+          {/* Year navigation */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'0.75rem', marginBottom:'1.25rem' }}>
+            <button onClick={() => setYear(y => y - 1)} style={{ width:32, height:32, border:'1px solid #e5e7eb', borderRadius:'50%', backgroundColor:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.125rem', color:'#374151', flexShrink:0 }}>‹</button>
+            <span style={{ fontWeight:700, fontSize:'1.25rem', color:'#111827', minWidth:60, textAlign:'center' }}>{year}</span>
+            <button onClick={() => setYear(y => y + 1)} disabled={year >= now.getFullYear()} style={{ width:32, height:32, border:'1px solid #e5e7eb', borderRadius:'50%', backgroundColor:'white', cursor: year >= now.getFullYear() ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.125rem', color: year >= now.getFullYear() ? '#d1d5db' : '#374151', opacity: year >= now.getFullYear() ? 0.4 : 1, flexShrink:0 }}>›</button>
+          </div>
+          {/* Legend */}
+          <div style={{ display:'flex', gap:'1rem', justifyContent:'center', marginBottom:'1.25rem', flexWrap:'wrap' }}>
+            {[
+              { bg:'#dcfce7', color:'#16a34a', border:'#86efac', label:'Всі присутні' },
+              { bg:'#fee2e2', color:'#dc2626', border:'#fca5a5', label:'Є відсутні' },
+              { bg:'#f3f4f6', color:'#6b7280', border:'#e5e7eb', label:'Не відмічено' },
+              { bg:'#ede9fe', color:'#7c3aed', border:'#c4b5fd', label:'Без учнів' },
+            ].map(item => (
+              <div key={item.label} style={{ display:'flex', alignItems:'center', gap:'0.375rem' }}>
+                <div style={{ width:14, height:14, borderRadius:3, backgroundColor:item.bg, border:`1px solid ${item.border}` }} />
+                <span style={{ fontSize:'0.75rem', color:'#6b7280' }}>{item.label}</span>
+              </div>
+            ))}
+          </div>
+          {/* 12-month grid */}
+          {calendarLoading
+            ? <div style={{ padding:'3rem', textAlign:'center', color:'#9ca3af' }}>Завантаження...</div>
+            : <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'1.25rem 1rem' }}>
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => renderMiniMonth(m))}
+              </div>
+          }
+        </div>
+
+        {/* Day modal */}
+        {selectedCalDay && dayLessons.length > 0 && (() => {
+          const jsDate = new Date(parseInt(dy), parseInt(dm)-1, parseInt(dd));
+          const weekdayLabel = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'][jsDate.getDay()];
+          const dateLabel = `${dd}.${dm}.${dy}`;
+          return (
+            <>
+              <div onClick={() => setSelectedCalDay(null)} style={{ position:'fixed', inset:0, zIndex:998, backgroundColor:'rgba(0,0,0,0.25)' }} />
+              <div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', zIndex:999, backgroundColor:'white', borderRadius:'1rem', boxShadow:'0 8px 40px rgba(0,0,0,0.18)', width:420, maxWidth:'calc(100vw - 2rem)', overflow:'hidden' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1rem 1.25rem', borderBottom:'1px solid #f3f4f6' }}>
+                  <div>
+                    <div style={{ fontSize:'1rem', fontWeight:700, color:'#111827' }}>{weekdayLabel}, {dateLabel}</div>
+                    <div style={{ fontSize:'0.75rem', color:'#9ca3af', marginTop:2 }}>{dayLessons.length} {dayLessons.length === 1 ? 'заняття' : dayLessons.length < 5 ? 'заняття' : 'занять'}</div>
+                  </div>
+                  <button onClick={() => setSelectedCalDay(null)} style={{ width:32, height:32, border:'1px solid #e5e7eb', borderRadius:'50%', background:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#6b7280', fontSize:'1.125rem', lineHeight:'1' }}>×</button>
+                </div>
+                <div style={{ maxHeight:'60vh', overflowY:'auto' }}>
+                  {dayLessons.map((l, i) => {
+                    const s = getLessonIcon(l);
+                    return (
+                      <div
+                        key={l.lesson_id}
+                        onClick={() => { openLessonModal(l.lesson_id, `Заняття #${l.lesson_id}`, undefined); setSelectedCalDay(null); }}
+                        style={{ display:'flex', alignItems:'center', gap:'0.875rem', padding:'0.875rem 1.25rem', borderBottom: i < dayLessons.length-1 ? '1px solid #f3f4f6' : 'none', cursor:'pointer' }}
+                        onMouseEnter={e => (e.currentTarget.style.background='#f9fafb')}
+                        onMouseLeave={e => (e.currentTarget.style.background='transparent')}
+                      >
+                        <div style={{ width:36, height:36, borderRadius:10, backgroundColor:s.bg, border:`1.5px solid ${s.border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.875rem', fontWeight:700, color:s.color, flexShrink:0 }}>{s.icon}</div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:'0.875rem', fontWeight:600, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                            {l.is_makeup ? '↺ Відпрацювання' : l.group_title || 'Індивідуальне'}
+                          </div>
+                          <div style={{ display:'flex', gap:'0.375rem', marginTop:2, flexWrap:'wrap', alignItems:'center' }}>
+                            {l.start_time && <span style={{ fontSize:'0.75rem', color:'#4f46e5', fontWeight:600 }}>{l.start_time}</span>}
+                            {l.course_title && <span style={{ fontSize:'0.75rem', color:'#6b7280' }}>{l.course_title}</span>}
+                            {l.topic && <span style={{ fontSize:'0.75rem', color:'#9ca3af', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>· {l.topic}</span>}
+                          </div>
+                          <div style={{ fontSize:'0.6875rem', marginTop:2, color:s.color }}>
+                            {l.total_students === 0 ? 'Без учнів' : `${l.present_count}/${l.total_students} прис.${l.absent_count > 0 ? `, ${l.absent_count} відс.` : ''}`}
+                          </div>
+                        </div>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ flexShrink:0 }}>
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          );
+        })()}
+      </>
+    );
+  }
 
   // ── Grouped view ─────────────────────────────────────────────────────────
 
