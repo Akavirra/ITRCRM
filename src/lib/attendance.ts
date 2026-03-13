@@ -1594,6 +1594,7 @@ export async function getMakeupLessonsData(options: {
 // ── Student absences list ──────────────────────────────────────────────────
 
 export interface StudentAbsence {
+  attendance_id: number;
   lesson_id: number;
   lesson_date: string;
   start_datetime: string | null;
@@ -1607,6 +1608,7 @@ export interface StudentAbsence {
 export async function getStudentAbsences(studentId: number): Promise<StudentAbsence[]> {
   return await all<StudentAbsence>(`
     SELECT
+      a.id AS attendance_id,
       l.id AS lesson_id,
       l.lesson_date::text AS lesson_date,
       l.start_datetime,

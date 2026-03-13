@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import CreateLessonModal from './CreateLessonModal';
 
 type AttendanceStatus = 'present' | 'absent' | 'makeup_planned' | 'makeup_done';
 type ViewMode = 'monthly' | 'calendar';
@@ -40,6 +41,7 @@ interface MonthlyGroupAttendance {
 }
 
 interface AbsenceLesson {
+  attendance_id: number;
   lesson_id: number;
   lesson_date: string;
   start_datetime: string | null;
@@ -182,6 +184,11 @@ export default function StudentAttendancePanel({
   const [absencesOpen, setAbsencesOpen] = useState(false);
   const [absencesList, setAbsencesList] = useState<AbsenceLesson[]>([]);
   const [absencesLoading, setAbsencesLoading] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+
+  // Makeup modal state (opened from absences panel)
+  const [makeupModalOpen, setMakeupModalOpen] = useState(false);
+  const [makeupPreselectedIds, setMakeupPreselectedIds] = useState<number[]>([]);
 
   // Calendar (yearly) view state
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
@@ -450,7 +457,7 @@ export default function StudentAttendancePanel({
       {absencesOpen && (
         <div
           style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 8000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-          onClick={() => setAbsencesOpen(false)}
+          onClick={() => { setAbsencesOpen(false); setOpenMenuId(null); }}
         >
           <div
             onClick={e => e.stopPropagation()}
@@ -467,7 +474,7 @@ export default function StudentAttendancePanel({
                 )}
               </div>
               <button
-                onClick={() => setAbsencesOpen(false)}
+                onClick={() => { setAbsencesOpen(false); setOpenMenuId(null); }}
                 style={{ width: 32, height: 32, border: '1px solid #e5e7eb', borderRadius: '50%', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '1.125rem', lineHeight: 1, flexShrink: 0 }}
               >×</button>
             </div>
@@ -487,6 +494,7 @@ export default function StudentAttendancePanel({
                     borderBottom: i < absencesList.length - 1 ? '1px solid #f3f4f6' : 'none',
                     cursor: onOpenLesson ? 'pointer' : 'default',
                     transition: 'background 0.1s',
+                    position: 'relative',
                   }}
                   onMouseEnter={onOpenLesson ? e => { e.currentTarget.style.background = '#fef2f2'; } : undefined}
                   onMouseLeave={onOpenLesson ? e => { e.currentTarget.style.background = 'transparent'; } : undefined}
@@ -522,12 +530,55 @@ export default function StudentAttendancePanel({
                       <line x1="10" y1="14" x2="21" y2="3" />
                     </svg>
                   )}
+                  {/* 3-dot menu */}
+                  <div style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                    <button
+                      onClick={() => setOpenMenuId(openMenuId === l.lesson_id ? null : l.lesson_id)}
+                      title="Дії"
+                      style={{ width: 28, height: 28, border: '1px solid #e5e7eb', borderRadius: 6, background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '1rem', lineHeight: 1, flexShrink: 0, padding: 0 }}
+                    >
+                      ···
+                    </button>
+                    {openMenuId === l.lesson_id && (
+                      <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 10, minWidth: 200, overflow: 'hidden' }}>
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            setAbsencesOpen(false);
+                            setMakeupPreselectedIds([l.attendance_id]);
+                            setMakeupModalOpen(true);
+                          }}
+                          style={{ width: '100%', padding: '0.625rem 1rem', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '0.875rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#f0fdf4'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'white'; }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" style={{ flexShrink: 0 }}>
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                            <polyline points="9 16 11 18 15 14"/>
+                          </svg>
+                          Призначити відпрацювання
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
       )}
+
+      {/* Makeup creation modal (opened from absences panel) */}
+      <CreateLessonModal
+        isOpen={makeupModalOpen}
+        onClose={() => setMakeupModalOpen(false)}
+        onSuccess={() => setAbsencesOpen(true)}
+        initialTab="makeup"
+        initialAbsenceIds={makeupPreselectedIds}
+      />
 
       {/* Tooltip (fixed, outside card flow) */}
       {tooltip && (() => {

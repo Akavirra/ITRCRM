@@ -44,6 +44,8 @@ interface CreateLessonModalProps {
   onClose: () => void;
   onSuccess: () => void;
   initialDate?: string;
+  initialTab?: ModalTab;
+  initialAbsenceIds?: number[];
 }
 
 type ModalTab = 'lesson' | 'makeup';
@@ -292,6 +294,8 @@ export default function CreateLessonModal({
   onClose,
   onSuccess,
   initialDate,
+  initialTab,
+  initialAbsenceIds,
 }: CreateLessonModalProps) {
   const [tab, setTab] = useState<ModalTab>('lesson');
 
@@ -335,6 +339,14 @@ export default function CreateLessonModal({
     loadCourses();
     loadTeachers();
     loadAllStudents();
+  }, [isOpen]);
+
+  // Apply initial tab and pre-selected absences when modal opens
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!isOpen) return;
+    if (initialTab) setTab(initialTab);
+    if (initialAbsenceIds?.length) setSelectedAbsenceIds(initialAbsenceIds);
   }, [isOpen]);
 
   // Load absences when switching to makeup tab
