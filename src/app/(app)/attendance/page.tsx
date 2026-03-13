@@ -336,12 +336,12 @@ export default function AttendancePage() {
   const loadMakeupData = useCallback(async () => {
     setMakeupLoading(true);
     try {
-      const res = await fetch(`/api/attendance?view=makeupLessons`);
+      const res = await fetch(`/api/attendance?view=makeupLessons&year=${year}&month=${month}`);
       if (res.ok) { const d = await res.json(); setMakeupData(d.entries || []); }
     } finally {
       setMakeupLoading(false);
     }
-  }, []);
+  }, [year, month]);
 
   useEffect(() => {
     if (makeupTab) loadMakeupData();
@@ -635,12 +635,15 @@ export default function AttendancePage() {
           /* ══ REGULAR MONTHLY MODE ══ */
           <>
             {/* Month navigation */}
-            <div className="card" style={{ padding:'0.875rem 1.5rem', marginBottom:'1.25rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'1rem', borderRadius:'0.875rem', flexWrap:'wrap' }}>
-              <button onClick={prevMonth} style={{ width:34, height:34, border:'1px solid #e5e7eb', borderRadius:'50%', backgroundColor:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.125rem', color:'#374151', flexShrink:0 }}>‹</button>
-              <span style={{ fontWeight:700, fontSize:'1.125rem', color:'#111827', minWidth:200, textAlign:'center' }}>
-                {MONTH_UK[month]} {year}
-              </span>
-              <button onClick={nextMonth} disabled={isCurrentMonth} style={{ width:34, height:34, border:'1px solid #e5e7eb', borderRadius:'50%', backgroundColor:'white', cursor: isCurrentMonth ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.125rem', color: isCurrentMonth ? '#d1d5db' : '#374151', opacity: isCurrentMonth ? 0.4 : 1, flexShrink:0 }}>›</button>
+            <div className="card" style={{ padding:'0.75rem 1.5rem', marginBottom:'1.25rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', borderRadius:'0.875rem', flexWrap:'wrap' }}>
+              <button onClick={prevMonth} style={{ width:32, height:32, border:'1px solid #e5e7eb', borderRadius:'50%', backgroundColor:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.125rem', color:'#374151', flexShrink:0 }}>‹</button>
+              <select value={month} onChange={e => setMonth(Number(e.target.value))} style={{ ...selectStyle, fontWeight:600, fontSize:'0.9375rem', color:'#111827', padding:'0.375rem 0.625rem' }}>
+                {MONTH_UK.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+              </select>
+              <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ ...selectStyle, fontWeight:600, fontSize:'0.9375rem', color:'#111827', padding:'0.375rem 0.625rem' }}>
+                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <button onClick={nextMonth} disabled={isCurrentMonth} style={{ width:32, height:32, border:'1px solid #e5e7eb', borderRadius:'50%', backgroundColor:'white', cursor: isCurrentMonth ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.125rem', color: isCurrentMonth ? '#d1d5db' : '#374151', opacity: isCurrentMonth ? 0.4 : 1, flexShrink:0 }}>›</button>
             </div>
 
             {/* KPI cards */}
@@ -748,6 +751,13 @@ export default function AttendancePage() {
                     <option value="makeup_done">Відпрацьовано</option>
                     <option value="null">Не відмічено</option>
                   </select>
+                )}
+                {(selectedGroup || selectedCourse || selectedTeacher || search || statusFilter || individualStatusFilter) && (
+                  <button
+                    onClick={() => { setSelectedGroup(''); setSelectedCourse(''); setSelectedTeacher(''); setSearch(''); setStatusFilter(''); setIndividualStatusFilter(''); }}
+                    style={{ padding:'0.5rem 0.75rem', border:'1px solid #fca5a5', borderRadius:'0.5rem', backgroundColor:'#fef2f2', color:'#dc2626', fontSize:'0.8125rem', fontWeight:500, cursor:'pointer', whiteSpace:'nowrap' as const, flexShrink:0 }}>
+                    ✕ Скинути
+                  </button>
                 )}
               </div>
 
