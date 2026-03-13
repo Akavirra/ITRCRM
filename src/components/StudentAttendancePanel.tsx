@@ -13,6 +13,8 @@ interface MonthlyLessonItem {
   lesson_status: string;
   attendance_status: AttendanceStatus | null;
   is_makeup: boolean;
+  lesson_course_title: string | null;
+  lesson_teacher_name: string | null;
   original_lesson_date: string | null;
   original_group_id: number | null;
   original_group_title: string | null;
@@ -381,6 +383,19 @@ export default function StudentAttendancePanel({
                             </span>
                           )}
                         </div>
+                        {(l.lesson_course_title || l.lesson_teacher_name) && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: 3, flexWrap: 'wrap' }}>
+                            {l.lesson_course_title && (
+                              <span style={{ fontSize: '0.75rem', color: '#7c3aed', fontWeight: 500 }}>{l.lesson_course_title}</span>
+                            )}
+                            {l.lesson_course_title && l.lesson_teacher_name && (
+                              <span style={{ fontSize: '0.75rem', color: '#d1d5db' }}>·</span>
+                            )}
+                            {l.lesson_teacher_name && (
+                              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{l.lesson_teacher_name}</span>
+                            )}
+                          </div>
+                        )}
                         {l.topic && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{l.topic}</div>}
                       </div>
                       {onOpenLesson && (

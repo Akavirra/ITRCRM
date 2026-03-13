@@ -614,6 +614,9 @@ export interface MonthlyLessonItem {
   lesson_status: string;
   attendance_status: AttendanceStatus | null;
   is_makeup: boolean;
+  // Lesson-level course & teacher (meaningful for individual/makeup lessons)
+  lesson_course_title: string | null;
+  lesson_teacher_name: string | null;
   // For makeup lessons: info about the original missed lesson
   original_lesson_date: string | null;
   original_group_id: number | null;   // null = individual original lesson
@@ -658,6 +661,8 @@ export async function getStudentMonthlyAttendance(
     start_time: string | null;
     attendance_status: AttendanceStatus | null;
     is_makeup: boolean;
+    lesson_course_title: string | null;
+    lesson_teacher_name: string | null;
     original_lesson_date: string | null;
     original_group_id: number | null;
     original_group_title: string | null;
@@ -677,6 +682,8 @@ export async function getStudentMonthlyAttendance(
       g.start_time,
       a.status as attendance_status,
       COALESCE(l.is_makeup, FALSE) as is_makeup,
+      c.title as lesson_course_title,
+      t.name as lesson_teacher_name,
       orig_l.lesson_date as original_lesson_date,
       orig_l.group_id as original_group_id,
       orig_g.title as original_group_title,
@@ -684,6 +691,7 @@ export async function getStudentMonthlyAttendance(
      FROM lessons l
      LEFT JOIN groups g ON l.group_id = g.id
      LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
+     LEFT JOIN users t ON l.teacher_id = t.id
      LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = $1
      -- For makeup lessons: find which original lesson this makes up
      LEFT JOIN attendance orig_att ON COALESCE(l.is_makeup, FALSE) = TRUE
@@ -749,6 +757,8 @@ export async function getStudentMonthlyAttendance(
       lesson_status: row.lesson_status,
       attendance_status: row.attendance_status,
       is_makeup: row.is_makeup,
+      lesson_course_title: row.lesson_course_title,
+      lesson_teacher_name: row.lesson_teacher_name,
       original_lesson_date: row.original_lesson_date,
       original_group_id: row.original_group_id,
       original_group_title: row.original_group_title,
