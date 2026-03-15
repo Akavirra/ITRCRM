@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import DraggableModal from './DraggableModal';
 import { useLessonModals } from './LessonModalsContext';
+import { useStudentModals } from './StudentModalsContext';
 import { useGroupModals } from './GroupModalsContext';
 import { useCourseModals } from './CourseModalsContext';
 import { useTeacherModals } from './TeacherModalsContext';
@@ -115,6 +116,7 @@ function getStatusBadge(status: 'scheduled' | 'done' | 'canceled') {
 
 export default function LessonModalsManager() {
   const { openModals, updateModalState, closeLessonModal, openLessonModal } = useLessonModals();
+  const { openStudentModal } = useStudentModals();
   const { openGroupModal } = useGroupModals();
   const { openCourseModal } = useCourseModals();
   const { openTeacherModal } = useTeacherModals();
@@ -1693,9 +1695,15 @@ export default function LessonModalsManager() {
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' as const, flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                            <button
+                              onClick={() => openStudentModal(att.student_id, att.student_name)}
+                              style={{ fontSize: '0.8125rem', color: '#374151', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '2px' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = '#2563eb'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = '#374151'; }}
+                              title={`Відкрити профіль: ${att.student_name}`}
+                            >
                               {att.student_name}
-                            </span>
+                            </button>
                             {att.status === 'makeup_done' && (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                 <span style={{ padding: '1px 6px', borderRadius: 4, backgroundColor: '#fef9c3', color: '#a16207', fontSize: '0.6875rem', fontWeight: 600 }}>
