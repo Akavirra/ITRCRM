@@ -21,6 +21,7 @@
     "db:add-is-trial": "node scripts/add-is-trial.js",
     "db:add-notifications": "node scripts/add-notifications.js",
     "db:add-notification-clears": "node scripts/add-notification-clears.js",
+    "db:add-notifications-dedup-key": "node scripts/add-notifications-dedup-key.js",
     "test": "jest"
   },
   "dependencies": {

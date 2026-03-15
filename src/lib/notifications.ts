@@ -27,13 +27,15 @@ export async function createGlobalNotification(
   title: string,
   body: string,
   link?: string | null,
-  data?: Record<string, unknown> | null
+  data?: Record<string, unknown> | null,
+  dedupKey?: string | null
 ): Promise<number> {
   const result = await get<{ id: number }>(
-    `INSERT INTO notifications (type, title, body, link, data, is_global)
-     VALUES ($1, $2, $3, $4, $5, TRUE)
+    `INSERT INTO notifications (type, title, body, link, data, is_global, dedup_key)
+     VALUES ($1, $2, $3, $4, $5, TRUE, $6)
+     ON CONFLICT (dedup_key) WHERE dedup_key IS NOT NULL DO NOTHING
      RETURNING id`,
-    [type, title, body, link ?? null, data ? JSON.stringify(data) : null]
+    [type, title, body, link ?? null, data ? JSON.stringify(data) : null, dedupKey ?? null]
   );
   return result?.id ?? 0;
 }
@@ -45,16 +47,6 @@ export async function safeCreateLessonDoneNotification(
   actorName: string
 ): Promise<void> {
   try {
-    // Prevent duplicate notifications for the same lesson within 1 hour
-    const duplicate = await get<{ id: number }>(
-      `SELECT id FROM notifications
-       WHERE type = 'lesson_done'
-         AND (data->>'lessonId')::int = $1
-         AND created_at >= NOW() - INTERVAL '1 hour'`,
-      [lessonId]
-    );
-    if (duplicate) return;
-
     const lesson = await get<{
       lesson_date: unknown;
       start_datetime: string;
@@ -129,7 +121,8 @@ export async function safeCreateLessonDoneNotification(
       title,
       lines.join('\n'),
       '/schedule',
-      { lessonId, groupId: lesson.group_id }
+      { lessonId, groupId: lesson.group_id },
+      `lesson_done:${lessonId}`
     );
   } catch (err) {
     console.error('[notifications] Failed to create lesson_done notification:', err);
