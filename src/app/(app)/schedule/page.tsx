@@ -36,6 +36,7 @@ interface Lesson {
   originalDate?: string | null;
   isRescheduled?: boolean;
   isMakeup?: boolean;
+  isTrial?: boolean;
 }
 
 interface DaySchedule {
@@ -173,6 +174,7 @@ export default function SchedulePage() {
       status: lesson.status,
       topic: lesson.topic,
       isMakeup: lesson.isMakeup,
+      isTrial: lesson.isTrial,
     });
   };
 
@@ -613,6 +615,17 @@ export default function SchedulePage() {
                         }}>
                           <RefreshCw size={8} />
                           Відпрацювання
+                        </div>
+                      ) : !lesson.groupId && lesson.isTrial ? (
+                        <div style={{
+                          fontSize: '0.625rem', fontWeight: 700,
+                          background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0',
+                          borderRadius: '0.25rem', padding: '0.125rem 0.375rem', marginBottom: '0.3rem',
+                          display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                          textTransform: 'uppercase', letterSpacing: '0.4px',
+                        }}>
+                          <Check size={8} />
+                          Пробне
                         </div>
                       ) : !lesson.groupId ? (
                         <div style={{

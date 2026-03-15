@@ -49,14 +49,15 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
-    const { 
-      lessonDate, 
-      startTime, 
-      durationMinutes, 
-      courseId, 
-      teacherId, 
-      groupId, 
-      studentIds 
+    const {
+      lessonDate,
+      startTime,
+      durationMinutes,
+      courseId,
+      teacherId,
+      groupId,
+      studentIds,
+      isTrial,
     } = body;
     
     // Validate required fields
@@ -161,7 +162,8 @@ export async function POST(request: NextRequest) {
       lessonDate,
       startTime,
       durationMinutes,
-      teacherId
+      teacherId,
+      isTrial: !!isTrial,
     }, user.id);
     
     // If we have studentIds but no group, add attendance records for these students (without status - to be marked by teacher)

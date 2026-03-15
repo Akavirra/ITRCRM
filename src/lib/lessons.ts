@@ -465,10 +465,11 @@ export async function createSingleLesson(
     startTime: string; // HH:MM
     durationMinutes: number;
     teacherId?: number;
+    isTrial?: boolean;
   },
   createdBy: number
 ): Promise<{ id: number; publicId: string }> {
-  const { groupId, courseId, lessonDate, startTime, durationMinutes, teacherId } = lessonData;
+  const { groupId, courseId, lessonDate, startTime, durationMinutes, teacherId, isTrial } = lessonData;
   
   // Get group details (if group is provided)
   let group = null;
@@ -519,10 +520,10 @@ export async function createSingleLesson(
   
   // Insert lesson (groupId can be null for individual lessons)
   const result = await get<{ id: number }>(
-    `INSERT INTO lessons (public_id, group_id, course_id, lesson_date, start_datetime, end_datetime, status, created_by, teacher_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO lessons (public_id, group_id, course_id, lesson_date, start_datetime, end_datetime, status, created_by, teacher_id, is_trial)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING id`,
-    [publicId, groupId || null, finalCourseId, lessonDate, startStr, endStr, 'scheduled', createdBy, finalTeacherId]
+    [publicId, groupId || null, finalCourseId, lessonDate, startStr, endStr, 'scheduled', createdBy, finalTeacherId, isTrial ?? false]
   );
   
   return {

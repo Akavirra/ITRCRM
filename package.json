@@ -18,6 +18,7 @@
     "db:fix-lesson-times": "node scripts/fix-group-lesson-times.js",
     "db:add-is-makeup": "node scripts/add-is-makeup.js",
     "db:add-student-history": "node scripts/add-student-history.js",
+    "db:add-is-trial": "node scripts/add-is-trial.js",
     "test": "jest"
   },
   "dependencies": {

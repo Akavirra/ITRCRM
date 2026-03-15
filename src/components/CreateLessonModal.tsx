@@ -321,6 +321,7 @@ export default function CreateLessonModal({
   const [courseId, setCourseId] = useState<number | null>(null);
   const [teacherId, setTeacherId] = useState<number | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
+  const [isTrial, setIsTrial] = useState(false);
   const [showCourseDropdown, setShowCourseDropdown] = useState(false);
   const [showTeacherDropdown, setShowTeacherDropdown] = useState(false);
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
@@ -502,6 +503,7 @@ export default function CreateLessonModal({
           teacherId,
           groupId: null,
           studentIds: selectedStudentIds,
+          isTrial,
         }),
       });
       const data = await res.json();
@@ -586,6 +588,7 @@ export default function CreateLessonModal({
     setTeacherId(null);
     setSelectedStudentIds([]);
     setStudentSearch('');
+    setIsTrial(false);
     setLessonError(null);
     setMakeupDate(today);
     setMakeupTime('10:00');
@@ -762,7 +765,7 @@ export default function CreateLessonModal({
               </div>
 
               {/* Teacher */}
-              <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ marginBottom: '1.25rem' }}>
                 <label style={labelStyle}>Викладач <span style={{ color: '#ef4444' }}>*</span></label>
                 <TeacherDropdown
                   teachers={teachers}
@@ -771,6 +774,31 @@ export default function CreateLessonModal({
                   show={showTeacherDropdown}
                   onToggle={() => setShowTeacherDropdown(p => !p)}
                 />
+              </div>
+
+              {/* Trial lesson checkbox */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', cursor: 'pointer', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={isTrial}
+                    onChange={e => setIsTrial(e.target.checked)}
+                    style={{ width: '1rem', height: '1rem', cursor: 'pointer', accentColor: '#15803d' }}
+                  />
+                  <span style={{ fontSize: '0.875rem', color: '#374151', fontWeight: 500 }}>
+                    Пробне заняття
+                  </span>
+                  {isTrial && (
+                    <span style={{
+                      fontSize: '0.6875rem', fontWeight: 700,
+                      background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0',
+                      borderRadius: '0.25rem', padding: '0.125rem 0.375rem',
+                      textTransform: 'uppercase', letterSpacing: '0.4px',
+                    }}>
+                      Пробне
+                    </span>
+                  )}
+                </label>
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem' }}>

@@ -13,6 +13,7 @@ interface LessonRow {
   lesson_date: string;
   original_date: string | null;
   is_makeup: boolean;
+  is_trial: boolean;
   start_datetime: string;
   end_datetime: string;
   topic: string | null;
@@ -74,6 +75,7 @@ export async function GET(request: NextRequest) {
       l.lesson_date,
       l.original_date,
       COALESCE(l.is_makeup, FALSE) as is_makeup,
+      COALESCE(l.is_trial, FALSE) as is_trial,
       l.start_datetime,
       l.end_datetime,
       l.topic,
@@ -132,8 +134,10 @@ export async function GET(request: NextRequest) {
   try {
     lessons = await all<LessonRow>(sql, params);
   } catch (err: any) {
-    if (String(err?.message ?? err).toLowerCase().includes('is_makeup')) {
-      const fallback = sql.replace('COALESCE(l.is_makeup, FALSE) as is_makeup,', 'FALSE as is_makeup,');
+    if (String(err?.message ?? err).toLowerCase().includes('is_makeup') || String(err?.message ?? err).toLowerCase().includes('is_trial')) {
+      const fallback = sql
+        .replace('COALESCE(l.is_makeup, FALSE) as is_makeup,', 'FALSE as is_makeup,')
+        .replace('COALESCE(l.is_trial, FALSE) as is_trial,', 'FALSE as is_trial,');
       lessons = await all<LessonRow>(fallback, params);
     } else {
       throw err;
@@ -186,6 +190,7 @@ export async function GET(request: NextRequest) {
         originalDate: lesson.original_date ? new Date(lesson.original_date).toISOString().split('T')[0] : null,
         isRescheduled: !!lesson.original_date,
         isMakeup: !!lesson.is_makeup,
+        isTrial: !!lesson.is_trial,
       })),
     });
   }
