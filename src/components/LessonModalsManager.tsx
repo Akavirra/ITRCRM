@@ -207,42 +207,21 @@ export default function LessonModalsManager() {
         body: JSON.stringify({ action: 'set', studentId, status }),
       });
       if (response.ok) {
-        // Update local state
-        const updatedAttendance = (attendance[lessonId] || []).map(a => 
+        // Update local attendance state
+        const updatedAttendance = (attendance[lessonId] || []).map(a =>
           a.student_id === studentId ? { ...a, status } : a
         );
-        setAttendance(prev => ({
-          ...prev,
-          [lessonId]: updatedAttendance,
-        }));
-        
-        // Check if this is the first attendance being set - auto-mark lesson as done
-        const currentLesson = lessonData[lessonId];
-        if (currentLesson && currentLesson.status === 'scheduled') {
-          // Check if any attendance was set before this change
-          const hadAttendanceBefore = (attendance[lessonId] || []).some(a => a.status !== null);
-          const hasAttendanceNow = updatedAttendance.some(a => a.status !== null);
+        setAttendance(prev => ({ ...prev, [lessonId]: updatedAttendance }));
 
-          // If this is the first attendance being set, mark lesson as done
-          if (!hadAttendanceBefore && hasAttendanceNow) {
-            // Update lesson status to done
-            const statusResponse = await fetch(`/api/lessons/${lessonId}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ status: 'done' }),
-            });
-            if (statusResponse.ok) {
-              const data = await statusResponse.json();
-              setLessonData(prev => ({ ...prev, [lessonId]: data.lesson }));
-              updateModalState(lessonId, {
-                lessonData: {
-                  ...lessonData[lessonId],
-                  status: 'done',
-                }
-              });
-            }
-          }
+        // Re-fetch lesson to get the actual status set by the backend
+        // (backend may have auto-cancelled or auto-done the lesson)
+        const lessonResponse = await fetch(`/api/lessons/${lessonId}`);
+        if (lessonResponse.ok) {
+          const lessonDataRes = await lessonResponse.json();
+          setLessonData(prev => ({ ...prev, [lessonId]: lessonDataRes.lesson }));
+          updateModalState(lessonId, { lessonData: lessonDataRes.lesson });
         }
+
         // Notify schedule page to silently refresh
         window.dispatchEvent(new Event('itrobot-lesson-updated'));
       }
@@ -394,8 +373,8 @@ export default function LessonModalsManager() {
     
     setSavingTopic(prev => ({ ...prev, [lessonId]: true }));
     try {
-      // If lesson is not done yet, automatically mark it as done when topic is added
-      const statusUpdate = currentLessonData?.status !== 'done' ? { status: 'done' } : {};
+      // Mark as done when topic is added, but only if still scheduled (don't override canceled)
+      const statusUpdate = currentLessonData?.status === 'scheduled' ? { status: 'done' } : {};
       
       const res = await fetch(`/api/lessons/${lessonId}`, {
         method: 'PATCH',
@@ -454,8 +433,8 @@ export default function LessonModalsManager() {
     
     setSavingNotes(prev => ({ ...prev, [lessonId]: true }));
     try {
-      // If lesson is not done yet, automatically mark it as done when notes are added
-      const statusUpdate = currentLessonData?.status !== 'done' ? { status: 'done' } : {};
+      // Mark as done when notes are added, but only if still scheduled (don't override canceled)
+      const statusUpdate = currentLessonData?.status === 'scheduled' ? { status: 'done' } : {};
       
       const res = await fetch(`/api/lessons/${lessonId}`, {
         method: 'PATCH',
