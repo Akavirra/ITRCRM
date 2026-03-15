@@ -366,7 +366,7 @@ const Navbar: React.FC<NavbarProps> = ({
                               {n.body}
                             </div>
                           </div>
-                          {n.type === 'lesson_done' && n.data?.lessonId && (
+                          {n.type === 'lesson_done' && !!n.data?.lessonId && (
                             <button
                               title="Відкрити заняття"
                               onClick={e => {
