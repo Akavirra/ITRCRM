@@ -5,6 +5,7 @@ import { get, run, all } from '@/db';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
 import { logLessonChange, checkAndAutoCancelLesson } from '@/lib/lessons';
 import { safeAddStudentHistoryEntry, formatAttendanceDescription, StudentHistoryActionType } from '@/lib/student-history';
+import { safeCreateLessonDoneNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -177,10 +178,12 @@ export async function POST(
                 user.id,
                 user.name
               );
+
+              await safeCreateLessonDoneNotification(lessonId, user.name);
             }
           }
         }
-        
+
         // Log student history entry for attendance
         if (lessonInfo && studentId) {
           let historyActionType: StudentHistoryActionType;
@@ -248,6 +251,7 @@ export async function POST(
                   user.id,
                   user.name
                 );
+                await safeCreateLessonDoneNotification(lessonId, user.name);
               }
             }
           }

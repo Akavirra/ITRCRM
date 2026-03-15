@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/db/neon';
 import crypto from 'crypto';
 import { logLessonChange, checkAndAutoCancelLesson } from '@/lib/lessons';
+import { safeCreateLessonDoneNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -299,6 +300,7 @@ export async function POST(
            AND status = 'scheduled'`,
           [teacher.id, lessonId]
         );
+        await safeCreateLessonDoneNotification(lessonId, teacher.name);
       }
     }
 

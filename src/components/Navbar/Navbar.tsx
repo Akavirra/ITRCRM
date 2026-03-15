@@ -1,22 +1,65 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Home, 
-  Settings, 
-  Bell, 
-  Search, 
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  Home,
+  Settings,
+  Bell,
+  Search,
   ChevronDown,
   LogOut,
   User,
   Keyboard,
   Menu,
   X,
-  Save
+  Save,
+  Cake,
+  CheckCircle,
+  Check,
 } from 'lucide-react';
 import { t } from '@/i18n/t';
 import styles from './Navbar.module.css';
 import TransitionLink from '@/components/TransitionLink';
+
+// ─── Notification types ───────────────────────────────────────────────────────
+
+interface AppNotification {
+  id: number;
+  type: 'birthday' | 'lesson_done' | string;
+  title: string;
+  body: string;
+  link: string | null;
+  created_at: string;
+  is_read: boolean;
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60)     return 'щойно';
+  if (diff < 3600)   return `${Math.floor(diff / 60)} хв тому`;
+  if (diff < 86400)  return `${Math.floor(diff / 3600)} год тому`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)} д тому`;
+  const d = new Date(dateStr);
+  return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+}
+
+function NotifIcon({ type }: { type: string }) {
+  const base: React.CSSProperties = {
+    width: 32, height: 32, borderRadius: '50%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  };
+  if (type === 'birthday') return (
+    <div style={{ ...base, background: '#fef9c3' }}>
+      <Cake size={16} style={{ color: '#ca8a04' }} />
+    </div>
+  );
+  return (
+    <div style={{ ...base, background: '#dcfce7' }}>
+      <CheckCircle size={16} style={{ color: '#16a34a' }} />
+    </div>
+  );
+}
 
 interface NavbarProps {
   user?: {
@@ -28,14 +71,20 @@ interface NavbarProps {
   onMenuClick?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ 
-  user, 
+const Navbar: React.FC<NavbarProps> = ({
+  user,
   withSidebar = false,
-  notificationCount = 3,
-  onMenuClick
+  onMenuClick,
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // ── Notifications state ────────────────────────────────────────────────────
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'profile' | 'notifications' | 'system'>('general');
   const [settings, setSettings] = useState({
     displayName: user?.name || '',
@@ -65,6 +114,58 @@ const Navbar: React.FC<NavbarProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // ── Poll unread count every 60 s ──────────────────────────────────────────
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications?count=true');
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadCount(data.unreadCount ?? 0);
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
+  // ── Close notification panel on outside click ─────────────────────────────
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // ── Open panel: fetch full list + mark all read ───────────────────────────
+  const handleBellClick = async () => {
+    if (notifOpen) { setNotifOpen(false); return; }
+    setNotifOpen(true);
+    setNotifLoading(true);
+    try {
+      const res = await fetch('/api/notifications');
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications ?? []);
+        // Optimistically clear badge
+        setUnreadCount(0);
+        // Mark all as read server-side
+        fetch('/api/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ all: true }),
+        }).catch(() => {/* silent */});
+      }
+    } catch { /* silent */ } finally {
+      setNotifLoading(false);
+    }
+  };
 
   // Keyboard shortcut for search (Ctrl+K)
   useEffect(() => {
@@ -152,14 +253,163 @@ const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {/* Notifications */}
-            <button className={styles.iconButton} title={t('notifications.title')}>
-              <Bell size={20} strokeWidth={1.5} />
-              {notificationCount > 0 && (
-                <span className={styles.notificationBadge}>
-                  {notificationCount > 9 ? '9+' : notificationCount}
-                </span>
+            <div ref={notifRef} style={{ position: 'relative' }}>
+              <button
+                className={styles.iconButton}
+                title={t('notifications.title')}
+                onClick={handleBellClick}
+              >
+                <Bell size={20} strokeWidth={1.5} />
+                {unreadCount > 0 && (
+                  <span className={styles.notificationBadge}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification panel */}
+              {notifOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  width: '380px',
+                  maxWidth: 'calc(100vw - 1rem)',
+                  maxHeight: '520px',
+                  background: 'white',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.16)',
+                  border: '1px solid #e5e7eb',
+                  zIndex: 9999,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                }}>
+                  {/* Panel header */}
+                  <div style={{
+                    padding: '0.875rem 1.125rem',
+                    borderBottom: '1px solid #f3f4f6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: '#fafafa',
+                  }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#111827' }}>
+                      Сповіщення
+                    </span>
+                    <button
+                      onClick={() => setNotifOpen(false)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', padding: '2px' }}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  {/* Panel body */}
+                  <div style={{ overflow: 'auto', flex: 1 }}>
+                    {notifLoading ? (
+                      <div style={{ padding: '2.5rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
+                        Завантаження...
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <div style={{ padding: '2.5rem', textAlign: 'center' }}>
+                        <Bell size={28} style={{ color: '#d1d5db', marginBottom: '0.5rem' }} />
+                        <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>Немає сповіщень</div>
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <a
+                          key={n.id}
+                          href={n.link ?? undefined}
+                          onClick={() => setNotifOpen(false)}
+                          style={{
+                            display: 'flex',
+                            gap: '0.75rem',
+                            padding: '0.75rem 1.125rem',
+                            borderBottom: '1px solid #f9fafb',
+                            background: n.is_read ? 'white' : '#f0f9ff',
+                            textDecoration: 'none',
+                            transition: 'background 0.1s ease',
+                            cursor: n.link ? 'pointer' : 'default',
+                          }}
+                          onMouseEnter={e => { if (n.link) e.currentTarget.style.background = '#f3f4f6'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = n.is_read ? 'white' : '#f0f9ff'; }}
+                        >
+                          <NotifIcon type={n.type} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontSize: '0.8125rem',
+                              fontWeight: 600,
+                              color: '#111827',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '0.5rem',
+                            }}>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {n.title}
+                              </span>
+                              <span style={{ fontSize: '0.6875rem', color: '#9ca3af', flexShrink: 0 }}>
+                                {timeAgo(n.created_at)}
+                              </span>
+                            </div>
+                            <div style={{
+                              fontSize: '0.75rem',
+                              color: '#6b7280',
+                              marginTop: '0.125rem',
+                              whiteSpace: 'pre-line',
+                              lineHeight: 1.5,
+                            }}>
+                              {n.body}
+                            </div>
+                          </div>
+                          {!n.is_read && (
+                            <div style={{
+                              width: 6, height: 6, borderRadius: '50%',
+                              background: '#3b82f6', flexShrink: 0, marginTop: 4,
+                            }} />
+                          )}
+                        </a>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Panel footer */}
+                  {notifications.length > 0 && (
+                    <div style={{
+                      padding: '0.625rem 1.125rem',
+                      borderTop: '1px solid #f3f4f6',
+                      background: '#fafafa',
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                    }}>
+                      <button
+                        onClick={() => {
+                          setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+                          fetch('/api/notifications', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ all: true }),
+                          }).catch(() => {/* silent */});
+                        }}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          fontSize: '0.75rem', color: '#6b7280',
+                          display: 'flex', alignItems: 'center', gap: '0.25rem',
+                          padding: '0.25rem 0.375rem', borderRadius: '0.25rem',
+                          transition: 'color 0.1s ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#111827'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#6b7280'; }}
+                      >
+                        <Check size={12} />
+                        Позначити всі як прочитані
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
-            </button>
+            </div>
 
             {/* User block with dropdown */}
             <div ref={dropdownRef} style={{ position: 'relative' }}>
