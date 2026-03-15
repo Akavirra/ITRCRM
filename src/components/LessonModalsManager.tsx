@@ -750,6 +750,51 @@ export default function LessonModalsManager() {
     }
   };
 
+  const handleRescheduleFromCanceled = async (lessonId: number, lesson: NonNullable<typeof lessonData[number]>) => {
+    setShowActionsMenu(prev => ({ ...prev, [lessonId]: false }));
+
+    const isMakeup = !!(lesson as any).isMakeup;
+    const isGroup = !!lesson.groupId && !isMakeup;
+
+    if (isGroup) {
+      // Group: reuse existing inline reschedule form (backend resets status to 'scheduled')
+      setRescheduleData(prev => ({
+        ...prev,
+        [lessonId]: {
+          newDate: new Date().toISOString().split('T')[0],
+          newStartTime: lesson.startTime || '10:00',
+          newEndTime: lesson.endTime || '11:30',
+        },
+      }));
+      setShowRescheduleForm(prev => ({ ...prev, [lessonId]: true }));
+      return;
+    }
+
+    // Individual / makeup: call prep-reschedule to get data, then open CreateLessonModal
+    setSaving(prev => ({ ...prev, [lessonId]: true }));
+    try {
+      const res = await fetch(`/api/lessons/${lessonId}/prep-reschedule`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Не вдалося підготувати перенесення');
+        return;
+      }
+      window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', {
+        detail: {
+          tab: isMakeup ? 'makeup' : 'lesson',
+          teacherId: data.teacherId ?? null,
+          courseId: data.courseId ?? null,
+          studentIds: data.studentIds ?? [],
+          absenceIds: data.absenceIds ?? [],
+        },
+      }));
+    } catch {
+      alert('Не вдалося підготувати перенесення');
+    } finally {
+      setSaving(prev => ({ ...prev, [lessonId]: false }));
+    }
+  };
+
   if (!isHydrated || openModals.length === 0) return null;
 
   return (
@@ -858,6 +903,35 @@ export default function LessonModalsManager() {
                       zIndex: 50,
                       overflow: 'hidden',
                     }}>
+                      {lesson?.status === 'canceled' && (
+                        <>
+                          <button
+                            onClick={() => lesson && handleRescheduleFromCanceled(modal.id, lesson)}
+                            disabled={isSaving}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              width: '100%',
+                              padding: '0.625rem 0.75rem',
+                              fontSize: '0.8125rem',
+                              color: '#3b82f6',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              cursor: isSaving ? 'not-allowed' : 'pointer',
+                              textAlign: 'left',
+                              opacity: isSaving ? 0.5 : 1,
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <Calendar size={14} />
+                            Перенести заняття
+                          </button>
+                          <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '0.25rem 0' }} />
+                        </>
+                      )}
+
                       {lesson?.status === 'scheduled' && (
                         <>
                           <button

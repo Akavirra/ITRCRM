@@ -46,6 +46,9 @@ interface CreateLessonModalProps {
   initialDate?: string;
   initialTab?: ModalTab;
   initialAbsenceIds?: number[];
+  initialTeacherId?: number | null;
+  initialCourseId?: number | null;
+  initialStudentIds?: number[];
 }
 
 type ModalTab = 'lesson' | 'makeup';
@@ -296,6 +299,9 @@ export default function CreateLessonModal({
   initialDate,
   initialTab,
   initialAbsenceIds,
+  initialTeacherId,
+  initialCourseId,
+  initialStudentIds,
 }: CreateLessonModalProps) {
   const [tab, setTab] = useState<ModalTab>('lesson');
 
@@ -339,15 +345,42 @@ export default function CreateLessonModal({
     loadCourses();
     loadTeachers();
     loadAllStudents();
+    // Pre-load specific students if IDs are provided (they may not be in the first 50)
+    if (initialStudentIds?.length) {
+      Promise.all(
+        initialStudentIds.map(id =>
+          fetch(`/api/students/${id}`).then(r => r.json()).catch(() => null)
+        )
+      ).then(results => {
+        const fetched: Student[] = results
+          .filter(Boolean)
+          .map((r: any) => r.student)
+          .filter(Boolean);
+        if (fetched.length) {
+          setStudents(prev => {
+            const existingIds = new Set(prev.map(s => s.id));
+            return [...prev, ...fetched.filter(s => !existingIds.has(s.id))];
+          });
+        }
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // Apply initial tab and pre-selected absences when modal opens
+  // Apply initial values when modal opens
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!isOpen) return;
     if (initialTab) setTab(initialTab);
     if (initialAbsenceIds?.length) setSelectedAbsenceIds(initialAbsenceIds);
+    if (initialTeacherId != null) {
+      setTeacherId(initialTeacherId);
+      setMakeupTeacherId(initialTeacherId);
+    }
+    if (initialCourseId !== undefined) setCourseId(initialCourseId);
+    if (initialStudentIds?.length) setSelectedStudentIds(initialStudentIds);
   }, [isOpen]);
+
 
   // Load absences when switching to makeup tab
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, checkGroupAccess, forbidden } from '@/lib/api-utils';
-import { get } from '@/db';
+import { get, run } from '@/db';
 import { rescheduleLesson } from '@/lib/lessons';
 import { formatTimeKyiv } from '@/lib/date-utils';
 
@@ -23,8 +23,8 @@ export async function PATCH(
     return NextResponse.json({ error: 'Невірний ID заняття' }, { status: 400 });
   }
 
-  const lessonInfo = await get<{ group_id: number | null; timezone: string }>(
-    `SELECT l.group_id, COALESCE(g.timezone, 'Europe/Kyiv') as timezone
+  const lessonInfo = await get<{ group_id: number | null; timezone: string; status: string }>(
+    `SELECT l.group_id, l.status, COALESCE(g.timezone, 'Europe/Kyiv') as timezone
      FROM lessons l
      LEFT JOIN groups g ON l.group_id = g.id
      WHERE l.id = $1`,
@@ -66,6 +66,14 @@ export async function PATCH(
     }
 
     await rescheduleLesson(lessonId, newDate, newStartTime, newEndTime, lessonInfo.timezone);
+
+    // If lesson was canceled, restore to scheduled
+    if (lessonInfo.status === 'canceled') {
+      await run(
+        `UPDATE lessons SET status = 'scheduled', updated_at = NOW() WHERE id = $1`,
+        [lessonId]
+      );
+    }
 
     // Return formatted lesson (same shape as GET /api/lessons/[id])
     const updatedLesson = await get<{
