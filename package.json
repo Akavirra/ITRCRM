@@ -20,6 +20,7 @@
     "db:add-student-history": "node scripts/add-student-history.js",
     "db:add-is-trial": "node scripts/add-is-trial.js",
     "db:add-notifications": "node scripts/add-notifications.js",
+    "db:add-notification-clears": "node scripts/add-notification-clears.js",
     "test": "jest"
   },
   "dependencies": {

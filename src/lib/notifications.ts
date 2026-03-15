@@ -205,7 +205,10 @@ export async function getNotificationsForUser(
      FROM notifications n
      LEFT JOIN notification_reads nr
        ON nr.notification_id = n.id AND nr.user_id = $1
-     WHERE n.is_global = TRUE OR n.target_user_id = $1
+     LEFT JOIN notification_clears nc
+       ON nc.user_id = $1
+     WHERE (n.is_global = TRUE OR n.target_user_id = $1)
+       AND (nc.cleared_at IS NULL OR n.created_at > nc.cleared_at)
      ORDER BY n.created_at DESC
      LIMIT $2`,
     [userId, limit]
@@ -218,7 +221,10 @@ export async function getUnreadCountForUser(userId: number): Promise<number> {
      FROM notifications n
      LEFT JOIN notification_reads nr
        ON nr.notification_id = n.id AND nr.user_id = $1
+     LEFT JOIN notification_clears nc
+       ON nc.user_id = $1
      WHERE (n.is_global = TRUE OR n.target_user_id = $1)
+       AND (nc.cleared_at IS NULL OR n.created_at > nc.cleared_at)
        AND nr.user_id IS NULL`,
     [userId]
   );
@@ -239,12 +245,13 @@ export async function markNotificationsAsRead(
       );
     }
   } else {
-    // Mark all unread notifications for this user as read
     await run(
       `INSERT INTO notification_reads (notification_id, user_id)
        SELECT n.id, $1
        FROM notifications n
+       LEFT JOIN notification_clears nc ON nc.user_id = $1
        WHERE (n.is_global = TRUE OR n.target_user_id = $1)
+         AND (nc.cleared_at IS NULL OR n.created_at > nc.cleared_at)
          AND NOT EXISTS (
            SELECT 1 FROM notification_reads nr
            WHERE nr.notification_id = n.id AND nr.user_id = $1
@@ -253,4 +260,13 @@ export async function markNotificationsAsRead(
       [userId]
     );
   }
+}
+
+export async function clearNotificationsForUser(userId: number): Promise<void> {
+  await run(
+    `INSERT INTO notification_clears (user_id, cleared_at)
+     VALUES ($1, NOW())
+     ON CONFLICT (user_id) DO UPDATE SET cleared_at = NOW()`,
+    [userId]
+  );
 }

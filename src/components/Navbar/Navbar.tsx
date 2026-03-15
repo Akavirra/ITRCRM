@@ -15,7 +15,7 @@ import {
   Save,
   Cake,
   CheckCircle,
-  Check,
+  Trash2,
   ExternalLink,
 } from 'lucide-react';
 import { t } from '@/i18n/t';
@@ -86,6 +86,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'profile' | 'notifications' | 'system'>('general');
   const [settings, setSettings] = useState({
@@ -144,6 +145,22 @@ const Navbar: React.FC<NavbarProps> = ({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // ── Clear all notifications for current user ──────────────────────────────
+  const handleClearNotifications = async () => {
+    setClearing(true);
+    try {
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clear: true }),
+      });
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch { /* silent */ } finally {
+      setClearing(false);
+    }
+  };
 
   // ── Open panel: fetch full list + mark all read ───────────────────────────
   const handleBellClick = async () => {
@@ -295,10 +312,29 @@ const Navbar: React.FC<NavbarProps> = ({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     background: '#fafafa',
+                    gap: '0.5rem',
                   }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#111827' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#111827', flex: 1 }}>
                       Сповіщення
                     </span>
+                    {notifications.length > 0 && (
+                      <button
+                        onClick={handleClearNotifications}
+                        disabled={clearing}
+                        title="Очистити сповіщення"
+                        style={{
+                          background: 'none', border: 'none', cursor: clearing ? 'not-allowed' : 'pointer',
+                          color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '0.25rem',
+                          padding: '2px 4px', borderRadius: '4px', fontSize: '0.75rem',
+                          opacity: clearing ? 0.5 : 1,
+                        }}
+                        onMouseEnter={e => { if (!clearing) e.currentTarget.style.color = '#ef4444'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#9ca3af'; }}
+                      >
+                        <Trash2 size={14} />
+                        Очистити
+                      </button>
+                    )}
                     <button
                       onClick={() => setNotifOpen(false)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', padding: '2px' }}
@@ -417,39 +453,6 @@ const Navbar: React.FC<NavbarProps> = ({
                     )}
                   </div>
 
-                  {/* Panel footer */}
-                  {notifications.length > 0 && (
-                    <div style={{
-                      padding: '0.625rem 1.125rem',
-                      borderTop: '1px solid #f3f4f6',
-                      background: '#fafafa',
-                      display: 'flex',
-                      justifyContent: 'flex-end',
-                    }}>
-                      <button
-                        onClick={() => {
-                          setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-                          fetch('/api/notifications', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ all: true }),
-                          }).catch(() => {/* silent */});
-                        }}
-                        style={{
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          fontSize: '0.75rem', color: '#6b7280',
-                          display: 'flex', alignItems: 'center', gap: '0.25rem',
-                          padding: '0.25rem 0.375rem', borderRadius: '0.25rem',
-                          transition: 'color 0.1s ease',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.color = '#111827'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = '#6b7280'; }}
-                      >
-                        <Check size={12} />
-                        Позначити всі як прочитані
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
             </div>

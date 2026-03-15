@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized } from '@/lib/api-utils';
-import { getNotificationsForUser, getUnreadCountForUser, markNotificationsAsRead } from '@/lib/notifications';
+import { getNotificationsForUser, getUnreadCountForUser, markNotificationsAsRead, clearNotificationsForUser } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,9 +29,11 @@ export async function POST(request: NextRequest) {
   if (!user) return unauthorized();
 
   const body = await request.json();
-  const { ids, all: markAll } = body as { ids?: number[]; all?: boolean };
+  const { ids, all: markAll, clear } = body as { ids?: number[]; all?: boolean; clear?: boolean };
 
-  if (markAll) {
+  if (clear) {
+    await clearNotificationsForUser(user.id);
+  } else if (markAll) {
     await markNotificationsAsRead(user.id);
   } else if (Array.isArray(ids) && ids.length > 0) {
     await markNotificationsAsRead(user.id, ids);
