@@ -16,6 +16,7 @@ import {
   Cake,
   CheckCircle,
   Check,
+  ExternalLink,
 } from 'lucide-react';
 import { t } from '@/i18n/t';
 import styles from './Navbar.module.css';
@@ -29,6 +30,7 @@ interface AppNotification {
   title: string;
   body: string;
   link: string | null;
+  data: Record<string, unknown> | null;
   created_at: string;
   is_read: boolean;
 }
@@ -331,6 +333,7 @@ const Navbar: React.FC<NavbarProps> = ({
                             textDecoration: 'none',
                             transition: 'background 0.1s ease',
                             cursor: n.link ? 'pointer' : 'default',
+                            alignItems: 'flex-start',
                           }}
                           onMouseEnter={e => { if (n.link) e.currentTarget.style.background = '#f3f4f6'; }}
                           onMouseLeave={e => { e.currentTarget.style.background = n.is_read ? 'white' : '#f0f9ff'; }}
@@ -363,10 +366,50 @@ const Navbar: React.FC<NavbarProps> = ({
                               {n.body}
                             </div>
                           </div>
+                          {n.type === 'lesson_done' && n.data?.lessonId && (
+                            <button
+                              title="Відкрити заняття"
+                              onClick={e => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setNotifOpen(false);
+                                window.dispatchEvent(new CustomEvent('itrobot-open-lesson', {
+                                  detail: { lessonId: Number(n.data!.lessonId) },
+                                }));
+                              }}
+                              style={{
+                                flexShrink: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 26,
+                                height: 26,
+                                borderRadius: '0.375rem',
+                                border: '1px solid #e5e7eb',
+                                background: 'white',
+                                cursor: 'pointer',
+                                color: '#6b7280',
+                                padding: 0,
+                                marginTop: 2,
+                              }}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.background = '#eff6ff';
+                                e.currentTarget.style.color = '#2563eb';
+                                e.currentTarget.style.borderColor = '#bfdbfe';
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.background = 'white';
+                                e.currentTarget.style.color = '#6b7280';
+                                e.currentTarget.style.borderColor = '#e5e7eb';
+                              }}
+                            >
+                              <ExternalLink size={13} />
+                            </button>
+                          )}
                           {!n.is_read && (
                             <div style={{
                               width: 6, height: 6, borderRadius: '50%',
-                              background: '#3b82f6', flexShrink: 0, marginTop: 4,
+                              background: '#3b82f6', flexShrink: 0, marginTop: 6,
                             }} />
                           )}
                         </a>

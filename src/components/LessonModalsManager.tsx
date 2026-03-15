@@ -238,6 +238,16 @@ export default function LessonModalsManager() {
     setIsHydrated(true);
   }, []);
 
+  // Listen for open-lesson events dispatched from notification panel or elsewhere
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { lessonId } = (e as CustomEvent<{ lessonId: number }>).detail;
+      if (lessonId) openLessonModal(lessonId, `Заняття #${lessonId}`, undefined);
+    };
+    window.addEventListener('itrobot-open-lesson', handler);
+    return () => window.removeEventListener('itrobot-open-lesson', handler);
+  }, [openLessonModal]);
+
   // Keep refs in sync with state so polling intervals always read current values
   useEffect(() => { lessonDataRef.current = lessonData; }, [lessonData]);
   useEffect(() => { lessonTopicRef.current = lessonTopic; }, [lessonTopic]);

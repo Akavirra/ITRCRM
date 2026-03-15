@@ -45,13 +45,24 @@ export async function safeCreateLessonDoneNotification(
   actorName: string
 ): Promise<void> {
   try {
+    // Prevent duplicate notifications for the same lesson within 1 hour
+    const duplicate = await get<{ id: number }>(
+      `SELECT id FROM notifications
+       WHERE type = 'lesson_done'
+         AND (data->>'lessonId')::int = $1
+         AND created_at >= NOW() - INTERVAL '1 hour'`,
+      [lessonId]
+    );
+    if (duplicate) return;
+
     const lesson = await get<{
-      lesson_date: string;
+      lesson_date: unknown;
       start_datetime: string;
       end_datetime: string;
       topic: string | null;
       notes: string | null;
       group_id: number | null;
+      is_makeup: boolean | null;
       group_title: string | null;
       course_title: string | null;
       teacher_name: string | null;
@@ -63,6 +74,7 @@ export async function safeCreateLessonDoneNotification(
         l.topic,
         l.notes,
         l.group_id,
+        l.is_makeup,
         g.title  AS group_title,
         c.title  AS course_title,
         COALESCE(u.name, gu.name) AS teacher_name
@@ -77,9 +89,11 @@ export async function safeCreateLessonDoneNotification(
 
     if (!lesson) return;
 
-    // Date from DATE column — parse as UTC then format directly
-    const dateStr = String(lesson.lesson_date).substring(0, 10); // YYYY-MM-DD
-    const [yr, mo, dy] = dateStr.split('-');
+    // Date from DATE column — Neon may return a JS Date object or a string
+    const dateObj = new Date(lesson.lesson_date as string | Date);
+    const dy = String(dateObj.getUTCDate()).padStart(2, '0');
+    const mo = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+    const yr = dateObj.getUTCFullYear();
     const formattedDate = `${dy}.${mo}.${yr}`;
 
     // Times from TIMESTAMPTZ — convert to Kyiv
@@ -88,10 +102,23 @@ export async function safeCreateLessonDoneNotification(
     const startTime = format(startKyiv, 'HH:mm');
     const endTime   = format(endKyiv,   'HH:mm');
 
-    const groupName = lesson.group_title || lesson.course_title || 'Індивідуальне';
-    const title = `Заняття проведено: ${groupName}`;
+    // Lesson type label
+    let lessonType: string;
+    if (lesson.is_makeup) {
+      lessonType = 'Відпрацювання';
+    } else if (lesson.group_id) {
+      lessonType = 'Групове';
+    } else {
+      lessonType = 'Індивідуальне';
+    }
 
-    const lines: string[] = [`${formattedDate}, ${startTime}–${endTime}`];
+    const groupName = lesson.group_title || lesson.course_title || '';
+    const titleName = groupName ? `${groupName}` : lessonType;
+    const title = `Заняття проведено: ${titleName}`;
+
+    const lines: string[] = [
+      `${lessonType} • ${formattedDate}, ${startTime}–${endTime}`,
+    ];
     if (lesson.teacher_name) lines.push(`Викладач: ${lesson.teacher_name}`);
     if (lesson.topic)        lines.push(`Тема: ${lesson.topic}`);
     if (lesson.notes)        lines.push(`Примітка: ${lesson.notes}`);
