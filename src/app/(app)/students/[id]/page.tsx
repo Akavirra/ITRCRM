@@ -348,7 +348,7 @@ export default function StudentProfilePage() {
     setFormData({
       first_name: firstName,
       last_name: lastName,
-      birth_date: student.birth_date || '',
+      birth_date: student.birth_date ? student.birth_date.slice(0, 10) : '',
       email: student.email || '',
       school: student.school || '',
       discount: student.discount || '',
@@ -405,7 +405,23 @@ export default function StudentProfilePage() {
     setSaving(true);
     try {
       const fullName = `${formData.first_name.trim()} ${formData.last_name.trim()}`.trim();
-      
+
+      // If a new photo file was selected, upload to Cloudinary first
+      let photoUrl: string | null = formData.photo;
+      if (formData.photoFile) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', formData.photoFile);
+        uploadFormData.append('folder', 'students');
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: uploadFormData });
+        if (!uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          setToast({ message: uploadData.error || 'Не вдалося завантажити фото', type: 'error' });
+          return;
+        }
+        const uploadData = await uploadRes.json();
+        photoUrl = uploadData.url;
+      }
+
       const apiData = {
         full_name: fullName,
         phone: formData.phone ? `+380${formData.phone}` : null,
@@ -421,7 +437,7 @@ export default function StudentProfilePage() {
         parent2_relation: formData.parent2_relation === 'other' ? formData.parent2_relation_other : formData.parent2_relation,
         interested_courses: formData.interested_courses.join(', '),
         source: formData.source === 'other' ? formData.source_other : formData.source,
-        photo: formData.photo,
+        photo: photoUrl,
       };
       
       const response = await fetch(`/api/students/${student.id}`, {
