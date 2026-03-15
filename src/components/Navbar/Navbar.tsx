@@ -45,6 +45,25 @@ function timeAgo(dateStr: string): string {
   return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
 }
 
+function playNotificationSound() {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.45);
+    osc.onended = () => ctx.close();
+  } catch { /* silent if blocked by browser */ }
+}
+
 function NotifIcon({ type }: { type: string }) {
   const base: React.CSSProperties = {
     width: 32, height: 32, borderRadius: '50%',
@@ -88,6 +107,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [notifLoading, setNotifLoading] = useState(false);
   const [clearing, setClearing] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const prevUnreadRef = useRef<number | null>(null);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'profile' | 'notifications' | 'system'>('general');
   const [settings, setSettings] = useState({
     displayName: user?.name || '',
@@ -124,7 +144,13 @@ const Navbar: React.FC<NavbarProps> = ({
       const res = await fetch('/api/notifications?count=true');
       if (res.ok) {
         const data = await res.json();
-        setUnreadCount(data.unreadCount ?? 0);
+        const newCount = data.unreadCount ?? 0;
+        setUnreadCount(newCount);
+        // Play sound when new notifications arrive (skip on first load)
+        if (prevUnreadRef.current !== null && newCount > prevUnreadRef.current) {
+          playNotificationSound();
+        }
+        prevUnreadRef.current = newCount;
       }
     } catch { /* silent */ }
   }, []);
