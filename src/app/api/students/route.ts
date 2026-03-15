@@ -8,8 +8,13 @@ export const dynamic = 'force-dynamic';
 // Ukrainian error messages
 const ERROR_MESSAGES = {
   fullNameRequired: "П.І.Б. обов'язкове",
+  invalidEmail: 'Невірний формат email',
   createFailed: 'Не вдалося створити учня',
 };
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
 
 // SECURITY: public_id is always generated server-side.
 // Any client-provided public_id is explicitly ignored to prevent:
@@ -103,7 +108,14 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
+    if (email && email.trim() && !isValidEmail(email)) {
+      return NextResponse.json(
+        { error: ERROR_MESSAGES.invalidEmail },
+        { status: 400 }
+      );
+    }
+
     // Serialize interested_courses array to JSON string
     const interestedCoursesJson = interested_courses ? JSON.stringify(interested_courses) : undefined;
     

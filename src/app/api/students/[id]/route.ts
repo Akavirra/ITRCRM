@@ -12,8 +12,13 @@ const ERROR_MESSAGES = {
   invalidStudentId: 'Невірний ID учня',
   studentNotFound: 'Учня не знайдено',
   fullNameRequired: "П.І.Б. обов'язкове",
+  invalidEmail: 'Невірний формат email',
   updateFailed: 'Не вдалося оновити дані учня',
 };
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
 
 // GET /api/students/[id] - Get student by ID
 export async function GET(
@@ -109,6 +114,13 @@ export async function PUT(
     if (!finalFullName || finalFullName.trim().length === 0) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.fullNameRequired },
+        { status: 400 }
+      );
+    }
+
+    if (email !== undefined && email !== null && email.trim() && !isValidEmail(email)) {
+      return NextResponse.json(
+        { error: ERROR_MESSAGES.invalidEmail },
         { status: 400 }
       );
     }

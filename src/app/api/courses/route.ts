@@ -53,9 +53,6 @@ export async function GET(request: NextRequest) {
     courses = await getCourses(includeInactive);
   }
   
-  // DEBUG: тимчасове логування
-  console.log('[API GET /api/courses] params:', { includeInactive, search, withStats }, '| courses count:', courses?.length, '| courses:', JSON.stringify(courses?.map((c: any) => ({ id: c.id, title: c.title, is_active: c.is_active }))).substring(0, 500));
-  
   return NextResponse.json({ courses });
 }
 

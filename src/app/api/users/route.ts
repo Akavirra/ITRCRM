@@ -9,9 +9,14 @@ export const dynamic = 'force-dynamic';
 const ERROR_MESSAGES = {
   allFieldsRequired: "Усі поля обов'язкові",
   invalidRole: 'Невірна роль',
+  invalidEmail: 'Невірний формат email',
   emailExists: 'Користувач з таким email вже існує',
   createFailed: 'Не вдалося створити користувача',
 };
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
 
 // GET /api/users - List users (admin only)
 export async function GET(request: NextRequest) {
@@ -60,6 +65,13 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    if (!isValidEmail(email)) {
+      return NextResponse.json(
+        { error: ERROR_MESSAGES.invalidEmail },
+        { status: 400 }
+      );
+    }
+
     if (!['admin'].includes(role)) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.invalidRole },
