@@ -93,6 +93,12 @@ export default function GroupsPage() {
   const [graduationDate, setGraduationDate] = useState('');
   const [graduating, setGraduating] = useState(false);
 
+  // Archive modal state
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [groupToArchive, setGroupToArchive] = useState<Group | null>(null);
+  const [archiveDate, setArchiveDate] = useState('');
+  const [archiving, setArchiving] = useState(false);
+
   // New Group Modal state
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
   const [newGroupCourseId, setNewGroupCourseId] = useState('');
@@ -527,6 +533,40 @@ export default function GroupsPage() {
       console.error('Graduate error:', error);
     } finally {
       setGraduating(false);
+    }
+  };
+
+  // Archive handlers
+  const handleArchiveClick = (group: Group) => {
+    setGroupToArchive(group);
+    setArchiveDate(new Date().toISOString().split('T')[0]);
+    setOpenDropdownId(null);
+    setShowArchiveModal(true);
+  };
+
+  const handleArchiveConfirm = async () => {
+    if (!groupToArchive || !archiveDate) return;
+    setArchiving(true);
+    try {
+      const res = await fetch(`/api/groups/${groupToArchive.id}/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archive_date: archiveDate }),
+      });
+      if (res.ok) {
+        setShowArchiveModal(false);
+        setGroupToArchive(null);
+        const groupsRes = await fetch('/api/groups?includeInactive=true');
+        const data = await groupsRes.json();
+        setGroups(data.groups || []);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Помилка архівації групи');
+      }
+    } catch (error) {
+      console.error('Archive error:', error);
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -1066,6 +1106,31 @@ export default function GroupsPage() {
                                     </button>
                                   </>
                                 )}
+                                {group.status === 'active' && (
+                                  <>
+                                    <button
+                                      className="btn"
+                                      onClick={(e) => { e.stopPropagation(); handleArchiveClick(group); }}
+                                      style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                        width: '100%', padding: '0.625rem 0.75rem',
+                                        color: '#b45309', textAlign: 'left',
+                                        background: 'none', border: 'none',
+                                        fontSize: '0.875rem', fontWeight: '500',
+                                        borderRadius: '0.5rem', cursor: 'pointer', transition: 'all 0.15s',
+                                      }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fffbeb'; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                    >
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="21 8 21 21 3 21 3 8" />
+                                        <rect x="1" y="3" width="22" height="5" />
+                                        <line x1="10" y1="12" x2="14" y2="12" />
+                                      </svg>
+                                      Архівувати групу
+                                    </button>
+                                  </>
+                                )}
                                 <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '0.25rem 0' }} />
                                 <button
                                   className="btn"
@@ -1213,6 +1278,69 @@ export default function GroupsPage() {
                   <span style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
                 )}
                 Випустити групу
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Archive Modal */}
+      {showArchiveModal && groupToArchive && (
+        <div className="modal-overlay" onClick={() => !archiving && setShowArchiveModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="21 8 21 21 3 21 3 8" />
+                  <rect x="1" y="3" width="22" height="5" />
+                  <line x1="10" y1="12" x2="14" y2="12" />
+                </svg>
+                Архівування групи
+              </h3>
+              <button className="modal-close" onClick={() => setShowArchiveModal(false)} disabled={archiving}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: '0 0 1.25rem 0', color: '#374151' }}>
+                Група <strong>{groupToArchive.title}</strong> буде переведена в архів зі статусом <strong>Неактивна</strong>.
+              </p>
+              <ul style={{ margin: '0 0 1.25rem 0', paddingLeft: '1.25rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.7 }}>
+                <li>Усі майбутні заняття після дати архівації будуть видалені</li>
+                <li>Учні відв'язуються від групи (але список зберігається)</li>
+                <li>В історії кожного учня з'явиться відповідна відмітка</li>
+                <li>Група зникне з профілів викладача та учнів</li>
+                <li>Нові заняття більше не генеруватимуться</li>
+              </ul>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem', color: '#374151' }}>
+                Дата архівації
+              </label>
+              <input
+                type="date"
+                className="form-input"
+                value={archiveDate}
+                onChange={(e) => setArchiveDate(e.target.value)}
+                disabled={archiving}
+              />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowArchiveModal(false)} disabled={archiving}>
+                Скасувати
+              </button>
+              <button
+                className="btn"
+                onClick={handleArchiveConfirm}
+                disabled={archiving || !archiveDate}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  backgroundColor: '#b45309', color: 'white', border: 'none',
+                  padding: '0.625rem 1.25rem', borderRadius: '0.5rem',
+                  fontWeight: 500, cursor: archiving ? 'default' : 'pointer',
+                  opacity: archiving ? 0.7 : 1,
+                }}
+              >
+                {archiving && (
+                  <span style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+                )}
+                Архівувати групу
               </button>
             </div>
           </div>

@@ -88,8 +88,8 @@ export async function GET(
   // Add students if requested
   const responseData: any = { group };
   if (withStudents) {
-    // For graduated groups show all students (including inactive) to preserve history
-    responseData.students = await getStudentsInGroup(groupId, group.status === 'graduate');
+    // For graduated/archived groups show all students (including inactive) to preserve history
+    responseData.students = await getStudentsInGroup(groupId, group.status === 'graduate' || group.status === 'inactive');
   }
   
   return NextResponse.json(responseData);
