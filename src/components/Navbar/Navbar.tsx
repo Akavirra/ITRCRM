@@ -131,7 +131,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 60_000);
+    const interval = setInterval(fetchUnreadCount, 15_000);
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 
