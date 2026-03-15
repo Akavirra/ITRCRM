@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { get, all, run } from '@/db';
 import crypto from 'crypto';
+import { checkAndAutoCancelLesson } from '@/lib/lessons';
 
 export const dynamic = 'force-dynamic';
 
@@ -120,6 +121,8 @@ export async function POST(
          ON CONFLICT (lesson_id, student_id) DO UPDATE SET status = $3, updated_at = NOW(), updated_by = $4`,
         [lessonId, studentId, status, telegramUser.id]
       );
+
+      await checkAndAutoCancelLesson(lessonId, telegramUser.id, telegramUser.name, 'telegram');
 
       return NextResponse.json({ success: true });
     }

@@ -355,6 +355,56 @@ export async function rescheduleLesson(
   );
 }
 
+// Auto-cancel lesson if all students are absent.
+// Returns true if the lesson was cancelled.
+export async function checkAndAutoCancelLesson(
+  lessonId: number,
+  userId: number,
+  userName: string,
+  source: 'admin' | 'telegram' = 'admin',
+  telegramId?: string
+): Promise<boolean> {
+  const lesson = await get<{ status: string; group_id: number | null; notes: string | null }>(
+    `SELECT status, group_id, notes FROM lessons WHERE id = $1`,
+    [lessonId]
+  );
+
+  if (!lesson || lesson.status !== 'scheduled') return false;
+
+  const counts = lesson.group_id !== null
+    ? await get<{ total: number; absent: number; recorded: number }>(
+        `SELECT
+          (SELECT COUNT(*) FROM student_groups WHERE group_id = $2 AND is_active = TRUE) as total,
+          (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IN ('absent', 'makeup_planned')) as absent,
+          (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
+        [lessonId, lesson.group_id]
+      )
+    : await get<{ total: number; absent: number; recorded: number }>(
+        `SELECT
+          (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1) as total,
+          (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IN ('absent', 'makeup_planned')) as absent,
+          (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
+        [lessonId]
+      );
+
+  if (!counts || Number(counts.total) === 0) return false;
+  if (Number(counts.recorded) < Number(counts.total)) return false;
+  if (Number(counts.absent) < Number(counts.total)) return false;
+
+  // All students absent — cancel the lesson and add a note
+  const cancelNote = 'Автоматично скасовано: всі учні відсутні';
+  const newNotes = lesson.notes ? `${lesson.notes}\n${cancelNote}` : cancelNote;
+
+  await run(
+    `UPDATE lessons SET status = 'canceled', notes = $1, updated_at = NOW() WHERE id = $2`,
+    [newNotes, lessonId]
+  );
+
+  await logLessonChange(lessonId, 'notes', lesson.notes ?? null, cancelNote, userId, userName, source, telegramId ?? null);
+
+  return true;
+}
+
 // Log lesson change to history table
 export async function logLessonChange(
   lessonId: number,

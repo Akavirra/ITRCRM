@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { run, get, all } from '@/db';
 import { answerCallbackQuery, editMessageText } from '@/lib/telegram';
+import { checkAndAutoCancelLesson } from '@/lib/lessons';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -70,7 +71,9 @@ export async function POST(request: NextRequest) {
              ON CONFLICT (lesson_id, student_id) DO UPDATE SET status = $3, updated_at = NOW(), updated_by = $4`,
             [lessonId, studentId, status, dbUser.id]
           );
-          
+
+          await checkAndAutoCancelLesson(lessonId, dbUser.id, dbUser.name, 'telegram', user.id.toString());
+
           // Get student name for confirmation
           const student = await get<{ full_name: string }>(
             `SELECT full_name FROM students WHERE id = $1`,

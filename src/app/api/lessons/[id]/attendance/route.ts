@@ -3,7 +3,7 @@ import { getAuthUser, unauthorized, forbidden, checkGroupAccess } from '@/lib/ap
 import { getAttendanceForLessonWithStudents, setAttendance, setAttendanceForAll, clearAttendanceForLesson, copyAttendanceFromPreviousLesson } from '@/lib/attendance';
 import { get, run, all } from '@/db';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
-import { logLessonChange } from '@/lib/lessons';
+import { logLessonChange, checkAndAutoCancelLesson } from '@/lib/lessons';
 import { safeAddStudentHistoryEntry, formatAttendanceDescription, StudentHistoryActionType } from '@/lib/student-history';
 
 export const dynamic = 'force-dynamic';
@@ -155,19 +155,21 @@ export async function POST(
           [lessonId]
         );
 
-        // Mark lesson as 'done' only when ALL active students have attendance recorded
-        if (lessonInfo && lessonInfo.status === 'scheduled' && lessonInfo.group_id !== null) {
-          const counts = await get<{ total: number; recorded: number }>(
-            `SELECT
-              (SELECT COUNT(*) FROM student_groups WHERE group_id = $2 AND is_active = TRUE) as total,
-              (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
-            [lessonId, lessonInfo.group_id]
-          );
+        // Auto-cancel if all students are absent; otherwise mark as done when all recorded
+        if (lessonInfo && lessonInfo.status === 'scheduled') {
+          const cancelled = await checkAndAutoCancelLesson(lessonId, user.id, user.name, 'admin');
 
-          if (counts && counts.total > 0 && counts.recorded >= counts.total) {
-            await run(`UPDATE lessons SET status = 'done', updated_at = NOW() WHERE id = $1`, [lessonId]);
+          if (!cancelled && lessonInfo.group_id !== null) {
+            const counts = await get<{ total: number; recorded: number }>(
+              `SELECT
+                (SELECT COUNT(*) FROM student_groups WHERE group_id = $2 AND is_active = TRUE) as total,
+                (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
+              [lessonId, lessonInfo.group_id]
+            );
 
-            if (lessonInfo.group_id) {
+            if (counts && counts.total > 0 && counts.recorded >= counts.total) {
+              await run(`UPDATE lessons SET status = 'done', updated_at = NOW() WHERE id = $1`, [lessonId]);
+
               await addGroupHistoryEntry(
                 lessonInfo.group_id,
                 'lesson_conducted',
@@ -221,7 +223,36 @@ export async function POST(
           );
         }
         await setAttendanceForAll(lessonId, status, user.id);
-        
+
+        // Auto-cancel if all absent; otherwise mark as done
+        {
+          const setAllLessonInfo = await get<{ group_id: number | null; status: string; lesson_date: string; topic: string }>(
+            `SELECT group_id, status, lesson_date, topic FROM lessons WHERE id = $1`,
+            [lessonId]
+          );
+          if (setAllLessonInfo && setAllLessonInfo.status === 'scheduled') {
+            const cancelled = await checkAndAutoCancelLesson(lessonId, user.id, user.name, 'admin');
+            if (!cancelled && setAllLessonInfo.group_id !== null) {
+              const counts = await get<{ total: number; recorded: number }>(
+                `SELECT
+                  (SELECT COUNT(*) FROM student_groups WHERE group_id = $2 AND is_active = TRUE) as total,
+                  (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
+                [lessonId, setAllLessonInfo.group_id]
+              );
+              if (counts && counts.total > 0 && counts.recorded >= counts.total) {
+                await run(`UPDATE lessons SET status = 'done', updated_at = NOW() WHERE id = $1`, [lessonId]);
+                await addGroupHistoryEntry(
+                  setAllLessonInfo.group_id,
+                  'lesson_conducted',
+                  formatLessonConductedDescription(setAllLessonInfo.lesson_date, setAllLessonInfo.topic),
+                  user.id,
+                  user.name
+                );
+              }
+            }
+          }
+        }
+
         // Log attendance change
         await logLessonChange(
           lessonId,
@@ -232,7 +263,7 @@ export async function POST(
           user.name,
           'admin'
         );
-        
+
         return NextResponse.json({ message: 'Відвідуваність для всіх успішно встановлена' });
         
       case 'clear':

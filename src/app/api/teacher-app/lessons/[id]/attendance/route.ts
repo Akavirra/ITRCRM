@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/db/neon';
 import crypto from 'crypto';
-import { logLessonChange } from '@/lib/lessons';
+import { logLessonChange, checkAndAutoCancelLesson } from '@/lib/lessons';
 
 export const dynamic = 'force-dynamic';
 
@@ -272,31 +272,34 @@ export async function POST(
       telegramId
     );
 
-    // Mark lesson as 'done' only when ALL active students have attendance recorded
-    // For individual/makeup lessons (group_id IS NULL), use attendance table count as total
-    const counts = await queryOne(
-      `SELECT
-        CASE
-          WHEN (SELECT group_id FROM lessons WHERE id = $1) IS NULL
-          THEN (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1)
-          ELSE (SELECT COUNT(*) FROM student_groups WHERE group_id = (SELECT group_id FROM lessons WHERE id = $1) AND is_active = TRUE)
-        END as total,
-        (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
-      [lessonId]
-    ) as { total: number; recorded: number } | null;
+    // Auto-cancel if all students absent; otherwise mark as done when all recorded
+    const cancelled = await checkAndAutoCancelLesson(lessonId, teacher.id, teacher.name, 'telegram', telegramId);
 
-    if (counts && counts.total > 0 && counts.recorded >= counts.total) {
-      await query(
-        `UPDATE lessons
-         SET status = 'done',
-             reported_by = $1,
-             reported_at = NOW(),
-             reported_via = 'telegram',
-             updated_at = NOW()
-         WHERE id = $2
-         AND status = 'scheduled'`,
-        [teacher.id, lessonId]
-      );
+    if (!cancelled) {
+      const counts = await queryOne(
+        `SELECT
+          CASE
+            WHEN (SELECT group_id FROM lessons WHERE id = $1) IS NULL
+            THEN (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1)
+            ELSE (SELECT COUNT(*) FROM student_groups WHERE group_id = (SELECT group_id FROM lessons WHERE id = $1) AND is_active = TRUE)
+          END as total,
+          (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
+        [lessonId]
+      ) as { total: number; recorded: number } | null;
+
+      if (counts && counts.total > 0 && counts.recorded >= counts.total) {
+        await query(
+          `UPDATE lessons
+           SET status = 'done',
+               reported_by = $1,
+               reported_at = NOW(),
+               reported_via = 'telegram',
+               updated_at = NOW()
+           WHERE id = $2
+           AND status = 'scheduled'`,
+          [teacher.id, lessonId]
+        );
+      }
     }
 
     return NextResponse.json({
