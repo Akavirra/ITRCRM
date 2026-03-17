@@ -1,18 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  FolderOpen,
-  FileText,
-  Image,
-  Video,
-  Music,
-  File,
-  Download,
-  ExternalLink,
-  Search,
-  Trash2,
-  ChevronLeft,
+  FolderOpen, FileText, Image, Video, Music, File,
+  Download, ExternalLink, Search, Trash2, LayoutGrid,
+  LayoutList, X, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 interface Topic {
@@ -36,13 +28,11 @@ interface MediaFile {
   created_at: string;
 }
 
-function FileIcon({ type }: { type: string }) {
-  const style = { width: 20, height: 20, flexShrink: 0 };
-  if (type === 'photo' || type === 'animation') return <Image style={style} color="#3b82f6" />;
-  if (type === 'video') return <Video style={style} color="#8b5cf6" />;
-  if (type === 'audio' || type === 'voice') return <Music style={style} color="#f59e0b" />;
-  if (type === 'document') return <FileText style={style} color="#6b7280" />;
-  return <File style={style} color="#6b7280" />;
+type ViewMode = 'grid' | 'list';
+type FilterType = 'all' | 'photo' | 'video' | 'document' | 'audio';
+
+function thumbUrl(fileId: string, size = 400) {
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size}`;
 }
 
 function formatSize(bytes: number): string {
@@ -57,15 +47,122 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function isVisual(type: string) {
+  return type === 'photo' || type === 'animation' || type === 'video';
+}
+
+function FileTypeIcon({ type, size = 18 }: { type: string; size?: number }) {
+  const s = { width: size, height: size, flexShrink: 0 };
+  if (type === 'photo' || type === 'animation') return <Image style={s} color="#3b82f6" />;
+  if (type === 'video') return <Video style={s} color="#8b5cf6" />;
+  if (type === 'audio' || type === 'voice') return <Music style={s} color="#f59e0b" />;
+  if (type === 'document') return <FileText style={s} color="#64748b" />;
+  return <File style={s} color="#64748b" />;
+}
+
+function TypeBadge({ type }: { type: string }) {
+  const map: Record<string, { label: string; bg: string; color: string }> = {
+    photo:     { label: 'Фото',      bg: '#eff6ff', color: '#3b82f6' },
+    animation: { label: 'GIF',       bg: '#eff6ff', color: '#3b82f6' },
+    video:     { label: 'Відео',     bg: '#f5f3ff', color: '#8b5cf6' },
+    document:  { label: 'Документ',  bg: '#f8fafc', color: '#64748b' },
+    audio:     { label: 'Аудіо',     bg: '#fffbeb', color: '#f59e0b' },
+    voice:     { label: 'Голосове',  bg: '#fffbeb', color: '#f59e0b' },
+  };
+  const s = map[type] ?? { label: type, bg: '#f8fafc', color: '#64748b' };
+  return (
+    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: s.bg, color: s.color }}>
+      {s.label}
+    </span>
+  );
+}
+
+// ── Lightbox ─────────────────────────────────────────────────────────────────
+
+function Lightbox({ files, index, onClose, onPrev, onNext }: {
+  files: MediaFile[];
+  index: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const file = files[index];
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') onPrev();
+      if (e.key === 'ArrowRight') onNext();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose, onPrev, onNext]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.88)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      {/* Close */}
+      <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
+        <X size={20} />
+      </button>
+
+      {/* Prev */}
+      {index > 0 && (
+        <button onClick={e => { e.stopPropagation(); onPrev(); }} style={{ position: 'absolute', left: 20, background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
+          <ChevronLeft size={24} />
+        </button>
+      )}
+
+      {/* Image */}
+      <div onClick={e => e.stopPropagation()} style={{ maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <img
+          src={thumbUrl(file.drive_file_id, 1200)}
+          alt={file.file_name}
+          style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: 8 }}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>{file.file_name}</span>
+          <a href={file.drive_view_url} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <ExternalLink size={13} /> Відкрити
+          </a>
+          <a href={file.drive_download_url} target="_blank" rel="noopener noreferrer" style={{ color: '#34d399', fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Download size={13} /> Завантажити
+          </a>
+        </div>
+        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>{index + 1} / {files.length}</span>
+      </div>
+
+      {/* Next */}
+      {index < files.length - 1 && (
+        <button onClick={e => { e.stopPropagation(); onNext(); }} style={{ position: 'absolute', right: 20, background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
+          <ChevronRight size={24} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function MaterialsPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [loading, setLoading] = useState(false);
   const [editingTopicId, setEditingTopicId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [searchInput, setSearchInput] = useState('');
 
   const loadTopics = useCallback(async () => {
     const res = await fetch('/api/media/topics');
@@ -88,6 +185,13 @@ export default function MaterialsPage() {
   useEffect(() => { loadTopics(); }, [loadTopics]);
   useEffect(() => { loadFiles(); }, [loadFiles]);
 
+  // Debounce search
+  function handleSearchInput(val: string) {
+    setSearchInput(val);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => setSearch(val), 400);
+  }
+
   async function renameTopic(id: number, name: string) {
     await fetch('/api/media/topics', {
       method: 'PATCH',
@@ -109,60 +213,81 @@ export default function MaterialsPage() {
   }
 
   const selectedTopic = topics.find(t => t.id === selectedTopicId);
+  const totalFiles = topics.reduce((s, t) => s + t.file_count, 0);
+
+  // Filter by type
+  const filteredFiles = files.filter(f => {
+    if (filterType === 'all') return true;
+    if (filterType === 'photo') return f.file_type === 'photo' || f.file_type === 'animation';
+    if (filterType === 'video') return f.file_type === 'video';
+    if (filterType === 'document') return f.file_type === 'document';
+    if (filterType === 'audio') return f.file_type === 'audio' || f.file_type === 'voice';
+    return true;
+  });
+
+  // Visual files for lightbox
+  const visualFiles = filteredFiles.filter(f => isVisual(f.file_type));
+
+  function openLightbox(file: MediaFile) {
+    const idx = visualFiles.findIndex(f => f.id === file.id);
+    if (idx !== -1) setLightboxIndex(idx);
+  }
+
+  const filterTabs: { key: FilterType; label: string; icon: React.ReactNode }[] = [
+    { key: 'all',      label: 'Всі',        icon: <File size={14} /> },
+    { key: 'photo',    label: 'Фото',       icon: <Image size={14} /> },
+    { key: 'video',    label: 'Відео',      icon: <Video size={14} /> },
+    { key: 'document', label: 'Документи',  icon: <FileText size={14} /> },
+    { key: 'audio',    label: 'Аудіо',      icon: <Music size={14} /> },
+  ];
 
   return (
-    <div style={{ padding: '24px', maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
+      {/* Lightbox */}
+      {lightboxIndex !== null && (
+        <Lightbox
+          files={visualFiles}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onPrev={() => setLightboxIndex(i => (i !== null && i > 0 ? i - 1 : i))}
+          onNext={() => setLightboxIndex(i => (i !== null && i < visualFiles.length - 1 ? i + 1 : i))}
+        />
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <FolderOpen size={28} color="#3b82f6" />
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1e293b', margin: 0 }}>Матеріали</h1>
+        <FolderOpen size={26} color="#3b82f6" />
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1e293b', margin: 0 }}>Файли</h1>
+        <span style={{ fontSize: 13, color: '#94a3b8', marginLeft: 4 }}>{totalFiles} файлів</span>
       </div>
 
-      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+
         {/* Topics sidebar */}
-        <div style={{
-          width: 220, flexShrink: 0, background: '#fff',
-          borderRadius: 16, border: '1px solid #f0f0f0',
-          padding: '12px 8px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-        }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', padding: '4px 12px 8px', letterSpacing: '0.05em' }}>
-            ТЕМИ
+        <div style={{ width: 210, flexShrink: 0, background: '#fff', borderRadius: 16, border: '1px solid #f0f0f0', padding: '10px 8px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', padding: '4px 12px 8px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Теми
           </div>
 
-          {/* All topics */}
           <button
             onClick={() => setSelectedTopicId(null)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-              padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left',
-              background: selectedTopicId === null ? '#e3f2fd' : 'transparent',
-              color: selectedTopicId === null ? '#1565c0' : '#374151',
-              fontWeight: selectedTopicId === null ? 600 : 400, fontSize: 14,
-            }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left', background: selectedTopicId === null ? '#e3f2fd' : 'transparent', color: selectedTopicId === null ? '#1565c0' : '#374151', fontWeight: selectedTopicId === null ? 600 : 400, fontSize: 13 }}
           >
-            <FolderOpen size={16} />
-            Всі матеріали
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: '#94a3b8' }}>
-              {topics.reduce((s, t) => s + t.file_count, 0)}
-            </span>
+            <FolderOpen size={15} />
+            Всі файли
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: '#94a3b8' }}>{totalFiles}</span>
           </button>
 
           {topics.map(topic => (
-            <div key={topic.id} style={{ position: 'relative', group: 'true' } as React.CSSProperties}>
+            <div key={topic.id}>
               {editingTopicId === topic.id ? (
-                <form
-                  onSubmit={e => { e.preventDefault(); renameTopic(topic.id, editingName); }}
-                  style={{ padding: '4px 8px' }}
-                >
+                <form onSubmit={e => { e.preventDefault(); renameTopic(topic.id, editingName); }} style={{ padding: '4px 8px' }}>
                   <input
                     autoFocus
                     value={editingName}
                     onChange={e => setEditingName(e.target.value)}
                     onBlur={() => setEditingTopicId(null)}
-                    style={{
-                      width: '100%', padding: '6px 8px', borderRadius: 8,
-                      border: '1px solid #3b82f6', fontSize: 13, outline: 'none',
-                    }}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: 8, border: '1px solid #3b82f6', fontSize: 13, outline: 'none' }}
                   />
                 </form>
               ) : (
@@ -170,124 +295,262 @@ export default function MaterialsPage() {
                   onClick={() => setSelectedTopicId(topic.id)}
                   onDoubleClick={() => { setEditingTopicId(topic.id); setEditingName(topic.name); }}
                   title="Двічі клікніть, щоб перейменувати"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                    padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left',
-                    background: selectedTopicId === topic.id ? '#e3f2fd' : 'transparent',
-                    color: selectedTopicId === topic.id ? '#1565c0' : '#374151',
-                    fontWeight: selectedTopicId === topic.id ? 600 : 400, fontSize: 14,
-                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left', background: selectedTopicId === topic.id ? '#e3f2fd' : 'transparent', color: selectedTopicId === topic.id ? '#1565c0' : '#374151', fontWeight: selectedTopicId === topic.id ? 600 : 400, fontSize: 13 }}
                 >
-                  <FolderOpen size={16} />
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {topic.name}
-                  </span>
-                  <span style={{ fontSize: 12, color: '#94a3b8', flexShrink: 0 }}>{topic.file_count}</span>
+                  <FolderOpen size={15} />
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{topic.name}</span>
+                  <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0, background: '#f1f5f9', padding: '1px 6px', borderRadius: 10 }}>{topic.file_count}</span>
                 </button>
               )}
             </div>
           ))}
         </div>
 
-        {/* Files area */}
+        {/* Main area */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Breadcrumb + search */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            {selectedTopic && (
-              <button
-                onClick={() => setSelectedTopicId(null)}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', fontSize: 14 }}
-              >
-                <ChevronLeft size={16} />
-                Всі
-              </button>
-            )}
-            <span style={{ fontSize: 16, fontWeight: 600, color: '#1e293b' }}>
-              {selectedTopic ? selectedTopic.name : 'Всі матеріали'}
+
+          {/* Toolbar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+            {/* Title */}
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#1e293b', marginRight: 4 }}>
+              {selectedTopic ? selectedTopic.name : 'Всі файли'}
             </span>
 
-            <div style={{ marginLeft: 'auto', position: 'relative' }}>
-              <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            {/* Type filter tabs */}
+            <div style={{ display: 'flex', gap: 4, background: '#f8fafc', borderRadius: 10, padding: 4 }}>
+              {filterTabs.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setFilterType(tab.key)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: filterType === tab.key ? 600 : 400, background: filterType === tab.key ? '#fff' : 'transparent', color: filterType === tab.key ? '#1e293b' : '#64748b', boxShadow: filterType === tab.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Spacer */}
+            <div style={{ flex: 1 }} />
+
+            {/* Search */}
+            <div style={{ position: 'relative' }}>
+              <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input
-                placeholder="Пошук файлів..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                style={{
-                  paddingLeft: 34, paddingRight: 12, paddingTop: 8, paddingBottom: 8,
-                  borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 14, outline: 'none', width: 220,
-                }}
+                placeholder="Пошук..."
+                value={searchInput}
+                onChange={e => handleSearchInput(e.target.value)}
+                style={{ paddingLeft: 32, paddingRight: 12, paddingTop: 7, paddingBottom: 7, borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 13, outline: 'none', width: 180 }}
               />
+            </div>
+
+            {/* View toggle */}
+            <div style={{ display: 'flex', background: '#f8fafc', borderRadius: 10, padding: 3, gap: 2 }}>
+              <button onClick={() => setViewMode('grid')} style={{ padding: '5px 8px', borderRadius: 7, border: 'none', cursor: 'pointer', background: viewMode === 'grid' ? '#fff' : 'transparent', color: viewMode === 'grid' ? '#1e293b' : '#94a3b8', boxShadow: viewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+                <LayoutGrid size={16} />
+              </button>
+              <button onClick={() => setViewMode('list')} style={{ padding: '5px 8px', borderRadius: 7, border: 'none', cursor: 'pointer', background: viewMode === 'list' ? '#fff' : 'transparent', color: viewMode === 'list' ? '#1e293b' : '#94a3b8', boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+                <LayoutList size={16} />
+              </button>
             </div>
           </div>
 
-          {/* Files list */}
-          {loading ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Завантаження...</div>
-          ) : files.length === 0 ? (
-            <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8' }}>
-              <FolderOpen size={48} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }} />
-              Файлів немає
+          {/* Count */}
+          {!loading && filteredFiles.length > 0 && (
+            <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 10 }}>
+              {filteredFiles.length} файл{filteredFiles.length === 1 ? '' : filteredFiles.length < 5 ? 'и' : 'ів'}
             </div>
-          ) : (
-            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #f0f0f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-              {files.map((file, i) => (
-                <div
-                  key={file.id}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '14px 16px',
-                    borderBottom: i < files.length - 1 ? '1px solid #f8f9fa' : 'none',
-                  }}
-                >
-                  <FileIcon type={file.file_type} />
+          )}
 
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {file.file_name}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                      {!selectedTopicId && <span style={{ marginRight: 8 }}>{file.topic_name} ·</span>}
-                      {file.uploaded_by_name && <span>{file.uploaded_by_name} · </span>}
-                      {formatDate(file.created_at)}
-                      {file.file_size > 0 && <span> · {formatSize(file.file_size)}</span>}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    <a
-                      href={file.drive_view_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Відкрити"
-                      style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', borderRadius: 8, background: '#eff6ff', color: '#3b82f6', textDecoration: 'none', fontSize: 13, fontWeight: 500, gap: 4 }}
-                    >
-                      <ExternalLink size={14} />
-                      Відкрити
-                    </a>
-                    <a
-                      href={file.drive_download_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Завантажити"
-                      style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', borderRadius: 8, background: '#f0fdf4', color: '#16a34a', textDecoration: 'none', fontSize: 13, fontWeight: 500, gap: 4 }}
-                    >
-                      <Download size={14} />
-                    </a>
-                    <button
-                      onClick={() => deleteFile(file.id)}
-                      disabled={deletingId === file.id}
-                      title="Видалити"
-                      style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', borderRadius: 8, background: '#fff5f5', color: '#ef4444', border: 'none', cursor: 'pointer', fontSize: 13 }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
+          {/* Content */}
+          {loading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
+              {[...Array(8)].map((_, i) => (
+                <div key={i} style={{ borderRadius: 12, background: '#f1f5f9', aspectRatio: '1', animation: 'pulse 1.5s ease-in-out infinite' }} />
               ))}
             </div>
+          ) : filteredFiles.length === 0 ? (
+            <div style={{ padding: '60px 0', textAlign: 'center', color: '#94a3b8' }}>
+              <FolderOpen size={44} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.25 }} />
+              <div style={{ fontSize: 15, fontWeight: 500 }}>Файлів немає</div>
+              {search && <div style={{ fontSize: 13, marginTop: 4 }}>Спробуй змінити пошуковий запит</div>}
+            </div>
+          ) : viewMode === 'grid' ? (
+            <GridView files={filteredFiles} selectedTopicId={selectedTopicId} onOpenLightbox={openLightbox} onDelete={deleteFile} deletingId={deletingId} />
+          ) : (
+            <ListView files={filteredFiles} selectedTopicId={selectedTopicId} onOpenLightbox={openLightbox} onDelete={deleteFile} deletingId={deletingId} />
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Grid View ─────────────────────────────────────────────────────────────────
+
+function GridView({ files, selectedTopicId, onOpenLightbox, onDelete, deletingId }: {
+  files: MediaFile[];
+  selectedTopicId: number | null;
+  onOpenLightbox: (f: MediaFile) => void;
+  onDelete: (id: number) => void;
+  deletingId: number | null;
+}) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
+      {files.map(file => (
+        <GridCard key={file.id} file={file} selectedTopicId={selectedTopicId} onOpenLightbox={onOpenLightbox} onDelete={onDelete} deletingId={deletingId} />
+      ))}
+    </div>
+  );
+}
+
+function GridCard({ file, selectedTopicId, onOpenLightbox, onDelete, deletingId }: {
+  file: MediaFile;
+  selectedTopicId: number | null;
+  onOpenLightbox: (f: MediaFile) => void;
+  onDelete: (id: number) => void;
+  deletingId: number | null;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const visual = isVisual(file.file_type);
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ borderRadius: 14, background: '#fff', border: '1px solid #f0f0f0', overflow: 'hidden', boxShadow: hovered ? '0 4px 16px rgba(0,0,0,0.1)' : '0 1px 4px rgba(0,0,0,0.04)', transition: 'all 0.2s', cursor: visual ? 'pointer' : 'default', position: 'relative' }}
+    >
+      {/* Thumbnail or icon */}
+      <div
+        onClick={() => visual && onOpenLightbox(file)}
+        style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+      >
+        {visual ? (
+          <>
+            <img
+              src={thumbUrl(file.drive_file_id)}
+              alt={file.file_name}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+            {file.file_type === 'video' && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Video size={18} color="#8b5cf6" />
+                </div>
+              </div>
+            )}
+            {hovered && (
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ExternalLink size={22} color="#fff" />
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 16 }}>
+            <FileTypeIcon type={file.file_type} size={36} />
+            <TypeBadge type={file.file_type} />
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div style={{ padding: '10px 12px 12px' }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4 }} title={file.file_name}>
+          {file.file_name}
+        </div>
+        {!selectedTopicId && (
+          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {file.topic_name}
+          </div>
+        )}
+        <div style={{ fontSize: 11, color: '#94a3b8' }}>
+          {new Date(file.created_at).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+          {file.file_size > 0 && ` · ${formatSize(file.file_size)}`}
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+          <a href={file.drive_view_url} target="_blank" rel="noopener noreferrer" title="Відкрити"
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '5px 0', borderRadius: 8, background: '#eff6ff', color: '#3b82f6', textDecoration: 'none', fontSize: 12, fontWeight: 500 }}>
+            <ExternalLink size={12} /> Відкрити
+          </a>
+          <a href={file.drive_download_url} target="_blank" rel="noopener noreferrer" title="Завантажити"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px 8px', borderRadius: 8, background: '#f0fdf4', color: '#16a34a', textDecoration: 'none' }}>
+            <Download size={12} />
+          </a>
+          <button onClick={() => onDelete(file.id)} disabled={deletingId === file.id} title="Видалити"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px 8px', borderRadius: 8, background: '#fff5f5', color: '#ef4444', border: 'none', cursor: 'pointer' }}>
+            <Trash2 size={12} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── List View ─────────────────────────────────────────────────────────────────
+
+function ListView({ files, selectedTopicId, onOpenLightbox, onDelete, deletingId }: {
+  files: MediaFile[];
+  selectedTopicId: number | null;
+  onOpenLightbox: (f: MediaFile) => void;
+  onDelete: (id: number) => void;
+  deletingId: number | null;
+}) {
+  return (
+    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #f0f0f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+      {files.map((file, i) => {
+        const visual = isVisual(file.file_type);
+        return (
+          <div key={file.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < files.length - 1 ? '1px solid #f8f9fa' : 'none' }}>
+            {/* Thumb or icon */}
+            <div
+              onClick={() => visual && onOpenLightbox(file)}
+              style={{ width: 44, height: 44, borderRadius: 10, overflow: 'hidden', background: '#f8fafc', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: visual ? 'pointer' : 'default', position: 'relative' }}
+            >
+              {visual ? (
+                <img src={thumbUrl(file.drive_file_id, 100)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              ) : (
+                <FileTypeIcon type={file.file_type} size={22} />
+              )}
+              {file.file_type === 'video' && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)' }}>
+                  <Video size={14} color="#fff" />
+                </div>
+              )}
+            </div>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 500, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {file.file_name}
+              </div>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <TypeBadge type={file.file_type} />
+                {!selectedTopicId && <span>{file.topic_name} ·</span>}
+                {file.uploaded_by_name && <span>{file.uploaded_by_name} ·</span>}
+                <span>{formatDate(file.created_at)}</span>
+                {file.file_size > 0 && <span>· {formatSize(file.file_size)}</span>}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <a href={file.drive_view_url} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, background: '#eff6ff', color: '#3b82f6', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
+                <ExternalLink size={13} /> Відкрити
+              </a>
+              <a href={file.drive_download_url} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', borderRadius: 8, background: '#f0fdf4', color: '#16a34a', textDecoration: 'none' }}>
+                <Download size={13} />
+              </a>
+              <button onClick={() => onDelete(file.id)} disabled={deletingId === file.id}
+                style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', borderRadius: 8, background: '#fff5f5', color: '#ef4444', border: 'none', cursor: 'pointer' }}>
+                <Trash2 size={13} />
+              </button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
