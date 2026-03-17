@@ -35,7 +35,11 @@ const menuItems = [
   { href: '/students', labelKey: 'nav.students', icon: User },
   { href: '/teachers', labelKey: 'nav.teachers', icon: GraduationCap },
   { href: '/attendance', labelKey: 'nav.attendance', icon: ClipboardList },
-  { href: '/materials', labelKey: 'nav.materials', icon: FolderOpen },
+];
+
+const filesMenuItem = { href: '/materials', labelKey: 'nav.materials', icon: FolderOpen };
+
+const reportsMenuItems = [
   { href: '/reports', labelKey: 'nav.reports', icon: BarChart3 },
 ];
 
@@ -221,6 +225,65 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         {/* Navigation */}
         <nav style={{ padding: '24px 8px', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            return (
+              <TransitionLink
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                style={navItemStyle(isActive)}
+                onMouseOver={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = '#f5f5f5';
+                    e.currentTarget.style.color = '#333333';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#666666';
+                  }
+                }}
+              >
+                <Icon width="20" height="20" style={{ color: isActive ? '#1565c0' : '#666666', flexShrink: 0 }} />
+                {t(item.labelKey)}
+              </TransitionLink>
+            );
+          })}
+
+          {/* Files section */}
+          <div style={{ height: '1px', backgroundColor: '#f0f0f0', margin: '16px 12px' }} />
+          {(() => {
+            const Icon = filesMenuItem.icon;
+            const isActive = pathname === filesMenuItem.href;
+            return (
+              <TransitionLink
+                href={filesMenuItem.href}
+                onClick={onClose}
+                style={navItemStyle(isActive)}
+                onMouseOver={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = '#f5f5f5';
+                    e.currentTarget.style.color = '#333333';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#666666';
+                  }
+                }}
+              >
+                <Icon width="20" height="20" style={{ color: isActive ? '#1565c0' : '#666666', flexShrink: 0 }} />
+                {t(filesMenuItem.labelKey)}
+              </TransitionLink>
+            );
+          })()}
+          <div style={{ height: '1px', backgroundColor: '#f0f0f0', margin: '16px 12px' }} />
+
+          {/* Reports */}
+          {reportsMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
             return (
