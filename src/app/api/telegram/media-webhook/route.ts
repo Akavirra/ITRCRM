@@ -110,22 +110,24 @@ function extractMedia(msg: TelegramMessage): MediaInfo | null {
   return null;
 }
 
-async function downloadFromTelegram(fileId: string): Promise<{ buffer: Buffer; filePath: string }> {
+async function downloadFromTelegram(fileId: string): Promise<{ buffer: Buffer; filePath: string; telegramFileName: string }> {
   const botToken = process.env.MEDIA_BOT_TOKEN;
   if (!botToken) throw new Error('MEDIA_BOT_TOKEN is not set');
 
-  // Get file path from Telegram
   const infoRes = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
   if (!infoRes.ok) throw new Error(`Telegram getFile failed: ${await infoRes.text()}`);
   const info = await infoRes.json();
   if (!info.ok) throw new Error(`Telegram getFile error: ${info.description}`);
 
   const filePath: string = info.result.file_path;
+  // Extract actual filename from Telegram's file path (e.g. "photos/file_abc123.jpg" → "file_abc123.jpg")
+  const telegramFileName = filePath.split('/').pop() ?? filePath;
+
   const fileRes = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
   if (!fileRes.ok) throw new Error(`Telegram file download failed`);
 
   const arrayBuffer = await fileRes.arrayBuffer();
-  return { buffer: Buffer.from(arrayBuffer), filePath };
+  return { buffer: Buffer.from(arrayBuffer), filePath, telegramFileName };
 }
 
 async function getOrCreateTopic(threadId: number, topicName: string): Promise<number> {
@@ -247,12 +249,17 @@ export async function POST(request: NextRequest) {
     if (!topic) throw new Error('Topic not found after creation');
 
     // Download from Telegram
-    const { buffer } = await downloadFromTelegram(media.fileId);
+    const { buffer, telegramFileName } = await downloadFromTelegram(media.fileId);
+
+    // For photos/voice (no original name), use Telegram's server filename
+    const fileName = (media.type === 'photo' || media.type === 'voice')
+      ? telegramFileName
+      : media.fileName;
 
     // Upload to Google Drive
     const driveFile = await uploadFileToDrive(
       buffer,
-      media.fileName,
+      fileName,
       media.mimeType,
       topic.drive_folder_id
     );
@@ -272,7 +279,7 @@ export async function POST(request: NextRequest) {
         topicId,
         media.fileId,
         msg.message_id,
-        media.fileName,
+        fileName,
         media.type,
         media.fileSize,
         driveFile.id,
