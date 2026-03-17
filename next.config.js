@@ -27,7 +27,7 @@ const nextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline'" + (isDev ? " 'unsafe-eval'" : ""),
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://res.cloudinary.com",
+              "img-src 'self' data: blob: https://res.cloudinary.com https://drive.google.com https://lh3.googleusercontent.com",
               "connect-src 'self' https://*.neon.tech",
               "font-src 'self' data:",
             ].join('; ')
