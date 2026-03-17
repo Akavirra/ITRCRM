@@ -22,6 +22,7 @@
     "db:add-notifications": "node scripts/add-notifications.js",
     "db:add-notification-clears": "node scripts/add-notification-clears.js",
     "db:add-notifications-dedup-key": "node scripts/add-notifications-dedup-key.js",
+    "db:add-media-tables": "node scripts/add-media-tables.js",
     "test": "jest"
   },
   "dependencies": {

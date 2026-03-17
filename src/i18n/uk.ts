@@ -11,6 +11,7 @@ export const uk = {
     lessons: 'Заняття',
     reports: 'Звіти',
     attendance: 'Відвідуваність',
+    materials: 'Матеріали',
     users: 'Користувачі',
     settings: 'Налаштування',
   },

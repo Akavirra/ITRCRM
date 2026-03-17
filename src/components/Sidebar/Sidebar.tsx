@@ -12,7 +12,8 @@ import {
   Calendar,
   BarChart3,
   Settings,
-  ClipboardList
+  ClipboardList,
+  FolderOpen
 } from 'lucide-react';
 import TransitionLink from '@/components/TransitionLink';
 
@@ -34,6 +35,7 @@ const menuItems = [
   { href: '/students', labelKey: 'nav.students', icon: User },
   { href: '/teachers', labelKey: 'nav.teachers', icon: GraduationCap },
   { href: '/attendance', labelKey: 'nav.attendance', icon: ClipboardList },
+  { href: '/materials', labelKey: 'nav.materials', icon: FolderOpen },
   { href: '/reports', labelKey: 'nav.reports', icon: BarChart3 },
 ];
 
