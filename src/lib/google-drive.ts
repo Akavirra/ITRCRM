@@ -1,10 +1,3 @@
-import jwt from 'jsonwebtoken';
-
-interface ServiceAccount {
-  client_email: string;
-  private_key: string;
-}
-
 interface DriveFile {
   id: string;
   name: string;
@@ -14,14 +7,8 @@ interface DriveFile {
   size?: string;
 }
 
-// Cache token in module scope — survives across warm Vercel invocations
+// Cache access token in module scope — survives across warm Vercel invocations
 let cachedToken: { token: string; expiresAt: number } | null = null;
-
-function getServiceAccount(): ServiceAccount {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is not set');
-  return JSON.parse(raw);
-}
 
 async function getAccessToken(): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
@@ -29,33 +16,32 @@ async function getAccessToken(): Promise<string> {
     return cachedToken.token;
   }
 
-  const sa = getServiceAccount();
-  const payload = {
-    iss: sa.client_email,
-    scope: 'https://www.googleapis.com/auth/drive',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600,
-  };
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
 
-  const assertion = jwt.sign(payload, sa.private_key, { algorithm: 'RS256' });
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error('Missing GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, or GOOGLE_OAUTH_REFRESH_TOKEN');
+  }
 
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion,
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
     }),
   });
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Failed to get Google access token: ${err}`);
+    throw new Error(`Failed to refresh Google access token: ${err}`);
   }
 
   const data = await res.json();
-  cachedToken = { token: data.access_token, expiresAt: now + 3600 };
+  cachedToken = { token: data.access_token, expiresAt: now + (data.expires_in ?? 3600) };
   return data.access_token;
 }
 
@@ -63,7 +49,7 @@ async function getAccessToken(): Promise<string> {
 async function findFolder(name: string, parentId: string): Promise<string | null> {
   const token = await getAccessToken();
   const q = `name='${name.replace(/'/g, "\\'")}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`;
+  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`;
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
@@ -77,7 +63,7 @@ async function findFolder(name: string, parentId: string): Promise<string | null
 // Create a folder inside a parent folder
 async function createFolder(name: string, parentId: string): Promise<string> {
   const token = await getAccessToken();
-  const res = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
+  const res = await fetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -125,7 +111,7 @@ export async function uploadFileToDrive(
     `--${boundary}`,
     `Content-Type: ${mimeType}`,
     '',
-    '', // body appended as binary below
+    '',
   ].join('\r\n');
 
   const bodyStart = Buffer.from(body, 'utf-8');
@@ -133,7 +119,7 @@ export async function uploadFileToDrive(
   const fullBody = Buffer.concat([bodyStart, buffer, bodyEnd]);
 
   const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,mimeType,webViewLink,webContentLink,size',
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,webViewLink,webContentLink,size',
     {
       method: 'POST',
       headers: {
@@ -152,7 +138,7 @@ export async function uploadFileToDrive(
 // Make a file publicly readable (so anyone with link can view/download)
 export async function makeFilePublic(fileId: string): Promise<void> {
   const token = await getAccessToken();
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`, {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -167,7 +153,7 @@ export async function makeFilePublic(fileId: string): Promise<void> {
 // Delete a file from Drive
 export async function deleteFileFromDrive(fileId: string): Promise<void> {
   const token = await getAccessToken();
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`, {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
