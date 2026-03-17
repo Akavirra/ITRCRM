@@ -63,7 +63,7 @@ async function getAccessToken(): Promise<string> {
 async function findFolder(name: string, parentId: string): Promise<string | null> {
   const token = await getAccessToken();
   const q = `name='${name.replace(/'/g, "\\'")}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`;
+  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`;
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
@@ -77,7 +77,7 @@ async function findFolder(name: string, parentId: string): Promise<string | null
 // Create a folder inside a parent folder
 async function createFolder(name: string, parentId: string): Promise<string> {
   const token = await getAccessToken();
-  const res = await fetch('https://www.googleapis.com/drive/v3/files', {
+  const res = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -133,7 +133,7 @@ export async function uploadFileToDrive(
   const fullBody = Buffer.concat([bodyStart, buffer, bodyEnd]);
 
   const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,webViewLink,webContentLink,size',
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,mimeType,webViewLink,webContentLink,size',
     {
       method: 'POST',
       headers: {
@@ -152,7 +152,7 @@ export async function uploadFileToDrive(
 // Make a file publicly readable (so anyone with link can view/download)
 export async function makeFilePublic(fileId: string): Promise<void> {
   const token = await getAccessToken();
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -167,7 +167,7 @@ export async function makeFilePublic(fileId: string): Promise<void> {
 // Delete a file from Drive
 export async function deleteFileFromDrive(fileId: string): Promise<void> {
   const token = await getAccessToken();
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
