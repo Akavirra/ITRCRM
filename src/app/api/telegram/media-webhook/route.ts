@@ -39,6 +39,8 @@ interface TelegramMessage {
   voice?: { file_id: string; file_size?: number; mime_type?: string };
   animation?: { file_id: string; file_size?: number; file_name?: string; mime_type?: string };
   caption?: string;
+  forum_topic_created?: { name: string; icon_color?: number };
+  forum_topic_edited?: { name?: string };
 }
 
 interface MediaInfo {
@@ -141,6 +143,50 @@ async function getOrCreateTopic(threadId: number, topicName: string): Promise<nu
   return result!.id;
 }
 
+async function handleTopicCreated(msg: TelegramMessage, name: string): Promise<void> {
+  const threadId = msg.message_thread_id;
+  if (!threadId) return;
+
+  const existing = await get<{ id: number }>(
+    'SELECT id FROM media_topics WHERE thread_id = $1',
+    [threadId]
+  );
+  if (existing) {
+    // Update name and Drive folder name
+    const driveFolderId = await getOrCreateTopicFolder(name);
+    await run(
+      'UPDATE media_topics SET name = $1, drive_folder_id = $2 WHERE thread_id = $3',
+      [name, driveFolderId, threadId]
+    );
+  } else {
+    const driveFolderId = await getOrCreateTopicFolder(name);
+    await run(
+      'INSERT INTO media_topics (thread_id, name, drive_folder_id) VALUES ($1, $2, $3)',
+      [threadId, name, driveFolderId]
+    );
+  }
+  console.log(`[media-webhook] Topic ${threadId} registered/updated: "${name}"`);
+}
+
+async function handleTopicEdited(msg: TelegramMessage, name: string): Promise<void> {
+  const threadId = msg.message_thread_id;
+  if (!threadId) return;
+
+  const existing = await get<{ id: number; drive_folder_id: string }>(
+    'SELECT id, drive_folder_id FROM media_topics WHERE thread_id = $1',
+    [threadId]
+  );
+  if (!existing) return;
+
+  // Create new Drive folder with updated name, keep old files where they are
+  const driveFolderId = await getOrCreateTopicFolder(name);
+  await run(
+    'UPDATE media_topics SET name = $1, drive_folder_id = $2 WHERE thread_id = $3',
+    [name, driveFolderId, threadId]
+  );
+  console.log(`[media-webhook] Topic ${threadId} renamed to: "${name}"`);
+}
+
 export async function POST(request: NextRequest) {
   if (!verifySecret(request)) {
     return NextResponse.json({ ok: false }, { status: 401 });
@@ -159,6 +205,20 @@ export async function POST(request: NextRequest) {
   // Only process messages from the school group
   const groupId = process.env.TELEGRAM_SCHOOL_GROUP_ID;
   if (groupId && String(msg.chat.id) !== groupId) {
+    return NextResponse.json({ ok: true });
+  }
+
+  // Handle topic created/edited service messages
+  if (msg.forum_topic_created?.name) {
+    try { await handleTopicCreated(msg, msg.forum_topic_created.name); } catch (err) {
+      console.error('[media-webhook] Error handling topic_created:', err);
+    }
+    return NextResponse.json({ ok: true });
+  }
+  if (msg.forum_topic_edited?.name) {
+    try { await handleTopicEdited(msg, msg.forum_topic_edited.name); } catch (err) {
+      console.error('[media-webhook] Error handling topic_edited:', err);
+    }
     return NextResponse.json({ ok: true });
   }
 
