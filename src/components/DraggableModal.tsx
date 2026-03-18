@@ -437,13 +437,9 @@ export default function DraggableModal({
             flexShrink: 0,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
             {/* Drag indicator */}
-            <div style={{ 
-              display: 'flex', 
-              gap: '2px', 
-              opacity: 0.4,
-            }}>
+            <div style={{ display: 'flex', gap: '2px', opacity: 0.4, flexShrink: 0 }}>
               <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#94a3b8' }} />
               <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#94a3b8' }} />
             </div>
@@ -453,11 +449,15 @@ export default function DraggableModal({
               fontWeight: 600,
               color: '#1e293b',
               letterSpacing: '-0.01em',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
             }}>
               {title}
             </h3>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             {headerAction}
             {/* Go to page button */}
             {(groupUrl || courseUrl) && (

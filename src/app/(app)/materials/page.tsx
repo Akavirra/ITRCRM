@@ -4,9 +4,80 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FolderOpen, FileText, Image, Video, Music, File,
   Download, ExternalLink, Search, Trash2, LayoutGrid,
-  LayoutList, ChevronLeft, ChevronRight,
+  LayoutList, ChevronLeft, ChevronRight, MoreVertical,
 } from 'lucide-react';
 import DraggableModal from '@/components/DraggableModal';
+
+// ── Kebab Menu ────────────────────────────────────────────────────────────────
+
+interface KebabItem {
+  label: string;
+  icon: React.ReactNode;
+  href?: string;
+  onClick?: () => void;
+  danger?: boolean;
+}
+
+function KebabMenu({ items, counter }: { items: KebabItem[]; counter?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+      {counter && (
+        <span style={{ fontSize: 12, color: '#94a3b8' }}>{counter}</span>
+      )}
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 6, border: 'none', background: open ? '#e2e8f0' : 'transparent', color: '#64748b', cursor: 'pointer', flexShrink: 0 }}
+      >
+        <MoreVertical size={15} />
+      </button>
+      {open && (
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06)', minWidth: 190, zIndex: 200, overflow: 'hidden' }}
+        >
+          {items.map((item, i) => (
+            item.href ? (
+              <a
+                key={i}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', textDecoration: 'none', color: item.danger ? '#ef4444' : '#1e293b', fontSize: 13, fontWeight: 500, borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none' }}
+                onMouseEnter={e => { e.currentTarget.style.background = item.danger ? '#fff5f5' : '#f8fafc'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                {item.icon} {item.label}
+              </a>
+            ) : (
+              <button
+                key={i}
+                onClick={() => { setOpen(false); item.onClick?.(); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', color: item.danger ? '#ef4444' : '#1e293b', fontSize: 13, fontWeight: 500, textAlign: 'left', borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none' }}
+                onMouseEnter={e => { e.currentTarget.style.background = item.danger ? '#fff5f5' : '#f8fafc'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                {item.icon} {item.label}
+              </button>
+            )
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Topic {
   id: number;
@@ -158,27 +229,14 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
     setModalSize(calcMediaSize(img.naturalWidth, img.naturalHeight, false));
   }
 
-  const iconBtn: React.CSSProperties = {
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    width: 28, height: 28, borderRadius: 6, textDecoration: 'none', flexShrink: 0,
-  };
-
   const headerAction = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      {hasNav && (
-        <span style={{ fontSize: 12, color: '#94a3b8', marginRight: 4 }}>
-          {index + 1} / {files.length}
-        </span>
-      )}
-      <a href={file.drive_download_url} target="_blank" rel="noopener noreferrer"
-        title="Завантажити" style={{ ...iconBtn, background: '#f0fdf4', color: '#16a34a' }}>
-        <Download size={14} />
-      </a>
-      <a href={file.drive_view_url} target="_blank" rel="noopener noreferrer"
-        title="Відкрити в Google Drive" style={{ ...iconBtn, background: '#eff6ff', color: '#3b82f6' }}>
-        <ExternalLink size={14} />
-      </a>
-    </div>
+    <KebabMenu
+      counter={hasNav ? `${index + 1} / ${files.length}` : undefined}
+      items={[
+        { label: 'Завантажити', icon: <Download size={14} />, href: file.drive_download_url },
+        { label: 'Відкрити в Google Drive', icon: <ExternalLink size={14} />, href: file.drive_view_url },
+      ]}
+    />
   );
 
   return (
@@ -563,19 +621,12 @@ function GridCard({ file, selectedTopicId, onOpenLightbox, onDelete, deletingId 
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-          <a href={file.drive_view_url} target="_blank" rel="noopener noreferrer" title="Відкрити"
-            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '5px 0', borderRadius: 8, background: '#eff6ff', color: '#3b82f6', textDecoration: 'none', fontSize: 12, fontWeight: 500 }}>
-            <ExternalLink size={12} /> Відкрити
-          </a>
-          <a href={file.drive_download_url} target="_blank" rel="noopener noreferrer" title="Завантажити"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px 8px', borderRadius: 8, background: '#f0fdf4', color: '#16a34a', textDecoration: 'none' }}>
-            <Download size={12} />
-          </a>
-          <button onClick={() => onDelete(file.id)} disabled={deletingId === file.id} title="Видалити"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px 8px', borderRadius: 8, background: '#fff5f5', color: '#ef4444', border: 'none', cursor: 'pointer' }}>
-            <Trash2 size={12} />
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+          <KebabMenu items={[
+            { label: 'Відкрити в Google Drive', icon: <ExternalLink size={14} />, href: file.drive_view_url },
+            { label: 'Завантажити', icon: <Download size={14} />, href: file.drive_download_url },
+            { label: 'Видалити', icon: <Trash2 size={14} />, onClick: () => onDelete(file.id), danger: true },
+          ]} />
         </div>
       </div>
     </div>
@@ -627,20 +678,11 @@ function ListView({ files, selectedTopicId, onOpenLightbox, onDelete, deletingId
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-              <a href={file.drive_view_url} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, background: '#eff6ff', color: '#3b82f6', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
-                <ExternalLink size={13} /> Відкрити
-              </a>
-              <a href={file.drive_download_url} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', borderRadius: 8, background: '#f0fdf4', color: '#16a34a', textDecoration: 'none' }}>
-                <Download size={13} />
-              </a>
-              <button onClick={() => onDelete(file.id)} disabled={deletingId === file.id}
-                style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', borderRadius: 8, background: '#fff5f5', color: '#ef4444', border: 'none', cursor: 'pointer' }}>
-                <Trash2 size={13} />
-              </button>
-            </div>
+            <KebabMenu items={[
+              { label: 'Відкрити в Google Drive', icon: <ExternalLink size={14} />, href: file.drive_view_url },
+              { label: 'Завантажити', icon: <Download size={14} />, href: file.drive_download_url },
+              { label: 'Видалити', icon: <Trash2 size={14} />, onClick: () => onDelete(file.id), danger: true },
+            ]} />
           </div>
         );
       })}
