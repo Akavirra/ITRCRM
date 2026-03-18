@@ -123,13 +123,21 @@ function formatDate(iso: string): string {
 
 const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|bmp|svg|avif|tiff?)$/i;
 const VIDEO_EXTENSIONS = /\.(mp4|mov|avi|mkv|webm|m4v|3gp|wmv|flv|ts)$/i;
+const AUDIO_EXTENSIONS = /\.(mp3|wav|ogg|flac|aac|m4a|wma|opus|oga)$/i;
 
-function isVisual(type: string, fileName?: string) {
-  if (type === 'photo' || type === 'animation' || type === 'video') return true;
-  // Documents that are images/videos (sent as files) — check by extension for backwards compat
+function isPreviewable(type: string, fileName?: string) {
+  if (['photo', 'animation', 'video', 'audio', 'voice'].includes(type)) return true;
   if (type === 'document' && fileName) {
-    if (IMAGE_EXTENSIONS.test(fileName) || VIDEO_EXTENSIONS.test(fileName)) return true;
+    if (IMAGE_EXTENSIONS.test(fileName)) return true;
+    if (VIDEO_EXTENSIONS.test(fileName)) return true;
+    if (AUDIO_EXTENSIONS.test(fileName)) return true;
   }
+  return false;
+}
+
+function isAudioType(type: string, fileName?: string) {
+  if (type === 'audio' || type === 'voice') return true;
+  if (type === 'document' && fileName && AUDIO_EXTENSIONS.test(fileName)) return true;
   return false;
 }
 
@@ -166,13 +174,15 @@ const HEADER_H = 52; // DraggableModal header height px
 function calcMediaSize(
   mediaW: number | null | undefined,
   mediaH: number | null | undefined,
-  isVideo: boolean,
+  type: 'image' | 'video' | 'audio',
 ): { width: number; height: number } {
+  if (type === 'audio') return { width: 420, height: HEADER_H + 88 };
+
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
   if (mediaW && mediaH) {
-    const maxW = Math.min(vw * 0.88, isVideo ? 1280 : 1400);
+    const maxW = Math.min(vw * 0.88, type === 'video' ? 1280 : 1400);
     const maxContentH = Math.min(vh * 0.88, 900) - HEADER_H;
     const scale = Math.min(maxW / mediaW, maxContentH / mediaH, 1);
     const w = Math.max(Math.round(mediaW * scale), 320);
@@ -180,8 +190,7 @@ function calcMediaSize(
     return { width: w, height: h };
   }
 
-  // Fallback: 16:9 for video, default for image
-  if (isVideo) {
+  if (type === 'video') {
     const w = Math.round(Math.min(vw * 0.82, 960));
     const h = Math.min(Math.round(w * 9 / 16) + HEADER_H, vh * 0.9);
     return { width: w, height: h };
@@ -198,17 +207,19 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
 }) {
   const file = files[index];
   const isVideo = file.file_type === 'video' || VIDEO_EXTENSIONS.test(file.file_name ?? '');
+  const isAudio = isAudioType(file.file_type, file.file_name);
+  const mediaType = isAudio ? 'audio' : isVideo ? 'video' : 'image';
   const hasNav = files.length > 1;
 
   const [modalSize, setModalSize] = useState<{ width: number; height: number }>(() => {
     if (typeof window === 'undefined') return { width: 760, height: 520 };
-    return calcMediaSize(file.media_width, file.media_height, isVideo);
+    return calcMediaSize(file.media_width, file.media_height, mediaType);
   });
 
   // Recalculate when switching files
   useEffect(() => {
-    setModalSize(calcMediaSize(file.media_width, file.media_height, isVideo));
-  }, [file.id, isVideo, file.media_width, file.media_height]);
+    setModalSize(calcMediaSize(file.media_width, file.media_height, mediaType));
+  }, [file.id, mediaType, file.media_width, file.media_height]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -223,10 +234,10 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
 
   // Fallback: recalculate from actual image element if DB dimensions missing
   function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
-    if (file.media_width && file.media_height) return; // already sized correctly
+    if (file.media_width && file.media_height) return;
     const img = e.currentTarget;
     if (!img.naturalWidth || !img.naturalHeight) return;
-    setModalSize(calcMediaSize(img.naturalWidth, img.naturalHeight, false));
+    setModalSize(calcMediaSize(img.naturalWidth, img.naturalHeight, 'image'));
   }
 
   const headerAction = (
@@ -250,18 +261,13 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
       minWidth={320}
       minHeight={240}
       headerAction={headerAction}
-      contentStyle={{ padding: 0, background: '#0f172a', overflow: 'hidden', position: 'relative' }}
+      contentStyle={{ padding: 0, background: isAudio ? '#f8fafc' : '#0f172a', overflow: 'hidden', position: 'relative' }}
     >
-      <style>{`
-        @keyframes mediaFadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-      `}</style>
+      <style>{`@keyframes mediaFadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
 
-        {/* Prev arrow */}
-        {hasNav && index > 0 && (
+        {/* Prev arrow — hidden for audio */}
+        {!isAudio && hasNav && index > 0 && (
           <button onClick={onPrev}
             style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
             <ChevronLeft size={22} />
@@ -269,12 +275,12 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
         )}
 
         {/* Content */}
-        {isVideo ? (
+        {isAudio || isVideo ? (
           <iframe
             key={file.drive_file_id}
             src={`https://drive.google.com/file/d/${file.drive_file_id}/preview`}
             allow="autoplay"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', animation: 'mediaFadeIn 0.2s ease' }}
+            style={{ ...(isAudio ? { width: '100%', height: '100%' } : { position: 'absolute', inset: 0, width: '100%', height: '100%' }), border: 'none', animation: 'mediaFadeIn 0.2s ease' }}
           />
         ) : (
           <img
@@ -286,8 +292,8 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
           />
         )}
 
-        {/* Next arrow */}
-        {hasNav && index < files.length - 1 && (
+        {/* Next arrow — hidden for audio */}
+        {!isAudio && hasNav && index < files.length - 1 && (
           <button onClick={onNext}
             style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
             <ChevronRight size={22} />
@@ -377,7 +383,7 @@ export default function MaterialsPage() {
   });
 
   // Visual files for lightbox
-  const visualFiles = filteredFiles.filter(f => isVisual(f.file_type, f.file_name));
+  const visualFiles = filteredFiles.filter(f => isPreviewable(f.file_type, f.file_name));
 
   function openLightbox(file: MediaFile) {
     const idx = visualFiles.findIndex(f => f.id === file.id);
@@ -563,7 +569,7 @@ function GridCard({ file, selectedTopicId, onOpenLightbox, onDelete, deletingId 
   deletingId: number | null;
 }) {
   const [hovered, setHovered] = useState(false);
-  const visual = isVisual(file.file_type, file.file_name);
+  const visual = isPreviewable(file.file_type, file.file_name);
 
   return (
     <div
@@ -578,22 +584,37 @@ function GridCard({ file, selectedTopicId, onOpenLightbox, onDelete, deletingId 
       >
         {visual ? (
           <>
-            <img
-              src={thumbUrl(file.drive_file_id)}
-              alt={file.file_name}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-            {file.file_type === 'video' && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Video size={18} color="#8b5cf6" />
+            {isAudioType(file.file_type, file.file_name) ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 16 }}>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Music size={26} color="#f59e0b" />
                 </div>
+                <TypeBadge type={file.file_type} />
               </div>
+            ) : (
+              <>
+                <img
+                  src={thumbUrl(file.drive_file_id)}
+                  alt={file.file_name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+                {file.file_type === 'video' && (
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Video size={18} color="#8b5cf6" />
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             {hovered && (
-              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ExternalLink size={22} color="#fff" />
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {isAudioType(file.file_type, file.file_name)
+                    ? <Music size={18} color="#f59e0b" />
+                    : <ExternalLink size={18} color="#3b82f6" />}
+                </div>
               </div>
             )}
           </>
@@ -645,7 +666,7 @@ function ListView({ files, selectedTopicId, onOpenLightbox, onDelete, deletingId
   return (
     <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #f0f0f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
       {files.map((file, i) => {
-        const visual = isVisual(file.file_type, file.file_name);
+        const visual = isPreviewable(file.file_type, file.file_name);
         return (
           <div key={file.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < files.length - 1 ? '1px solid #f8f9fa' : 'none' }}>
             {/* Thumb or icon */}
@@ -653,7 +674,9 @@ function ListView({ files, selectedTopicId, onOpenLightbox, onDelete, deletingId
               onClick={() => visual && onOpenLightbox(file)}
               style={{ width: 44, height: 44, borderRadius: 10, overflow: 'hidden', background: '#f8fafc', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: visual ? 'pointer' : 'default', position: 'relative' }}
             >
-              {visual ? (
+              {isAudioType(file.file_type, file.file_name) ? (
+                <Music size={22} color="#f59e0b" />
+              ) : visual ? (
                 <img src={thumbUrl(file.drive_file_id, 100)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               ) : (
                 <FileTypeIcon type={file.file_type} size={22} />

@@ -81,6 +81,7 @@ function extractMedia(msg: TelegramMessage): MediaInfo | null {
     const mime = msg.document.mime_type ?? 'application/octet-stream';
     const docType: MediaType = mime.startsWith('image/') ? 'photo'
       : mime.startsWith('video/') ? 'video'
+      : mime.startsWith('audio/') ? 'audio'
       : 'document';
     return {
       fileId: msg.document.file_id,
