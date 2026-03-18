@@ -83,7 +83,8 @@
       "Bash(xargs grep:*)",
       "Bash(node scripts/add-media-dimensions.js)",
       "Bash(node -e \":*)",
-      "Bash(node scripts/backfill-media-dimensions.js)"
+      "Bash(node scripts/backfill-media-dimensions.js)",
+      "Bash(grep -r \"GOOGLE_OAUTH\\\\|GOOGLE_DRIVE_ROOT\" C:CProjectsITRoboticsCRMITRobotCRM --include=*.ts --include=*.tsx --include=*.js --include=*.json)"
     ]
   }
 }
