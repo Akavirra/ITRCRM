@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
@@ -52,7 +52,7 @@ export default function SettingsPage() {
   // City autocomplete state
   const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>([]);
   const [cityInputFocused, setCityInputFocused] = useState(false);
-  const [cityQuery, setCityQuery] = useState('');
+  const cityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Settings state
   const [settings, setSettings] = useState({
@@ -110,18 +110,6 @@ export default function SettingsPage() {
 
     fetchData();
   }, [router]);
-
-  // City autocomplete: debounced fetch on cityQuery change
-  useEffect(() => {
-    if (cityQuery.length < 2) { setCitySuggestions([]); return; }
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/weather/cities?q=${encodeURIComponent(cityQuery)}`);
-        if (res.ok) setCitySuggestions(await res.json());
-      } catch (_) { /* ignore */ }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [cityQuery]);
 
   const handleSave = async () => {
     try {
@@ -390,8 +378,16 @@ export default function SettingsPage() {
                           className="form-input"
                           value={settings.weatherCity}
                           onChange={(e) => {
-                            handleInputChange('weatherCity', e.target.value);
-                            setCityQuery(e.target.value);
+                            const val = e.target.value;
+                            handleInputChange('weatherCity', val);
+                            if (cityTimerRef.current) clearTimeout(cityTimerRef.current);
+                            if (val.length < 2) { setCitySuggestions([]); return; }
+                            cityTimerRef.current = setTimeout(async () => {
+                              try {
+                                const res = await fetch(`/api/weather/cities?q=${encodeURIComponent(val)}`);
+                                if (res.ok) setCitySuggestions(await res.json());
+                              } catch { /* ignore */ }
+                            }, 300);
                           }}
                           onFocus={() => setCityInputFocused(true)}
                           onBlur={() => setTimeout(() => setCityInputFocused(false), 150)}
