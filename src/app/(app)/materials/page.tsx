@@ -155,20 +155,25 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
     setModalSize({ width: w, height: h });
   }
 
+  const iconBtn: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    width: 28, height: 28, borderRadius: 6, textDecoration: 'none', flexShrink: 0,
+  };
+
   const headerAction = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
       {hasNav && (
         <span style={{ fontSize: 12, color: '#94a3b8', marginRight: 4 }}>
           {index + 1} / {files.length}
         </span>
       )}
       <a href={file.drive_download_url} target="_blank" rel="noopener noreferrer"
-        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, background: '#f0fdf4', color: '#16a34a', textDecoration: 'none', fontSize: 12, fontWeight: 500 }}>
-        <Download size={12} /> Завантажити
+        title="Завантажити" style={{ ...iconBtn, background: '#f0fdf4', color: '#16a34a' }}>
+        <Download size={14} />
       </a>
       <a href={file.drive_view_url} target="_blank" rel="noopener noreferrer"
-        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, background: '#eff6ff', color: '#3b82f6', textDecoration: 'none', fontSize: 12, fontWeight: 500 }}>
-        <ExternalLink size={12} /> Drive
+        title="Відкрити в Google Drive" style={{ ...iconBtn, background: '#eff6ff', color: '#3b82f6' }}>
+        <ExternalLink size={14} />
       </a>
     </div>
   );
@@ -186,13 +191,19 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
       headerAction={headerAction}
       contentStyle={{ padding: 0, background: '#0f172a', overflow: 'hidden' }}
     >
+      <style>{`
+        @keyframes mediaFadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+      `}</style>
       {isVideo ? (
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
           <iframe
             key={file.drive_file_id}
             src={`https://drive.google.com/file/d/${file.drive_file_id}/preview`}
             allow="autoplay"
-            style={{ flex: 1, width: '100%', border: 'none' }}
+            style={{ flex: 1, width: '100%', border: 'none', animation: 'mediaFadeIn 0.2s ease' }}
           />
           {hasNav && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '6px 0', background: '#1e293b', flexShrink: 0 }}>
@@ -220,7 +231,7 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
             src={thumbUrl(file.drive_file_id, 1600)}
             alt={file.file_name}
             onLoad={handleImageLoad}
-            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', animation: 'mediaFadeIn 0.2s ease' }}
           />
           {index < files.length - 1 && (
             <button onClick={onNext}

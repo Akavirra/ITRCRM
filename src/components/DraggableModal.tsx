@@ -400,7 +400,7 @@ export default function DraggableModal({
           overflow: 'hidden',
           pointerEvents: 'auto',
           transform: 'translate(0, 0) scale(1)',
-          transition: isDragging || isResizing ? 'none' : 'transform 0.2s ease-out, box-shadow 0.2s ease-out',
+          transition: isDragging || isResizing ? 'none' : 'transform 0.2s ease-out, box-shadow 0.2s ease-out, width 0.22s ease, height 0.22s ease',
           animation: 'modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
           zIndex: 10000,
         }}
