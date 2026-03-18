@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
@@ -52,19 +52,7 @@ export default function SettingsPage() {
   // City autocomplete state
   const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>([]);
   const [cityInputFocused, setCityInputFocused] = useState(false);
-  const cityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cityWrapperRef = useRef<HTMLDivElement>(null);
-
-  const fetchCitySuggestions = useCallback((q: string) => {
-    if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
-    if (q.length < 2) { setCitySuggestions([]); return; }
-    cityDebounceRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/weather/cities?q=${encodeURIComponent(q)}`);
-        if (res.ok) setCitySuggestions(await res.json());
-      } catch { /* ignore */ }
-    }, 300);
-  }, []);
+  const [cityQuery, setCityQuery] = useState('');
 
   // Settings state
   const [settings, setSettings] = useState({
@@ -122,6 +110,18 @@ export default function SettingsPage() {
 
     fetchData();
   }, [router]);
+
+  // City autocomplete: debounced fetch on cityQuery change
+  useEffect(() => {
+    if (cityQuery.length < 2) { setCitySuggestions([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/weather/cities?q=${encodeURIComponent(cityQuery)}`);
+        if (res.ok) setCitySuggestions(await res.json());
+      } catch (_) { /* ignore */ }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [cityQuery]);
 
   const handleSave = async () => {
     try {
@@ -384,14 +384,14 @@ export default function SettingsPage() {
 
                     <div className="form-group">
                       <label className="form-label">Місто</label>
-                      <div ref={cityWrapperRef} style={{ maxWidth: '300px', position: 'relative' }}>
+                      <div style={{ maxWidth: '300px', position: 'relative' }}>
                         <input
                           type="text"
                           className="form-input"
                           value={settings.weatherCity}
                           onChange={(e) => {
                             handleInputChange('weatherCity', e.target.value);
-                            fetchCitySuggestions(e.target.value);
+                            setCityQuery(e.target.value);
                           }}
                           onFocus={() => setCityInputFocused(true)}
                           onBlur={() => setTimeout(() => setCityInputFocused(false), 150)}
