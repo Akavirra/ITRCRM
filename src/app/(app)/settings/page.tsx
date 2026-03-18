@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
@@ -28,57 +28,6 @@ interface User {
 }
 
 type SettingsTab = 'general' | 'profile' | 'notifications' | 'system';
-
-interface CitySuggestion { name: string; nameEn: string; country: string; state?: string; }
-
-function CityAutocompleteInput({ defaultValue, onCommit }: { defaultValue: string; onCommit: (v: string) => void }) {
-  const [inputVal, setInputVal] = useState(defaultValue);
-  const [options, setOptions] = useState<CitySuggestion[]>([]);
-
-  // Sync when parent loads real value from API (only once, when it changes from default)
-  const syncedRef = useRef(false);
-  useEffect(() => {
-    if (!syncedRef.current && defaultValue && defaultValue !== 'Kyiv') {
-      setInputVal(defaultValue);
-      syncedRef.current = true;
-    }
-  }, [defaultValue]);
-
-  useEffect(() => {
-    if (inputVal.length < 2) { setOptions([]); return; }
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/weather/cities?q=${encodeURIComponent(inputVal)}`);
-        if (res.ok) setOptions(await res.json());
-      } catch { /* ignore */ }
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [inputVal]);
-
-  return (
-    <div style={{ maxWidth: '300px' }}>
-      <input
-        type="text"
-        className="form-input"
-        value={inputVal}
-        onChange={(e) => {
-          setInputVal(e.target.value);
-          onCommit(e.target.value);
-        }}
-        list="city-datalist"
-        placeholder="напр. Київ, Харків, Львів"
-        style={{ width: '100%' }}
-      />
-      <datalist id="city-datalist">
-        {options.map((s, i) => (
-          <option key={i} value={s.name}>
-            {s.state ? `${s.state}, ` : ''}{s.country}
-          </option>
-        ))}
-      </datalist>
-    </div>
-  );
-}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -417,9 +366,13 @@ export default function SettingsPage() {
 
                     <div className="form-group">
                       <label className="form-label">Місто</label>
-                      <CityAutocompleteInput
-                        defaultValue={settings.weatherCity}
-                        onCommit={(v) => handleInputChange('weatherCity', v)}
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={settings.weatherCity}
+                        onChange={(e) => handleInputChange('weatherCity', e.target.value)}
+                        placeholder="напр. Київ, Харків, Lviv"
+                        style={{ maxWidth: '300px' }}
                       />
                       <span className="form-hint">Введіть назву міста українською або англійською (наприклад: Київ, Одеса, Дніпро)</span>
                     </div>
