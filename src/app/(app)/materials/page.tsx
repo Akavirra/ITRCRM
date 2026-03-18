@@ -20,24 +20,41 @@ interface KebabItem {
 
 function KebabMenu({ items, counter }: { items: KebabItem[]; counter?: string }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [dropPos, setDropPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (btnRef.current && !btnRef.current.closest('[data-kebab]')?.contains(e.target as Node)) {
+        setOpen(false);
+      }
     };
+    const scrollHandler = () => setOpen(false);
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('scroll', scrollHandler, true);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('scroll', scrollHandler, true);
+    };
   }, [open]);
 
+  function handleOpen(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    setDropPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    setOpen(o => !o);
+  }
+
   return (
-    <div ref={ref} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+    <div data-kebab="" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
       {counter && (
         <span style={{ fontSize: 12, color: '#94a3b8' }}>{counter}</span>
       )}
       <button
-        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        ref={btnRef}
+        onClick={handleOpen}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 6, border: 'none', background: open ? '#e2e8f0' : 'transparent', color: '#64748b', cursor: 'pointer', flexShrink: 0 }}
       >
         <MoreVertical size={15} />
@@ -45,7 +62,7 @@ function KebabMenu({ items, counter }: { items: KebabItem[]; counter?: string })
       {open && (
         <div
           onClick={e => e.stopPropagation()}
-          style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06)', minWidth: 190, zIndex: 200, overflow: 'hidden' }}
+          style={{ position: 'fixed', top: dropPos.top, right: dropPos.right, background: '#fff', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.06)', minWidth: 200, zIndex: 9000, overflow: 'hidden' }}
         >
           {items.map((item, i) => (
             item.href ? (
