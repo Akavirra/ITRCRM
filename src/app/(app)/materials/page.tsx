@@ -91,31 +91,28 @@ function TypeBadge({ type }: { type: string }) {
 // ── Media Viewer Modal ────────────────────────────────────────────────────────
 
 const HEADER_H = 52; // DraggableModal header height px
-const NAV_BAR_H = 44; // video nav bar height px
 
 function calcMediaSize(
   mediaW: number | null | undefined,
   mediaH: number | null | undefined,
   isVideo: boolean,
-  hasNav: boolean,
 ): { width: number; height: number } {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const extraH = HEADER_H + (isVideo && hasNav ? NAV_BAR_H : 0);
 
   if (mediaW && mediaH) {
     const maxW = Math.min(vw * 0.88, isVideo ? 1280 : 1400);
-    const maxContentH = Math.min(vh * 0.88, 900) - HEADER_H - (isVideo && hasNav ? NAV_BAR_H : 0);
+    const maxContentH = Math.min(vh * 0.88, 900) - HEADER_H;
     const scale = Math.min(maxW / mediaW, maxContentH / mediaH, 1);
     const w = Math.max(Math.round(mediaW * scale), 320);
-    const h = Math.round(mediaH * scale) + extraH;
+    const h = Math.round(mediaH * scale) + HEADER_H;
     return { width: w, height: h };
   }
 
   // Fallback: 16:9 for video, default for image
   if (isVideo) {
     const w = Math.round(Math.min(vw * 0.82, 960));
-    const h = Math.min(Math.round(w * 9 / 16) + extraH, vh * 0.9);
+    const h = Math.min(Math.round(w * 9 / 16) + HEADER_H, vh * 0.9);
     return { width: w, height: h };
   }
   return { width: 760, height: 520 };
@@ -134,13 +131,13 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
 
   const [modalSize, setModalSize] = useState<{ width: number; height: number }>(() => {
     if (typeof window === 'undefined') return { width: 760, height: 520 };
-    return calcMediaSize(file.media_width, file.media_height, isVideo, hasNav);
+    return calcMediaSize(file.media_width, file.media_height, isVideo);
   });
 
   // Recalculate when switching files
   useEffect(() => {
-    setModalSize(calcMediaSize(file.media_width, file.media_height, isVideo, hasNav));
-  }, [file.id, isVideo, hasNav, file.media_width, file.media_height]);
+    setModalSize(calcMediaSize(file.media_width, file.media_height, isVideo));
+  }, [file.id, isVideo, file.media_width, file.media_height]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -158,7 +155,7 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
     if (file.media_width && file.media_height) return; // already sized correctly
     const img = e.currentTarget;
     if (!img.naturalWidth || !img.naturalHeight) return;
-    setModalSize(calcMediaSize(img.naturalWidth, img.naturalHeight, false, hasNav));
+    setModalSize(calcMediaSize(img.naturalWidth, img.naturalHeight, false));
   }
 
   const iconBtn: React.CSSProperties = {
@@ -203,35 +200,25 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
           to   { opacity: 1; }
         }
       `}</style>
-      {isVideo ? (
-        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
+      <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+
+        {/* Prev arrow */}
+        {hasNav && index > 0 && (
+          <button onClick={onPrev}
+            style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
+            <ChevronLeft size={22} />
+          </button>
+        )}
+
+        {/* Content */}
+        {isVideo ? (
           <iframe
             key={file.drive_file_id}
             src={`https://drive.google.com/file/d/${file.drive_file_id}/preview`}
             allow="autoplay"
-            style={{ flex: 1, width: '100%', border: 'none', animation: 'mediaFadeIn 0.2s ease' }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', animation: 'mediaFadeIn 0.2s ease' }}
           />
-          {hasNav && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '6px 0', background: '#1e293b', flexShrink: 0 }}>
-              <button onClick={onPrev} disabled={index === 0}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 14px', borderRadius: 8, border: 'none', background: index === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)', color: index === 0 ? 'rgba(255,255,255,0.3)' : '#fff', cursor: index === 0 ? 'default' : 'pointer', fontSize: 13 }}>
-                <ChevronLeft size={16} /> Попереднє
-              </button>
-              <button onClick={onNext} disabled={index === files.length - 1}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 14px', borderRadius: 8, border: 'none', background: index === files.length - 1 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)', color: index === files.length - 1 ? 'rgba(255,255,255,0.3)' : '#fff', cursor: index === files.length - 1 ? 'default' : 'pointer', fontSize: 13 }}>
-                Наступне <ChevronRight size={16} />
-              </button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {index > 0 && (
-            <button onClick={onPrev}
-              style={{ position: 'absolute', left: 10, zIndex: 10, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
-              <ChevronLeft size={22} />
-            </button>
-          )}
+        ) : (
           <img
             key={file.drive_file_id}
             src={thumbUrl(file.drive_file_id, 1600)}
@@ -239,14 +226,16 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
             onLoad={handleImageLoad}
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', animation: 'mediaFadeIn 0.2s ease' }}
           />
-          {index < files.length - 1 && (
-            <button onClick={onNext}
-              style={{ position: 'absolute', right: 10, zIndex: 10, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
-              <ChevronRight size={22} />
-            </button>
-          )}
-        </div>
-      )}
+        )}
+
+        {/* Next arrow */}
+        {hasNav && index < files.length - 1 && (
+          <button onClick={onNext}
+            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
+            <ChevronRight size={22} />
+          </button>
+        )}
+      </div>
     </DraggableModal>
   );
 }
