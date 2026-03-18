@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FolderOpen, FileText, Image, Video, Music, File,
   Download, ExternalLink, Search, Trash2, LayoutGrid,
-  LayoutList, X, ChevronLeft, ChevronRight,
+  LayoutList, ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import DraggableModal from '@/components/DraggableModal';
 
 interface Topic {
   id: number;
@@ -85,9 +86,9 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
-// ── Lightbox ─────────────────────────────────────────────────────────────────
+// ── Media Viewer Modal ────────────────────────────────────────────────────────
 
-function Lightbox({ files, index, onClose, onPrev, onNext }: {
+function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
   files: MediaFile[];
   index: number;
   onClose: () => void;
@@ -95,6 +96,7 @@ function Lightbox({ files, index, onClose, onPrev, onNext }: {
   onNext: () => void;
 }) {
   const file = files[index];
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -105,53 +107,95 @@ function Lightbox({ files, index, onClose, onPrev, onNext }: {
     return () => window.removeEventListener('keydown', handler);
   }, [onClose, onPrev, onNext]);
 
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,0.88)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}
-    >
-      {/* Close */}
-      <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
-        <X size={20} />
-      </button>
+  const isVideo = file.file_type === 'video' || VIDEO_EXTENSIONS.test(file.file_name ?? '');
 
-      {/* Prev */}
-      {index > 0 && (
-        <button onClick={e => { e.stopPropagation(); onPrev(); }} style={{ position: 'absolute', left: 20, background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
-          <ChevronLeft size={24} />
-        </button>
+  const headerAction = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      {files.length > 1 && (
+        <span style={{ fontSize: 12, color: '#94a3b8', marginRight: 4 }}>
+          {index + 1} / {files.length}
+        </span>
       )}
-
-      {/* Image */}
-      <div onClick={e => e.stopPropagation()} style={{ maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-        <img
-          src={thumbUrl(file.drive_file_id, 1200)}
-          alt={file.file_name}
-          style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: 8 }}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>{file.file_name}</span>
-          <a href={file.drive_view_url} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <ExternalLink size={13} /> Відкрити
-          </a>
-          <a href={file.drive_download_url} target="_blank" rel="noopener noreferrer" style={{ color: '#34d399', fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Download size={13} /> Завантажити
-          </a>
-        </div>
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>{index + 1} / {files.length}</span>
-      </div>
-
-      {/* Next */}
-      {index < files.length - 1 && (
-        <button onClick={e => { e.stopPropagation(); onNext(); }} style={{ position: 'absolute', right: 20, background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
-          <ChevronRight size={24} />
-        </button>
-      )}
+      <a
+        href={file.drive_download_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, background: '#f0fdf4', color: '#16a34a', textDecoration: 'none', fontSize: 12, fontWeight: 500 }}
+      >
+        <Download size={12} /> Завантажити
+      </a>
+      <a
+        href={file.drive_view_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, background: '#eff6ff', color: '#3b82f6', textDecoration: 'none', fontSize: 12, fontWeight: 500 }}
+      >
+        <ExternalLink size={12} /> Drive
+      </a>
     </div>
+  );
+
+  return (
+    <DraggableModal
+      id={`media-viewer-${file.id}`}
+      isOpen
+      onClose={onClose}
+      title={file.file_name}
+      initialWidth={760}
+      initialHeight={560}
+      minWidth={360}
+      minHeight={280}
+      headerAction={headerAction}
+      contentStyle={{ padding: 0, background: '#0f172a', overflow: 'hidden' }}
+    >
+      <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+
+        {/* Prev */}
+        {index > 0 && (
+          <button
+            onClick={onPrev}
+            style={{ position: 'absolute', left: 10, zIndex: 10, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}
+          >
+            <ChevronLeft size={22} />
+          </button>
+        )}
+
+        {/* Content */}
+        {isVideo ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            <img
+              src={thumbUrl(file.drive_file_id, 800)}
+              alt={file.file_name}
+              style={{ maxWidth: '100%', maxHeight: 380, objectFit: 'contain', borderRadius: 6 }}
+            />
+            <a
+              href={file.drive_view_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 20px', background: 'rgba(139,92,246,0.85)', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}
+            >
+              <Video size={16} /> Відтворити відео
+            </a>
+          </div>
+        ) : (
+          <img
+            src={thumbUrl(file.drive_file_id, 1200)}
+            alt={file.file_name}
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 6 }}
+          />
+        )}
+
+        {/* Next */}
+        {index < files.length - 1 && (
+          <button
+            onClick={onNext}
+            style={{ position: 'absolute', right: 10, zIndex: 10, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}
+          >
+            <ChevronRight size={22} />
+          </button>
+        )}
+      </div>
+    </DraggableModal>
   );
 }
 
@@ -251,9 +295,9 @@ export default function MaterialsPage() {
 
   return (
     <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
-      {/* Lightbox */}
+      {/* Media Viewer */}
       {lightboxIndex !== null && (
-        <Lightbox
+        <MediaViewerModal
           files={visualFiles}
           index={lightboxIndex}
           onClose={() => setLightboxIndex(null)}

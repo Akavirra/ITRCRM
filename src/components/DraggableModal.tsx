@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, ReactNode } from 'react';
+import { useState, useRef, useEffect, ReactNode, CSSProperties } from 'react';
 
 interface DraggableModalProps {
   id: string;
@@ -18,6 +18,7 @@ interface DraggableModalProps {
   onPositionChange?: (position: { x: number; y: number }) => void;
   onSizeChange?: (size: { width: number; height: number }) => void;
   headerAction?: ReactNode;
+  contentStyle?: CSSProperties;
 }
 
 export default function DraggableModal({
@@ -36,6 +37,7 @@ export default function DraggableModal({
   onPositionChange,
   onSizeChange,
   headerAction,
+  contentStyle,
 }: DraggableModalProps) {
   const [position, setPosition] = useState({ 
     x: initialPosition?.x ?? 100 + Math.random() * 100, 
@@ -356,6 +358,7 @@ export default function DraggableModal({
             padding: '16px',
             backgroundColor: '#fafbfc',
             WebkitOverflowScrolling: 'touch',
+            ...contentStyle,
           }}>
             {children}
           </div>
@@ -534,6 +537,7 @@ export default function DraggableModal({
           overflow: 'auto',
           padding: '16px',
           backgroundColor: '#fafbfc',
+          ...contentStyle,
         }}>
           {children}
         </div>
