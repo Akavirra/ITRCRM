@@ -23,6 +23,7 @@
     "db:add-notification-clears": "node scripts/add-notification-clears.js",
     "db:add-notifications-dedup-key": "node scripts/add-notifications-dedup-key.js",
     "db:add-media-tables": "node scripts/add-media-tables.js",
+    "db:add-weather-city": "node scripts/add-weather-city.js",
     "test": "jest"
   },
   "dependencies": {

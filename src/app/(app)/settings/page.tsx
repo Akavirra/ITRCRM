@@ -64,6 +64,8 @@ export default function SettingsPage() {
     timezone: 'Europe/Kyiv',
     dateFormat: 'DD.MM.YYYY',
     currency: 'UAH',
+    // Weather
+    weatherCity: 'Kyiv',
   });
 
   useEffect(() => {
@@ -83,6 +85,15 @@ export default function SettingsPage() {
           displayName: authData.user.name || '',
           email: authData.user.email || '',
         }));
+
+        // Load saved settings
+        const settRes = await fetch('/api/settings');
+        if (settRes.ok) {
+          const settData = await settRes.json();
+          if (settData.settings) {
+            setSettings(prev => ({ ...prev, ...settData.settings }));
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch user data:', error);
       } finally {
@@ -96,7 +107,7 @@ export default function SettingsPage() {
   const handleSave = async () => {
     try {
       const res = await fetch('/api/settings', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
       });
@@ -327,7 +338,7 @@ export default function SettingsPage() {
 
                     <div className="form-group">
                       <label className="form-label">Часовий пояс</label>
-                      <select 
+                      <select
                         className="form-select"
                         value={settings.timezone}
                         onChange={(e) => handleInputChange('timezone', e.target.value)}
@@ -337,6 +348,32 @@ export default function SettingsPage() {
                         <option value="Europe/London">Europe/London (UTC+0)</option>
                         <option value="Europe/Warsaw">Europe/Warsaw (UTC+1)</option>
                       </select>
+                    </div>
+                  </div>
+
+                  <div className="form-section" style={{ marginBottom: 0, borderBottom: 'none' }}>
+                    <h3 style={{
+                      fontSize: '0.8125rem',
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: '1rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Віджет погоди
+                    </h3>
+
+                    <div className="form-group">
+                      <label className="form-label">Місто</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={settings.weatherCity}
+                        onChange={(e) => handleInputChange('weatherCity', e.target.value)}
+                        placeholder="напр. Kyiv, Kharkiv, Lviv"
+                        style={{ maxWidth: '300px' }}
+                      />
+                      <span className="form-hint">Введіть назву міста англійською (наприклад: Kyiv, Odessa, Dnipro)</span>
                     </div>
                   </div>
                 </div>

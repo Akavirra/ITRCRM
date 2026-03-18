@@ -239,6 +239,102 @@ const calNavBtn: React.CSSProperties = {
   transition: 'background 0.15s, color 0.15s',
 };
 
+// ── Weather widget ─────────────────────────────────────────────────────────────
+
+interface WeatherData {
+  city: string;
+  temp: number;
+  feels_like: number;
+  description: string;
+  humidity: number;
+  wind: number;
+  code: number;
+}
+
+function weatherIcon(code: number): string {
+  if (code >= 200 && code < 300) return '⛈';
+  if (code >= 300 && code < 400) return '🌦';
+  if (code >= 500 && code < 600) return '🌧';
+  if (code >= 600 && code < 700) return '❄';
+  if (code >= 700 && code < 800) return '🌫';
+  if (code === 800) return '☀';
+  if (code === 801) return '🌤';
+  if (code === 802) return '⛅';
+  return '☁';
+}
+
+function WeatherWidget() {
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/weather')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => { setWeather(d); setLoading(false); })
+      .catch(() => { setError(true); setLoading(false); });
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{
+        margin: '0 12px 14px',
+        padding: '12px 16px',
+        borderRadius: '14px',
+        background: 'linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)',
+        border: '1px solid rgba(59,130,246,0.08)',
+        flexShrink: 0,
+        minHeight: '52px',
+        display: 'flex',
+        alignItems: 'center',
+      }}>
+        <div style={{ width: '100%', height: '8px', borderRadius: '4px', background: 'rgba(59,130,246,0.1)', animation: 'pulse 1.5s infinite' }} />
+      </div>
+    );
+  }
+
+  if (error || !weather) return null;
+
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  return (
+    <div style={{
+      margin: '0 12px 14px',
+      padding: '12px 16px',
+      borderRadius: '14px',
+      background: 'linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)',
+      border: '1px solid rgba(59,130,246,0.08)',
+      flexShrink: 0,
+    }}>
+      {/* Top row: city + icon + temp */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+        <span style={{ fontSize: '12px', fontWeight: '600', color: '#334155', letterSpacing: '0.02em' }}>
+          {weather.city}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+          <span style={{ fontSize: '15px', lineHeight: 1 }}>{weatherIcon(weather.code)}</span>
+          <span style={{ fontSize: '20px', fontWeight: '300', color: '#1e3a5f', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
+            {weather.temp}°
+          </span>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div style={{ height: '1px', background: 'rgba(59,130,246,0.08)', marginBottom: '6px' }} />
+
+      {/* Bottom row: description + humidity */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '400' }}>
+          {capitalize(weather.description)}
+        </span>
+        <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '400' }}>
+          💧{weather.humidity}% · 💨{weather.wind} м/с
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTablet = false }: SidebarProps) {
@@ -473,6 +569,9 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             </>
           )}
         </nav>
+
+        {/* Weather widget */}
+        <WeatherWidget />
 
         {/* Date/time widget */}
         <DateTimeWidget />

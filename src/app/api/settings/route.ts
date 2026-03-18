@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   try {
     // Get user settings from database
     const settings = await get(
-      `SELECT 
+      `SELECT
         u.name as displayName,
         u.email,
         up.phone,
@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
         up.push_notifications as pushNotifications,
         up.lesson_reminders as lessonReminders,
         up.payment_alerts as paymentAlerts,
-        up.weekly_report as weeklyReport
+        up.weekly_report as weeklyReport,
+        up.weather_city as weatherCity
       FROM users u
       LEFT JOIN user_settings up ON u.id = up.user_id
       WHERE u.id = $1`,
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
           lessonReminders: true,
           paymentAlerts: true,
           weeklyReport: true,
+          weatherCity: 'Kyiv',
         },
       });
     }
@@ -75,6 +77,7 @@ export async function GET(request: NextRequest) {
         lessonReminders: settings.lessonReminders === 1,
         paymentAlerts: settings.paymentAlerts === 1,
         weeklyReport: settings.weeklyReport === 1,
+        weatherCity: (settings as any).weatherCity || 'Kyiv',
       },
     });
   } catch (error) {
@@ -109,6 +112,7 @@ export async function PUT(request: NextRequest) {
       lessonReminders,
       paymentAlerts,
       weeklyReport,
+      weatherCity,
     } = body;
     
     // Update user name
@@ -122,7 +126,7 @@ export async function PUT(request: NextRequest) {
     if (existingSettings) {
       // Update existing settings
       await run(
-        `UPDATE user_settings SET 
+        `UPDATE user_settings SET
           phone = $1,
           language = $2,
           timezone = $3,
@@ -132,8 +136,9 @@ export async function PUT(request: NextRequest) {
           push_notifications = $7,
           lesson_reminders = $8,
           payment_alerts = $9,
-          weekly_report = $10
-        WHERE user_id = $11`,
+          weekly_report = $10,
+          weather_city = $11
+        WHERE user_id = $12`,
         [
           phone || '',
           language || 'uk',
@@ -145,6 +150,7 @@ export async function PUT(request: NextRequest) {
           lessonReminders ? 1 : 0,
           paymentAlerts ? 1 : 0,
           weeklyReport ? 1 : 0,
+          weatherCity || 'Kyiv',
           user.id
         ]
       );
@@ -162,8 +168,9 @@ export async function PUT(request: NextRequest) {
           push_notifications,
           lesson_reminders,
           payment_alerts,
-          weekly_report
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          weekly_report,
+          weather_city
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
         [
           user.id,
           phone || '',
@@ -176,6 +183,7 @@ export async function PUT(request: NextRequest) {
           lessonReminders ? 1 : 0,
           paymentAlerts ? 1 : 0,
           weeklyReport ? 1 : 0,
+          weatherCity || 'Kyiv',
         ]
       );
     }
