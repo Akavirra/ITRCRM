@@ -175,3 +175,4 @@ export function getDriveDownloadUrl(fileId: string): string {
 export function getDriveThumbnailUrl(fileId: string): string {
   return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
 }
+
