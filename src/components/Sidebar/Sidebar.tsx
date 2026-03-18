@@ -47,16 +47,37 @@ const adminMenuItems = [
   { href: '/users', labelKey: 'nav.users', icon: Settings },
 ];
 
-// ── Date/time widget ──────────────────────────────────────────────────────────
+// ── Combined date/time + weather widget ───────────────────────────────────────
 
 const DAYS_UK = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'П\u2019ятниця', 'Субота'];
 const DAYS_SHORT_UK = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
 const MONTHS_UK = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
 const MONTHS_FULL_UK = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
 
+interface WeatherData {
+  city: string;
+  temp: number;
+  feels_like: number;
+  description: string;
+  humidity: number;
+  wind: number;
+  code: number;
+}
+
+function weatherIcon(code: number): string {
+  if (code >= 200 && code < 300) return '⛈';
+  if (code >= 300 && code < 400) return '🌦';
+  if (code >= 500 && code < 600) return '🌧';
+  if (code >= 600 && code < 700) return '❄';
+  if (code >= 700 && code < 800) return '🌫';
+  if (code === 800) return '☀';
+  if (code === 801) return '🌤';
+  if (code === 802) return '⛅';
+  return '☁';
+}
+
 function buildCalendarDays(year: number, month: number): (number | null)[] {
-  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
-  // Convert to Mon-first: Mon=0 … Sun=6
+  const firstDay = new Date(year, month, 1).getDay();
   const startOffset = (firstDay + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells: (number | null)[] = Array(startOffset).fill(null);
@@ -65,11 +86,16 @@ function buildCalendarDays(year: number, month: number): (number | null)[] {
   return cells;
 }
 
-function DateTimeWidget() {
+const divider = (
+  <div style={{ height: '1px', background: 'rgba(59,130,246,0.08)', margin: '8px 0' }} />
+);
+
+function SidebarInfoWidget() {
   const [now, setNow] = useState<Date | null>(null);
   const [calOpen, setCalOpen] = useState(false);
   const [calYear, setCalYear] = useState(0);
   const [calMonth, setCalMonth] = useState(0);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
 
   useEffect(() => {
     const d = new Date();
@@ -80,11 +106,17 @@ function DateTimeWidget() {
     return () => clearInterval(id);
   }, []);
 
-  // Close calendar on outside click
+  useEffect(() => {
+    fetch('/api/weather')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => setWeather(d))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!calOpen) return;
     const handler = (e: MouseEvent) => {
-      const el = document.getElementById('dt-widget-root');
+      const el = document.getElementById('sidebar-info-widget');
       if (el && !el.contains(e.target as Node)) setCalOpen(false);
     };
     document.addEventListener('mousedown', handler);
@@ -96,50 +128,59 @@ function DateTimeWidget() {
   const h = String(now.getHours()).padStart(2, '0');
   const m = String(now.getMinutes()).padStart(2, '0');
   const s = String(now.getSeconds()).padStart(2, '0');
-  const day = DAYS_UK[now.getDay()];
-  const date = `${now.getDate()} ${MONTHS_UK[now.getMonth()]}`;
-
+  const dayName = DAYS_UK[now.getDay()];
+  const dateStr = `${now.getDate()} ${MONTHS_UK[now.getMonth()]}`;
   const todayY = now.getFullYear();
   const todayM = now.getMonth();
   const todayD = now.getDate();
 
   const prevMonth = () => {
     if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); }
-    else setCalMonth(m => m - 1);
+    else setCalMonth(mo => mo - 1);
   };
   const nextMonth = () => {
     if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); }
-    else setCalMonth(m => m + 1);
+    else setCalMonth(mo => mo + 1);
   };
 
   const cells = buildCalendarDays(calYear, calMonth);
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
   return (
-    <div id="dt-widget-root" style={{ margin: '0 12px 14px', flexShrink: 0, position: 'relative' }}>
-      {/* Main widget card */}
+    <div id="sidebar-info-widget" style={{ margin: '0 12px 14px', flexShrink: 0, position: 'relative' }}>
       <div style={{
-        padding: '14px 16px',
+        padding: '13px 15px',
         borderRadius: '14px',
-        background: 'linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)',
+        background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
         border: '1px solid rgba(59,130,246,0.1)',
       }}>
-        {/* Clock */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', lineHeight: 1, marginBottom: '8px' }}>
-          <span style={{ fontSize: '26px', fontWeight: '300', color: '#1e3a5f', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
-            {h}<span style={{ opacity: 0.4, margin: '0 1px' }}>:</span>{m}
-          </span>
-          <span style={{ fontSize: '13px', fontWeight: '400', color: '#94a3b8', marginLeft: '3px', fontVariantNumeric: 'tabular-nums' }}>
-            {s}
-          </span>
+
+        {/* Row 1: time (left) + weather icon+temp (right) */}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+            <span style={{ fontSize: '26px', fontWeight: '300', color: '#1e3a5f', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+              {h}<span style={{ opacity: 0.35, margin: '0 1px' }}>:</span>{m}
+            </span>
+            <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '3px', fontVariantNumeric: 'tabular-nums' }}>
+              {s}
+            </span>
+          </div>
+          {weather && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
+              <span style={{ fontSize: '16px', lineHeight: 1 }}>{weatherIcon(weather.code)}</span>
+              <span style={{ fontSize: '20px', fontWeight: '300', color: '#1e3a5f', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
+                {weather.temp}°
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Divider */}
-        <div style={{ height: '1px', background: 'rgba(59,130,246,0.08)', marginBottom: '8px' }} />
+        {divider}
 
-        {/* Day + date (date is clickable) */}
+        {/* Row 2: day name (left) + date clickable (right) */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '12px', fontWeight: '600', color: '#3b82f6', letterSpacing: '0.02em' }}>
-            {day}
+            {dayName}
           </span>
           <button
             onClick={() => {
@@ -156,15 +197,30 @@ function DateTimeWidget() {
               margin: '-2px -6px',
               borderRadius: '6px',
               cursor: 'pointer',
-              transition: 'color 0.15s, background 0.15s',
+              transition: 'color 0.15s',
               backgroundColor: calOpen ? 'rgba(59,130,246,0.08)' : 'transparent',
             }}
             onMouseOver={e => { if (!calOpen) (e.currentTarget.style.color = '#3b82f6'); }}
             onMouseOut={e => { if (!calOpen) (e.currentTarget.style.color = '#94a3b8'); }}
           >
-            {date}
+            {dateStr}
           </button>
         </div>
+
+        {/* Row 3: weather details (only if loaded) */}
+        {weather && (
+          <>
+            {divider}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>
+                {weather.city} · {capitalize(weather.description)}
+              </span>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                💧{weather.humidity}%
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Calendar popover */}
@@ -181,7 +237,6 @@ function DateTimeWidget() {
           padding: '12px',
           zIndex: 50,
         }}>
-          {/* Month nav */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
             <button onClick={prevMonth} style={calNavBtn}>‹</button>
             <span style={{ fontSize: '12px', fontWeight: '600', color: '#1e3a5f', letterSpacing: '0.02em' }}>
@@ -189,8 +244,6 @@ function DateTimeWidget() {
             </span>
             <button onClick={nextMonth} style={calNavBtn}>›</button>
           </div>
-
-          {/* Day headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '4px' }}>
             {DAYS_SHORT_UK.map(d => (
               <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '600', color: '#94a3b8', padding: '2px 0' }}>
@@ -198,12 +251,10 @@ function DateTimeWidget() {
               </div>
             ))}
           </div>
-
-          {/* Day cells */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
             {cells.map((day, i) => {
               const isToday = day !== null && day === todayD && calMonth === todayM && calYear === todayY;
-              const isWeekend = i % 7 >= 5; // Сб(5), Нд(6)
+              const isWeekend = i % 7 >= 5;
               return (
                 <div key={i} style={{
                   textAlign: 'center',
@@ -238,102 +289,6 @@ const calNavBtn: React.CSSProperties = {
   lineHeight: 1,
   transition: 'background 0.15s, color 0.15s',
 };
-
-// ── Weather widget ─────────────────────────────────────────────────────────────
-
-interface WeatherData {
-  city: string;
-  temp: number;
-  feels_like: number;
-  description: string;
-  humidity: number;
-  wind: number;
-  code: number;
-}
-
-function weatherIcon(code: number): string {
-  if (code >= 200 && code < 300) return '⛈';
-  if (code >= 300 && code < 400) return '🌦';
-  if (code >= 500 && code < 600) return '🌧';
-  if (code >= 600 && code < 700) return '❄';
-  if (code >= 700 && code < 800) return '🌫';
-  if (code === 800) return '☀';
-  if (code === 801) return '🌤';
-  if (code === 802) return '⛅';
-  return '☁';
-}
-
-function WeatherWidget() {
-  const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch('/api/weather')
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(d => { setWeather(d); setLoading(false); })
-      .catch(() => { setError(true); setLoading(false); });
-  }, []);
-
-  if (loading) {
-    return (
-      <div style={{
-        margin: '0 12px 14px',
-        padding: '12px 16px',
-        borderRadius: '14px',
-        background: 'linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)',
-        border: '1px solid rgba(59,130,246,0.08)',
-        flexShrink: 0,
-        minHeight: '52px',
-        display: 'flex',
-        alignItems: 'center',
-      }}>
-        <div style={{ width: '100%', height: '8px', borderRadius: '4px', background: 'rgba(59,130,246,0.1)', animation: 'pulse 1.5s infinite' }} />
-      </div>
-    );
-  }
-
-  if (error || !weather) return null;
-
-  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
-  return (
-    <div style={{
-      margin: '0 12px 14px',
-      padding: '12px 16px',
-      borderRadius: '14px',
-      background: 'linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)',
-      border: '1px solid rgba(59,130,246,0.08)',
-      flexShrink: 0,
-    }}>
-      {/* Top row: city + icon + temp */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-        <span style={{ fontSize: '12px', fontWeight: '600', color: '#334155', letterSpacing: '0.02em' }}>
-          {weather.city}
-        </span>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-          <span style={{ fontSize: '15px', lineHeight: 1 }}>{weatherIcon(weather.code)}</span>
-          <span style={{ fontSize: '20px', fontWeight: '300', color: '#1e3a5f', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
-            {weather.temp}°
-          </span>
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div style={{ height: '1px', background: 'rgba(59,130,246,0.08)', marginBottom: '6px' }} />
-
-      {/* Bottom row: description + humidity */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '400' }}>
-          {capitalize(weather.description)}
-        </span>
-        <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '400' }}>
-          💧{weather.humidity}% · 💨{weather.wind} м/с
-        </span>
-      </div>
-    </div>
-  );
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -570,11 +525,8 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
           )}
         </nav>
 
-        {/* Weather widget */}
-        <WeatherWidget />
-
-        {/* Date/time widget */}
-        <DateTimeWidget />
+        {/* Date / time / weather widget */}
+        <SidebarInfoWidget />
 
       </aside>
     </>
