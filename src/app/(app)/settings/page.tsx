@@ -31,32 +31,42 @@ type SettingsTab = 'general' | 'profile' | 'notifications' | 'system';
 
 interface CitySuggestion { name: string; nameEn: string; country: string; state?: string; }
 
-function CityAutocompleteInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function CityAutocompleteInput({ defaultValue, onCommit }: { defaultValue: string; onCommit: (v: string) => void }) {
+  const [inputVal, setInputVal] = useState(defaultValue);
   const [options, setOptions] = useState<CitySuggestion[]>([]);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleChange = (val: string) => {
-    onChange(val);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (val.length < 2) { setOptions([]); return; }
-    timerRef.current = setTimeout(async () => {
+  // Sync when parent loads real value from API (only once, when it changes from default)
+  const syncedRef = useRef(false);
+  useEffect(() => {
+    if (!syncedRef.current && defaultValue && defaultValue !== 'Kyiv') {
+      setInputVal(defaultValue);
+      syncedRef.current = true;
+    }
+  }, [defaultValue]);
+
+  useEffect(() => {
+    if (inputVal.length < 2) { setOptions([]); return; }
+    const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/weather/cities?q=${encodeURIComponent(val)}`);
+        const res = await fetch(`/api/weather/cities?q=${encodeURIComponent(inputVal)}`);
         if (res.ok) setOptions(await res.json());
       } catch { /* ignore */ }
     }, 350);
-  };
+    return () => clearTimeout(timer);
+  }, [inputVal]);
 
   return (
     <div style={{ maxWidth: '300px' }}>
       <input
         type="text"
         className="form-input"
-        value={value}
-        onChange={(e) => handleChange(e.target.value)}
+        value={inputVal}
+        onChange={(e) => {
+          setInputVal(e.target.value);
+          onCommit(e.target.value);
+        }}
         list="city-datalist"
         placeholder="напр. Київ, Харків, Львів"
-        autoComplete="off"
         style={{ width: '100%' }}
       />
       <datalist id="city-datalist">
@@ -408,8 +418,8 @@ export default function SettingsPage() {
                     <div className="form-group">
                       <label className="form-label">Місто</label>
                       <CityAutocompleteInput
-                        value={settings.weatherCity}
-                        onChange={(v) => handleInputChange('weatherCity', v)}
+                        defaultValue={settings.weatherCity}
+                        onCommit={(v) => handleInputChange('weatherCity', v)}
                       />
                       <span className="form-hint">Введіть назву міста українською або англійською (наприклад: Київ, Одеса, Дніпро)</span>
                     </div>
