@@ -443,9 +443,10 @@ function GooglePhotosTab() {
     fetch(`/api/photos/media?date=${date}`)
       .then(r => r.json())
       .then(data => {
-        if (data.error === 'no_photos_access') {
+        if (data.error) {
           setNoAccess(true);
           setPhotos([]);
+          console.error('[GooglePhotos]', data.error);
         } else {
           setPhotos(data.items ?? []);
         }
