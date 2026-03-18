@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   FolderOpen, FileText, Image, Video, Music, File,
   Download, ExternalLink, Search, Trash2, LayoutGrid,
@@ -8,6 +9,14 @@ import {
 } from 'lucide-react';
 import DraggableModal from '@/components/DraggableModal';
 import Layout from '@/components/Layout';
+import PageLoading from '@/components/PageLoading';
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: 'admin' | 'teacher';
+}
 
 // ── Kebab Menu ────────────────────────────────────────────────────────────────
 
@@ -325,6 +334,9 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function MaterialsPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
@@ -338,6 +350,16 @@ export default function MaterialsPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchInput, setSearchInput] = useState('');
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(res => {
+      if (!res.ok) { router.push('/login'); return null; }
+      return res.json();
+    }).then(data => {
+      if (data) setUser(data.user);
+      setAuthLoading(false);
+    });
+  }, [router]);
 
   const loadTopics = useCallback(async () => {
     const res = await fetch('/api/media/topics');
@@ -416,8 +438,14 @@ export default function MaterialsPage() {
     { key: 'audio',    label: 'Аудіо',      icon: <Music size={14} /> },
   ];
 
+  if (authLoading || !user) return (
+    <Layout user={{ id: 0, name: '', email: '', role: 'admin' }}>
+      <PageLoading />
+    </Layout>
+  );
+
   return (
-    <Layout>
+    <Layout user={user}>
     <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
       {/* Media Viewer */}
       {lightboxIndex !== null && (
