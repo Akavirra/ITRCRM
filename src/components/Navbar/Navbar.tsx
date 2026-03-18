@@ -684,43 +684,6 @@ const Navbar: React.FC<NavbarProps> = ({
                 {activeSettingsTab === 'general' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-                    {/* Appearance */}
-                    <div>
-                      <h3 style={{ fontSize: '0.75rem', fontWeight: '600', color: '#374151', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        Зовнішній вигляд
-                      </h3>
-                      <div className="form-group">
-                        <label className="form-label">Мова інтерфейсу</label>
-                        <select className="form-select" value={settings.language} onChange={e => handleSettingChange('language', e.target.value)} style={{ maxWidth: '280px' }}>
-                          <option value="uk">Українська</option>
-                          <option value="en">English</option>
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Формат дати</label>
-                        <select className="form-select" value={settings.dateFormat} onChange={e => handleSettingChange('dateFormat', e.target.value)} style={{ maxWidth: '280px' }}>
-                          <option value="DD.MM.YYYY">DD.MM.YYYY</option>
-                          <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                          <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Regional */}
-                    <div>
-                      <h3 style={{ fontSize: '0.75rem', fontWeight: '600', color: '#374151', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        Регіональні
-                      </h3>
-                      <div className="form-group">
-                        <label className="form-label">Валюта</label>
-                        <select className="form-select" value={settings.currency} onChange={e => handleSettingChange('currency', e.target.value)} style={{ maxWidth: '280px' }}>
-                          <option value="UAH">UAH — Гривня</option>
-                          <option value="USD">USD — Долар</option>
-                          <option value="EUR">EUR — Євро</option>
-                        </select>
-                      </div>
-                    </div>
-
                     {/* Weather widget */}
                     <div>
                       <h3 style={{ fontSize: '0.75rem', fontWeight: '600', color: '#374151', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
