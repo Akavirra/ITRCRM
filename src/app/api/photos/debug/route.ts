@@ -30,10 +30,19 @@ export async function GET(request: NextRequest) {
   );
   const info = await infoRes.json();
 
+  // Try actual Photos Library API call with this token
+  const photosRes = await fetch(
+    'https://photoslibrary.googleapis.com/v1/mediaItems?pageSize=1',
+    { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
+  );
+  const photosData = await photosRes.json();
+
   return NextResponse.json({
     scope: info.scope,
     has_photos: (info.scope ?? '').includes('photoslibrary'),
     has_drive: (info.scope ?? '').includes('drive'),
     refresh_token_prefix: process.env.GOOGLE_OAUTH_REFRESH_TOKEN?.slice(0, 10) + '...',
+    photos_api_status: photosRes.status,
+    photos_api_result: photosData,
   });
 }
