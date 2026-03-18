@@ -47,8 +47,16 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function isVisual(type: string) {
-  return type === 'photo' || type === 'animation' || type === 'video';
+const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|bmp|svg|avif|tiff?)$/i;
+const VIDEO_EXTENSIONS = /\.(mp4|mov|avi|mkv|webm|m4v|3gp|wmv|flv|ts)$/i;
+
+function isVisual(type: string, fileName?: string) {
+  if (type === 'photo' || type === 'animation' || type === 'video') return true;
+  // Documents that are images/videos (sent as files) — check by extension for backwards compat
+  if (type === 'document' && fileName) {
+    if (IMAGE_EXTENSIONS.test(fileName) || VIDEO_EXTENSIONS.test(fileName)) return true;
+  }
+  return false;
 }
 
 function FileTypeIcon({ type, size = 18 }: { type: string; size?: number }) {
@@ -226,7 +234,7 @@ export default function MaterialsPage() {
   });
 
   // Visual files for lightbox
-  const visualFiles = filteredFiles.filter(f => isVisual(f.file_type));
+  const visualFiles = filteredFiles.filter(f => isVisual(f.file_type, f.file_name));
 
   function openLightbox(file: MediaFile) {
     const idx = visualFiles.findIndex(f => f.id === file.id);
@@ -412,7 +420,7 @@ function GridCard({ file, selectedTopicId, onOpenLightbox, onDelete, deletingId 
   deletingId: number | null;
 }) {
   const [hovered, setHovered] = useState(false);
-  const visual = isVisual(file.file_type);
+  const visual = isVisual(file.file_type, file.file_name);
 
   return (
     <div
@@ -501,7 +509,7 @@ function ListView({ files, selectedTopicId, onOpenLightbox, onDelete, deletingId
   return (
     <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #f0f0f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
       {files.map((file, i) => {
-        const visual = isVisual(file.file_type);
+        const visual = isVisual(file.file_type, file.file_name);
         return (
           <div key={file.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < files.length - 1 ? '1px solid #f8f9fa' : 'none' }}>
             {/* Thumb or icon */}

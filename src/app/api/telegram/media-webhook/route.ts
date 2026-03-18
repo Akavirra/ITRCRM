@@ -72,12 +72,16 @@ function extractMedia(msg: TelegramMessage): MediaInfo | null {
     };
   }
   if (msg.document) {
+    const mime = msg.document.mime_type ?? 'application/octet-stream';
+    const docType: MediaType = mime.startsWith('image/') ? 'photo'
+      : mime.startsWith('video/') ? 'video'
+      : 'document';
     return {
       fileId: msg.document.file_id,
       fileName: msg.document.file_name ?? `document_${msg.message_id}`,
-      mimeType: msg.document.mime_type ?? 'application/octet-stream',
+      mimeType: mime,
       fileSize: msg.document.file_size ?? 0,
-      type: 'document',
+      type: docType,
     };
   }
   if (msg.audio) {
