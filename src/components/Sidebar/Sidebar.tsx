@@ -50,16 +50,46 @@ const adminMenuItems = [
 // ── Date/time widget ──────────────────────────────────────────────────────────
 
 const DAYS_UK = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'П\u2019ятниця', 'Субота'];
+const DAYS_SHORT_UK = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
 const MONTHS_UK = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
+const MONTHS_FULL_UK = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+
+function buildCalendarDays(year: number, month: number): (number | null)[] {
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  // Convert to Mon-first: Mon=0 … Sun=6
+  const startOffset = (firstDay + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = Array(startOffset).fill(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
 
 function DateTimeWidget() {
   const [now, setNow] = useState<Date | null>(null);
+  const [calOpen, setCalOpen] = useState(false);
+  const [calYear, setCalYear] = useState(0);
+  const [calMonth, setCalMonth] = useState(0);
 
   useEffect(() => {
-    setNow(new Date());
+    const d = new Date();
+    setNow(d);
+    setCalYear(d.getFullYear());
+    setCalMonth(d.getMonth());
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Close calendar on outside click
+  useEffect(() => {
+    if (!calOpen) return;
+    const handler = (e: MouseEvent) => {
+      const el = document.getElementById('dt-widget-root');
+      if (el && !el.contains(e.target as Node)) setCalOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [calOpen]);
 
   if (!now) return null;
 
@@ -69,46 +99,145 @@ function DateTimeWidget() {
   const day = DAYS_UK[now.getDay()];
   const date = `${now.getDate()} ${MONTHS_UK[now.getMonth()]}`;
 
+  const todayY = now.getFullYear();
+  const todayM = now.getMonth();
+  const todayD = now.getDate();
+
+  const prevMonth = () => {
+    if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); }
+    else setCalMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); }
+    else setCalMonth(m => m + 1);
+  };
+
+  const cells = buildCalendarDays(calYear, calMonth);
+
   return (
-    <div style={{
-      margin: '0 12px 14px',
-      padding: '14px 16px',
-      borderRadius: '14px',
-      background: 'linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)',
-      border: '1px solid rgba(59,130,246,0.1)',
-      flexShrink: 0,
-    }}>
-      {/* Clock */}
+    <div id="dt-widget-root" style={{ margin: '0 12px 14px', flexShrink: 0, position: 'relative' }}>
+      {/* Main widget card */}
       <div style={{
-        display: 'flex',
-        alignItems: 'baseline',
-        gap: '2px',
-        lineHeight: 1,
-        marginBottom: '8px',
+        padding: '14px 16px',
+        borderRadius: '14px',
+        background: 'linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)',
+        border: '1px solid rgba(59,130,246,0.1)',
       }}>
-        <span style={{ fontSize: '26px', fontWeight: '300', color: '#1e3a5f', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
-          {h}<span style={{ opacity: 0.4, margin: '0 1px' }}>:</span>{m}
-        </span>
-        <span style={{ fontSize: '13px', fontWeight: '400', color: '#94a3b8', marginLeft: '3px', fontVariantNumeric: 'tabular-nums' }}>
-          {s}
-        </span>
+        {/* Clock */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', lineHeight: 1, marginBottom: '8px' }}>
+          <span style={{ fontSize: '26px', fontWeight: '300', color: '#1e3a5f', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
+            {h}<span style={{ opacity: 0.4, margin: '0 1px' }}>:</span>{m}
+          </span>
+          <span style={{ fontSize: '13px', fontWeight: '400', color: '#94a3b8', marginLeft: '3px', fontVariantNumeric: 'tabular-nums' }}>
+            {s}
+          </span>
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: '1px', background: 'rgba(59,130,246,0.08)', marginBottom: '8px' }} />
+
+        {/* Day + date (date is clickable) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '12px', fontWeight: '600', color: '#3b82f6', letterSpacing: '0.02em' }}>
+            {day}
+          </span>
+          <button
+            onClick={() => {
+              if (!calOpen) { setCalYear(todayY); setCalMonth(todayM); }
+              setCalOpen(o => !o);
+            }}
+            style={{
+              fontSize: '12px',
+              color: calOpen ? '#3b82f6' : '#94a3b8',
+              fontWeight: '400',
+              background: 'none',
+              border: 'none',
+              padding: '2px 6px',
+              margin: '-2px -6px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'color 0.15s, background 0.15s',
+              backgroundColor: calOpen ? 'rgba(59,130,246,0.08)' : 'transparent',
+            }}
+            onMouseOver={e => { if (!calOpen) (e.currentTarget.style.color = '#3b82f6'); }}
+            onMouseOut={e => { if (!calOpen) (e.currentTarget.style.color = '#94a3b8'); }}
+          >
+            {date}
+          </button>
+        </div>
       </div>
 
-      {/* Divider */}
-      <div style={{ height: '1px', background: 'rgba(59,130,246,0.08)', marginBottom: '8px' }} />
+      {/* Calendar popover */}
+      {calOpen && (
+        <div style={{
+          position: 'absolute',
+          bottom: 'calc(100% + 8px)',
+          left: 0,
+          right: 0,
+          background: '#fff',
+          borderRadius: '14px',
+          boxShadow: '0 8px 32px rgba(30,58,95,0.12), 0 1px 4px rgba(30,58,95,0.06)',
+          border: '1px solid rgba(59,130,246,0.1)',
+          padding: '12px',
+          zIndex: 50,
+        }}>
+          {/* Month nav */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <button onClick={prevMonth} style={calNavBtn}>‹</button>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: '#1e3a5f', letterSpacing: '0.02em' }}>
+              {MONTHS_FULL_UK[calMonth]} {calYear}
+            </span>
+            <button onClick={nextMonth} style={calNavBtn}>›</button>
+          </div>
 
-      {/* Day + date */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '12px', fontWeight: '600', color: '#3b82f6', letterSpacing: '0.02em' }}>
-          {day}
-        </span>
-        <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '400' }}>
-          {date}
-        </span>
-      </div>
+          {/* Day headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '4px' }}>
+            {DAYS_SHORT_UK.map(d => (
+              <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '600', color: '#94a3b8', padding: '2px 0' }}>
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Day cells */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+            {cells.map((day, i) => {
+              const isToday = day !== null && day === todayD && calMonth === todayM && calYear === todayY;
+              const isWeekend = i % 7 >= 5; // Сб(5), Нд(6)
+              return (
+                <div key={i} style={{
+                  textAlign: 'center',
+                  fontSize: '11px',
+                  fontWeight: isToday ? '700' : '400',
+                  color: isToday ? '#fff' : day === null ? 'transparent' : isWeekend ? '#94a3b8' : '#334155',
+                  background: isToday ? '#3b82f6' : 'transparent',
+                  borderRadius: '6px',
+                  padding: '4px 2px',
+                  lineHeight: '16px',
+                  minWidth: 0,
+                }}>
+                  {day ?? ''}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+const calNavBtn: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  fontSize: '16px',
+  color: '#64748b',
+  cursor: 'pointer',
+  padding: '2px 6px',
+  borderRadius: '6px',
+  lineHeight: 1,
+  transition: 'background 0.15s, color 0.15s',
+};
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
