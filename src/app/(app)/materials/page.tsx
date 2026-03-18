@@ -192,7 +192,7 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
       minWidth={320}
       minHeight={240}
       headerAction={headerAction}
-      contentStyle={{ padding: 0, background: '#0f172a', overflow: 'hidden' }}
+      contentStyle={{ padding: 0, background: '#0f172a', overflow: 'hidden', position: 'relative' }}
     >
       <style>{`
         @keyframes mediaFadeIn {
@@ -200,7 +200,7 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
           to   { opacity: 1; }
         }
       `}</style>
-      <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
 
         {/* Prev arrow */}
         {hasNav && index > 0 && (
