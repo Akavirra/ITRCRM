@@ -6,6 +6,7 @@ import {
   FolderOpen, FileText, Image, Video, Music, File,
   Download, ExternalLink, Search, Trash2, LayoutGrid,
   LayoutList, ChevronLeft, ChevronRight, MoreVertical,
+  Camera, CalendarDays, Play,
 } from 'lucide-react';
 import DraggableModal from '@/components/DraggableModal';
 import Layout from '@/components/Layout';
@@ -331,6 +332,284 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
   );
 }
 
+// ── Google Photos Tab ─────────────────────────────────────────────────────────
+
+interface PhotosMediaItem {
+  id: string;
+  productUrl: string;
+  baseUrl: string;
+  mimeType: string;
+  mediaMetadata: {
+    creationTime: string;
+    width?: string;
+    height?: string;
+    video?: object;
+  };
+  filename: string;
+}
+
+function PhotoViewerModal({ items, index, onClose, onPrev, onNext }: {
+  items: PhotosMediaItem[];
+  index: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const item = items[index];
+  const hasNav = items.length > 1;
+  const w = item.mediaMetadata.width ? parseInt(item.mediaMetadata.width) : null;
+  const h = item.mediaMetadata.height ? parseInt(item.mediaMetadata.height) : null;
+  const size = calcMediaSize(w, h, 'image');
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') onPrev();
+      if (e.key === 'ArrowRight') onNext();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose, onPrev, onNext]);
+
+  function handleLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    if (w && h) return;
+    const img = e.currentTarget;
+    if (img.naturalWidth && img.naturalHeight) {
+      // size already calculated, just update if needed
+    }
+  }
+
+  const headerAction = (
+    <KebabMenu
+      counter={hasNav ? `${index + 1} / ${items.length}` : undefined}
+      items={[
+        { label: 'Відкрити в Google Фото', icon: <ExternalLink size={14} />, href: item.productUrl },
+      ]}
+    />
+  );
+
+  return (
+    <DraggableModal
+      id="photo-viewer"
+      isOpen
+      onClose={onClose}
+      title={item.filename}
+      initialWidth={size.width}
+      initialHeight={size.height}
+      minWidth={320}
+      minHeight={240}
+      headerAction={headerAction}
+      contentStyle={{ padding: 0, background: '#0f172a', overflow: 'hidden', position: 'relative' }}
+    >
+      <style>{`@keyframes mediaFadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {hasNav && index > 0 && (
+          <button onClick={onPrev} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
+            <ChevronLeft size={22} />
+          </button>
+        )}
+        <img
+          key={item.id}
+          src={item.baseUrl + '=w1920'}
+          alt={item.filename}
+          onLoad={handleLoad}
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', animation: 'mediaFadeIn 0.2s ease' }}
+        />
+        {hasNav && index < items.length - 1 && (
+          <button onClick={onNext} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
+            <ChevronRight size={22} />
+          </button>
+        )}
+      </div>
+    </DraggableModal>
+  );
+}
+
+function GooglePhotosTab() {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [date, setDate] = useState(todayStr);
+  const [photos, setPhotos] = useState<PhotosMediaItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [noAccess, setNoAccess] = useState(false);
+  const [viewerIdx, setViewerIdx] = useState<number | null>(null);
+
+  // Only images can be opened in viewer (videos → Google Photos)
+  const viewablePhotos = photos.filter(p => !p.mimeType.startsWith('video/'));
+
+  useEffect(() => {
+    if (!date) return;
+    setLoading(true);
+    setNoAccess(false);
+    fetch(`/api/photos/media?date=${date}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error === 'no_photos_access') {
+          setNoAccess(true);
+          setPhotos([]);
+        } else {
+          setPhotos(data.items ?? []);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [date]);
+
+  function shiftDay(delta: number) {
+    const d = new Date(date + 'T12:00:00');
+    d.setDate(d.getDate() + delta);
+    const next = d.toISOString().split('T')[0];
+    if (next <= todayStr) setDate(next);
+  }
+
+  function formatDateUk(iso: string) {
+    return new Date(iso + 'T12:00:00').toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  return (
+    <div>
+      {viewerIdx !== null && (
+        <PhotoViewerModal
+          items={viewablePhotos}
+          index={viewerIdx}
+          onClose={() => setViewerIdx(null)}
+          onPrev={() => setViewerIdx(i => (i !== null && i > 0 ? i - 1 : i))}
+          onNext={() => setViewerIdx(i => (i !== null && i < viewablePhotos.length - 1 ? i + 1 : i))}
+        />
+      )}
+
+      {/* Date controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        <button
+          onClick={() => shiftDay(-1)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 9, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', color: '#374151' }}
+        >
+          <ChevronLeft size={17} />
+        </button>
+
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <CalendarDays size={15} style={{ position: 'absolute', left: 10, color: '#94a3b8', pointerEvents: 'none' }} />
+          <input
+            type="date"
+            value={date}
+            max={todayStr}
+            onChange={e => e.target.value && setDate(e.target.value)}
+            style={{ paddingLeft: 32, paddingRight: 10, paddingTop: 7, paddingBottom: 7, borderRadius: 9, border: '1px solid #e5e7eb', fontSize: 13, background: '#fff', color: '#1e293b', outline: 'none', cursor: 'pointer' }}
+          />
+        </div>
+
+        <button
+          onClick={() => shiftDay(1)}
+          disabled={date >= todayStr}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 9, border: '1px solid #e5e7eb', background: '#fff', cursor: date >= todayStr ? 'default' : 'pointer', color: date >= todayStr ? '#cbd5e1' : '#374151' }}
+        >
+          <ChevronRight size={17} />
+        </button>
+
+        <button
+          onClick={() => setDate(todayStr)}
+          style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #e5e7eb', background: '#fff', fontSize: 13, color: '#374151', cursor: 'pointer', fontWeight: 500 }}
+        >
+          Сьогодні
+        </button>
+
+        {!loading && photos.length > 0 && (
+          <span style={{ fontSize: 13, color: '#64748b' }}>
+            {photos.length} медіафайл{photos.length === 1 ? '' : photos.length < 5 ? 'и' : 'ів'} за {formatDateUk(date)}
+          </span>
+        )}
+      </div>
+
+      {/* Content */}
+      {noAccess ? (
+        <div style={{ padding: '60px 0', textAlign: 'center', color: '#94a3b8' }}>
+          <Camera size={44} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.25 }} />
+          <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8 }}>Потрібна авторизація Google Фото</div>
+          <div style={{ fontSize: 13, maxWidth: 400, margin: '0 auto', lineHeight: 1.6 }}>
+            Запусти скрипт для оновлення токену:<br />
+            <code style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: 6, fontSize: 12 }}>node scripts/authorize-google.js</code>
+          </div>
+        </div>
+      ) : loading ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
+          {[...Array(12)].map((_, i) => (
+            <div key={i} style={{ borderRadius: 14, background: '#f1f5f9', aspectRatio: '1', animation: 'pulse 1.5s ease-in-out infinite' }} />
+          ))}
+        </div>
+      ) : photos.length === 0 ? (
+        <div style={{ padding: '60px 0', textAlign: 'center', color: '#94a3b8' }}>
+          <Camera size={44} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.25 }} />
+          <div style={{ fontSize: 15, fontWeight: 500 }}>Немає фото за {formatDateUk(date)}</div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
+          {photos.map(item => {
+            const isVideo = item.mimeType.startsWith('video/');
+            const viewIdx = viewablePhotos.findIndex(p => p.id === item.id);
+            return (
+              <PhotoCard
+                key={item.id}
+                item={item}
+                isVideo={isVideo}
+                onClick={() => isVideo ? window.open(item.productUrl, '_blank') : setViewerIdx(viewIdx)}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PhotoCard({ item, isVideo, onClick }: {
+  item: PhotosMediaItem;
+  isVideo: boolean;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const date = new Date(item.mediaMetadata.creationTime);
+  const dateStr = date.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
+      style={{ borderRadius: 14, background: '#fff', border: '1px solid #f0f0f0', overflow: 'hidden', boxShadow: hovered ? '0 4px 16px rgba(0,0,0,0.1)' : '0 1px 4px rgba(0,0,0,0.04)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
+    >
+      <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8fafc', position: 'relative' }}>
+        <img
+          src={item.baseUrl + '=w400-h400-c'}
+          alt={item.filename}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+        {isVideo && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)' }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Play size={16} color="#8b5cf6" style={{ marginLeft: 2 }} />
+            </div>
+          </div>
+        )}
+        {hovered && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {isVideo ? <Play size={18} color="#8b5cf6" style={{ marginLeft: 2 }} /> : <Image size={18} color="#3b82f6" />}
+            </div>
+          </div>
+        )}
+      </div>
+      <div style={{ padding: '8px 12px 10px' }}>
+        <div style={{ fontSize: 11, color: '#94a3b8' }}>{dateStr}</div>
+        {isVideo && (
+          <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#f5f3ff', color: '#8b5cf6', marginTop: 4, display: 'inline-block' }}>
+            Відео
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function MaterialsPage() {
@@ -347,6 +626,7 @@ export default function MaterialsPage() {
   const [editingTopicId, setEditingTopicId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'files' | 'photos'>('files');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchInput, setSearchInput] = useState('');
@@ -467,13 +747,31 @@ export default function MaterialsPage() {
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
         <FolderOpen size={26} color="#3b82f6" />
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1e293b', margin: 0 }}>Файли</h1>
         <span style={{ fontSize: 13, color: '#94a3b8', marginLeft: 4 }}>{totalFiles} файлів</span>
+        <div style={{ flex: 1 }} />
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', gap: 4, background: '#f8fafc', borderRadius: 10, padding: 4 }}>
+          <button
+            onClick={() => setActiveTab('files')}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: activeTab === 'files' ? 600 : 400, background: activeTab === 'files' ? '#fff' : 'transparent', color: activeTab === 'files' ? '#1e293b' : '#64748b', boxShadow: activeTab === 'files' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}
+          >
+            <FolderOpen size={14} /> Файли
+          </button>
+          <button
+            onClick={() => setActiveTab('photos')}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: activeTab === 'photos' ? 600 : 400, background: activeTab === 'photos' ? '#fff' : 'transparent', color: activeTab === 'photos' ? '#1e293b' : '#64748b', boxShadow: activeTab === 'photos' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}
+          >
+            <Camera size={14} /> Google Фото
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+      {activeTab === 'photos' && <GooglePhotosTab />}
+
+      {activeTab === 'files' && <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
 
         {/* Topics sidebar */}
         <div style={{ width: 210, flexShrink: 0, background: '#fff', borderRadius: 16, border: '1px solid #f0f0f0', padding: '10px 8px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
@@ -593,7 +891,7 @@ export default function MaterialsPage() {
             <ListView files={filteredFiles} selectedTopicId={selectedTopicId} onOpenLightbox={openLightbox} onDelete={deleteFile} deletingId={deletingId} />
           )}
         </div>
-      </div>
+      </div>}
     </div>
     </Layout>
   );
