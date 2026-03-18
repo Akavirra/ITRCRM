@@ -31,6 +31,99 @@ type SettingsTab = 'general' | 'profile' | 'notifications' | 'system';
 
 interface CitySuggestion { name: string; nameEn: string; country: string; state?: string; }
 
+function CityAutocompleteInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [suggestions, setSuggestions] = useState<CitySuggestion[]>([]);
+  const [open, setOpen] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleChange = (val: string) => {
+    onChange(val);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (val.length < 2) { setSuggestions([]); setOpen(false); return; }
+    timerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/weather/cities?q=${encodeURIComponent(val)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data);
+          setOpen(data.length > 0);
+        }
+      } catch { /* ignore */ }
+    }, 300);
+  };
+
+  const select = (s: CitySuggestion) => {
+    onChange(s.nameEn);
+    setSuggestions([]);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={wrapperRef} style={{ maxWidth: '300px', position: 'relative' }}>
+      <input
+        type="text"
+        className="form-input"
+        value={value}
+        onChange={(e) => handleChange(e.target.value)}
+        placeholder="напр. Київ, Харків, Львів"
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 4px)',
+          left: 0,
+          right: 0,
+          background: '#fff',
+          border: '1px solid #e2e8f0',
+          borderRadius: '8px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+          zIndex: 100,
+          overflow: 'hidden',
+        }}>
+          {suggestions.map((s, i) => (
+            <button
+              key={i}
+              type="button"
+              onMouseDown={() => select(s)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                width: '100%',
+                padding: '9px 12px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                borderBottom: i < suggestions.length - 1 ? '1px solid #f1f5f9' : 'none',
+              }}
+              onMouseOver={e => (e.currentTarget.style.background = '#f8fafc')}
+              onMouseOut={e => (e.currentTarget.style.background = 'none')}
+            >
+              <span style={{ fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{s.name}</span>
+              <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: 'auto' }}>
+                {s.state ? `${s.state}, ` : ''}{s.country}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -49,10 +142,6 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-  // City autocomplete state
-  const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>([]);
-  const [cityInputFocused, setCityInputFocused] = useState(false);
-  const cityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Settings state
   const [settings, setSettings] = useState({
@@ -372,73 +461,10 @@ export default function SettingsPage() {
 
                     <div className="form-group">
                       <label className="form-label">Місто</label>
-                      <div style={{ maxWidth: '300px', position: 'relative' }}>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={settings.weatherCity}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            handleInputChange('weatherCity', val);
-                            if (cityTimerRef.current) clearTimeout(cityTimerRef.current);
-                            if (val.length < 2) { setCitySuggestions([]); return; }
-                            cityTimerRef.current = setTimeout(async () => {
-                              try {
-                                const res = await fetch(`/api/weather/cities?q=${encodeURIComponent(val)}`);
-                                if (res.ok) setCitySuggestions(await res.json());
-                              } catch { /* ignore */ }
-                            }, 300);
-                          }}
-                          onFocus={() => setCityInputFocused(true)}
-                          onBlur={() => setTimeout(() => setCityInputFocused(false), 150)}
-                          placeholder="напр. Київ, Харків, Львів"
-                          autoComplete="off"
-                        />
-                        {cityInputFocused && citySuggestions.length > 0 && (
-                          <div style={{
-                            position: 'absolute',
-                            top: 'calc(100% + 4px)',
-                            left: 0,
-                            right: 0,
-                            background: '#fff',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                            zIndex: 100,
-                            overflow: 'hidden',
-                          }}>
-                            {citySuggestions.map((s, i) => (
-                              <button
-                                key={i}
-                                type="button"
-                                onMouseDown={() => {
-                                  handleInputChange('weatherCity', s.nameEn);
-                                  setCitySuggestions([]);
-                                }}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  width: '100%',
-                                  padding: '9px 12px',
-                                  background: 'none',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  textAlign: 'left',
-                                  borderBottom: i < citySuggestions.length - 1 ? '1px solid #f1f5f9' : 'none',
-                                }}
-                                onMouseOver={e => (e.currentTarget.style.background = '#f8fafc')}
-                                onMouseOut={e => (e.currentTarget.style.background = 'none')}
-                              >
-                                <span style={{ fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{s.name}</span>
-                                <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: 'auto' }}>
-                                  {s.state ? `${s.state}, ` : ''}{s.country}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <CityAutocompleteInput
+                        value={settings.weatherCity}
+                        onChange={(v) => handleInputChange('weatherCity', v)}
+                      />
                       <span className="form-hint">Введіть назву міста українською або англійською (наприклад: Київ, Одеса, Дніпро)</span>
                     </div>
                   </div>

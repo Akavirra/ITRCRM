@@ -23,19 +23,19 @@ export async function GET(request: NextRequest) {
     // Get user settings from database
     const settings = await get(
       `SELECT
-        u.name as displayName,
+        u.name,
         u.email,
         up.phone,
         up.language,
         up.timezone,
-        up.date_format as dateFormat,
+        up.date_format,
         up.currency,
-        up.email_notifications as emailNotifications,
-        up.push_notifications as pushNotifications,
-        up.lesson_reminders as lessonReminders,
-        up.payment_alerts as paymentAlerts,
-        up.weekly_report as weeklyReport,
-        up.weather_city as weatherCity
+        up.email_notifications,
+        up.push_notifications,
+        up.lesson_reminders,
+        up.payment_alerts,
+        up.weekly_report,
+        up.weather_city
       FROM users u
       LEFT JOIN user_settings up ON u.id = up.user_id
       WHERE u.id = $1`,
@@ -63,21 +63,22 @@ export async function GET(request: NextRequest) {
       });
     }
     
+    const s = settings as any;
     return NextResponse.json({
       settings: {
-        displayName: settings.displayName || user.name,
-        email: settings.email || user.email,
-        phone: settings.phone || '',
-        language: settings.language || 'uk',
-        timezone: settings.timezone || 'Europe/Kyiv',
-        dateFormat: settings.dateFormat || 'DD.MM.YYYY',
-        currency: settings.currency || 'UAH',
-        emailNotifications: settings.emailNotifications === 1,
-        pushNotifications: settings.pushNotifications === 1,
-        lessonReminders: settings.lessonReminders === 1,
-        paymentAlerts: settings.paymentAlerts === 1,
-        weeklyReport: settings.weeklyReport === 1,
-        weatherCity: (settings as any).weatherCity || 'Kyiv',
+        displayName: s.name || user.name,
+        email: s.email || user.email,
+        phone: s.phone || '',
+        language: s.language || 'uk',
+        timezone: s.timezone || 'Europe/Kyiv',
+        dateFormat: s.date_format || 'DD.MM.YYYY',
+        currency: s.currency || 'UAH',
+        emailNotifications: Boolean(s.email_notifications),
+        pushNotifications: Boolean(s.push_notifications),
+        lessonReminders: Boolean(s.lesson_reminders),
+        paymentAlerts: Boolean(s.payment_alerts),
+        weeklyReport: Boolean(s.weekly_report),
+        weatherCity: s.weather_city || 'Kyiv',
       },
     });
   } catch (error) {
