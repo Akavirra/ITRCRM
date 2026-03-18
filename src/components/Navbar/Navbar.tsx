@@ -111,7 +111,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'profile' | 'notifications' | 'system'>('general');
   const [settings, setSettings] = useState({
     displayName: user?.name || '',
-    email: user?.name || '',
+    email: '',
     phone: '',
     emailNotifications: true,
     pushNotifications: true,
@@ -122,6 +122,7 @@ const Navbar: React.FC<NavbarProps> = ({
     timezone: 'Europe/Kyiv',
     dateFormat: 'DD.MM.YYYY',
     currency: 'UAH',
+    weatherCity: 'Kyiv',
   });
   const [saved, setSaved] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -237,10 +238,28 @@ const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
-  const handleSettingsSave = () => {
+  const handleSettingsSave = async () => {
+    try {
+      await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+    } catch { /* silent */ }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
+
+  // Load settings when panel opens
+  useEffect(() => {
+    if (!settingsOpen) return;
+    fetch('/api/settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.settings) setSettings(prev => ({ ...prev, ...d.settings }));
+      })
+      .catch(() => {});
+  }, [settingsOpen]);
 
   const handleSettingChange = (field: string, value: string | boolean) => {
     setSettings(prev => ({ ...prev, [field]: value }));
@@ -663,19 +682,64 @@ const Navbar: React.FC<NavbarProps> = ({
               }}>
                 {/* General Tab */}
                 {activeSettingsTab === 'general' && (
-                  <div>
-                    <h3 style={{
-                      fontSize: '0.8125rem',
-                      fontWeight: '600',
-                      color: '#374151',
-                      marginBottom: '1rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}>Загальні налаштування</h3>
-                    
-                    <p style={{ color: '#6b7280', fontSize: '0.9375rem', marginBottom: '1rem' }}>
-                      Тут буде загальна інформація про систему.
-                    </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+                    {/* Appearance */}
+                    <div>
+                      <h3 style={{ fontSize: '0.75rem', fontWeight: '600', color: '#374151', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Зовнішній вигляд
+                      </h3>
+                      <div className="form-group">
+                        <label className="form-label">Мова інтерфейсу</label>
+                        <select className="form-select" value={settings.language} onChange={e => handleSettingChange('language', e.target.value)} style={{ maxWidth: '280px' }}>
+                          <option value="uk">Українська</option>
+                          <option value="en">English</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Формат дати</label>
+                        <select className="form-select" value={settings.dateFormat} onChange={e => handleSettingChange('dateFormat', e.target.value)} style={{ maxWidth: '280px' }}>
+                          <option value="DD.MM.YYYY">DD.MM.YYYY</option>
+                          <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                          <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Regional */}
+                    <div>
+                      <h3 style={{ fontSize: '0.75rem', fontWeight: '600', color: '#374151', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Регіональні
+                      </h3>
+                      <div className="form-group">
+                        <label className="form-label">Валюта</label>
+                        <select className="form-select" value={settings.currency} onChange={e => handleSettingChange('currency', e.target.value)} style={{ maxWidth: '280px' }}>
+                          <option value="UAH">UAH — Гривня</option>
+                          <option value="USD">USD — Долар</option>
+                          <option value="EUR">EUR — Євро</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Weather widget */}
+                    <div>
+                      <h3 style={{ fontSize: '0.75rem', fontWeight: '600', color: '#374151', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Віджет погоди
+                      </h3>
+                      <div className="form-group">
+                        <label className="form-label">Місто</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={settings.weatherCity}
+                          onChange={e => handleSettingChange('weatherCity', e.target.value)}
+                          placeholder="Kyiv, Kharkiv, Lviv..."
+                          style={{ maxWidth: '280px' }}
+                        />
+                        <span className="form-hint">Назва міста англійською</span>
+                      </div>
+                    </div>
+
                   </div>
                 )}
 
