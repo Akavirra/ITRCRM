@@ -88,6 +88,18 @@ function TypeBadge({ type }: { type: string }) {
 
 // ── Media Viewer Modal ────────────────────────────────────────────────────────
 
+const HEADER_H = 52; // DraggableModal header height px
+const NAV_BAR_H = 44; // video nav bar height px
+
+function calcVideoSize(hasNav: boolean): { width: number; height: number } {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const w = Math.round(Math.min(vw * 0.82, 960));
+  const videoH = Math.round(w * 9 / 16);
+  const h = Math.min(videoH + HEADER_H + (hasNav ? NAV_BAR_H : 0), vh * 0.9);
+  return { width: w, height: h };
+}
+
 function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
   files: MediaFile[];
   index: number;
@@ -96,7 +108,27 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
   onNext: () => void;
 }) {
   const file = files[index];
+  const isVideo = file.file_type === 'video' || VIDEO_EXTENSIONS.test(file.file_name ?? '');
+  const hasNav = files.length > 1;
 
+  // Start with a reasonable default; updated for images after load, for videos immediately
+  const [modalSize, setModalSize] = useState<{ width: number; height: number }>(() => {
+    if (typeof window === 'undefined') return { width: 760, height: 520 };
+    if (isVideo) return calcVideoSize(hasNav);
+    return { width: 760, height: 520 };
+  });
+
+  // Recalculate when switching between files
+  useEffect(() => {
+    if (isVideo) {
+      setModalSize(calcVideoSize(hasNav));
+    } else {
+      // Reset to default while image loads
+      setModalSize({ width: 760, height: 520 });
+    }
+  }, [file.id, isVideo, hasNav]);
+
+  // Keyboard navigation
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -107,29 +139,35 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
     return () => window.removeEventListener('keydown', handler);
   }, [onClose, onPrev, onNext]);
 
-  const isVideo = file.file_type === 'video' || VIDEO_EXTENSIONS.test(file.file_name ?? '');
+  function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    if (!nw || !nh) return;
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const maxW = Math.min(vw * 0.88, 1400);
+    const maxContentH = Math.min(vh * 0.88, 1000) - HEADER_H;
+    const scale = Math.min(maxW / nw, maxContentH / nh, 1);
+    const w = Math.max(Math.round(nw * scale), 320);
+    const h = Math.round(nh * scale) + HEADER_H;
+    setModalSize({ width: w, height: h });
+  }
 
   const headerAction = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      {files.length > 1 && (
+      {hasNav && (
         <span style={{ fontSize: 12, color: '#94a3b8', marginRight: 4 }}>
           {index + 1} / {files.length}
         </span>
       )}
-      <a
-        href={file.drive_download_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, background: '#f0fdf4', color: '#16a34a', textDecoration: 'none', fontSize: 12, fontWeight: 500 }}
-      >
+      <a href={file.drive_download_url} target="_blank" rel="noopener noreferrer"
+        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, background: '#f0fdf4', color: '#16a34a', textDecoration: 'none', fontSize: 12, fontWeight: 500 }}>
         <Download size={12} /> Завантажити
       </a>
-      <a
-        href={file.drive_view_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, background: '#eff6ff', color: '#3b82f6', textDecoration: 'none', fontSize: 12, fontWeight: 500 }}
-      >
+      <a href={file.drive_view_url} target="_blank" rel="noopener noreferrer"
+        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, background: '#eff6ff', color: '#3b82f6', textDecoration: 'none', fontSize: 12, fontWeight: 500 }}>
         <ExternalLink size={12} /> Drive
       </a>
     </div>
@@ -137,27 +175,27 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
 
   return (
     <DraggableModal
-      id={`media-viewer-${file.id}`}
+      id="media-viewer"
       isOpen
       onClose={onClose}
       title={file.file_name}
-      initialWidth={760}
-      initialHeight={560}
-      minWidth={360}
-      minHeight={280}
+      initialWidth={modalSize.width}
+      initialHeight={modalSize.height}
+      minWidth={320}
+      minHeight={240}
       headerAction={headerAction}
       contentStyle={{ padding: 0, background: '#0f172a', overflow: 'hidden' }}
     >
       {isVideo ? (
-        /* Video: iframe fills all space, nav arrows below */
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
           <iframe
+            key={file.drive_file_id}
             src={`https://drive.google.com/file/d/${file.drive_file_id}/preview`}
             allow="autoplay"
-            style={{ flex: 1, width: '100%', border: 'none', minHeight: 200 }}
+            style={{ flex: 1, width: '100%', border: 'none' }}
           />
-          {files.length > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '8px 0', background: '#1e293b' }}>
+          {hasNav && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '6px 0', background: '#1e293b', flexShrink: 0 }}>
               <button onClick={onPrev} disabled={index === 0}
                 style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 14px', borderRadius: 8, border: 'none', background: index === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)', color: index === 0 ? 'rgba(255,255,255,0.3)' : '#fff', cursor: index === 0 ? 'default' : 'pointer', fontSize: 13 }}>
                 <ChevronLeft size={16} /> Попереднє
@@ -170,8 +208,7 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
           )}
         </div>
       ) : (
-        /* Image: centered with side arrows */
-        <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+        <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {index > 0 && (
             <button onClick={onPrev}
               style={{ position: 'absolute', left: 10, zIndex: 10, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
@@ -179,9 +216,11 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
             </button>
           )}
           <img
-            src={thumbUrl(file.drive_file_id, 1200)}
+            key={file.drive_file_id}
+            src={thumbUrl(file.drive_file_id, 1600)}
             alt={file.file_name}
-            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 6 }}
+            onLoad={handleImageLoad}
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
           />
           {index < files.length - 1 && (
             <button onClick={onNext}
