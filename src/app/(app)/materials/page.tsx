@@ -446,7 +446,7 @@ export default function MaterialsPage() {
 
   return (
     <Layout user={user}>
-    <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
       {/* Media Viewer */}
       {lightboxIndex !== null && (
         <MediaViewerModal
