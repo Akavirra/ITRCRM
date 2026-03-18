@@ -148,53 +148,49 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
       headerAction={headerAction}
       contentStyle={{ padding: 0, background: '#0f172a', overflow: 'hidden' }}
     >
-      <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
-
-        {/* Prev */}
-        {index > 0 && (
-          <button
-            onClick={onPrev}
-            style={{ position: 'absolute', left: 10, zIndex: 10, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}
-          >
-            <ChevronLeft size={22} />
-          </button>
-        )}
-
-        {/* Content */}
-        {isVideo ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-            <img
-              src={thumbUrl(file.drive_file_id, 800)}
-              alt={file.file_name}
-              style={{ maxWidth: '100%', maxHeight: 380, objectFit: 'contain', borderRadius: 6 }}
-            />
-            <a
-              href={file.drive_view_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 20px', background: 'rgba(139,92,246,0.85)', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}
-            >
-              <Video size={16} /> Відтворити відео
-            </a>
-          </div>
-        ) : (
+      {isVideo ? (
+        /* Video: iframe fills all space, nav arrows below */
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
+          <iframe
+            src={`https://drive.google.com/file/d/${file.drive_file_id}/preview`}
+            allow="autoplay"
+            style={{ flex: 1, width: '100%', border: 'none', minHeight: 200 }}
+          />
+          {files.length > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '8px 0', background: '#1e293b' }}>
+              <button onClick={onPrev} disabled={index === 0}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 14px', borderRadius: 8, border: 'none', background: index === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)', color: index === 0 ? 'rgba(255,255,255,0.3)' : '#fff', cursor: index === 0 ? 'default' : 'pointer', fontSize: 13 }}>
+                <ChevronLeft size={16} /> Попереднє
+              </button>
+              <button onClick={onNext} disabled={index === files.length - 1}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 14px', borderRadius: 8, border: 'none', background: index === files.length - 1 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)', color: index === files.length - 1 ? 'rgba(255,255,255,0.3)' : '#fff', cursor: index === files.length - 1 ? 'default' : 'pointer', fontSize: 13 }}>
+                Наступне <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Image: centered with side arrows */
+        <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+          {index > 0 && (
+            <button onClick={onPrev}
+              style={{ position: 'absolute', left: 10, zIndex: 10, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
+              <ChevronLeft size={22} />
+            </button>
+          )}
           <img
             src={thumbUrl(file.drive_file_id, 1200)}
             alt={file.file_name}
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 6 }}
           />
-        )}
-
-        {/* Next */}
-        {index < files.length - 1 && (
-          <button
-            onClick={onNext}
-            style={{ position: 'absolute', right: 10, zIndex: 10, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}
-          >
-            <ChevronRight size={22} />
-          </button>
-        )}
-      </div>
+          {index < files.length - 1 && (
+            <button onClick={onNext}
+              style={{ position: 'absolute', right: 10, zIndex: 10, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
+              <ChevronRight size={22} />
+            </button>
+          )}
+        </div>
+      )}
     </DraggableModal>
   );
 }
