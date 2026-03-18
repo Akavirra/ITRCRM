@@ -412,15 +412,23 @@ export default function MaterialsPage() {
   const selectedTopic = topics.find(t => t.id === selectedTopicId);
   const totalFiles = topics.reduce((s, t) => s + t.file_count, 0);
 
+  // Resolve effective category based on file_type + filename extension
+  function effectiveCategory(f: MediaFile): FilterType {
+    if (f.file_type === 'photo' || f.file_type === 'animation') return 'photo';
+    if (f.file_type === 'video') return 'video';
+    if (f.file_type === 'audio' || f.file_type === 'voice') return 'audio';
+    if (f.file_type === 'document') {
+      if (IMAGE_EXTENSIONS.test(f.file_name)) return 'photo';
+      if (VIDEO_EXTENSIONS.test(f.file_name)) return 'video';
+      if (AUDIO_EXTENSIONS.test(f.file_name)) return 'audio';
+    }
+    return 'document';
+  }
+
   // Filter by type
-  const filteredFiles = files.filter(f => {
-    if (filterType === 'all') return true;
-    if (filterType === 'photo') return f.file_type === 'photo' || f.file_type === 'animation';
-    if (filterType === 'video') return f.file_type === 'video';
-    if (filterType === 'document') return f.file_type === 'document';
-    if (filterType === 'audio') return f.file_type === 'audio' || f.file_type === 'voice';
-    return true;
-  });
+  const filteredFiles = files.filter(f =>
+    filterType === 'all' || effectiveCategory(f) === filterType
+  );
 
   // Visual files for lightbox
   const visualFiles = filteredFiles.filter(f => isPreviewable(f.file_type, f.file_name));
