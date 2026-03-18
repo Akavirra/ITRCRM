@@ -7,6 +7,7 @@ import {
   LayoutList, ChevronLeft, ChevronRight, MoreVertical,
 } from 'lucide-react';
 import DraggableModal from '@/components/DraggableModal';
+import Layout from '@/components/Layout';
 
 // ── Kebab Menu ────────────────────────────────────────────────────────────────
 
@@ -416,6 +417,7 @@ export default function MaterialsPage() {
   ];
 
   return (
+    <Layout>
     <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
       {/* Media Viewer */}
       {lightboxIndex !== null && (
@@ -557,6 +559,7 @@ export default function MaterialsPage() {
         </div>
       </div>
     </div>
+    </Layout>
   );
 }
 
