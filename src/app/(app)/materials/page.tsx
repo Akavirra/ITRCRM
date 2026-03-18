@@ -27,6 +27,8 @@ interface MediaFile {
   drive_download_url: string;
   uploaded_by_name: string | null;
   created_at: string;
+  media_width: number | null;
+  media_height: number | null;
 }
 
 type ViewMode = 'grid' | 'list';
@@ -91,13 +93,32 @@ function TypeBadge({ type }: { type: string }) {
 const HEADER_H = 52; // DraggableModal header height px
 const NAV_BAR_H = 44; // video nav bar height px
 
-function calcVideoSize(hasNav: boolean): { width: number; height: number } {
+function calcMediaSize(
+  mediaW: number | null | undefined,
+  mediaH: number | null | undefined,
+  isVideo: boolean,
+  hasNav: boolean,
+): { width: number; height: number } {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const w = Math.round(Math.min(vw * 0.82, 960));
-  const videoH = Math.round(w * 9 / 16);
-  const h = Math.min(videoH + HEADER_H + (hasNav ? NAV_BAR_H : 0), vh * 0.9);
-  return { width: w, height: h };
+  const extraH = HEADER_H + (isVideo && hasNav ? NAV_BAR_H : 0);
+
+  if (mediaW && mediaH) {
+    const maxW = Math.min(vw * 0.88, isVideo ? 1280 : 1400);
+    const maxContentH = Math.min(vh * 0.88, 900) - HEADER_H - (isVideo && hasNav ? NAV_BAR_H : 0);
+    const scale = Math.min(maxW / mediaW, maxContentH / mediaH, 1);
+    const w = Math.max(Math.round(mediaW * scale), 320);
+    const h = Math.round(mediaH * scale) + extraH;
+    return { width: w, height: h };
+  }
+
+  // Fallback: 16:9 for video, default for image
+  if (isVideo) {
+    const w = Math.round(Math.min(vw * 0.82, 960));
+    const h = Math.min(Math.round(w * 9 / 16) + extraH, vh * 0.9);
+    return { width: w, height: h };
+  }
+  return { width: 760, height: 520 };
 }
 
 function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
@@ -111,22 +132,15 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
   const isVideo = file.file_type === 'video' || VIDEO_EXTENSIONS.test(file.file_name ?? '');
   const hasNav = files.length > 1;
 
-  // Start with a reasonable default; updated for images after load, for videos immediately
   const [modalSize, setModalSize] = useState<{ width: number; height: number }>(() => {
     if (typeof window === 'undefined') return { width: 760, height: 520 };
-    if (isVideo) return calcVideoSize(hasNav);
-    return { width: 760, height: 520 };
+    return calcMediaSize(file.media_width, file.media_height, isVideo, hasNav);
   });
 
-  // Recalculate when switching between files
+  // Recalculate when switching files
   useEffect(() => {
-    if (isVideo) {
-      setModalSize(calcVideoSize(hasNav));
-    } else {
-      // Reset to default while image loads
-      setModalSize({ width: 760, height: 520 });
-    }
-  }, [file.id, isVideo, hasNav]);
+    setModalSize(calcMediaSize(file.media_width, file.media_height, isVideo, hasNav));
+  }, [file.id, isVideo, hasNav, file.media_width, file.media_height]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -139,20 +153,12 @@ function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
     return () => window.removeEventListener('keydown', handler);
   }, [onClose, onPrev, onNext]);
 
+  // Fallback: recalculate from actual image element if DB dimensions missing
   function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    if (file.media_width && file.media_height) return; // already sized correctly
     const img = e.currentTarget;
-    const nw = img.naturalWidth;
-    const nh = img.naturalHeight;
-    if (!nw || !nh) return;
-
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const maxW = Math.min(vw * 0.88, 1400);
-    const maxContentH = Math.min(vh * 0.88, 1000) - HEADER_H;
-    const scale = Math.min(maxW / nw, maxContentH / nh, 1);
-    const w = Math.max(Math.round(nw * scale), 320);
-    const h = Math.round(nh * scale) + HEADER_H;
-    setModalSize({ width: w, height: h });
+    if (!img.naturalWidth || !img.naturalHeight) return;
+    setModalSize(calcMediaSize(img.naturalWidth, img.naturalHeight, false, hasNav));
   }
 
   const iconBtn: React.CSSProperties = {

@@ -42,11 +42,14 @@ export async function GET(request: NextRequest) {
     drive_download_url: string;
     uploaded_by_name: string;
     created_at: string;
+    media_width: number | null;
+    media_height: number | null;
   }>(
     `SELECT f.id, f.topic_id, t.name AS topic_name,
             f.file_name, f.file_type, f.file_size,
             f.drive_file_id, f.drive_view_url, f.drive_download_url,
-            f.uploaded_by_name, f.created_at
+            f.uploaded_by_name, f.created_at,
+            f.media_width, f.media_height
      FROM media_files f
      LEFT JOIN media_topics t ON t.id = f.topic_id
      ${where}

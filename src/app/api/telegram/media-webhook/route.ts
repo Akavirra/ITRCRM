@@ -33,11 +33,11 @@ interface TelegramMessage {
   from?: { id: number; first_name?: string; last_name?: string; username?: string };
   chat: { id: number; type: string };
   photo?: Array<{ file_id: string; file_size?: number; width: number; height: number }>;
-  video?: { file_id: string; file_size?: number; file_name?: string; mime_type?: string };
+  video?: { file_id: string; file_size?: number; file_name?: string; mime_type?: string; width?: number; height?: number };
   document?: { file_id: string; file_size?: number; file_name?: string; mime_type?: string };
   audio?: { file_id: string; file_size?: number; file_name?: string; mime_type?: string };
   voice?: { file_id: string; file_size?: number; mime_type?: string };
-  animation?: { file_id: string; file_size?: number; file_name?: string; mime_type?: string };
+  animation?: { file_id: string; file_size?: number; file_name?: string; mime_type?: string; width?: number; height?: number };
   caption?: string;
   forum_topic_created?: { name: string; icon_color?: number };
   forum_topic_edited?: { name?: string };
@@ -49,6 +49,8 @@ interface MediaInfo {
   mimeType: string;
   fileSize: number;
   type: MediaType;
+  width?: number;
+  height?: number;
 }
 
 function extractMedia(msg: TelegramMessage): MediaInfo | null {
@@ -60,6 +62,8 @@ function extractMedia(msg: TelegramMessage): MediaInfo | null {
       mimeType: 'image/jpeg',
       fileSize: largest.file_size ?? 0,
       type: 'photo',
+      width: largest.width,
+      height: largest.height,
     };
   }
   if (msg.video) {
@@ -69,6 +73,8 @@ function extractMedia(msg: TelegramMessage): MediaInfo | null {
       mimeType: msg.video.mime_type ?? 'video/mp4',
       fileSize: msg.video.file_size ?? 0,
       type: 'video',
+      width: msg.video.width,
+      height: msg.video.height,
     };
   }
   if (msg.document) {
@@ -109,6 +115,8 @@ function extractMedia(msg: TelegramMessage): MediaInfo | null {
       mimeType: msg.animation.mime_type ?? 'image/gif',
       fileSize: msg.animation.file_size ?? 0,
       type: 'animation',
+      width: msg.animation.width,
+      height: msg.animation.height,
     };
   }
   return null;
@@ -277,8 +285,9 @@ export async function POST(request: NextRequest) {
     await run(
       `INSERT INTO media_files
         (topic_id, telegram_file_id, telegram_message_id, file_name, file_type, file_size,
-         drive_file_id, drive_view_url, drive_download_url, uploaded_by_telegram_id, uploaded_by_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+         drive_file_id, drive_view_url, drive_download_url, uploaded_by_telegram_id, uploaded_by_name,
+         media_width, media_height)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         topicId,
         media.fileId,
@@ -291,6 +300,8 @@ export async function POST(request: NextRequest) {
         getDriveDownloadUrl(driveFile.id),
         msg.from?.id ?? null,
         uploaderName,
+        media.width ?? null,
+        media.height ?? null,
       ]
     );
 
