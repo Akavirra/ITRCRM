@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
@@ -29,6 +29,8 @@ interface User {
 
 type SettingsTab = 'general' | 'profile' | 'notifications' | 'system';
 
+interface CitySuggestion { name: string; nameEn: string; country: string; state?: string; }
+
 export default function SettingsPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -46,6 +48,23 @@ export default function SettingsPage() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  // City autocomplete state
+  const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>([]);
+  const [cityInputFocused, setCityInputFocused] = useState(false);
+  const cityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cityWrapperRef = useRef<HTMLDivElement>(null);
+
+  const fetchCitySuggestions = useCallback((q: string) => {
+    if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
+    if (q.length < 2) { setCitySuggestions([]); return; }
+    cityDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/weather/cities?q=${encodeURIComponent(q)}`);
+        if (res.ok) setCitySuggestions(await res.json());
+      } catch { /* ignore */ }
+    }, 300);
+  }, []);
 
   // Settings state
   const [settings, setSettings] = useState({
@@ -365,15 +384,66 @@ export default function SettingsPage() {
 
                     <div className="form-group">
                       <label className="form-label">Місто</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={settings.weatherCity}
-                        onChange={(e) => handleInputChange('weatherCity', e.target.value)}
-                        placeholder="напр. Kyiv, Kharkiv, Lviv"
-                        style={{ maxWidth: '300px' }}
-                      />
-                      <span className="form-hint">Введіть назву міста англійською (наприклад: Kyiv, Odessa, Dnipro)</span>
+                      <div ref={cityWrapperRef} style={{ maxWidth: '300px', position: 'relative' }}>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={settings.weatherCity}
+                          onChange={(e) => {
+                            handleInputChange('weatherCity', e.target.value);
+                            fetchCitySuggestions(e.target.value);
+                          }}
+                          onFocus={() => setCityInputFocused(true)}
+                          onBlur={() => setTimeout(() => setCityInputFocused(false), 150)}
+                          placeholder="напр. Київ, Харків, Львів"
+                          autoComplete="off"
+                        />
+                        {cityInputFocused && citySuggestions.length > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: 'calc(100% + 4px)',
+                            left: 0,
+                            right: 0,
+                            background: '#fff',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                            zIndex: 100,
+                            overflow: 'hidden',
+                          }}>
+                            {citySuggestions.map((s, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onMouseDown={() => {
+                                  handleInputChange('weatherCity', s.nameEn);
+                                  setCitySuggestions([]);
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  width: '100%',
+                                  padding: '9px 12px',
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  borderBottom: i < citySuggestions.length - 1 ? '1px solid #f1f5f9' : 'none',
+                                }}
+                                onMouseOver={e => (e.currentTarget.style.background = '#f8fafc')}
+                                onMouseOut={e => (e.currentTarget.style.background = 'none')}
+                              >
+                                <span style={{ fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{s.name}</span>
+                                <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: 'auto' }}>
+                                  {s.state ? `${s.state}, ` : ''}{s.country}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <span className="form-hint">Введіть назву міста українською або англійською (наприклад: Київ, Одеса, Дніпро)</span>
                     </div>
                   </div>
                 </div>

@@ -64,8 +64,23 @@ export async function GET(request: NextRequest) {
 
   const json = await owmRes.json();
 
+  // Try to get Ukrainian city name via Geocoding API
+  let cityNameUk = json.name;
+  try {
+    const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${apiKey}`;
+    const geoRes = await fetch(geoUrl, { next: { revalidate: 0 } });
+    if (geoRes.ok) {
+      const geoJson = await geoRes.json();
+      if (geoJson?.[0]?.local_names?.uk) {
+        cityNameUk = geoJson[0].local_names.uk;
+      }
+    }
+  } catch {
+    // keep default json.name
+  }
+
   const result: WeatherResult = {
-    city: json.name,
+    city: cityNameUk,
     temp: Math.round(json.main.temp),
     feels_like: Math.round(json.main.feels_like),
     description: json.weather?.[0]?.description ?? '',
