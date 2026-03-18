@@ -13,13 +13,7 @@ export interface PhotosMediaItem {
   filename: string;
 }
 
-// Cache access token in module scope
-let cachedToken: string | null = null;
-let tokenExpiry = 0;
-
 async function getPhotosAccessToken(): Promise<string> {
-  if (cachedToken && Date.now() < tokenExpiry - 60_000) return cachedToken;
-
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -36,9 +30,7 @@ async function getPhotosAccessToken(): Promise<string> {
     throw new Error('Failed to get Photos access token: ' + JSON.stringify(data));
   }
 
-  cachedToken = data.access_token as string;
-  tokenExpiry = Date.now() + (data.expires_in ?? 3600) * 1000;
-  return cachedToken;
+  return data.access_token as string;
 }
 
 export async function searchPhotosByDate(dateStr: string): Promise<PhotosMediaItem[]> {
