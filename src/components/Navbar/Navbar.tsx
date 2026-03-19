@@ -107,6 +107,12 @@ const Navbar: React.FC<NavbarProps> = ({
   const [profileSaving, setProfileSaving] = useState(false);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
   const [profilePhotoBase64, setProfilePhotoBase64] = useState<string | null>(null);
+  const [dicebearSeed, setDicebearSeed] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('itrobot-avatar-seed') || '';
+    }
+    return '';
+  });
 
   // ── Notifications state ────────────────────────────────────────────────────
   const [notifOpen, setNotifOpen] = useState(false);
@@ -341,6 +347,15 @@ const Navbar: React.FC<NavbarProps> = ({
       })
       .catch(() => {});
   }, [settingsOpen]);
+
+  const randomizeDicebear = () => {
+    const seed = Math.random().toString(36).slice(2);
+    setDicebearSeed(seed);
+    localStorage.setItem('itrobot-avatar-seed', seed);
+  };
+
+  const dicebearUrl = (fallbackName: string) =>
+    `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(dicebearSeed || fallbackName)}`;
 
   const handleProfilePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -667,7 +682,7 @@ const Navbar: React.FC<NavbarProps> = ({
               >
                 <div className={styles.userAvatar}>
                   <img
-                    src={userPhotoUrl || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(userName)}`}
+                    src={userPhotoUrl || dicebearUrl(userName)}
                     alt={userName}
                   />
                 </div>
@@ -881,7 +896,7 @@ const Navbar: React.FC<NavbarProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                         <div style={{ width: 80, height: 80, borderRadius: 16, overflow: 'hidden', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '2px solid #e5e7eb' }}>
                           <img
-                            src={profilePhotoPreview || userPhotoUrl || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(settings.displayName || userName)}`}
+                            src={profilePhotoPreview || userPhotoUrl || dicebearUrl(settings.displayName || userName)}
                             alt="avatar"
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />
@@ -894,6 +909,17 @@ const Navbar: React.FC<NavbarProps> = ({
                             <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleProfilePhotoSelect} />
                             Вибрати фото
                           </label>
+                          {!userPhotoUrl && !profilePhotoPreview && (
+                            <button
+                              onClick={randomizeDicebear}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 8, padding: '0.5rem 0.875rem', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; }}
+                              title="Згенерувати випадкового робота"
+                            >
+                              🎲 Інший робот
+                            </button>
+                          )}
                           {profilePhotoPreview && (
                             <button onClick={() => { setProfilePhotoPreview(null); setProfilePhotoBase64(null); }}
                               style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#64748b' }}>
