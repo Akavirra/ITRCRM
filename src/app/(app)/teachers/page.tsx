@@ -57,7 +57,7 @@ interface DrillDownLesson {
 interface DrillDownState {
   teacherId: number;
   teacherName: string;
-  type: 'total' | 'group' | 'individual';
+  type: 'total' | 'group' | 'individual' | 'makeup';
   lessons: DrillDownLesson[];
 }
 
@@ -213,7 +213,7 @@ export default function TeachersPage() {
     }
   };
 
-  const openDrillDown = async (teacher: { teacher_id: number; teacher_name: string }, type: 'total' | 'group' | 'individual') => {
+  const openDrillDown = async (teacher: { teacher_id: number; teacher_name: string }, type: 'total' | 'group' | 'individual' | 'makeup') => {
     setDrillDown({ teacherId: teacher.teacher_id, teacherName: teacher.teacher_name, type, lessons: [] });
     setDrillLoading(true);
     const [year, mon] = statsMonth.split('-');
@@ -224,6 +224,7 @@ export default function TeachersPage() {
         let lessons: DrillDownLesson[] = data.lessons ?? [];
         if (type === 'group') lessons = lessons.filter((l: DrillDownLesson) => !l.is_individual);
         if (type === 'individual') lessons = lessons.filter((l: DrillDownLesson) => l.is_individual);
+        if (type === 'makeup') lessons = lessons.filter((l: DrillDownLesson) => l.makeup_count > 0);
         setDrillDown({ teacherId: teacher.teacher_id, teacherName: teacher.teacher_name, type, lessons });
       }
     } catch { /* silent */ } finally {
@@ -1535,11 +1536,11 @@ export default function TeachersPage() {
                           <tr style={{ background: '#f8fafc' }}>
                             {[
                               { label: 'Викладач', align: 'left' as const, pl: '1rem' },
-                              { label: 'Всього', align: 'center' as const },
+                              { label: 'Усіх занять', align: 'center' as const },
                               { label: 'Групові', align: 'center' as const },
                               { label: 'Індивід.', align: 'center' as const },
-                              { label: 'Учнів', align: 'center' as const },
                               { label: 'Відпр.', align: 'center' as const },
+                              { label: 'Учнів', align: 'center' as const },
                               { label: 'Зарплата', align: 'right' as const, pr: '1rem' },
                             ].map((h, i) => (
                               <th key={i} style={{ padding: '0.7rem ' + (h.pl || '0.75rem'), textAlign: h.align, fontWeight: 600, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9', paddingRight: h.pr || '0.75rem' }}>{h.label}</th>
@@ -1581,8 +1582,18 @@ export default function TeachersPage() {
                                   title="Переглянути індивідуальні заняття"
                                 >{tr.individual_lessons}</button>
                               </td>
+                              <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                {tr.total_makeup > 0 ? (
+                                  <button
+                                    onClick={() => openDrillDown(tr, 'makeup')}
+                                    style={{ background: '#fff7ed', color: '#c2410c', border: 'none', borderRadius: 20, padding: '0.2rem 0.65rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', minWidth: 32 }}
+                                    title="Переглянути відпрацювання"
+                                  >{tr.total_makeup}</button>
+                                ) : (
+                                  <span style={{ color: '#cbd5e1' }}>—</span>
+                                )}
+                              </td>
                               <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>{tr.total_present}</td>
-                              <td style={{ padding: '0.75rem', textAlign: 'center', color: '#d97706' }}>{tr.total_makeup || '—'}</td>
                               <td style={{ padding: '0.75rem 1rem 0.75rem 0.75rem', textAlign: 'right', fontWeight: 700, color: '#0f172a', fontSize: '0.9375rem' }}>
                                 {tr.total_salary.toLocaleString()} ₴
                               </td>
@@ -1612,7 +1623,7 @@ export default function TeachersPage() {
               <div style={{ padding: '1.125rem 1.5rem', borderBottom: '1px solid #f1f5f9', background: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.2rem' }}>
-                    {drillDown.type === 'total' ? 'Всі заняття' : drillDown.type === 'group' ? 'Групові заняття' : 'Індивідуальні заняття'}
+                    {drillDown.type === 'total' ? 'Всі заняття' : drillDown.type === 'group' ? 'Групові заняття' : drillDown.type === 'individual' ? 'Індивідуальні заняття' : 'Відпрацювання'}
                   </div>
                   <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700, color: '#0f172a' }}>
                     {drillDown.teacherName}
@@ -1620,8 +1631,8 @@ export default function TeachersPage() {
                 </div>
                 <div style={{
                   padding: '0.3rem 0.875rem', borderRadius: 20, fontSize: '0.8125rem', fontWeight: 700,
-                  background: drillDown.type === 'total' ? '#eef2ff' : drillDown.type === 'group' ? '#e0f2fe' : '#f5f3ff',
-                  color: drillDown.type === 'total' ? '#4f46e5' : drillDown.type === 'group' ? '#0369a1' : '#7c3aed',
+                  background: drillDown.type === 'total' ? '#eef2ff' : drillDown.type === 'group' ? '#e0f2fe' : drillDown.type === 'individual' ? '#f5f3ff' : '#fff7ed',
+                  color: drillDown.type === 'total' ? '#4f46e5' : drillDown.type === 'group' ? '#0369a1' : drillDown.type === 'individual' ? '#7c3aed' : '#c2410c',
                 }}>
                   {drillLoading ? '...' : drillDown.lessons.length} занять
                 </div>
