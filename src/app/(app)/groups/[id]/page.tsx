@@ -96,11 +96,6 @@ interface AllTimeRegister {
   students: RegStudentRow[];
 }
 
-interface Course {
-  id: number;
-  title: string;
-}
-
 interface Teacher {
   id: number;
   name: string;
@@ -125,9 +120,17 @@ export default function GroupDetailsPage() {
   const [registerData, setRegisterData] = useState<AllTimeRegister | null>(null);
   const [registerLoading, setRegisterLoading] = useState(false);
 
+  // Dropdown
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Graduate
+  const [showGraduateModal, setShowGraduateModal] = useState(false);
+  const [graduationDate, setGraduationDate] = useState('');
+  const [graduating, setGraduating] = useState(false);
+
   // Modal states
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
-  const [showEditGroupModal, setShowEditGroupModal] = useState(false);
   
   // Student search
   const [studentSearch, setStudentSearch] = useState('');
@@ -142,22 +145,7 @@ export default function GroupDetailsPage() {
   const [changingTeacher, setChangingTeacher] = useState(false);
   const [changeTeacherError, setChangeTeacherError] = useState('');
 
-  // Edit group form
-  const [editForm, setEditForm] = useState({
-    course_id: '',
-    teacher_id: '',
-    weekly_day: '',
-    start_time: '',
-    duration_minutes: 60,
-    monthly_price: 0,
-    status: 'active',
-    note: '',
-    photos_folder_url: '',
-    start_date: '',
-  });
-  const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [savingGroup, setSavingGroup] = useState(false);
 
   // Константа для ключа localStorage
   const STORAGE_KEY = 'itrobot-group-modals';
@@ -237,10 +225,6 @@ export default function GroupDetailsPage() {
         }
         
         if (authData.user.role === 'admin') {
-          const coursesRes = await fetch('/api/courses');
-          const coursesData = await coursesRes.json();
-          setCourses(coursesData.courses || []);
-          
           const teachersRes = await fetch('/api/teachers?simple=true');
           const teachersData = await teachersRes.json();
           setTeachers(teachersData.teachers || []);
@@ -256,21 +240,14 @@ export default function GroupDetailsPage() {
   }, [router, groupId]);
 
   useEffect(() => {
-    if (showEditGroupModal && group) {
-      setEditForm({
-        course_id: String(group.course_id),
-        teacher_id: String(group.teacher_id),
-        weekly_day: String(group.weekly_day),
-        start_time: group.start_time,
-        duration_minutes: group.duration_minutes,
-        monthly_price: group.monthly_price,
-        status: group.status,
-        note: group.note || '',
-        photos_folder_url: group.photos_folder_url || '',
-        start_date: group.start_date || '',
-      });
-    }
-  }, [showEditGroupModal, group]);
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    if (showDropdown) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showDropdown]);
 
   // Скидаємо стан пошуку при відкритті модального вікна
   useEffect(() => {
@@ -362,39 +339,29 @@ export default function GroupDetailsPage() {
     }
   };
 
-  const handleSaveGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingGroup(true);
-    
+  const handleGraduateConfirm = async () => {
+    if (!group || !graduationDate) return;
+    setGraduating(true);
     try {
-      const res = await fetch(`/api/groups/${groupId}`, {
-        method: 'PUT',
+      const res = await fetch(`/api/groups/${groupId}/graduate`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          course_id: parseInt(editForm.course_id),
-          teacher_id: parseInt(editForm.teacher_id),
-          weekly_day: editForm.weekly_day ? parseInt(editForm.weekly_day) : undefined,
-          start_time: editForm.start_time,
-          duration_minutes: editForm.duration_minutes,
-          status: editForm.status,
-          note: editForm.note || null,
-          photos_folder_url: editForm.photos_folder_url || null,
-          start_date: editForm.start_date || null,
-        }),
+        body: JSON.stringify({ graduation_date: graduationDate }),
       });
-      
       if (res.ok) {
-        const data = await res.json();
-        setGroup(data.group);
-        setShowEditGroupModal(false);
+        setShowGraduateModal(false);
+        const groupRes = await fetch(`/api/groups/${groupId}?withStudents=true`);
+        const groupData = await groupRes.json();
+        setGroup(groupData.group);
+        setStudents(groupData.students || []);
       } else {
         const data = await res.json();
-        alert(data.error || 'Помилка збереження');
+        alert(data.error || 'Помилка випуску групи');
       }
     } catch (error) {
-      console.error('Failed to save group:', error);
+      console.error('Graduate error:', error);
     } finally {
-      setSavingGroup(false);
+      setGraduating(false);
     }
   };
 
@@ -735,17 +702,85 @@ export default function GroupDetailsPage() {
         </div>
         
         {isAdmin && (
-          <button
-            onClick={() => setShowEditGroupModal(true)}
-            className="btn btn-secondary"
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '0.5rem' }}>
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-            Редагувати групу
-          </button>
+          <div ref={dropdownRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowDropdown(v => !v)}
+              style={{
+                background: 'var(--gray-100)',
+                border: '1px solid var(--gray-200)',
+                borderRadius: '0.5rem',
+                padding: '0.5rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--gray-600)',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--gray-200)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--gray-100)'; }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+              </svg>
+            </button>
+            {showDropdown && (
+              <div style={{
+                position: 'absolute', right: 0, top: 'calc(100% + 4px)',
+                background: 'white', border: '1px solid var(--gray-200)',
+                borderRadius: '0.5rem', boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+                minWidth: '200px', zIndex: 100, overflow: 'hidden',
+              }}>
+                <button
+                  onClick={() => {
+                    setShowChangeTeacher(true);
+                    setChangeTeacherForm({ newTeacherId: '', reason: '' });
+                    setChangeTeacherError('');
+                    setShowDropdown(false);
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.625rem',
+                    width: '100%', padding: '0.625rem 1rem', background: 'none',
+                    border: 'none', cursor: 'pointer', fontSize: '0.875rem',
+                    color: '#1d4ed8', fontWeight: 500, textAlign: 'left',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  Змінити викладача
+                </button>
+                {group.status === 'active' && (
+                  <>
+                    <div style={{ height: '1px', background: 'var(--gray-100)', margin: '0 0.5rem' }} />
+                    <button
+                      onClick={() => {
+                        setGraduationDate(new Date().toISOString().split('T')[0]);
+                        setShowGraduateModal(true);
+                        setShowDropdown(false);
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.625rem',
+                        width: '100%', padding: '0.625rem 1rem', background: 'none',
+                        border: 'none', cursor: 'pointer', fontSize: '0.875rem',
+                        color: '#7c3aed', fontWeight: 500, textAlign: 'left',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#f5f3ff'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                        <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                      </svg>
+                      Випустити групу
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -1299,140 +1334,63 @@ export default function GroupDetailsPage() {
         </div>
       )}
 
-      {/* Edit Group Modal */}
-      {showEditGroupModal && (
-        <div className="modal-overlay" onClick={() => setShowEditGroupModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '550px' }}>
+      {/* Graduate Modal */}
+      {showGraduateModal && group && (
+        <div className="modal-overlay" onClick={() => !graduating && setShowGraduateModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
             <div className="modal-header">
-              <h2 className="modal-title">Редагувати групу</h2>
-              <button className="modal-close" onClick={() => setShowEditGroupModal(false)}>×</button>
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                  <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                </svg>
+                Випуск групи
+              </h3>
+              <button className="modal-close" onClick={() => setShowGraduateModal(false)} disabled={graduating}>×</button>
             </div>
-            <form onSubmit={handleSaveGroup}>
-              <div className="modal-body">
-                <div style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Курс *</label>
-                  <select 
-                    className="form-select"
-                    value={editForm.course_id}
-                    onChange={(e) => setEditForm({...editForm, course_id: e.target.value})}
-                    required
-                  >
-                    <option value="">Оберіть курс</option>
-                    {courses.map(course => (
-                      <option key={course.id} value={course.id}>{course.title}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Викладач *</label>
-                  <select 
-                    className="form-select"
-                    value={editForm.teacher_id}
-                    onChange={(e) => setEditForm({...editForm, teacher_id: e.target.value})}
-                    required
-                  >
-                    <option value="">Оберіть викладача</option>
-                    {teachers.map(teacher => (
-                      <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div>
-                    <label className="form-label">День тижня</label>
-                    <select 
-                      className="form-select"
-                      value={editForm.weekly_day || ''}
-                      disabled
-                      style={{ backgroundColor: 'var(--gray-100)' }}
-                    >
-                      <option value="">Оберіть день</option>
-                      {[1,2,3,4,5,6,7].map(day => (
-                        <option key={day} value={String(day)}>{uk.days[day as keyof typeof uk.days]}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="form-label">Час початку</label>
-                    <input 
-                      type="time" 
-                      className="form-input"
-                      value={editForm.start_time}
-                      disabled
-                      style={{ backgroundColor: 'var(--gray-100)' }}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div>
-                    <label className="form-label">Тривалість (хв)</label>
-                    <input 
-                      type="number" 
-                      className="form-input"
-                      value={editForm.duration_minutes}
-                      onChange={(e) => setEditForm({...editForm, duration_minutes: parseInt(e.target.value) || 60})}
-                      min="15"
-                      step="15"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="form-label">Статус</label>
-                    <select 
-                      className="form-select"
-                      value={editForm.status}
-                      onChange={(e) => setEditForm({...editForm, status: e.target.value})}
-                    >
-                      <option value="active">Активна</option>
-                      <option value="graduate">Випуск</option>
-                      <option value="inactive">Неактивна</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Посилання на Google Drive</label>
-                  <input 
-                    type="url" 
-                    className="form-input"
-                    value={editForm.photos_folder_url}
-                    onChange={(e) => setEditForm({...editForm, photos_folder_url: e.target.value})}
-                    placeholder="https://drive.google.com/..."
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">Примітка</label>
-                  <textarea 
-                    className="form-input"
-                    value={editForm.note}
-                    onChange={(e) => setEditForm({...editForm, note: e.target.value})}
-                    rows={3}
-                    style={{ resize: 'vertical' }}
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn btn-secondary"
-                  onClick={() => setShowEditGroupModal(false)}
-                >
-                  Скасувати
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn btn-primary"
-                  disabled={savingGroup}
-                >
-                  {savingGroup ? 'Збереження...' : 'Зберегти'}
-                </button>
-              </div>
-            </form>
+            <div className="modal-body">
+              <p style={{ margin: '0 0 1.25rem 0', color: '#374151' }}>
+                Група <strong>{group.title}</strong> буде переведена в архів зі статусом <strong>Випуск</strong>.
+              </p>
+              <ul style={{ margin: '0 0 1.25rem 0', paddingLeft: '1.25rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.7 }}>
+                <li>Усі майбутні заняття після дати випуску будуть видалені</li>
+                <li>Учні відв'язуються від групи (але список зберігається)</li>
+                <li>Група зникне з профілів викладача та учнів</li>
+                <li>Нові заняття більше не генеруватимуться</li>
+              </ul>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem', color: '#374151' }}>
+                Дата випуску
+              </label>
+              <input
+                type="date"
+                className="form-input"
+                value={graduationDate}
+                onChange={(e) => setGraduationDate(e.target.value)}
+                disabled={graduating}
+              />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowGraduateModal(false)} disabled={graduating}>
+                Скасувати
+              </button>
+              <button
+                className="btn"
+                onClick={handleGraduateConfirm}
+                disabled={graduating || !graduationDate}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  backgroundColor: '#7c3aed', color: 'white', border: 'none',
+                  padding: '0.625rem 1.25rem', borderRadius: '0.5rem',
+                  fontWeight: 500, cursor: graduating ? 'default' : 'pointer',
+                  opacity: graduating ? 0.7 : 1,
+                }}
+              >
+                {graduating && (
+                  <span style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+                )}
+                Випустити групу
+              </button>
+            </div>
           </div>
         </div>
       )}
