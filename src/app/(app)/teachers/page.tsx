@@ -204,6 +204,7 @@ export default function TeachersPage() {
   const [newItemAmount, setNewItemAmount] = useState('');
   const [addingItem, setAddingItem] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
+  const [salaryLessonsExpanded, setSalaryLessonsExpanded] = useState(false);
 
   // Salaries modal (standalone, with teacher switcher)
   const [showSalariesModal, setShowSalariesModal] = useState(false);
@@ -267,6 +268,7 @@ export default function TeachersPage() {
   const fetchSalaryData = async (teacherId: number, teacherName: string, month: string) => {
     setSalaryData(null);
     setSalaryLoading(true);
+    setSalaryLessonsExpanded(false);
     setNewItemDesc('');
     setNewItemAmount('');
     const [year, mon] = month.split('-');
@@ -1691,10 +1693,16 @@ export default function TeachersPage() {
 
                     {/* Lessons */}
                     <div>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.625rem' }}>
-                        Заняття ({salaryData.lessons.length})
-                      </div>
-                      {salaryData.lessons.length === 0 ? (
+                      <button
+                        onClick={() => setSalaryLessonsExpanded(v => !v)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: salaryLessonsExpanded ? '0.625rem' : 0, width: '100%', textAlign: 'left' }}
+                      >
+                        <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                          Заняття ({salaryData.lessons.length})
+                        </span>
+                        <span style={{ fontSize: '0.6875rem', color: '#94a3b8', marginLeft: 'auto' }}>{salaryLessonsExpanded ? '▲ Згорнути' : '▼ Розгорнути'}</span>
+                      </button>
+                      {salaryLessonsExpanded && (salaryData.lessons.length === 0 ? (
                         <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: 10, color: '#94a3b8', fontSize: '0.875rem', textAlign: 'center' }}>Немає занять за цей місяць</div>
                       ) : (
                         <div style={{ borderRadius: 10, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
@@ -1736,7 +1744,7 @@ export default function TeachersPage() {
                             </tfoot>
                           </table>
                         </div>
-                      )}
+                      ))}
                     </div>
 
                     {/* Extra items */}
@@ -2023,10 +2031,16 @@ export default function TeachersPage() {
                 <>
                   {/* Lessons section */}
                   <div>
-                    <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.625rem' }}>
-                      Заняття ({salaryData.lessons.length})
-                    </div>
-                    {salaryData.lessons.length === 0 ? (
+                    <button
+                      onClick={() => setSalaryLessonsExpanded(v => !v)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: salaryLessonsExpanded ? '0.625rem' : 0, width: '100%', textAlign: 'left' }}
+                    >
+                      <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Заняття ({salaryData.lessons.length})
+                      </span>
+                      <span style={{ fontSize: '0.6875rem', color: '#94a3b8', marginLeft: 'auto' }}>{salaryLessonsExpanded ? '▲ Згорнути' : '▼ Розгорнути'}</span>
+                    </button>
+                    {salaryLessonsExpanded && (salaryData.lessons.length === 0 ? (
                       <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: 10, color: '#94a3b8', fontSize: '0.875rem', textAlign: 'center' }}>Немає занять за цей місяць</div>
                     ) : (
                       <div style={{ borderRadius: 10, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
@@ -2068,7 +2082,7 @@ export default function TeachersPage() {
                           </tfoot>
                         </table>
                       </div>
-                    )}
+                    ))}
                   </div>
 
                   {/* Extra items section */}
