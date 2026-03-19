@@ -666,9 +666,10 @@ const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               >
                 <div className={styles.userAvatar}>
-                  {userPhotoUrl
-                    ? <img src={userPhotoUrl} alt={userName} />
-                    : <User size={18} strokeWidth={2} />}
+                  <img
+                    src={userPhotoUrl || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(userName)}`}
+                    alt={userName}
+                  />
                 </div>
                 <div className={styles.userInfo}>
                   <span className={styles.userName}>{userName}</span>
@@ -879,9 +880,11 @@ const Navbar: React.FC<NavbarProps> = ({
                       <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Фото профілю</h3>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                         <div style={{ width: 80, height: 80, borderRadius: 16, overflow: 'hidden', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '2px solid #e5e7eb' }}>
-                          {(profilePhotoPreview || userPhotoUrl)
-                            ? <img src={profilePhotoPreview || userPhotoUrl!} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : <User size={32} color="#4f46e5" strokeWidth={1.5} />}
+                          <img
+                            src={profilePhotoPreview || userPhotoUrl || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(settings.displayName || userName)}`}
+                            alt="avatar"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
                         </div>
                         <div>
                           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.5rem 1rem', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}
