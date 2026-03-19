@@ -256,6 +256,31 @@ export default function NotesModal({ isOpen, onClose }: Props) {
     }
   };
 
+  const duplicateNote = async (note: Note) => {
+    const res = await fetch('/api/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: note.type }),
+    });
+    const d = await res.json();
+    if (!d.note) return;
+    // Immediately patch with the source content
+    await fetch(`/api/notes/${d.note.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title:   note.title ? `${note.title} (копія)` : '',
+        content: note.content,
+        tasks:   note.tasks.map(t => ({ ...t, id: crypto.randomUUID(), done: false })),
+        color:   note.color,
+        tags:    note.tags,
+      }),
+    });
+    const fresh = { ...d.note, title: note.title ? `${note.title} (копія)` : '', content: note.content, tasks: note.tasks.map(t => ({ ...t, id: crypto.randomUUID(), done: false })), color: note.color, tags: note.tags };
+    setNotes(prev => [fresh, ...prev]);
+    setSelectedId(fresh.id);
+  };
+
   const deleteNote = async (id: number) => {
     if (!confirm('Видалити нотатку?')) return;
     await fetch(`/api/notes/${id}`, { method: 'DELETE' });
@@ -577,6 +602,19 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
                   >
                     <Pin size={14} strokeWidth={2} />
+                  </button>
+
+                  {/* Duplicate */}
+                  <button
+                    onClick={() => duplicateNote(selectedNote)}
+                    title="Дублювати нотатку"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 3, borderRadius: 5, color: '#94a3b8' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#2563eb'; e.currentTarget.style.background = '#eff6ff'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'none'; }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
                   </button>
 
                   {/* Archive / Unarchive */}
