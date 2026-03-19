@@ -109,6 +109,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
   const [profilePhotoBase64, setProfilePhotoBase64] = useState<string | null>(null);
   const [dicebearSeed, setDicebearSeed] = useState<string>('');
+  const [pendingDicebearSeed, setPendingDicebearSeed] = useState<string | null>(null);
 
   useEffect(() => {
     let seed = localStorage.getItem('itrobot-avatar-seed');
@@ -118,6 +119,12 @@ const Navbar: React.FC<NavbarProps> = ({
     }
     setDicebearSeed(seed);
   }, []);
+
+  useEffect(() => {
+    if (!settingsOpen) {
+      setPendingDicebearSeed(null);
+    }
+  }, [settingsOpen]);
 
   // ── Notifications state ────────────────────────────────────────────────────
   const [notifOpen, setNotifOpen] = useState(false);
@@ -355,12 +362,11 @@ const Navbar: React.FC<NavbarProps> = ({
 
   const randomizeDicebear = () => {
     const seed = Math.random().toString(36).slice(2);
-    setDicebearSeed(seed);
-    localStorage.setItem('itrobot-avatar-seed', seed);
+    setPendingDicebearSeed(seed);
   };
 
-  const dicebearUrl = (fallbackName: string) =>
-    `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(dicebearSeed || fallbackName)}`;
+  const dicebearUrl = (seed: string, fallbackName: string) =>
+    `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(seed || fallbackName)}`;
 
   const handleProfilePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -392,6 +398,11 @@ const Navbar: React.FC<NavbarProps> = ({
         setUserPhotoUrl(d.user.photo_url);
         setProfilePhotoPreview(null);
         setProfilePhotoBase64(null);
+      }
+      if (pendingDicebearSeed) {
+        setDicebearSeed(pendingDicebearSeed);
+        localStorage.setItem('itrobot-avatar-seed', pendingDicebearSeed);
+        setPendingDicebearSeed(null);
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -687,7 +698,7 @@ const Navbar: React.FC<NavbarProps> = ({
               >
                 <div className={styles.userAvatar}>
                   <img
-                    src={userPhotoUrl || dicebearUrl(userName)}
+                    src={userPhotoUrl || dicebearUrl(dicebearSeed, userName)}
                     alt={userName}
                   />
                 </div>
@@ -901,7 +912,7 @@ const Navbar: React.FC<NavbarProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                         <div style={{ width: 80, height: 80, borderRadius: 16, overflow: 'hidden', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '2px solid #e5e7eb' }}>
                           <img
-                            src={profilePhotoPreview || userPhotoUrl || dicebearUrl(userName)}
+                            src={profilePhotoPreview || userPhotoUrl || dicebearUrl(pendingDicebearSeed ?? dicebearSeed, userName)}
                             alt="avatar"
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />
