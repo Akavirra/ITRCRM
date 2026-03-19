@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import DraggableModal from '@/components/DraggableModal';
 import { useGroupModals } from '@/components/GroupModalsContext';
+import { useLessonModals } from '@/components/LessonModalsContext';
 import { formatDateKyiv } from '@/lib/date-utils';
 import { t } from '@/i18n/t';
 import PageLoading from '@/components/PageLoading';
@@ -113,6 +114,7 @@ export default function TeacherProfilePage() {
   
   // Group modals from context
   const { openGroupModal, closeGroupModal } = useGroupModals();
+  const { openLessonModal } = useLessonModals();
 
   // Quick create group modal state
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
@@ -141,35 +143,40 @@ export default function TeacherProfilePage() {
     name: '', email: '', phone: '', telegram_id: '', notes: '', photo: null, photoFile: null
   });
 
-  // Statistics
+  // Statistics & Salary
   const [statsMonth, setStatsMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const [statsData, setStatsData] = useState<{
-    summary: {
-      total_lessons: number;
-      group_lessons: number;
-      individual_lessons: number;
-      total_present: number;
-      total_makeup: number;
-      total_salary: number;
-      salary_group_rate: number;
-      salary_individual_rate: number;
-    };
+    year: number;
+    month: number;
+    salary_group_rate: number;
+    salary_individual_rate: number;
     lessons: Array<{
       lesson_id: number;
       lesson_date: string;
-      group_title: string;
+      group_title: string | null;
       is_individual: boolean;
       is_replacement: boolean;
       present_count: number;
       makeup_count: number;
+      makeup_lesson_id: number | null;
       rate: number;
       salary: number;
     }>;
+    extra_items: Array<{ id: number; description: string; amount: number; created_at: string }>;
+    lessons_total: number;
+    extras_total: number;
+    grand_total: number;
   } | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [lessonsExpanded, setLessonsExpanded] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'group' | 'individual' | 'makeup'>('all');
+  const [newItemDesc, setNewItemDesc] = useState('');
+  const [newItemAmount, setNewItemAmount] = useState('');
+  const [addingItem, setAddingItem] = useState(false);
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -223,12 +230,14 @@ export default function TeacherProfilePage() {
     }
   }, [toast]);
 
-  // Fetch teacher statistics
+  // Fetch teacher salary data
   useEffect(() => {
     if (!teacher) return;
     const [year, month] = statsMonth.split('-');
     setStatsLoading(true);
-    fetch(`/api/teachers/${teacher.id}/statistics?year=${year}&month=${month}`)
+    setStatsData(null);
+    setLessonsExpanded(false);
+    fetch(`/api/teachers/${teacher.id}/salary?year=${year}&month=${parseInt(month, 10)}`)
       .then(r => r.json())
       .then(data => setStatsData(data))
       .catch(console.error)
@@ -1219,7 +1228,7 @@ export default function TeacherProfilePage() {
 
       {/* Statistics & Salary Card */}
       <div className="card" style={{ marginTop: '1.5rem' }}>
-        <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--gray-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--gray-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
           <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0, color: 'var(--gray-900)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gray-500)" strokeWidth="2">
               <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
@@ -1233,85 +1242,231 @@ export default function TeacherProfilePage() {
             style={{ padding: '0.375rem 0.625rem', fontSize: '0.875rem', border: '1px solid var(--gray-300)', borderRadius: '0.375rem', color: 'var(--gray-700)' }}
           />
         </div>
+
         {statsLoading ? (
           <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>Завантаження...</div>
         ) : !statsData ? null : (
-          <div style={{ padding: '1.25rem' }}>
+          <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
             {/* Summary pills */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
-              {[
-                { label: 'Занять проведено', value: statsData.summary.total_lessons, color: '#2563eb', bg: '#eff6ff' },
-                { label: 'Групових', value: statsData.summary.group_lessons, color: '#0369a1', bg: '#f0f9ff' },
-                { label: 'Індивідуальних', value: statsData.summary.individual_lessons, color: '#7c3aed', bg: '#f5f3ff' },
-                { label: 'Учнів присутніх', value: statsData.summary.total_present, color: '#16a34a', bg: '#f0fdf4' },
-                { label: 'Відпрацювань', value: statsData.summary.total_makeup, color: '#d97706', bg: '#fffbeb' },
-                { label: 'Зарплата', value: `${statsData.summary.total_salary} грн`, color: '#dc2626', bg: '#fef2f2', bold: true },
-              ].map(({ label, value, color, bg, bold }) => (
-                <div key={label} style={{ padding: '0.875rem', backgroundColor: bg, borderRadius: '0.5rem', border: `1px solid ${color}22` }}>
-                  <div style={{ fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', color, letterSpacing: '0.05em', marginBottom: '0.25rem' }}>{label}</div>
-                  <div style={{ fontSize: bold ? '1.25rem' : '1.5rem', fontWeight: 700, color }}>{value}</div>
+            {(() => {
+              const groupCount = statsData.lessons.filter(l => !l.is_individual).length;
+              const indCount = statsData.lessons.filter(l => l.is_individual).length;
+              const makeupCount = statsData.lessons.filter(l => l.makeup_count > 0).length;
+              const totalStudents = statsData.lessons.reduce((s, l) => s + l.present_count, 0);
+              return (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  {[
+                    { label: 'Усіх занять', value: statsData.lessons.length, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe' },
+                    { label: 'Групових', value: groupCount, color: '#065f46', bg: '#f0fdf4', border: '#bbf7d0' },
+                    { label: 'Індивідуальних', value: indCount, color: '#5b21b6', bg: '#f5f3ff', border: '#ddd6fe' },
+                    { label: 'Відпрацювань', value: makeupCount, color: '#92400e', bg: '#fffbeb', border: '#fde68a' },
+                    { label: 'Учнів', value: totalStudents, color: '#0e7490', bg: '#ecfeff', border: '#a5f3fc' },
+                  ].map(p => (
+                    <div key={p.label} style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: p.bg, border: `1px solid ${p.border}`, borderRadius: 12, minWidth: 100 }}>
+                      <span style={{ fontSize: '1.375rem', fontWeight: 800, color: p.color, lineHeight: 1.1 }}>{p.value}</span>
+                      <span style={{ fontSize: '0.6875rem', color: p.color, opacity: 0.75, fontWeight: 600, marginTop: 2 }}>{p.label}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
+
             {/* Rates info */}
-            <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '1rem' }}>
-              Ставки: групові {statsData.summary.salary_group_rate} грн/учень · індивідуальні {statsData.summary.salary_individual_rate} грн/учень
+            <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+              Ставки: групові {statsData.salary_group_rate} грн/учень · індивідуальні {statsData.salary_individual_rate} грн/учень
             </div>
-            {/* Lessons table */}
-            {statsData.lessons.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Дата</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Група</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Тип</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Присутніх</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Відпр.</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Ставка</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, color: '#374151' }}>Зарплата</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {statsData.lessons.map(lesson => (
-                      <tr key={lesson.lesson_id} style={{ borderBottom: '1px solid #f3f4f6' }}
-                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
-                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
-                        <td style={{ padding: '0.5rem 0.75rem', color: '#374151' }}>
-                          {new Date(lesson.lesson_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', timeZone: 'UTC' })}
-                        </td>
-                        <td style={{ padding: '0.5rem 0.75rem', color: '#374151' }}>
-                          {lesson.group_title}
-                          {lesson.is_replacement && <span style={{ marginLeft: 6, fontSize: '0.7rem', backgroundColor: '#fef3c7', color: '#92400e', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>Заміна</span>}
-                        </td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                          <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: 999, backgroundColor: lesson.is_individual ? '#f5f3ff' : '#eff6ff', color: lesson.is_individual ? '#7c3aed' : '#2563eb', fontWeight: 500 }}>
-                            {lesson.is_individual ? 'Інд.' : 'Груп.'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>{lesson.present_count}</td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', color: '#d97706' }}>{lesson.makeup_count || '—'}</td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', color: '#6b7280' }}>{lesson.rate} грн</td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>{lesson.salary} грн</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{ borderTop: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={3} style={{ padding: '0.625rem 0.75rem', fontWeight: 600, color: '#374151' }}>Разом</td>
-                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#16a34a' }}>{statsData.summary.total_present}</td>
-                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#d97706' }}>{statsData.summary.total_makeup || '—'}</td>
-                      <td></td>
-                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'right', fontWeight: 700, color: '#dc2626', fontSize: '0.9375rem' }}>{statsData.summary.total_salary} грн</td>
-                    </tr>
-                  </tfoot>
-                </table>
+
+            {/* Lessons (collapsible) */}
+            <div>
+              <button
+                onClick={() => setLessonsExpanded(v => !v)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: lessonsExpanded ? '0.75rem' : 0, width: '100%', textAlign: 'left' }}
+              >
+                <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Заняття ({statsData.lessons.length})
+                </span>
+                <span style={{ fontSize: '0.6875rem', color: '#94a3b8', marginLeft: 'auto' }}>{lessonsExpanded ? '▲ Згорнути' : '▼ Розгорнути'}</span>
+              </button>
+
+              {lessonsExpanded && (() => {
+                const visibleLessons = statsData.lessons.filter(l => {
+                  if (typeFilter === 'group') return !l.is_individual;
+                  if (typeFilter === 'individual') return l.is_individual;
+                  if (typeFilter === 'makeup') return l.makeup_count > 0;
+                  return true;
+                });
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {/* Type filter tabs */}
+                    <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                      {(['all', 'group', 'individual', 'makeup'] as const).map(key => {
+                        const labels = { all: 'Всі', group: 'Групові', individual: 'Індивід.', makeup: 'Відпрацювання' };
+                        const isActive = typeFilter === key;
+                        return (
+                          <button key={key} onClick={() => setTypeFilter(key)}
+                            style={{ padding: '0.3rem 0.75rem', borderRadius: 8, border: `1px solid ${isActive ? '#3b82f6' : '#e2e8f0'}`, background: isActive ? '#eff6ff' : 'white', color: isActive ? '#1d4ed8' : '#64748b', fontSize: '0.8125rem', fontWeight: isActive ? 700 : 500, cursor: 'pointer' }}>
+                            {labels[key]}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {visibleLessons.length === 0 ? (
+                      <p style={{ color: '#94a3b8', textAlign: 'center', padding: '1rem 0', fontSize: '0.875rem', margin: 0 }}>Немає занять цього типу</p>
+                    ) : (
+                      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid #f1f5f9' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                          <thead>
+                            <tr style={{ backgroundColor: '#f8fafc' }}>
+                              <th style={{ padding: '0.5rem 0.875rem', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Дата</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Група / тип</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Учнів</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Ставка</th>
+                              <th style={{ padding: '0.5rem 0.875rem', textAlign: 'right', fontWeight: 600, color: '#64748b', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Сума</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {visibleLessons.map((lesson, i) => {
+                              const d = new Date(lesson.lesson_date);
+                              const targetId = lesson.makeup_count > 0 && lesson.makeup_lesson_id ? lesson.makeup_lesson_id : lesson.lesson_id;
+                              return (
+                                <tr key={lesson.lesson_id}
+                                  onClick={() => openLessonModal(targetId, `Заняття #${targetId}`, undefined)}
+                                  style={{ borderBottom: '1px solid #f8fafc', background: i % 2 === 0 ? 'white' : '#fafbfc', cursor: 'pointer' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = '#f0f9ff')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'white' : '#fafbfc')}>
+                                  <td style={{ padding: '0.5rem 0.875rem', color: '#374151', whiteSpace: 'nowrap' }}>
+                                    {d.getUTCDate()} {['січ','лют','бер','квіт','трав','черв','лип','серп','вер','жовт','лист','груд'][d.getUTCMonth()]}
+                                  </td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
+                                      <span style={{ color: '#374151' }}>{lesson.group_title || 'Без групи'}</span>
+                                      {lesson.is_individual && <span style={{ background: '#f5f3ff', color: '#7c3aed', borderRadius: 6, padding: '0 0.35rem', fontSize: '0.625rem', fontWeight: 700 }}>Інд.</span>}
+                                      {lesson.is_replacement && <span style={{ background: '#fff7ed', color: '#c2410c', borderRadius: 6, padding: '0 0.35rem', fontSize: '0.625rem', fontWeight: 700 }}>Заміна</span>}
+                                      {lesson.makeup_count > 0 && <span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 6, padding: '0 0.35rem', fontSize: '0.625rem', fontWeight: 700 }}>Відпр.</span>}
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>{lesson.present_count}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', color: '#64748b' }}>{lesson.rate} ₴</td>
+                                  <td style={{ padding: '0.5rem 0.875rem', textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>{lesson.salary.toLocaleString()} ₴</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                          <tfoot>
+                            <tr style={{ background: '#f0fdf4', borderTop: '1.5px solid #bbf7d0' }}>
+                              <td colSpan={4} style={{ padding: '0.5rem 0.875rem', fontWeight: 700, color: '#14532d', fontSize: '0.8125rem' }}>Разом за заняття</td>
+                              <td style={{ padding: '0.5rem 0.875rem', textAlign: 'right', fontWeight: 800, color: '#14532d', fontSize: '0.9375rem' }}>{statsData.lessons_total.toLocaleString()} ₴</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Extra items */}
+            <div>
+              <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.625rem' }}>
+                Додаткові нарахування
               </div>
-            ) : (
-              <p style={{ color: 'var(--gray-400)', textAlign: 'center', padding: '1.5rem 0', fontSize: '0.875rem' }}>
-                Немає проведених занять за цей місяць
-              </p>
-            )}
+              {statsData.extra_items.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', marginBottom: '0.625rem' }}>
+                  {statsData.extra_items.map(item => (
+                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.875rem', background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
+                      <span style={{ flex: 1, fontSize: '0.875rem', color: '#374151' }}>{item.description}</span>
+                      <span style={{ fontWeight: 700, color: '#16a34a', fontSize: '0.9375rem', whiteSpace: 'nowrap' }}>{item.amount.toLocaleString()} ₴</span>
+                      <button
+                        onClick={async () => {
+                          setDeletingItemId(item.id);
+                          try {
+                            await fetch(`/api/teachers/${teacher.id}/salary/extra-items?itemId=${item.id}`, { method: 'DELETE' });
+                            setStatsData(prev => {
+                              if (!prev) return prev;
+                              const extras = prev.extra_items.filter(i => i.id !== item.id);
+                              const extrasTotal = extras.reduce((s, i) => s + i.amount, 0);
+                              return { ...prev, extra_items: extras, extras_total: extrasTotal, grand_total: prev.lessons_total + extrasTotal };
+                            });
+                          } catch { /* silent */ } finally { setDeletingItemId(null); }
+                        }}
+                        disabled={deletingItemId === item.id}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '0.25rem', opacity: deletingItemId === item.id ? 0.4 : 1, lineHeight: 1, flexShrink: 0 }}
+                        title="Видалити"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input type="text" placeholder="Опис (майстер-клас...)" value={newItemDesc} onChange={e => setNewItemDesc(e.target.value)}
+                  style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.875rem', minWidth: 0 }} />
+                <input type="number" placeholder="₴" value={newItemAmount} onChange={e => setNewItemAmount(e.target.value)}
+                  style={{ width: 90, padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.875rem' }} />
+                <button
+                  onClick={async () => {
+                    const desc = newItemDesc.trim();
+                    const amount = parseFloat(newItemAmount);
+                    if (!desc || isNaN(amount) || amount < 0 || !statsData) return;
+                    setAddingItem(true);
+                    try {
+                      const res = await fetch(`/api/teachers/${teacher.id}/salary/extra-items`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ year: statsData.year, month: statsData.month, description: desc, amount }),
+                      });
+                      if (res.ok) {
+                        const { item } = await res.json();
+                        setNewItemDesc(''); setNewItemAmount('');
+                        setStatsData(prev => {
+                          if (!prev) return prev;
+                          const extras = [...prev.extra_items, item];
+                          const extrasTotal = extras.reduce((s, i) => s + i.amount, 0);
+                          return { ...prev, extra_items: extras, extras_total: extrasTotal, grand_total: prev.lessons_total + extrasTotal };
+                        });
+                      }
+                    } catch { /* silent */ } finally { setAddingItem(false); }
+                  }}
+                  disabled={addingItem || !newItemDesc.trim() || !newItemAmount}
+                  style={{ padding: '0.5rem 0.875rem', borderRadius: 8, border: 'none', background: '#16a34a', color: 'white', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', opacity: addingItem ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                >
+                  + Додати
+                </button>
+              </div>
+            </div>
+
+            {/* Receipt card */}
+            <div style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', borderRadius: 16, padding: '1.25rem 1.5rem', color: 'white' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.75rem' }}>
+                {['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'][statsData.month - 1]} {statsData.year}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '1rem' }}>
+                Ставки: {statsData.salary_group_rate} ₴ груп. / {statsData.salary_individual_rate} ₴ інд.
+              </div>
+              <div style={{ borderTop: '1px dashed #334155', borderBottom: '1px dashed #334155', padding: '0.75rem 0', marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+                  <span style={{ color: '#94a3b8' }}>Заняття ({statsData.lessons.length} шт.)</span>
+                  <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{statsData.lessons_total.toLocaleString()} ₴</span>
+                </div>
+                {statsData.extra_items.map(item => (
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+                    <span style={{ color: '#94a3b8' }}>{item.description}</span>
+                    <span style={{ color: '#e2e8f0', fontWeight: 600 }}>+{item.amount.toLocaleString()} ₴</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <span style={{ fontSize: '0.8125rem', color: '#64748b', fontWeight: 600 }}>РАЗОМ</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#4ade80' }}>{statsData.grand_total.toLocaleString()} ₴</span>
+              </div>
+            </div>
+
           </div>
         )}
       </div>
