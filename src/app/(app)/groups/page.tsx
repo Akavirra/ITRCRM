@@ -122,21 +122,6 @@ export default function GroupsPage() {
   const [newGroupTitlePreview, setNewGroupTitlePreview] = useState('');
 
   // Edit Group Modal state
-  const [showEditGroupModal, setShowEditGroupModal] = useState(false);
-  const [editGroup, setEditGroup] = useState<Group | null>(null);
-  const [editForm, setEditForm] = useState({
-    course_id: '',
-    teacher_id: '',
-    weekly_day: '',
-    start_time: '',
-    duration_minutes: 60,
-    monthly_price: 0,
-    status: 'active' as 'active' | 'graduate' | 'inactive',
-    note: '',
-    photos_folder_url: '',
-    start_date: '',
-  });
-  const [savingGroup, setSavingGroup] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -211,24 +196,6 @@ export default function GroupsPage() {
       setNewGroupStartDate(today);
     }
   }, [showNewGroupModal, newGroupStartDate]);
-
-  // Populate edit form when modal opens
-  useEffect(() => {
-    if (showEditGroupModal && editGroup) {
-      setEditForm({
-        course_id: String(editGroup.course_id),
-        teacher_id: String(editGroup.teacher_id),
-        weekly_day: String(editGroup.weekly_day),
-        start_time: editGroup.start_time,
-        duration_minutes: editGroup.duration_minutes,
-        monthly_price: editGroup.monthly_price,
-        status: editGroup.status,
-        note: editGroup.note || '',
-        photos_folder_url: editGroup.photos_folder_url || '',
-        start_date: editGroup.start_date || '',
-      });
-    }
-  }, [showEditGroupModal, editGroup]);
 
   const handleSearch = async (query: string) => {
     setSearch(query);
@@ -578,13 +545,6 @@ export default function GroupsPage() {
     }
   };
 
-  // Edit group handlers
-  const handleEditClick = (group: Group) => {
-    setEditGroup(group);
-    setShowEditGroupModal(true);
-    setOpenDropdownId(null);
-  };
-
   // Change teacher handlers
   const handleChangeTeacherClick = (group: Group) => {
     setGroupToChangeTeacher(group);
@@ -626,56 +586,6 @@ export default function GroupsPage() {
     }
   };
 
-  const handleEditSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editGroup) return;
-    
-    // Validate required fields
-    if (!editForm.course_id || !editForm.teacher_id) {
-      alert('Будь ласка, оберіть курс та викладача');
-      return;
-    }
-    
-    setSavingGroup(true);
-    
-    try {
-      const res = await fetch(`/api/groups/${editGroup.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          course_id: parseInt(editForm.course_id),
-          teacher_id: parseInt(editForm.teacher_id),
-          weekly_day: parseInt(editForm.weekly_day),
-          start_time: editForm.start_time,
-          duration_minutes: editForm.duration_minutes,
-          status: editForm.status,
-          note: editForm.note || null,
-          photos_folder_url: editForm.photos_folder_url || null,
-          start_date: editForm.start_date || null,
-        }),
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        // Update group in the list
-        setGroups(groups.map(g => g.id === editGroup.id ? data.group : g));
-        setShowEditGroupModal(false);
-        setEditGroup(null);
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Помилка збереження');
-      }
-    } catch (error) {
-      console.error('Failed to save group:', error);
-    } finally {
-      setSavingGroup(false);
-    }
-  };
-
-  const handleCloseEditModal = () => {
-    setShowEditGroupModal(false);
-    setEditGroup(null);
-  };
 
   if (loading) {
     return (
@@ -1098,38 +1008,6 @@ export default function GroupsPage() {
                                   </svg>
                                   Переглянути групу
                                 </a>
-                                <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '0.25rem 0' }} />
-                                <button
-                                  className="btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditClick(group);
-                                  }}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    width: '100%',
-                                    padding: '0.625rem 0.75rem',
-                                    color: '#374151',
-                                    textDecoration: 'none',
-                                    fontSize: '0.875rem',
-                                    fontWeight: '500',
-                                    borderRadius: '0.5rem',
-                                    transition: 'all 0.15s',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                  }}
-                                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.color = '#1f2937'; }}
-                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151'; }}
-                                >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#6b7280' }}>
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                  </svg>
-                                  Редагувати групу
-                                </button>
                                 <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '0.25rem 0' }} />
                                 <button
                                   className="btn"
@@ -1662,140 +1540,6 @@ export default function GroupsPage() {
       )}
 
       {/* Edit Group Modal */}
-      {showEditGroupModal && editGroup && (
-        <div className="modal-overlay" onClick={handleCloseEditModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '550px' }}>
-            <div className="modal-header">
-              <h2 className="modal-title">Редагувати групу</h2>
-              <button className="modal-close" onClick={handleCloseEditModal}>×</button>
-            </div>
-            <form onSubmit={handleEditSave}>
-              <div className="modal-body">
-                <div style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Курс *</label>
-                  <select 
-                    className="form-select"
-                    value={editForm.course_id}
-                    onChange={(e) => setEditForm({...editForm, course_id: e.target.value})}
-                  >
-                    <option value="">Оберіть курс</option>
-                    {courses.map(course => (
-                      <option key={course.id} value={course.id}>{course.title}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Викладач *</label>
-                  <select 
-                    className="form-select"
-                    value={editForm.teacher_id}
-                    onChange={(e) => setEditForm({...editForm, teacher_id: e.target.value})}
-                  >
-                    <option value="">Оберіть викладача</option>
-                    {teachers.map(teacher => (
-                      <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div>
-                    <label className="form-label">День тижня</label>
-                    <select 
-                      className="form-select"
-                      value={editForm.weekly_day || ''}
-                      disabled
-                      style={{ backgroundColor: 'var(--gray-100)' }}
-                    >
-                      {[1,2,3,4,5,6,7].map(day => (
-                        <option key={day} value={day}>{uk.days[day as keyof typeof uk.days]}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="form-label">Час початку</label>
-                    <input 
-                      type="time" 
-                      className="form-input"
-                      value={editForm.start_time || ''}
-                      disabled
-                      style={{ backgroundColor: 'var(--gray-100)' }}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div>
-                    <label className="form-label">Тривалість (хв)</label>
-                    <input 
-                      type="number" 
-                      className="form-input"
-                      value={editForm.duration_minutes}
-                      onChange={(e) => setEditForm({...editForm, duration_minutes: parseInt(e.target.value) || 60})}
-                      min="15"
-                      step="15"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="form-label">Статус</label>
-                    <select 
-                      className="form-select"
-                      value={editForm.status}
-                      onChange={(e) => setEditForm({...editForm, status: e.target.value as 'active' | 'graduate' | 'inactive'})}
-                    >
-                      <option value="active">Активна</option>
-                      <option value="graduate">Випуск</option>
-                      <option value="inactive">Неактивна</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Посилання на Google Drive</label>
-                  <input 
-                    type="url" 
-                    className="form-input"
-                    value={editForm.photos_folder_url}
-                    onChange={(e) => setEditForm({...editForm, photos_folder_url: e.target.value})}
-                    placeholder="https://drive.google.com/..."
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">Примітка</label>
-                  <textarea 
-                    className="form-input"
-                    value={editForm.note}
-                    onChange={(e) => setEditForm({...editForm, note: e.target.value})}
-                    rows={3}
-                    style={{ resize: 'vertical' }}
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn btn-secondary"
-                  onClick={handleCloseEditModal}
-                >
-                  Скасувати
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn btn-primary"
-                  disabled={savingGroup}
-                >
-                  {savingGroup ? 'Збереження...' : 'Зберегти'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* New Group Modal */}
       {showNewGroupModal && (
         <div className="modal-overlay" onClick={handleCloseNewGroupModal}>
