@@ -241,9 +241,9 @@ export default function GroupDetailsPage() {
           const coursesData = await coursesRes.json();
           setCourses(coursesData.courses || []);
           
-          const usersRes = await fetch('/api/users');
-          const usersData = await usersRes.json();
-          setTeachers((usersData.users || []).filter((u: User) => u.role === 'teacher'));
+          const teachersRes = await fetch('/api/teachers');
+          const teachersData = await teachersRes.json();
+          setTeachers(teachersData.teachers || []);
         }
       } catch (error) {
         console.error('Failed to fetch group:', error);
