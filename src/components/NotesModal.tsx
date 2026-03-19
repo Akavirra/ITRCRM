@@ -18,6 +18,8 @@ interface Note {
   tags: string[];
   deadline: string | null;
   is_archived: boolean;
+  remind_at: string | null;
+  reminded: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -243,7 +245,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
     e.preventDefault();
   };
 
-  // Load notes on open
+  // Load notes on open + fire due reminders
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
@@ -252,6 +254,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
       .then(d => { if (d.notes) setNotes(d.notes); })
       .catch(() => {})
       .finally(() => setLoading(false));
+    fetch('/api/notes/check-reminders', { method: 'POST' }).catch(() => {});
   }, [isOpen]);
 
   // Auto-save (debounced 700ms)
@@ -272,6 +275,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             tags:      note.tags,
             deadline:    note.deadline,
             is_archived: note.is_archived,
+            remind_at:   note.remind_at,
           }),
         });
         setJustSaved(true);
@@ -658,6 +662,34 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                       />
                     ))}
                   </div>
+
+                  {/* Reminder */}
+                  {(() => {
+                    const hasRemind = !!selectedNote.remind_at;
+                    const isPast = hasRemind && new Date(selectedNote.remind_at!) <= new Date();
+                    return (
+                      <label title="Нагадування" style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', position: 'relative' }}>
+                        {hasRemind ? (
+                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '0.125rem 0.5rem', borderRadius: 20, background: isPast ? '#f3f4f6' : '#eff6ff', color: isPast ? '#9ca3af' : '#2563eb', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            {new Date(selectedNote.remind_at!).toLocaleString('uk', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
+                            <button onClick={e => { e.preventDefault(); updateNote(selectedNote.id, { remind_at: null }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1 }}>×</button>
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', padding: '0.125rem 0.375rem', borderRadius: 20, border: '1px dashed #d1d5db', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            нагадати
+                          </span>
+                        )}
+                        <input
+                          type="datetime-local"
+                          value={selectedNote.remind_at ? new Date(selectedNote.remind_at).toISOString().slice(0,16) : ''}
+                          onChange={e => updateNote(selectedNote.id, { remind_at: e.target.value || null })}
+                          style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0, cursor: 'pointer' }}
+                        />
+                      </label>
+                    );
+                  })()}
 
                   {/* Deadline (todo only) */}
                   {selectedNote.type === 'todo' && (() => {

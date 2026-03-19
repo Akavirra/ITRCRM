@@ -34,6 +34,7 @@ export async function PATCH(
   if (body.tags !== undefined)      { fields.push(`tags = $${idx++}`);      values.push(body.tags); }
   if (body.deadline !== undefined)    { fields.push(`deadline = $${idx++}`);     values.push(body.deadline || null); }
   if (body.is_archived !== undefined) { fields.push(`is_archived = $${idx++}`);  values.push(body.is_archived); }
+  if (body.remind_at !== undefined)   { fields.push(`remind_at = $${idx++}`);    values.push(body.remind_at || null); fields.push(`reminded = FALSE`); }
 
   if (fields.length === 0) return NextResponse.json({ ok: true });
 

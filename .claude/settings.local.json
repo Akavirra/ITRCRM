@@ -107,7 +107,8 @@
       "Bash(grep -rn \"img-src\\\\|Content-Security\\\\|CSP\" C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/ C:/CProjects/ITRoboticsCRM/ITRobotCRM/next.config.*)",
       "Bash(node scripts/add-notes-tags.js)",
       "Bash(node scripts/add-notes-deadline.js)",
-      "Bash(node scripts/add-notes-archive.js)"
+      "Bash(node scripts/add-notes-archive.js)",
+      "Bash(node scripts/add-notes-remind.js)"
     ]
   }
 }

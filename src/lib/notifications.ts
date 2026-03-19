@@ -40,6 +40,25 @@ export async function createGlobalNotification(
   return result?.id ?? 0;
 }
 
+// ─── Per-user notification ────────────────────────────────────────────────────
+
+export async function createUserNotification(
+  userId: number,
+  type: string,
+  title: string,
+  body: string,
+  link?: string | null,
+  dedupKey?: string | null
+): Promise<void> {
+  await get<{ id: number }>(
+    `INSERT INTO notifications (type, title, body, link, data, is_global, target_user_id, dedup_key)
+     VALUES ($1, $2, $3, $4, NULL, FALSE, $5, $6)
+     ON CONFLICT (dedup_key) WHERE dedup_key IS NOT NULL DO NOTHING
+     RETURNING id`,
+    [type, title, body, link ?? null, userId, dedupKey ?? null]
+  );
+}
+
 // ─── Lesson done notification ─────────────────────────────────────────────────
 
 export async function safeCreateLessonDoneNotification(

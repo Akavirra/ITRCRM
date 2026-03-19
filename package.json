@@ -32,6 +32,7 @@
     "db:add-notes-tags": "node scripts/add-notes-tags.js",
     "db:add-notes-deadline": "node scripts/add-notes-deadline.js",
     "db:add-notes-archive": "node scripts/add-notes-archive.js",
+    "db:add-notes-remind": "node scripts/add-notes-remind.js",
     "test": "jest"
   },
   "dependencies": {
