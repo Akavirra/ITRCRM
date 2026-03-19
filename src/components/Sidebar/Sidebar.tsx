@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { t } from '@/i18n/t';
 import {
   Home,
@@ -64,6 +64,23 @@ interface WeatherData {
   code: number;
 }
 
+interface ForecastDay {
+  date: string;
+  weekday: string;
+  temp_min: number;
+  temp_max: number;
+  code: number;
+}
+
+const detailPill: React.CSSProperties = {
+  fontSize: '10px',
+  color: '#64748b',
+  background: '#f0f7ff',
+  borderRadius: '6px',
+  padding: '2px 7px',
+  whiteSpace: 'nowrap',
+};
+
 function weatherIcon(code: number): string {
   if (code >= 200 && code < 300) return '⛈';
   if (code >= 300 && code < 400) return '🌦';
@@ -96,6 +113,11 @@ function SidebarInfoWidget() {
   const [calYear, setCalYear] = useState(0);
   const [calMonth, setCalMonth] = useState(0);
   const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [weatherOpen, setWeatherOpen] = useState(false);
+  const [forecast, setForecast] = useState<ForecastDay[] | null>(null);
+  const weatherBtnRef = useRef<HTMLButtonElement>(null);
+  const weatherPopRef = useRef<HTMLDivElement>(null);
+  const [weatherPopPos, setWeatherPopPos] = useState({ left: 0, bottom: 20 });
 
   useEffect(() => {
     const d = new Date();
@@ -123,6 +145,19 @@ function SidebarInfoWidget() {
     return () => document.removeEventListener('mousedown', handler);
   }, [calOpen]);
 
+  useEffect(() => {
+    if (!weatherOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        weatherBtnRef.current?.contains(e.target as Node) ||
+        weatherPopRef.current?.contains(e.target as Node)
+      ) return;
+      setWeatherOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [weatherOpen]);
+
   if (!now) return null;
 
   const h = String(now.getHours()).padStart(2, '0');
@@ -146,6 +181,21 @@ function SidebarInfoWidget() {
   const cells = buildCalendarDays(calYear, calMonth);
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
+  const handleWeatherClick = () => {
+    if (!weatherOpen && weatherBtnRef.current) {
+      const sidebar = weatherBtnRef.current.closest('aside');
+      const right = sidebar?.getBoundingClientRect().right ?? weatherBtnRef.current.getBoundingClientRect().right;
+      setWeatherPopPos({ left: right + 12, bottom: 20 });
+      if (!forecast) {
+        fetch('/api/weather/forecast')
+          .then(r => r.ok ? r.json() : Promise.reject())
+          .then(d => setForecast(d.days))
+          .catch(() => {});
+      }
+    }
+    setWeatherOpen(o => !o);
+  };
+
   return (
     <div id="sidebar-info-widget" style={{ margin: '0 12px 12px', flexShrink: 0, position: 'relative' }}>
       <div style={{
@@ -155,7 +205,7 @@ function SidebarInfoWidget() {
         border: '1px solid rgba(59,130,246,0.1)',
       }}>
 
-        {/* Row 1: time (left) + weather icon+temp (right) */}
+        {/* Row 1: time (left) + weather icon+temp clickable (right) */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
             <span style={{ fontSize: '22px', fontWeight: '300', color: '#1e3a5f', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
@@ -166,53 +216,58 @@ function SidebarInfoWidget() {
             </span>
           </div>
           {weather && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <button
+              ref={weatherBtnRef}
+              onClick={handleWeatherClick}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '3px',
+                background: weatherOpen ? 'rgba(59,130,246,0.1)' : 'transparent',
+                border: 'none', cursor: 'pointer',
+                padding: '2px 5px', margin: '-2px -5px',
+                borderRadius: '7px', transition: 'background 0.15s',
+              }}
+              onMouseOver={e => { if (!weatherOpen) e.currentTarget.style.background = 'rgba(59,130,246,0.07)'; }}
+              onMouseOut={e => { if (!weatherOpen) e.currentTarget.style.background = weatherOpen ? 'rgba(59,130,246,0.1)' : 'transparent'; }}
+            >
               <span style={{ fontSize: '14px', lineHeight: 1 }}>{weatherIcon(weather.code)}</span>
               <span style={{ fontSize: '16px', fontWeight: '400', color: '#1e3a5f', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
                 {weather.temp}°
               </span>
-            </div>
+            </button>
           )}
         </div>
 
         {divider}
 
-        {/* Row 2: day+date (left) + weather details (right) */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '600', color: '#3b82f6' }}>
-              {dayName}
-            </span>
-            <span style={{ fontSize: '11px', color: '#b0bec5' }}>·</span>
-            <button
-              onClick={() => {
-                if (!calOpen) { setCalYear(todayY); setCalMonth(todayM); }
-                setCalOpen(o => !o);
-              }}
-              style={{
-                fontSize: '11px',
-                color: calOpen ? '#3b82f6' : '#94a3b8',
-                fontWeight: '400',
-                background: 'none',
-                border: 'none',
-                padding: '1px 4px',
-                margin: '-1px -4px',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                transition: 'color 0.15s',
-                backgroundColor: calOpen ? 'rgba(59,130,246,0.08)' : 'transparent',
-              }}
-              onMouseOver={e => { if (!calOpen) (e.currentTarget.style.color = '#3b82f6'); }}
-              onMouseOut={e => { if (!calOpen) (e.currentTarget.style.color = '#94a3b8'); }}
-            >
-              {dateStr}
-            </button>
-          </div>
-          {weather && (
-            <span style={{ fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
-              {capitalize(weather.description)} · 💧{weather.humidity}%
-            </span>
-          )}
+        {/* Row 2: day name + date */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ fontSize: '11px', fontWeight: '600', color: '#3b82f6' }}>
+            {dayName}
+          </span>
+          <span style={{ fontSize: '11px', color: '#b0bec5' }}>·</span>
+          <button
+            onClick={() => {
+              if (!calOpen) { setCalYear(todayY); setCalMonth(todayM); }
+              setCalOpen(o => !o);
+            }}
+            style={{
+              fontSize: '11px',
+              color: calOpen ? '#3b82f6' : '#94a3b8',
+              fontWeight: '400',
+              background: 'none',
+              border: 'none',
+              padding: '1px 4px',
+              margin: '-1px -4px',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              transition: 'color 0.15s',
+              backgroundColor: calOpen ? 'rgba(59,130,246,0.08)' : 'transparent',
+            }}
+            onMouseOver={e => { if (!calOpen) (e.currentTarget.style.color = '#3b82f6'); }}
+            onMouseOut={e => { if (!calOpen) (e.currentTarget.style.color = '#94a3b8'); }}
+          >
+            {dateStr}
+          </button>
         </div>
       </div>
 
@@ -265,6 +320,71 @@ function SidebarInfoWidget() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Weather detail popover — fixed to the right of sidebar */}
+      {weatherOpen && weather && (
+        <div
+          ref={weatherPopRef}
+          style={{
+            position: 'fixed',
+            left: weatherPopPos.left,
+            bottom: weatherPopPos.bottom,
+            width: '240px',
+            background: '#fff',
+            border: '1px solid #e8f0fe',
+            borderRadius: '16px',
+            padding: '16px',
+            zIndex: 100,
+            boxShadow: '0 2px 24px rgba(30,58,95,0.07)',
+          }}
+        >
+          {/* City */}
+          <div style={{ fontSize: '10px', fontWeight: '700', color: '#3b82f6', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '12px' }}>
+            {weather.city}
+          </div>
+
+          {/* Today: icon + temp + description */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '40px', lineHeight: 1 }}>{weatherIcon(weather.code)}</span>
+            <div>
+              <div style={{ fontSize: '32px', fontWeight: '300', color: '#1e3a5f', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                {weather.temp}°
+              </div>
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                {capitalize(weather.description)}
+              </div>
+            </div>
+          </div>
+
+          {/* Detail pills */}
+          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '14px' }}>
+            <span style={detailPill}>відч. {weather.feels_like}°</span>
+            <span style={detailPill}>💧 {weather.humidity}%</span>
+            <span style={detailPill}>💨 {weather.wind} м/с</span>
+          </div>
+
+          {/* 5-day forecast */}
+          <div style={{ height: '1px', background: '#f0f4ff', marginBottom: '12px' }} />
+          {forecast ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px' }}>
+              {forecast.map(day => (
+                <div key={day.date} style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '9px', color: '#94a3b8', marginBottom: '4px', fontWeight: '500', letterSpacing: '0.02em' }}>
+                    {day.weekday}
+                  </div>
+                  <div style={{ fontSize: '16px', lineHeight: 1, marginBottom: '4px' }}>{weatherIcon(day.code)}</div>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e3a5f' }}>{day.temp_max}°</div>
+                  <div style={{ fontSize: '10px', color: '#b0bec5' }}>{day.temp_min}°</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', fontSize: '11px', color: '#94a3b8', padding: '4px 0' }}>
+              Завантаження...
+            </div>
+          )}
         </div>
       )}
     </div>
