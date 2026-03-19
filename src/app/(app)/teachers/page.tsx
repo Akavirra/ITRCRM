@@ -51,6 +51,7 @@ interface DrillDownLesson {
   is_replacement: boolean;
   present_count: number;
   makeup_count: number;
+  makeup_lesson_id: number | null;
   rate: number;
   salary: number;
 }
@@ -1690,8 +1691,13 @@ export default function TeachersPage() {
                               <td style={{ padding: '0.7rem 1.25rem', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>{lesson.salary.toLocaleString()} ₴</td>
                               <td style={{ padding: '0.7rem 0.75rem', textAlign: 'center' }}>
                                 <button
-                                  onClick={() => openLessonModal(lesson.lesson_id, `Заняття #${lesson.lesson_id}`, undefined)}
-                                  title="Відкрити заняття"
+                                  onClick={() => {
+                                    const targetId = drillDown?.type === 'makeup' && lesson.makeup_lesson_id
+                                      ? lesson.makeup_lesson_id
+                                      : lesson.lesson_id;
+                                    openLessonModal(targetId, `Заняття #${targetId}`, undefined);
+                                  }}
+                                  title={drillDown?.type === 'makeup' && lesson.makeup_lesson_id ? 'Відкрити заняття відпрацювання' : 'Відкрити заняття'}
                                   style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0', borderRadius: 6, background: 'white', cursor: 'pointer', color: '#94a3b8', padding: 0 }}
                                   onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.color = '#3b82f6'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
                                   onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
