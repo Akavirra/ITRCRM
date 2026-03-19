@@ -72,8 +72,13 @@ export async function POST(
     [groupId]
   );
 
-  // ── Core change (3 atomic DB writes) ──────────────────────────────────────
-  await changeGroupTeacher(groupId, newTeacherIdInt, user.id, reason || null);
+  // ── Core change ────────────────────────────────────────────────────────────
+  try {
+    await changeGroupTeacher(groupId, newTeacherIdInt, user.id, reason || null);
+  } catch (e) {
+    console.error('changeGroupTeacher failed:', e);
+    return NextResponse.json({ error: 'Не вдалося змінити викладача. Спробуйте ще раз.' }, { status: 500 });
+  }
 
   // ── History entry ──────────────────────────────────────────────────────────
   try {

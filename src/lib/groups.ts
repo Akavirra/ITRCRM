@@ -552,24 +552,26 @@ export async function changeGroupTeacher(
   changedBy: number,
   reason?: string | null
 ): Promise<void> {
-  // 1. Close current open assignment
-  await run(
-    `UPDATE group_teacher_assignments SET ended_at = NOW() WHERE group_id = $1 AND ended_at IS NULL`,
-    [groupId]
-  );
-
-  // 2. Create new assignment record
-  await run(
-    `INSERT INTO group_teacher_assignments (group_id, teacher_id, changed_by, reason)
-     VALUES ($1, $2, $3, $4)`,
-    [groupId, newTeacherId, changedBy, reason || null]
-  );
-
-  // 3. Update the group's permanent teacher
+  // Core change — must succeed
   await run(
     `UPDATE groups SET teacher_id = $1, updated_at = NOW() WHERE id = $2`,
     [newTeacherId, groupId]
   );
+
+  // Assignment history — non-fatal (table may not exist yet if migration wasn't run)
+  try {
+    await run(
+      `UPDATE group_teacher_assignments SET ended_at = NOW() WHERE group_id = $1 AND ended_at IS NULL`,
+      [groupId]
+    );
+    await run(
+      `INSERT INTO group_teacher_assignments (group_id, teacher_id, changed_by, reason)
+       VALUES ($1, $2, $3, $4)`,
+      [groupId, newTeacherId, changedBy, reason || null]
+    );
+  } catch (e) {
+    console.warn('group_teacher_assignments write skipped (table may not exist):', (e as Error).message);
+  }
 }
 
 /** Returns the full teacher assignment history for a group (newest first). */
