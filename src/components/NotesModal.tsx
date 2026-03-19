@@ -116,6 +116,18 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
       <div style={{ fontSize: '0.75rem', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: 18 }}>
         {preview}
       </div>
+      {hasTasks && (
+        <div style={{ marginTop: 5, paddingLeft: 18, paddingRight: 4 }}>
+          <div style={{ height: 3, background: selected ? '#bfdbfe' : '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              width: `${total > 0 ? (done / total) * 100 : 0}%`,
+              background: done === total ? '#22c55e' : (selected ? '#2563eb' : '#93c5fd'),
+              borderRadius: 3, transition: 'width 0.3s ease',
+            }} />
+          </div>
+        </div>
+      )}
       {(note.tags.length > 0 || note.deadline) && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, paddingLeft: 18, marginTop: 5, alignItems: 'center' }}>
           {note.tags.slice(0, 2).map(tag => (
@@ -202,6 +214,13 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const [students, setStudents]     = useState<{ id: number; name: string }[]>([]);
   const [groups, setGroups]         = useState<{ id: number; title: string }[]>([]);
   const [newTaskText, setNewTaskText] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [sortBy, setSortBy] = useState<'updated' | 'created' | 'title'>('updated');
+  const [activeColor, setActiveColor] = useState<string | null>(null);
+  const [sidebarW, setSidebarW] = useState(240);
+  const sidebarResizing = useRef(false);
+  const sidebarOrigin   = useRef({ mx: 0, w: 240 });
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pos, setPos]   = useState({ x: -1, y: -1 });
@@ -217,9 +236,10 @@ export default function NotesModal({ isOpen, onClose }: Props) {
       try {
         const saved = localStorage.getItem('itrobot-notes-layout');
         if (saved) {
-          const { x, y, w, h } = JSON.parse(saved);
+          const { x, y, w, h, sw } = JSON.parse(saved);
           setPos({ x, y });
           setSize({ w, h });
+          if (sw) setSidebarW(sw);
           return;
         }
       } catch { /* ignore */ }
@@ -233,8 +253,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   // Persist layout when pos/size change
   useEffect(() => {
     if (pos.x === -1) return;
-    localStorage.setItem('itrobot-notes-layout', JSON.stringify({ x: pos.x, y: pos.y, w: size.w, h: size.h }));
-  }, [pos, size]);
+    localStorage.setItem('itrobot-notes-layout', JSON.stringify({ x: pos.x, y: pos.y, w: size.w, h: size.h, sw: sidebarW }));
+  }, [pos, size, sidebarW]);
 
   // Drag & Resize
   useEffect(() => {
@@ -245,9 +265,12 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         const w = Math.max(560, resizeOrigin.current.w + e.clientX - resizeOrigin.current.mx);
         const h = Math.max(420, resizeOrigin.current.h + e.clientY - resizeOrigin.current.my);
         setSize({ w, h });
+      } else if (sidebarResizing.current) {
+        const w = Math.max(180, Math.min(360, sidebarOrigin.current.w + e.clientX - sidebarOrigin.current.mx));
+        setSidebarW(w);
       }
     };
-    const onUp = () => { dragging.current = false; resizing.current = false; };
+    const onUp = () => { dragging.current = false; resizing.current = false; sidebarResizing.current = false; };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
@@ -381,7 +404,14 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   };
 
   const deleteNote = async (id: number) => {
-    if (!confirm('Видалити нотатку?')) return;
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      confirmTimerRef.current = setTimeout(() => setConfirmDeleteId(null), 3000);
+      return;
+    }
+    setConfirmDeleteId(null);
+    if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
     await fetch(`/api/notes/${id}`, { method: 'DELETE' });
     setNotes(prev => prev.filter(n => n.id !== id));
     if (selectedId === id) setSelectedId(null);
@@ -390,10 +420,16 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   // All unique tags (non-archived only)
   const allTags = Array.from(new Set(notes.filter(n => !n.is_archived).flatMap(n => n.tags))).sort();
 
-  // Filter
+  // Filter + sort
+  const sortFn = (a: Note, b: Note) => {
+    if (sortBy === 'title') return (a.title || '').localeCompare(b.title || '', 'uk');
+    if (sortBy === 'created') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  };
   const filtered = notes.filter(n => {
     if (n.is_archived !== showArchive) return false;
     if (activeTag && !n.tags.includes(activeTag)) return false;
+    if (activeColor !== null && (n.color ?? '') !== activeColor) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -401,7 +437,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
       n.content.toLowerCase().includes(q) ||
       n.tasks.some(t => t.text.toLowerCase().includes(q))
     );
-  });
+  }).sort(sortFn);
   const pinned = filtered.filter(n =>  n.is_pinned);
   const rest   = filtered.filter(n => !n.is_pinned);
 
@@ -443,13 +479,29 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const doneTasks  = selectedNote?.tasks.filter(t => t.done).length ?? 0;
   const totalTasks = selectedNote?.tasks.length ?? 0;
 
-  // Keyboard shortcuts
-  const shortcutRef = useRef({ createNote, onClose });
-  useEffect(() => { shortcutRef.current = { createNote, onClose }; });
+  // Keyboard shortcuts + arrow nav
+  const shortcutRef = useRef({ createNote, onClose, filtered, selectedId, setSelectedId, setNewTaskText });
+  useEffect(() => { shortcutRef.current = { createNote, onClose, filtered, selectedId, setSelectedId, setNewTaskText }; });
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.preventDefault(); shortcutRef.current.onClose(); return; }
+      // Arrow nav (only when not editing text)
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.ctrlKey && !e.metaKey) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        e.preventDefault();
+        const { filtered: list, selectedId: sid } = shortcutRef.current;
+        const allItems = [...list.filter(n => n.is_pinned), ...list.filter(n => !n.is_pinned)];
+        if (allItems.length === 0) return;
+        const idx = allItems.findIndex(n => n.id === sid);
+        const next = e.key === 'ArrowDown'
+          ? (idx < allItems.length - 1 ? idx + 1 : 0)
+          : (idx > 0 ? idx - 1 : allItems.length - 1);
+        shortcutRef.current.setSelectedId(allItems[next].id);
+        shortcutRef.current.setNewTaskText('');
+        return;
+      }
       if (!e.ctrlKey && !e.metaKey) return;
       if (e.key === 'n') { e.preventDefault(); shortcutRef.current.createNote('note'); }
       if (e.key === 't') { e.preventDefault(); shortcutRef.current.createNote('todo'); }
@@ -532,7 +584,18 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
           {/* ── Left panel ── */}
-          <div style={{ width: 240, borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', background: '#f9fafb', flexShrink: 0 }}>
+          <div style={{ width: sidebarW, borderRight: 'none', display: 'flex', flexDirection: 'column', background: '#f9fafb', flexShrink: 0, position: 'relative' }}>
+            {/* Sidebar resize handle */}
+            <div
+              onMouseDown={e => {
+                sidebarResizing.current = true;
+                sidebarOrigin.current = { mx: e.clientX, w: sidebarW };
+                e.preventDefault();
+              }}
+              style={{ position: 'absolute', top: 0, right: -2, width: 5, height: '100%', cursor: 'col-resize', zIndex: 5 }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.15)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            />
 
             {/* Archive toggle */}
             <div style={{ padding: '0.875rem 0.875rem 0.625rem', flexShrink: 0 }}>
@@ -552,15 +615,23 @@ export default function NotesModal({ isOpen, onClose }: Props) {
               </div>
             </div>
 
-            {/* Create button */}
-            <div style={{ padding: '0 0.875rem 0.5rem', flexShrink: 0 }}>
+            {/* Create buttons */}
+            <div style={{ padding: '0 0.875rem 0.5rem', flexShrink: 0, display: 'flex', gap: 4 }}>
               <button
                 onClick={() => createNote('note')}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0.5625rem 0', borderRadius: 10, background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, transition: 'background 0.15s' }}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.5rem 0', borderRadius: 10, background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, transition: 'background 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
               >
-                <Plus size={12} strokeWidth={2.5} /> Нова нотатка
+                <FileText size={11} strokeWidth={2.5} /> Нотатка
+              </button>
+              <button
+                onClick={() => createNote('todo')}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.5rem 0', borderRadius: 10, background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, transition: 'background 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
+              >
+                <CheckSquare size={11} strokeWidth={2.5} /> Список
               </button>
             </div>
 
@@ -617,6 +688,44 @@ export default function NotesModal({ isOpen, onClose }: Props) {
               </div>
             </div>
 
+            {/* Sort + Color filter */}
+            <div style={{ padding: '0 0.875rem 0.625rem', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              {/* Sort selector */}
+              <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: 6, padding: 2, gap: 1, flex: 1 }}>
+                {([['updated', 'Оновл.'], ['created', 'Створ.'], ['title', 'Назва']] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setSortBy(key)}
+                    style={{
+                      flex: 1, padding: '2px 0', borderRadius: 5, border: 'none', cursor: 'pointer',
+                      fontSize: '0.625rem', fontWeight: 600, transition: 'all 0.12s',
+                      background: sortBy === key ? '#fff' : 'transparent',
+                      color: sortBy === key ? '#1e293b' : '#94a3b8',
+                      boxShadow: sortBy === key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {/* Color filter dots */}
+              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                {COLORS.map(c => (
+                  <button
+                    key={c.key ?? 'none'}
+                    onClick={() => setActiveColor(activeColor === (c.key ?? '') ? null : (c.key ?? ''))}
+                    style={{
+                      width: 10, height: 10, borderRadius: '50%', background: c.dot,
+                      border: activeColor === (c.key ?? '') ? '2px solid #2563eb' : '1.5px solid transparent',
+                      cursor: 'pointer', padding: 0,
+                      boxShadow: activeColor === (c.key ?? '') ? '0 0 0 1px #2563eb' : 'none',
+                      transition: 'all 0.12s',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
             {/* Tag filter */}
             {allTags.length > 0 && (
               <div style={{ padding: '0 0.875rem 0.625rem', display: 'flex', flexWrap: 'wrap', gap: 4, flexShrink: 0 }}>
@@ -637,7 +746,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
               </div>
             )}
 
-            {/* Note list */}
+            {/* Note list + footer */}
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#94a3b8', fontSize: '0.8125rem' }}>
@@ -669,6 +779,14 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                   ))}
                 </>
               )}
+            </div>
+            {/* Footer counter */}
+            {!loading && filtered.length > 0 && (
+              <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #f1f5f9', fontSize: '0.6875rem', color: '#94a3b8', textAlign: 'center', flexShrink: 0 }}>
+                {filtered.length} {filtered.length === 1 ? 'нотатка' : filtered.length < 5 ? 'нотатки' : 'нотаток'}
+                {pinned.length > 0 && ` · ${pinned.length} закріп.`}
+              </div>
+            )}
             </div>
           </div>
 
@@ -876,14 +994,25 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     </svg>
                   </ActionBtn>
 
-                  <ActionBtn
-                    title="Видалити нотатку"
-                    hoverColor="#ef4444"
-                    hoverBg="#fef2f2"
-                    onClick={() => deleteNote(selectedNote.id)}
-                  >
-                    <Trash2 size={15} strokeWidth={2} />
-                  </ActionBtn>
+                  {confirmDeleteId === selectedNote.id ? (
+                    <button
+                      onClick={() => deleteNote(selectedNote.id)}
+                      style={{ background: '#fee2e2', border: 'none', cursor: 'pointer', padding: '4px 10px', borderRadius: 8, fontSize: '0.6875rem', fontWeight: 700, color: '#ef4444', transition: 'all 0.15s', flexShrink: 0 }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#ef4444'; }}
+                    >
+                      Точно?
+                    </button>
+                  ) : (
+                    <ActionBtn
+                      title="Видалити нотатку"
+                      hoverColor="#ef4444"
+                      hoverBg="#fef2f2"
+                      onClick={() => deleteNote(selectedNote.id)}
+                    >
+                      <Trash2 size={15} strokeWidth={2} />
+                    </ActionBtn>
+                  )}
                 </div>
 
                 {/* ── Tags row ── */}
@@ -1204,6 +1333,76 @@ function TagsRow({ tags, onAdd, onRemove, bg }: { tags: string[]; onAdd: (t: str
   );
 }
 
+// ── Searchable dropdown ───────────────────────────────────────────────────────
+
+function SearchableDropdown({ icon, placeholder, items, onSelect, activeBg, activeColor }: {
+  icon: string;
+  placeholder: string;
+  items: { id: number; label: string }[];
+  onSelect: (id: number) => void;
+  activeBg: string;
+  activeColor: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  const filtered = query
+    ? items.filter(i => i.label.toLowerCase().includes(query.toLowerCase())).slice(0, 30)
+    : items.slice(0, 30);
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      <button
+        onClick={() => { setOpen(v => !v); setQuery(''); setTimeout(() => inputRef.current?.focus(), 0); }}
+        style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: 20, cursor: 'pointer', padding: '2px 9px', fontSize: '0.6875rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.15s' }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = activeColor; e.currentTarget.style.color = activeColor; }}
+        onMouseLeave={e => { if (!open) { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#94a3b8'; } }}
+      >
+        {icon} {placeholder}
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, width: 220, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 20, overflow: 'hidden' }}>
+          <div style={{ padding: '6px 8px', borderBottom: '1px solid #f1f5f9' }}>
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Пошук..."
+              style={{ width: '100%', border: 'none', outline: 'none', fontSize: '0.75rem', color: '#374151', background: 'transparent', userSelect: 'text' }}
+            />
+          </div>
+          <div style={{ maxHeight: 160, overflowY: 'auto' }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding: '8px 10px', fontSize: '0.6875rem', color: '#94a3b8' }}>Не знайдено</div>
+            ) : filtered.map(item => (
+              <button
+                key={item.id}
+                onClick={() => { onSelect(item.id); setOpen(false); setQuery(''); }}
+                style={{ width: '100%', textAlign: 'left', padding: '6px 10px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#374151', transition: 'background 0.1s', display: 'block' }}
+                onMouseEnter={e => { e.currentTarget.style.background = activeBg; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Linked entity row ─────────────────────────────────────────────────────────
 
 function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, onChangeGroup }: {
@@ -1226,35 +1425,41 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
       {/* Student link */}
       {studentId && studentName ? (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 9px', borderRadius: 20, background: '#eff6ff', fontSize: '0.6875rem', fontWeight: 600, color: '#2563eb' }}>
-          👤 {studentName}
+          <a href={`/students/${studentId}`} style={{ color: 'inherit', textDecoration: 'none' }} title="Відкрити картку учня"
+            onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'none'; }}
+          >👤 {studentName}</a>
           <button onClick={() => onChangeStudent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#93c5fd', lineHeight: 1 }}><X size={10} /></button>
         </span>
       ) : students.length > 0 && (
-        <select
-          value=""
-          onChange={e => onChangeStudent(e.target.value ? Number(e.target.value) : null)}
-          style={{ fontSize: '0.6875rem', border: '1px dashed #d1d5db', borderRadius: 20, padding: '2px 9px', background: 'transparent', color: '#94a3b8', cursor: 'pointer', outline: 'none' }}
-        >
-          <option value="">👤 Учень...</option>
-          {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+        <SearchableDropdown
+          icon="👤"
+          placeholder="Учень..."
+          items={students.map(s => ({ id: s.id, label: s.name }))}
+          onSelect={id => onChangeStudent(id)}
+          activeBg="#eff6ff"
+          activeColor="#2563eb"
+        />
       )}
 
       {/* Group link */}
       {groupId && groupTitle ? (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 9px', borderRadius: 20, background: '#f0fdf4', fontSize: '0.6875rem', fontWeight: 600, color: '#16a34a' }}>
-          👥 {groupTitle}
+          <a href={`/groups/${groupId}`} style={{ color: 'inherit', textDecoration: 'none' }} title="Відкрити групу"
+            onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'none'; }}
+          >👥 {groupTitle}</a>
           <button onClick={() => onChangeGroup(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#86efac', lineHeight: 1 }}><X size={10} /></button>
         </span>
       ) : groups.length > 0 && (
-        <select
-          value=""
-          onChange={e => onChangeGroup(e.target.value ? Number(e.target.value) : null)}
-          style={{ fontSize: '0.6875rem', border: '1px dashed #d1d5db', borderRadius: 20, padding: '2px 9px', background: 'transparent', color: '#94a3b8', cursor: 'pointer', outline: 'none' }}
-        >
-          <option value="">👥 Група...</option>
-          {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-        </select>
+        <SearchableDropdown
+          icon="👥"
+          placeholder="Група..."
+          items={groups.map(g => ({ id: g.id, label: g.title }))}
+          onSelect={id => onChangeGroup(id)}
+          activeBg="#f0fdf4"
+          activeColor="#16a34a"
+        />
       )}
     </div>
   );
@@ -1297,27 +1502,40 @@ function TaskList({ tasks, onToggle, onDelete, onRename, onReorder }: {
     setDragOver(null);
   };
 
+  const undone = tasks.filter(t => !t.done);
+  const done   = tasks.filter(t =>  t.done);
+
+  const renderItem = (task: Task) => (
+    <div
+      key={task.id}
+      draggable
+      onDragStart={() => onDragStart(task.id)}
+      onDragEnter={() => onDragEnter(task.id)}
+      onDragOver={e => e.preventDefault()}
+      onDragEnd={() => { setDragOver(null); dragId.current = null; }}
+      onDrop={onDrop}
+      style={{ outline: dragOver === task.id ? '2px solid #3b82f6' : '2px solid transparent', borderRadius: 8, transition: 'outline 0.1s' }}
+    >
+      <TaskItem
+        task={task}
+        onToggle={() => onToggle(task.id)}
+        onDelete={() => onDelete(task.id)}
+        onRename={text => onRename(task.id, text)}
+      />
+    </div>
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {tasks.map(task => (
-        <div
-          key={task.id}
-          draggable
-          onDragStart={() => onDragStart(task.id)}
-          onDragEnter={() => onDragEnter(task.id)}
-          onDragOver={e => e.preventDefault()}
-          onDragEnd={() => { setDragOver(null); dragId.current = null; }}
-          onDrop={onDrop}
-          style={{ outline: dragOver === task.id ? '2px solid #3b82f6' : '2px solid transparent', borderRadius: 8, transition: 'outline 0.1s' }}
-        >
-          <TaskItem
-            task={task}
-            onToggle={() => onToggle(task.id)}
-            onDelete={() => onDelete(task.id)}
-            onRename={text => onRename(task.id, text)}
-          />
+      {undone.map(renderItem)}
+      {done.length > 0 && undone.length > 0 && (
+        <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#94a3b8', padding: '0.5rem 0.375rem 0.25rem', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+          <span>Виконано ({done.length})</span>
+          <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
         </div>
-      ))}
+      )}
+      {done.map(renderItem)}
     </div>
   );
 }
