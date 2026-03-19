@@ -19,6 +19,7 @@ import {
   ExternalLink,
   DollarSign,
   Calculator,
+  Shuffle,
 } from 'lucide-react';
 import { t } from '@/i18n/t';
 import styles from './Navbar.module.css';
@@ -912,12 +913,12 @@ const Navbar: React.FC<NavbarProps> = ({
                           {!userPhotoUrl && !profilePhotoPreview && (
                             <button
                               onClick={randomizeDicebear}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 8, padding: '0.5rem 0.875rem', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}
-                              onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; }}
-                              title="Згенерувати випадкового робота"
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: 8, width: 34, height: 34, borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#64748b', flexShrink: 0 }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#1e293b'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
+                              title="Інший робот"
                             >
-                              🎲 Інший робот
+                              <Shuffle size={15} />
                             </button>
                           )}
                           {profilePhotoPreview && (
