@@ -2,7 +2,7 @@ import { run, get, all } from '@/db';
 import { formatShortDateKyiv } from '@/lib/date-utils';
 
 // Types for group history
-export type GroupHistoryActionType = 
+export type GroupHistoryActionType =
   | 'created'
   | 'edited'
   | 'teacher_changed'
@@ -10,7 +10,8 @@ export type GroupHistoryActionType =
   | 'student_removed'
   | 'lesson_conducted'
   | 'status_changed'
-  | 'deleted';
+  | 'deleted'
+  | 'schedule_changed';
 
 export interface GroupHistoryEntry {
   id: number;
@@ -107,6 +108,22 @@ export function formatLessonConductedDescription(lessonDate: string, topic?: str
     return `Проведено заняття: ${formattedDate} (${topic})`;
   }
   return `Проведено заняття: ${formattedDate}`;
+}
+
+// Helper function to format action description for schedule changed
+export function formatScheduleChangedDescription(
+  oldDay: string,
+  oldTime: string,
+  newDay: string,
+  newTime: string,
+  oldDuration: number,
+  newDuration: number,
+): string {
+  let desc = `Перенесено розклад: ${oldDay} ${oldTime} → ${newDay} ${newTime}`;
+  if (oldDuration !== newDuration) {
+    desc += ` (тривалість: ${oldDuration} → ${newDuration} хв)`;
+  }
+  return desc;
 }
 
 // Helper function to format action description for field edited

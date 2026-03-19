@@ -588,3 +588,59 @@ export async function getGroupTeacherAssignments(groupId: number): Promise<Teach
     [groupId]
   );
 }
+
+/**
+ * Reschedule a group to a new day/time.
+ * Updates: groups.weekly_day, groups.start_time, groups.duration_minutes, groups.title
+ * Also updates all future 'scheduled' lessons that were NOT individually rescheduled
+ * (original_date IS NULL) to the new day/time.
+ * dayDiff = (newJsDay - oldJsDay + 7) % 7 — always forward
+ */
+export async function rescheduleGroup(
+  groupId: number,
+  newWeeklyDay: number,  // 1-7 (Mon-Sun)
+  newStartTime: string,  // "HH:MM"
+  newDurationMinutes: number,
+  courseTitle: string,
+  changedBy: number,
+  reason?: string | null,
+): Promise<{ lessonsUpdated: number }> {
+  const group = await get<{ weekly_day: number; start_time: string; duration_minutes: number }>(
+    `SELECT weekly_day, start_time, duration_minutes FROM groups WHERE id = $1`,
+    [groupId]
+  );
+  if (!group) throw new Error('Group not found');
+
+  const oldJsDay = group.weekly_day === 7 ? 0 : group.weekly_day;
+  const newJsDay = newWeeklyDay === 7 ? 0 : newWeeklyDay;
+  const dayDiff = (newJsDay - oldJsDay + 7) % 7;
+
+  const newTitle = generateGroupTitle(newWeeklyDay, newStartTime, courseTitle);
+
+  // Update the group
+  await run(
+    `UPDATE groups SET weekly_day = $1, start_time = $2, duration_minutes = $3, title = $4, updated_at = NOW() WHERE id = $5`,
+    [newWeeklyDay, newStartTime, newDurationMinutes, newTitle, groupId]
+  );
+
+  // Update future scheduled lessons (not individually rescheduled ones)
+  const updated = await run(
+    `UPDATE lessons SET
+       lesson_date = (lesson_date + ($1 * INTERVAL '1 day'))::date,
+       start_datetime = (
+         (lesson_date + ($1 * INTERVAL '1 day'))::date::timestamp + $2::time
+       ) AT TIME ZONE 'Europe/Kyiv',
+       end_datetime = (
+         (lesson_date + ($1 * INTERVAL '1 day'))::date::timestamp + $2::time
+       ) AT TIME ZONE 'Europe/Kyiv' + ($3 * INTERVAL '1 minute'),
+       updated_at = NOW()
+     WHERE group_id = $4
+       AND status = 'scheduled'
+       AND lesson_date >= CURRENT_DATE
+       AND original_date IS NULL
+     RETURNING id`,
+    [dayDiff, newStartTime, newDurationMinutes, groupId]
+  );
+
+  return { lessonsUpdated: updated.length };
+}

@@ -129,6 +129,12 @@ export default function GroupDetailsPage() {
   const [graduationDate, setGraduationDate] = useState('');
   const [graduating, setGraduating] = useState(false);
 
+  // Reschedule
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleForm, setRescheduleForm] = useState({ newWeeklyDay: '', newStartTime: '', newDurationMinutes: '', reason: '' });
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleError, setRescheduleError] = useState('');
+
   // Modal states
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   
@@ -362,6 +368,35 @@ export default function GroupDetailsPage() {
       console.error('Graduate error:', error);
     } finally {
       setGraduating(false);
+    }
+  };
+
+  const handleRescheduleConfirm = async () => {
+    if (!rescheduleForm.newWeeklyDay || !rescheduleForm.newStartTime || !rescheduleForm.newDurationMinutes) return;
+    setRescheduling(true);
+    setRescheduleError('');
+    try {
+      const res = await fetch(`/api/groups/${groupId}/reschedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          newWeeklyDay: parseInt(rescheduleForm.newWeeklyDay),
+          newStartTime: rescheduleForm.newStartTime,
+          newDurationMinutes: parseInt(rescheduleForm.newDurationMinutes),
+          reason: rescheduleForm.reason.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRescheduleError(data.error || 'Помилка перенесення');
+        return;
+      }
+      setGroup(data.group);
+      setShowRescheduleModal(false);
+    } catch {
+      setRescheduleError('Помилка з\'єднання');
+    } finally {
+      setRescheduling(false);
     }
   };
 
@@ -752,6 +787,42 @@ export default function GroupDetailsPage() {
                   </svg>
                   Змінити викладача
                 </button>
+                {group.status === 'active' && (
+                  <>
+                    {/* divider */}
+                    <div style={{ height: '1px', background: 'var(--gray-100)', margin: '0 0.5rem' }} />
+                    <button
+                      onClick={() => {
+                        if (!group) return;
+                        setRescheduleForm({
+                          newWeeklyDay: String(group.weekly_day),
+                          newStartTime: group.start_time,
+                          newDurationMinutes: String(group.duration_minutes),
+                          reason: '',
+                        });
+                        setRescheduleError('');
+                        setShowRescheduleModal(true);
+                        setShowDropdown(false);
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.625rem',
+                        width: '100%', padding: '0.625rem 1rem', background: 'none',
+                        border: 'none', cursor: 'pointer', fontSize: '0.875rem',
+                        color: '#0369a1', fontWeight: 500, textAlign: 'left',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#f0f9ff'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                        <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+                      </svg>
+                      Перенести групу
+                    </button>
+                  </>
+                )}
                 {group.status === 'active' && (
                   <>
                     <div style={{ height: '1px', background: 'var(--gray-100)', margin: '0 0.5rem' }} />
@@ -1329,6 +1400,110 @@ export default function GroupDetailsPage() {
                   })}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reschedule Modal */}
+      {showRescheduleModal && group && (
+        <div className="modal-overlay" onClick={() => !rescheduling && setShowRescheduleModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0369a1" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Перенести розклад групи
+              </h3>
+              <button className="modal-close" onClick={() => setShowRescheduleModal(false)} disabled={rescheduling}>×</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ padding: '0.75rem', backgroundColor: '#f0f9ff', borderRadius: '0.5rem', border: '1px solid #bae6fd', marginBottom: '1.25rem', fontSize: '0.8125rem', color: '#0369a1' }}>
+                <strong>Поточний розклад:</strong> {getDayNameFull(group.weekly_day)} о {group.start_time} ({group.duration_minutes} хв)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.375rem', color: '#374151' }}>День тижня</label>
+                  <select
+                    className="form-select"
+                    value={rescheduleForm.newWeeklyDay}
+                    onChange={e => setRescheduleForm(f => ({ ...f, newWeeklyDay: e.target.value }))}
+                    disabled={rescheduling}
+                  >
+                    {[1,2,3,4,5,6,7].map(d => (
+                      <option key={d} value={String(d)}>{getDayNameFull(d)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.375rem', color: '#374151' }}>Час початку</label>
+                  <input
+                    type="time"
+                    className="form-input"
+                    value={rescheduleForm.newStartTime}
+                    onChange={e => setRescheduleForm(f => ({ ...f, newStartTime: e.target.value }))}
+                    disabled={rescheduling}
+                  />
+                </div>
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.375rem', color: '#374151' }}>Тривалість (хв)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={rescheduleForm.newDurationMinutes}
+                  onChange={e => setRescheduleForm(f => ({ ...f, newDurationMinutes: e.target.value }))}
+                  min="15" step="15" max="480"
+                  disabled={rescheduling}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.375rem', color: '#374151' }}>Причина зміни (необов&apos;язково)</label>
+                <textarea
+                  className="form-input"
+                  value={rescheduleForm.reason}
+                  onChange={e => setRescheduleForm(f => ({ ...f, reason: e.target.value }))}
+                  rows={2}
+                  style={{ resize: 'vertical', fontFamily: 'inherit' }}
+                  disabled={rescheduling}
+                  placeholder="Наприклад: зміна зали, зручніший час для батьків..."
+                />
+              </div>
+              <ul style={{ margin: '0', paddingLeft: '1.25rem', color: '#6b7280', fontSize: '0.8125rem', lineHeight: 1.7 }}>
+                <li>Всі майбутні заняття групи будуть перенесені на новий день/час</li>
+                <li>Минулі та вже проведені заняття залишаться без змін</li>
+                <li>Назва групи автоматично оновиться</li>
+              </ul>
+              {rescheduleError && (
+                <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#dc2626', padding: '0.625rem', backgroundColor: '#fef2f2', borderRadius: '0.375rem' }}>
+                  {rescheduleError}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowRescheduleModal(false)} disabled={rescheduling}>
+                Скасувати
+              </button>
+              <button
+                className="btn"
+                onClick={handleRescheduleConfirm}
+                disabled={rescheduling || !rescheduleForm.newWeeklyDay || !rescheduleForm.newStartTime || !rescheduleForm.newDurationMinutes}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  backgroundColor: '#0369a1', color: 'white', border: 'none',
+                  padding: '0.625rem 1.25rem', borderRadius: '0.5rem',
+                  fontWeight: 500, cursor: rescheduling ? 'default' : 'pointer',
+                  opacity: rescheduling ? 0.7 : 1,
+                }}
+              >
+                {rescheduling && (
+                  <span style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+                )}
+                Перенести групу
+              </button>
             </div>
           </div>
         </div>
