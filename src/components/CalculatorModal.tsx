@@ -58,29 +58,6 @@ export default function CalculatorModal({ isOpen, onClose }: Props) {
     e.preventDefault();
   };
 
-  const actionsRef = useRef({ digit, dot, op, equals, backspace, clear, percent, onClose });
-  useEffect(() => { actionsRef.current = { digit, dot, op, equals, backspace, clear, percent, onClose }; });
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      const a = actionsRef.current;
-      if ('0123456789'.includes(e.key)) { a.digit(e.key); return; }
-      if (e.key === '.') { a.dot(); return; }
-      if (e.key === '+') { a.op('+'); return; }
-      if (e.key === '-') { a.op('−'); return; }
-      if (e.key === '*') { a.op('×'); return; }
-      if (e.key === '/') { e.preventDefault(); a.op('÷'); return; }
-      if (e.key === 'Enter' || e.key === '=') { a.equals(); return; }
-      if (e.key === 'Backspace') { a.backspace(); return; }
-      if (e.key === 'Escape') { a.onClose(); return; }
-      if (e.key === 'Delete') { a.clear(); return; }
-      if (e.key === '%') { a.percent(); return; }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isOpen]);
-
   // ── Calculator logic ────────────────────────────────────────────────────────
 
   const compute = (a: number, b: number, op: string) => {
@@ -132,6 +109,31 @@ export default function CalculatorModal({ isOpen, onClose }: Props) {
   const backspace = () => { if (waiting) return; setDisplay(d => d.length <= 1 ? '0' : d.slice(0, -1)); };
   const toggleSign = () => setDisplay(d => fmt(-parseFloat(d)));
   const percent = () => setDisplay(d => fmt(parseFloat(d) / 100));
+
+  // ── Keyboard input ───────────────────────────────────────────────────────────
+
+  const actionsRef = useRef({ digit, dot, op, equals, backspace, clear, percent, onClose });
+  useEffect(() => { actionsRef.current = { digit, dot, op, equals, backspace, clear, percent, onClose }; });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      const a = actionsRef.current;
+      if ('0123456789'.includes(e.key)) { a.digit(e.key); return; }
+      if (e.key === '.') { a.dot(); return; }
+      if (e.key === '+') { a.op('+'); return; }
+      if (e.key === '-') { a.op('−'); return; }
+      if (e.key === '*') { a.op('×'); return; }
+      if (e.key === '/') { e.preventDefault(); a.op('÷'); return; }
+      if (e.key === 'Enter' || e.key === '=') { a.equals(); return; }
+      if (e.key === 'Backspace') { a.backspace(); return; }
+      if (e.key === 'Escape') { a.onClose(); return; }
+      if (e.key === 'Delete') { a.clear(); return; }
+      if (e.key === '%') { a.percent(); return; }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen]);
 
   // ── Button grid ─────────────────────────────────────────────────────────────
 
