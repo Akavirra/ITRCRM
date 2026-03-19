@@ -42,6 +42,28 @@ interface Teacher {
   groups?: TeacherGroup[];
 }
 
+interface DrillDownLesson {
+  lesson_id: number;
+  lesson_date: string;
+  group_title: string | null;
+  is_individual: boolean;
+  is_replacement: boolean;
+  present_count: number;
+  makeup_count: number;
+  rate: number;
+  salary: number;
+}
+
+interface DrillDownState {
+  teacherId: number;
+  teacherName: string;
+  type: 'total' | 'group' | 'individual';
+  lessons: DrillDownLesson[];
+}
+
+const MONTHS_UK = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+const MONTHS_UK_GEN = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
+
 interface GroupDetails {
   group?: {
     id: number;
@@ -137,6 +159,8 @@ export default function TeachersPage() {
     }>;
   } | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [drillDown, setDrillDown] = useState<DrillDownState | null>(null);
+  const [drillLoading, setDrillLoading] = useState(false);
 
   // Copy to clipboard state
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -186,6 +210,24 @@ export default function TeachersPage() {
       console.error(e);
     } finally {
       setStatsLoading(false);
+    }
+  };
+
+  const openDrillDown = async (teacher: { teacher_id: number; teacher_name: string }, type: 'total' | 'group' | 'individual') => {
+    setDrillDown({ teacherId: teacher.teacher_id, teacherName: teacher.teacher_name, type, lessons: [] });
+    setDrillLoading(true);
+    const [year, mon] = statsMonth.split('-');
+    try {
+      const res = await fetch(`/api/teachers/${teacher.teacher_id}/statistics?year=${year}&month=${mon}`);
+      if (res.ok) {
+        const data = await res.json();
+        let lessons: DrillDownLesson[] = data.lessons ?? [];
+        if (type === 'group') lessons = lessons.filter((l: DrillDownLesson) => !l.is_individual);
+        if (type === 'individual') lessons = lessons.filter((l: DrillDownLesson) => l.is_individual);
+        setDrillDown({ teacherId: teacher.teacher_id, teacherName: teacher.teacher_name, type, lessons });
+      }
+    } catch { /* silent */ } finally {
+      setDrillLoading(false);
     }
   };
 
@@ -1430,94 +1472,240 @@ export default function TeachersPage() {
 
       {/* Teachers Statistics Modal */}
       {showStatsModal && (
-        <div className="modal-overlay" onClick={() => setShowStatsModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', width: '95vw' }}>
-            <div className="modal-header">
-              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-                </svg>
-                Статистика викладачів
-              </h2>
-              <button className="modal-close" onClick={() => setShowStatsModal(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
-                <label style={{ fontWeight: 500, fontSize: '0.875rem', color: '#374151' }}>Місяць:</label>
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)', zIndex: 9100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowStatsModal(false)}
+        >
+            <div
+              style={{ background: 'white', borderRadius: 20, boxShadow: '0 24px 80px rgba(0,0,0,0.18)', width: 960, maxWidth: '96vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f1f5f9', background: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Статистика викладачів
+                  </h2>
+                  {allTeachersStats && (
+                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
+                      Ставки: {allTeachersStats.salary_group_rate} ₴/учня (груп.) · {allTeachersStats.salary_individual_rate} ₴/учня (інд.)
+                    </p>
+                  )}
+                </div>
                 <input
                   type="month"
                   value={statsMonth}
                   onChange={e => { setStatsMonth(e.target.value); loadAllStats(e.target.value); }}
-                  style={{ padding: '0.375rem 0.625rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.875rem', border: '1.5px solid #e2e8f0', borderRadius: 8, background: 'white', color: '#0f172a', outline: 'none' }}
                 />
-                {allTeachersStats && (
-                  <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                    Ставки: груп. {allTeachersStats.salary_group_rate} грн · інд. {allTeachersStats.salary_individual_rate} грн (за учня)
-                  </span>
+                <button
+                  onClick={() => setShowStatsModal(false)}
+                  style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', borderRadius: 8, cursor: 'pointer', color: '#94a3b8', fontSize: '1.25rem', lineHeight: 1 }}
+                >×</button>
+              </div>
+
+              {/* Body */}
+              <div style={{ flex: 1, overflow: 'auto', padding: '1.25rem 1.5rem' }}>
+                {statsLoading ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>Завантаження...</div>
+                ) : !allTeachersStats || allTeachersStats.teachers.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>Немає даних за цей місяць</div>
+                ) : (
+                  <>
+                    {/* Summary pills */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                      {[
+                        { label: 'Викладачів', value: allTeachersStats.teachers.length, color: '#3b82f6', bg: '#eff6ff' },
+                        { label: 'Всього занять', value: allTeachersStats.teachers.reduce((s,tr) => s+tr.total_lessons,0), color: '#6366f1', bg: '#eef2ff' },
+                        { label: 'Всього учнів', value: allTeachersStats.teachers.reduce((s,tr) => s+tr.total_present,0), color: '#16a34a', bg: '#f0fdf4' },
+                        { label: 'Загальна зарплата', value: allTeachersStats.teachers.reduce((s,tr) => s+tr.total_salary,0).toLocaleString() + ' ₴', color: '#dc2626', bg: '#fef2f2' },
+                      ].map((pill, i) => (
+                        <div key={i} style={{ background: pill.bg, borderRadius: 12, padding: '0.875rem 1.125rem' }}>
+                          <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: pill.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem' }}>{pill.label}</div>
+                          <div style={{ fontSize: '1.375rem', fontWeight: 700, color: pill.color }}>{pill.value}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Table */}
+                    <div style={{ borderRadius: 12, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc' }}>
+                            {[
+                              { label: 'Викладач', align: 'left' as const, pl: '1rem' },
+                              { label: 'Всього', align: 'center' as const },
+                              { label: 'Групові', align: 'center' as const },
+                              { label: 'Індивід.', align: 'center' as const },
+                              { label: 'Учнів', align: 'center' as const },
+                              { label: 'Відпр.', align: 'center' as const },
+                              { label: 'Зарплата', align: 'right' as const, pr: '1rem' },
+                            ].map((h, i) => (
+                              <th key={i} style={{ padding: '0.7rem ' + (h.pl || '0.75rem'), textAlign: h.align, fontWeight: 600, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9', paddingRight: h.pr || '0.75rem' }}>{h.label}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {allTeachersStats.teachers.map((tr, i) => (
+                            <tr key={tr.teacher_id} style={{ borderBottom: '1px solid #f8fafc', background: i % 2 === 0 ? 'white' : '#fafbfc', transition: 'background 0.1s' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#f0f9ff'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = i % 2 === 0 ? 'white' : '#fafbfc'; }}
+                            >
+                              <td style={{ padding: '0.75rem 0.75rem 0.75rem 1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                                  <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#eff6ff', color: '#3b82f6', fontWeight: 700, fontSize: '0.8125rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    {tr.teacher_name.charAt(0)}
+                                  </div>
+                                  <span style={{ fontWeight: 600, color: '#1e293b' }}>{tr.teacher_name}</span>
+                                </div>
+                              </td>
+                              <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                <button
+                                  onClick={() => openDrillDown(tr, 'total')}
+                                  style={{ background: '#eef2ff', color: '#4f46e5', border: 'none', borderRadius: 20, padding: '0.2rem 0.65rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', minWidth: 32 }}
+                                  title="Переглянути всі заняття"
+                                >{tr.total_lessons}</button>
+                              </td>
+                              <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                <button
+                                  onClick={() => openDrillDown(tr, 'group')}
+                                  style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: 20, padding: '0.2rem 0.65rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', minWidth: 32 }}
+                                  title="Переглянути групові заняття"
+                                >{tr.group_lessons}</button>
+                              </td>
+                              <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                <button
+                                  onClick={() => openDrillDown(tr, 'individual')}
+                                  style={{ background: '#f5f3ff', color: '#7c3aed', border: 'none', borderRadius: 20, padding: '0.2rem 0.65rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', minWidth: 32 }}
+                                  title="Переглянути індивідуальні заняття"
+                                >{tr.individual_lessons}</button>
+                              </td>
+                              <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>{tr.total_present}</td>
+                              <td style={{ padding: '0.75rem', textAlign: 'center', color: '#d97706' }}>{tr.total_makeup || '—'}</td>
+                              <td style={{ padding: '0.75rem 1rem 0.75rem 0.75rem', textAlign: 'right', fontWeight: 700, color: '#0f172a', fontSize: '0.9375rem' }}>
+                                {tr.total_salary.toLocaleString()} ₴
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0' }}>
+                            <td style={{ padding: '0.75rem 0.75rem 0.75rem 1rem', fontWeight: 700, color: '#374151' }}>Разом</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: '#4f46e5' }}>{allTeachersStats.teachers.reduce((s,tr) => s+tr.total_lessons,0)}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: '#0369a1' }}>{allTeachersStats.teachers.reduce((s,tr) => s+tr.group_lessons,0)}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: '#7c3aed' }}>{allTeachersStats.teachers.reduce((s,tr) => s+tr.individual_lessons,0)}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: '#16a34a' }}>{allTeachersStats.teachers.reduce((s,tr) => s+tr.total_present,0)}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: '#d97706' }}>{allTeachersStats.teachers.reduce((s,tr) => s+tr.total_makeup,0) || '—'}</td>
+                            <td style={{ padding: '0.75rem 1rem 0.75rem 0.75rem', textAlign: 'right', fontWeight: 800, color: '#dc2626', fontSize: '1rem' }}>
+                              {allTeachersStats.teachers.reduce((s,tr) => s+tr.total_salary,0).toLocaleString()} ₴
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
-              {statsLoading ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>Завантаження...</div>
-              ) : !allTeachersStats || allTeachersStats.teachers.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>Немає даних за цей місяць</div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                        <th style={{ padding: '0.625rem 1rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Викладач</th>
-                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Занять</th>
-                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Груп.</th>
-                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Інд.</th>
-                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Учнів</th>
-                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Відпр.</th>
-                        <th style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 600, color: '#374151' }}>Зарплата</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allTeachersStats.teachers.map(t => (
-                        <tr key={t.teacher_id} style={{ borderBottom: '1px solid #f3f4f6' }}
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
-                          <td style={{ padding: '0.625rem 1rem', fontWeight: 500, color: '#111827' }}>{t.teacher_name}</td>
-                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: '#374151' }}>{t.total_lessons}</td>
-                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: '#0369a1' }}>{t.group_lessons}</td>
-                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: '#7c3aed' }}>{t.individual_lessons}</td>
-                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>{t.total_present}</td>
-                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: '#d97706' }}>{t.total_makeup || '—'}</td>
-                          <td style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{t.total_salary} грн</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr style={{ borderTop: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                        <td style={{ padding: '0.625rem 1rem', fontWeight: 700, color: '#374151' }}>Разом</td>
-                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#374151' }}>
-                          {allTeachersStats.teachers.reduce((s, t) => s + t.total_lessons, 0)}
-                        </td>
-                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#0369a1' }}>
-                          {allTeachersStats.teachers.reduce((s, t) => s + t.group_lessons, 0)}
-                        </td>
-                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#7c3aed' }}>
-                          {allTeachersStats.teachers.reduce((s, t) => s + t.individual_lessons, 0)}
-                        </td>
-                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#16a34a' }}>
-                          {allTeachersStats.teachers.reduce((s, t) => s + t.total_present, 0)}
-                        </td>
-                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#d97706' }}>
-                          {allTeachersStats.teachers.reduce((s, t) => s + t.total_makeup, 0) || '—'}
-                        </td>
-                        <td style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 700, color: '#dc2626', fontSize: '1rem' }}>
-                          {allTeachersStats.teachers.reduce((s, t) => s + t.total_salary, 0)} грн
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              )}
             </div>
           </div>
-        </div>
+      )}
+
+      {/* Drill-down lessons modal */}
+      {drillDown && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(6px)', zIndex: 9200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setDrillDown(null)}
+        >
+            <div
+              style={{ background: 'white', borderRadius: 18, boxShadow: '0 24px 80px rgba(0,0,0,0.2)', width: 680, maxWidth: '95vw', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Drill-down header */}
+              <div style={{ padding: '1.125rem 1.5rem', borderBottom: '1px solid #f1f5f9', background: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.2rem' }}>
+                    {drillDown.type === 'total' ? 'Всі заняття' : drillDown.type === 'group' ? 'Групові заняття' : 'Індивідуальні заняття'}
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700, color: '#0f172a' }}>
+                    {drillDown.teacherName}
+                  </h3>
+                </div>
+                <div style={{
+                  padding: '0.3rem 0.875rem', borderRadius: 20, fontSize: '0.8125rem', fontWeight: 700,
+                  background: drillDown.type === 'total' ? '#eef2ff' : drillDown.type === 'group' ? '#e0f2fe' : '#f5f3ff',
+                  color: drillDown.type === 'total' ? '#4f46e5' : drillDown.type === 'group' ? '#0369a1' : '#7c3aed',
+                }}>
+                  {drillLoading ? '...' : drillDown.lessons.length} занять
+                </div>
+                <button
+                  onClick={() => setDrillDown(null)}
+                  style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', borderRadius: 8, cursor: 'pointer', color: '#94a3b8', fontSize: '1.25rem' }}
+                >×</button>
+              </div>
+
+              {/* Drill-down body */}
+              <div style={{ flex: 1, overflow: 'auto' }}>
+                {drillLoading ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>Завантаження...</div>
+                ) : drillDown.lessons.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>Немає занять</div>
+                ) : (
+                  <>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc', position: 'sticky', top: 0 }}>
+                          <th style={{ padding: '0.65rem 1.25rem', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Дата</th>
+                          <th style={{ padding: '0.65rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Група / тип</th>
+                          <th style={{ padding: '0.65rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Учнів</th>
+                          <th style={{ padding: '0.65rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Ставка</th>
+                          <th style={{ padding: '0.65rem 1.25rem', textAlign: 'right', fontWeight: 600, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Зарплата</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {drillDown.lessons.map((lesson, i) => {
+                          const d = new Date(lesson.lesson_date);
+                          const dateStr = `${d.getUTCDate()} ${MONTHS_UK_GEN[d.getUTCMonth()]}`;
+                          return (
+                            <tr key={lesson.lesson_id} style={{ borderBottom: '1px solid #f8fafc', background: i % 2 === 0 ? 'white' : '#fafbfc' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#f0f9ff'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = i % 2 === 0 ? 'white' : '#fafbfc'; }}
+                            >
+                              <td style={{ padding: '0.7rem 1.25rem', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap' }}>{dateStr}</td>
+                              <td style={{ padding: '0.7rem 0.75rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <span style={{ color: '#374151' }}>{lesson.group_title || 'Без групи'}</span>
+                                  {lesson.is_individual && (
+                                    <span style={{ background: '#f5f3ff', color: '#7c3aed', borderRadius: 10, padding: '0.1rem 0.5rem', fontSize: '0.6875rem', fontWeight: 600 }}>Інд.</span>
+                                  )}
+                                  {lesson.is_replacement && (
+                                    <span style={{ background: '#fff7ed', color: '#c2410c', borderRadius: 10, padding: '0.1rem 0.5rem', fontSize: '0.6875rem', fontWeight: 600 }}>Заміна</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>{lesson.present_count}</td>
+                              <td style={{ padding: '0.7rem 0.75rem', textAlign: 'center', color: '#64748b', fontSize: '0.8125rem' }}>{lesson.rate} ₴</td>
+                              <td style={{ padding: '0.7rem 1.25rem', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>{lesson.salary.toLocaleString()} ₴</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0' }}>
+                          <td colSpan={2} style={{ padding: '0.75rem 1.25rem', fontWeight: 700, color: '#374151' }}>Разом</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: '#16a34a' }}>{drillDown.lessons.reduce((s,l) => s+l.present_count,0)}</td>
+                          <td></td>
+                          <td style={{ padding: '0.75rem 1.25rem', textAlign: 'right', fontWeight: 800, color: '#dc2626', fontSize: '1rem' }}>
+                            {drillDown.lessons.reduce((s,l) => s+l.salary,0).toLocaleString()} ₴
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
       )}
     </Layout>
   );
