@@ -134,7 +134,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [sysUsers, setSysUsers] = useState<{ id: number; name: string; email: string; role: string; is_active: boolean; created_at: string }[]>([]);
   const [sysUsersLoading, setSysUsersLoading] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
-  const [createUserForm, setCreateUserForm] = useState({ name: '', email: '', password: '', role: 'teacher' });
+  const [createUserForm, setCreateUserForm] = useState({ name: '', email: '', password: '', role: 'admin' });
   const [createUserSaving, setCreateUserSaving] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -1065,7 +1065,7 @@ const Navbar: React.FC<NavbarProps> = ({
                       </h3>
                       <button
                         className="btn btn-primary"
-                        onClick={() => { setShowCreateUser(v => !v); setCreateUserForm({ name: '', email: '', password: '', role: 'teacher' }); }}
+                        onClick={() => { setShowCreateUser(v => !v); setCreateUserForm({ name: '', email: '', password: '', role: 'admin' }); }}
                         style={{ fontSize: '0.8125rem', padding: '0.4rem 0.875rem' }}
                       >
                         + Новий користувач
@@ -1084,16 +1084,9 @@ const Navbar: React.FC<NavbarProps> = ({
                             <label className="form-label">Email *</label>
                             <input type="email" className="form-input" value={createUserForm.email} onChange={e => setCreateUserForm(f => ({ ...f, email: e.target.value }))} placeholder="email@example.com" />
                           </div>
-                          <div className="form-group" style={{ margin: 0 }}>
+                          <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
                             <label className="form-label">Пароль *</label>
-                            <input type="password" className="form-input" value={createUserForm.password} onChange={e => setCreateUserForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
-                          </div>
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label className="form-label">Роль</label>
-                            <select className="form-select" value={createUserForm.role} onChange={e => setCreateUserForm(f => ({ ...f, role: e.target.value }))}>
-                              <option value="teacher">Викладач</option>
-                              <option value="admin">Адміністратор</option>
-                            </select>
+                            <input type="password" className="form-input" value={createUserForm.password} onChange={e => setCreateUserForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" style={{ maxWidth: '50%' }} />
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -1120,7 +1113,7 @@ const Navbar: React.FC<NavbarProps> = ({
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                           <thead>
                             <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
-                              {['Ім\'я', 'Email', 'Роль', 'Статус', 'Створено'].map(h => (
+                              {['Ім\'я', 'Email', 'Статус', 'Створено'].map(h => (
                                 <th key={h} style={{ padding: '0.625rem 0.875rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
                               ))}
                             </tr>
@@ -1130,11 +1123,6 @@ const Navbar: React.FC<NavbarProps> = ({
                               <tr key={u.id} style={{ borderBottom: i < sysUsers.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                                 <td style={{ padding: '0.625rem 0.875rem', fontWeight: 500, color: '#1e293b' }}>{u.name}</td>
                                 <td style={{ padding: '0.625rem 0.875rem', color: '#64748b' }}>{u.email}</td>
-                                <td style={{ padding: '0.625rem 0.875rem' }}>
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: u.role === 'admin' ? '#eff6ff' : '#f1f5f9', color: u.role === 'admin' ? '#2563eb' : '#475569' }}>
-                                    {u.role === 'admin' ? 'Адмін' : 'Викладач'}
-                                  </span>
-                                </td>
                                 <td style={{ padding: '0.625rem 0.875rem' }}>
                                   <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: u.is_active ? '#f0fdf4' : '#fef2f2', color: u.is_active ? '#16a34a' : '#dc2626' }}>
                                     {u.is_active ? 'Активний' : 'Неактивний'}
