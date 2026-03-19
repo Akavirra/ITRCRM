@@ -99,6 +99,14 @@ export default function GroupsPage() {
   const [archiveDate, setArchiveDate] = useState('');
   const [archiving, setArchiving] = useState(false);
 
+  // Change teacher modal state
+  const [showChangeTeacherModal, setShowChangeTeacherModal] = useState(false);
+  const [groupToChangeTeacher, setGroupToChangeTeacher] = useState<Group | null>(null);
+  const [changeTeacherNewId, setChangeTeacherNewId] = useState('');
+  const [changeTeacherReason, setChangeTeacherReason] = useState('');
+  const [savingTeacherChange, setSavingTeacherChange] = useState(false);
+  const [changeTeacherError, setChangeTeacherError] = useState('');
+
   // New Group Modal state
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
   const [newGroupCourseId, setNewGroupCourseId] = useState('');
@@ -575,6 +583,47 @@ export default function GroupsPage() {
     setEditGroup(group);
     setShowEditGroupModal(true);
     setOpenDropdownId(null);
+  };
+
+  // Change teacher handlers
+  const handleChangeTeacherClick = (group: Group) => {
+    setGroupToChangeTeacher(group);
+    setChangeTeacherNewId('');
+    setChangeTeacherReason('');
+    setChangeTeacherError('');
+    setOpenDropdownId(null);
+    setShowChangeTeacherModal(true);
+  };
+
+  const handleChangeTeacherSave = async () => {
+    if (!groupToChangeTeacher || !changeTeacherNewId) return;
+    setSavingTeacherChange(true);
+    setChangeTeacherError('');
+    try {
+      const res = await fetch(`/api/groups/${groupToChangeTeacher.id}/change-teacher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          newTeacherId: parseInt(changeTeacherNewId),
+          reason: changeTeacherReason.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setChangeTeacherError(data.error || 'Помилка зміни викладача');
+        return;
+      }
+      setShowChangeTeacherModal(false);
+      setGroupToChangeTeacher(null);
+      // Refresh groups list
+      const groupsRes = await fetch('/api/groups?includeInactive=true');
+      const groupsData = await groupsRes.json();
+      setGroups(groupsData.groups || []);
+    } catch {
+      setChangeTeacherError("Помилка з'єднання");
+    } finally {
+      setSavingTeacherChange(false);
+    }
   };
 
   const handleEditSave = async (e: React.FormEvent) => {
@@ -1081,6 +1130,29 @@ export default function GroupsPage() {
                                   </svg>
                                   Редагувати групу
                                 </button>
+                                <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '0.25rem 0' }} />
+                                <button
+                                  className="btn"
+                                  onClick={(e) => { e.stopPropagation(); handleChangeTeacherClick(group); }}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                    width: '100%', padding: '0.625rem 0.75rem',
+                                    color: '#1d4ed8', textAlign: 'left',
+                                    background: 'none', border: 'none',
+                                    fontSize: '0.875rem', fontWeight: '500',
+                                    borderRadius: '0.5rem', cursor: 'pointer', transition: 'all 0.15s',
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#eff6ff'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                    <circle cx="12" cy="7" r="4" />
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                    <path d="M21 21v-2a4 4 0 0 0-3-3.87" />
+                                  </svg>
+                                  Змінити викладача
+                                </button>
                                 {group.status !== 'graduate' && (
                                   <>
                                     <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '0.25rem 0' }} />
@@ -1224,6 +1296,80 @@ export default function GroupsPage() {
       </div>
 
       {/* Graduate Modal */}
+      {showChangeTeacherModal && groupToChangeTeacher && (
+        <div className="modal-overlay" onClick={() => !savingTeacherChange && setShowChangeTeacherModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                Змінити викладача
+              </h3>
+              <button className="modal-close" onClick={() => setShowChangeTeacherModal(false)} disabled={savingTeacherChange}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: '0 0 1rem 0', color: '#374151', fontSize: '0.9375rem' }}>
+                Група: <strong>{groupToChangeTeacher.title}</strong>
+              </p>
+              <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+                Поточний викладач: <strong>{groupToChangeTeacher.teacher_name}</strong>
+              </p>
+              <div style={{ marginBottom: '0.875rem' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.375rem', color: '#374151' }}>
+                  Новий викладач *
+                </label>
+                <select
+                  className="form-select"
+                  value={changeTeacherNewId}
+                  onChange={(e) => setChangeTeacherNewId(e.target.value)}
+                  disabled={savingTeacherChange}
+                >
+                  <option value="">Оберіть викладача...</option>
+                  {teachers.filter(t => t.id !== groupToChangeTeacher.teacher_id).map(t => (
+                    <option key={t.id} value={String(t.id)}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.375rem', color: '#374151' }}>
+                  Причина (необов'язково)
+                </label>
+                <textarea
+                  className="form-input"
+                  value={changeTeacherReason}
+                  onChange={(e) => setChangeTeacherReason(e.target.value)}
+                  placeholder="Вкажіть причину зміни..."
+                  rows={2}
+                  disabled={savingTeacherChange}
+                  style={{ resize: 'vertical', fontFamily: 'inherit' }}
+                />
+              </div>
+              {changeTeacherError && (
+                <p style={{ margin: '0.625rem 0 0', color: '#dc2626', fontSize: '0.875rem' }}>{changeTeacherError}</p>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowChangeTeacherModal(false)} disabled={savingTeacherChange}>
+                Скасувати
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleChangeTeacherSave}
+                disabled={savingTeacherChange || !changeTeacherNewId}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: !changeTeacherNewId ? 0.6 : 1 }}
+              >
+                {savingTeacherChange && (
+                  <span style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+                )}
+                {savingTeacherChange ? 'Збереження...' : 'Змінити викладача'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showGraduateModal && groupToGraduate && (
         <div className="modal-overlay" onClick={() => !graduating && setShowGraduateModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
