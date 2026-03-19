@@ -913,7 +913,7 @@ const Navbar: React.FC<NavbarProps> = ({
                           {!userPhotoUrl && !profilePhotoPreview && (
                             <button
                               onClick={randomizeDicebear}
-                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: 8, width: 34, height: 34, borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#64748b', flexShrink: 0 }}
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: 8, padding: '0.5rem 0.625rem', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#64748b', flexShrink: 0 }}
                               onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#1e293b'; }}
                               onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
                               title="Інший робот"
