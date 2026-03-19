@@ -11,7 +11,6 @@ import {
   GraduationCap,
   Calendar,
   BarChart3,
-  Settings,
   ClipboardList,
   FolderOpen
 } from 'lucide-react';
@@ -43,9 +42,7 @@ const reportsMenuItems = [
   { href: '/reports', labelKey: 'nav.reports', icon: BarChart3 },
 ];
 
-const adminMenuItems = [
-  { href: '/users', labelKey: 'nav.users', icon: Settings },
-];
+const adminMenuItems: { href: string; labelKey: string; icon: React.ComponentType<{ size?: number }> }[] = [];
 
 // ── Combined date/time + weather widget ───────────────────────────────────────
 
@@ -603,7 +600,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             );
           })}
 
-          {user.role === 'admin' && (
+          {user.role === 'admin' && adminMenuItems.length > 0 && (
             <>
               <div style={{ height: '1px', backgroundColor: '#f0f0f0', margin: '16px 12px' }} />
               {adminMenuItems.map((item) => {

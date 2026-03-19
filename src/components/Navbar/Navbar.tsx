@@ -112,7 +112,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [clearing, setClearing] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const prevUnreadRef = useRef<number | null>(null);
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'profile' | 'notifications' | 'salary' | 'system'>('general');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'profile' | 'notifications' | 'salary' | 'system' | 'users'>('general');
   const [settings, setSettings] = useState({
     displayName: user?.name || '',
     email: '',
@@ -131,6 +131,11 @@ const Navbar: React.FC<NavbarProps> = ({
   const [saved, setSaved] = useState(false);
   const [salarySettings, setSalarySettings] = useState({ teacher_salary_group: '75', teacher_salary_individual: '100' });
   const [salarySaving, setSalarySaving] = useState(false);
+  const [sysUsers, setSysUsers] = useState<{ id: number; name: string; email: string; role: string; is_active: boolean; created_at: string }[]>([]);
+  const [sysUsersLoading, setSysUsersLoading] = useState(false);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState({ name: '', email: '', password: '', role: 'teacher' });
+  const [createUserSaving, setCreateUserSaving] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -271,6 +276,40 @@ const Navbar: React.FC<NavbarProps> = ({
       setTimeout(() => setSaved(false), 2000);
     } catch { /* silent */ } finally {
       setSalarySaving(false);
+    }
+  };
+
+  // Load users when users tab is active
+  useEffect(() => {
+    if (!settingsOpen || activeSettingsTab !== 'users') return;
+    setSysUsersLoading(true);
+    fetch('/api/users')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.users) setSysUsers(d.users); })
+      .catch(() => {})
+      .finally(() => setSysUsersLoading(false));
+  }, [settingsOpen, activeSettingsTab]);
+
+  const handleCreateUser = async () => {
+    if (!createUserForm.name.trim() || !createUserForm.email.trim() || !createUserForm.password.trim()) return;
+    setCreateUserSaving(true);
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(createUserForm),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        alert(d.error || 'Помилка');
+        return;
+      }
+      setShowCreateUser(false);
+      setCreateUserForm({ name: '', email: '', password: '', role: 'teacher' });
+      const r = await fetch('/api/users');
+      if (r.ok) { const d = await r.json(); setSysUsers(d.users || []); }
+    } catch { /* silent */ } finally {
+      setCreateUserSaving(false);
     }
   };
 
@@ -685,13 +724,14 @@ const Navbar: React.FC<NavbarProps> = ({
                 backgroundColor: '#fafafa',
                 overflow: 'auto',
               }}>
-                {[
+                {([
                   { id: 'general', label: 'Загальні' },
                   { id: 'profile', label: 'Профіль' },
                   { id: 'notifications', label: 'Сповіщення' },
                   { id: 'salary', label: 'Ціни та зарплата' },
                   { id: 'system', label: 'Система' },
-                ].map((tab) => (
+                  ...(user?.role === 'admin' ? [{ id: 'users', label: 'Користувачі' }] : []),
+                ] as { id: string; label: string }[]).map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveSettingsTab(tab.id as typeof activeSettingsTab)}
@@ -1016,30 +1056,128 @@ const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 )}
 
-                {/* Save Button */}
-                <div style={{
-                  marginTop: '1.5rem',
-                  paddingTop: '1rem',
-                  borderTop: '1px solid #e5e7eb',
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: '0.75rem',
-                }}>
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={() => setSettingsOpen(false)}
-                  >
-                    Скасувати
-                  </button>
-                  <button 
-                    className="btn btn-primary"
-                    onClick={handleSettingsSave}
-                    style={{ minWidth: '120px' }}
-                  >
-                    <Save size={16} />
-                    {saved ? 'Збережено!' : 'Зберегти'}
-                  </button>
-                </div>
+                {/* Users Tab */}
+                {activeSettingsTab === 'users' && (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                      <h3 style={{ fontSize: '0.8125rem', fontWeight: '600', color: '#374151', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Користувачі системи
+                      </h3>
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => { setShowCreateUser(v => !v); setCreateUserForm({ name: '', email: '', password: '', role: 'teacher' }); }}
+                        style={{ fontSize: '0.8125rem', padding: '0.4rem 0.875rem' }}
+                      >
+                        + Новий користувач
+                      </button>
+                    </div>
+
+                    {/* Create User Form */}
+                    {showCreateUser && (
+                      <div style={{ background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '1rem', marginBottom: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Ім'я *</label>
+                            <input type="text" className="form-input" value={createUserForm.name} onChange={e => setCreateUserForm(f => ({ ...f, name: e.target.value }))} placeholder="Ім'я користувача" />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Email *</label>
+                            <input type="email" className="form-input" value={createUserForm.email} onChange={e => setCreateUserForm(f => ({ ...f, email: e.target.value }))} placeholder="email@example.com" />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Пароль *</label>
+                            <input type="password" className="form-input" value={createUserForm.password} onChange={e => setCreateUserForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Роль</label>
+                            <select className="form-select" value={createUserForm.role} onChange={e => setCreateUserForm(f => ({ ...f, role: e.target.value }))}>
+                              <option value="teacher">Викладач</option>
+                              <option value="admin">Адміністратор</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button className="btn btn-secondary" onClick={() => setShowCreateUser(false)} style={{ fontSize: '0.8125rem' }}>Скасувати</button>
+                          <button
+                            className="btn btn-primary"
+                            onClick={handleCreateUser}
+                            disabled={createUserSaving || !createUserForm.name.trim() || !createUserForm.email.trim() || !createUserForm.password.trim()}
+                            style={{ fontSize: '0.8125rem' }}
+                          >
+                            {createUserSaving ? 'Збереження...' : 'Створити'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Users Table */}
+                    {sysUsersLoading ? (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>Завантаження...</div>
+                    ) : sysUsers.length === 0 ? (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>Користувачів не знайдено</div>
+                    ) : (
+                      <div style={{ border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                          <thead>
+                            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+                              {['Ім\'я', 'Email', 'Роль', 'Статус', 'Створено'].map(h => (
+                                <th key={h} style={{ padding: '0.625rem 0.875rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sysUsers.map((u, i) => (
+                              <tr key={u.id} style={{ borderBottom: i < sysUsers.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                                <td style={{ padding: '0.625rem 0.875rem', fontWeight: 500, color: '#1e293b' }}>{u.name}</td>
+                                <td style={{ padding: '0.625rem 0.875rem', color: '#64748b' }}>{u.email}</td>
+                                <td style={{ padding: '0.625rem 0.875rem' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: u.role === 'admin' ? '#eff6ff' : '#f1f5f9', color: u.role === 'admin' ? '#2563eb' : '#475569' }}>
+                                    {u.role === 'admin' ? 'Адмін' : 'Викладач'}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '0.625rem 0.875rem' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: u.is_active ? '#f0fdf4' : '#fef2f2', color: u.is_active ? '#16a34a' : '#dc2626' }}>
+                                    {u.is_active ? 'Активний' : 'Неактивний'}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '0.625rem 0.875rem', color: '#94a3b8', fontSize: '0.8125rem' }}>
+                                  {new Date(u.created_at).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Save Button — hidden on users tab */}
+                {activeSettingsTab !== 'users' && (
+                  <div style={{
+                    marginTop: '1.5rem',
+                    paddingTop: '1rem',
+                    borderTop: '1px solid #e5e7eb',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: '0.75rem',
+                  }}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setSettingsOpen(false)}
+                    >
+                      Скасувати
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={handleSettingsSave}
+                      style={{ minWidth: '120px' }}
+                    >
+                      <Save size={16} />
+                      {saved ? 'Збережено!' : 'Зберегти'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
