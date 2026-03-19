@@ -50,6 +50,7 @@ export async function GET(
     is_replacement: boolean;
     present_count: string;
     makeup_count: string;
+    makeup_lesson_id: number | null;
   }>(`
     SELECT
       l.id AS lesson_id,
@@ -59,7 +60,8 @@ export async function GET(
       g.capacity,
       (ltr.replacement_teacher_id IS NOT NULL) AS is_replacement,
       COUNT(a.id) FILTER (WHERE a.status IN ('present', 'makeup_done')) AS present_count,
-      COUNT(a.id) FILTER (WHERE a.status = 'makeup_done') AS makeup_count
+      COUNT(a.id) FILTER (WHERE a.status = 'makeup_done') AS makeup_count,
+      MIN(a.makeup_lesson_id) FILTER (WHERE a.status = 'makeup_done' AND a.makeup_lesson_id IS NOT NULL) AS makeup_lesson_id
     FROM lessons l
     LEFT JOIN groups g ON l.group_id = g.id
     LEFT JOIN lesson_teacher_replacements ltr ON ltr.lesson_id = l.id
@@ -86,6 +88,7 @@ export async function GET(
       is_replacement: row.is_replacement,
       present_count: presentCount,
       makeup_count: makeupCount,
+      makeup_lesson_id: row.makeup_lesson_id ?? null,
       rate,
       salary,
     };
