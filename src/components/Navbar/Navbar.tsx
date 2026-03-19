@@ -23,7 +23,7 @@ import {
 import { t } from '@/i18n/t';
 import styles from './Navbar.module.css';
 import TransitionLink from '@/components/TransitionLink';
-import CalculatorModal from '@/components/CalculatorModal';
+import { useCalculator } from '@/components/CalculatorProvider';
 
 // ─── Notification types ───────────────────────────────────────────────────────
 
@@ -102,7 +102,7 @@ const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [calcOpen, setCalcOpen] = useState(false);
+  const { calcOpen, toggleCalc } = useCalculator();
 
   // ── Notifications state ────────────────────────────────────────────────────
   const [notifOpen, setNotifOpen] = useState(false);
@@ -344,7 +344,7 @@ const Navbar: React.FC<NavbarProps> = ({
             <button
               className={styles.iconButton}
               title="Калькулятор"
-              onClick={() => setCalcOpen(v => !v)}
+              onClick={toggleCalc}
               style={calcOpen ? { color: '#2563eb' } : undefined}
             >
               <Calculator size={20} strokeWidth={1.5} />
@@ -1046,7 +1046,6 @@ const Navbar: React.FC<NavbarProps> = ({
         </div>
       )}
 
-      <CalculatorModal isOpen={calcOpen} onClose={() => setCalcOpen(false)} />
     </>
   );
 };

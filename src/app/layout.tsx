@@ -15,6 +15,7 @@ import PageTransitionLoader from '@/components/PageTransitionLoader';
 import { ToastProvider } from '@/components/Toast/ToastContext';
 import ToastContainer from '@/components/Toast/ToastContainer';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { CalculatorProvider } from '@/components/CalculatorProvider';
 
 export const metadata: Metadata = {
   title: 'Адміністрування школи',
@@ -30,28 +31,30 @@ export default function RootLayout({
     <html lang="uk">
       <body>
         <ErrorBoundary>
-          <ToastProvider>
-            <PageTransitionProvider>
-              <GroupModalsProvider>
-                <StudentModalsProvider>
-                  <CourseModalsProvider>
-                    <TeacherModalsProvider>
-                      <LessonModalsProvider>
-                        {children}
-                        <GroupModalsWrapper />
-                        <StudentModalsWrapper />
-                        <CourseModalsWrapper />
-                        <TeacherModalsWrapper />
-                        <LessonModalsWrapper />
-                        <PageTransitionLoader />
-                        <ToastContainer />
-                      </LessonModalsProvider>
-                    </TeacherModalsProvider>
-                  </CourseModalsProvider>
-                </StudentModalsProvider>
-              </GroupModalsProvider>
-            </PageTransitionProvider>
-          </ToastProvider>
+          <CalculatorProvider>
+            <ToastProvider>
+              <PageTransitionProvider>
+                <GroupModalsProvider>
+                  <StudentModalsProvider>
+                    <CourseModalsProvider>
+                      <TeacherModalsProvider>
+                        <LessonModalsProvider>
+                          {children}
+                          <GroupModalsWrapper />
+                          <StudentModalsWrapper />
+                          <CourseModalsWrapper />
+                          <TeacherModalsWrapper />
+                          <LessonModalsWrapper />
+                          <PageTransitionLoader />
+                          <ToastContainer />
+                        </LessonModalsProvider>
+                      </TeacherModalsProvider>
+                    </CourseModalsProvider>
+                  </StudentModalsProvider>
+                </GroupModalsProvider>
+              </PageTransitionProvider>
+            </ToastProvider>
+          </CalculatorProvider>
         </ErrorBoundary>
       </body>
     </html>
