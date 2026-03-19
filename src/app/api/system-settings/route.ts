@@ -1,0 +1,55 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser, unauthorized, forbidden } from '@/lib/api-utils';
+import { all, run } from '@/db';
+
+export const dynamic = 'force-dynamic';
+
+const DEFAULTS: Record<string, string> = {
+  teacher_salary_group: '75',
+  teacher_salary_individual: '100',
+};
+
+export async function GET(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
+
+  try {
+    const rows = await all<{ key: string; value: string }>(
+      `SELECT key, value FROM system_settings`
+    );
+    const settings: Record<string, string> = { ...DEFAULTS };
+    for (const row of rows) settings[row.key] = row.value;
+    return NextResponse.json({ settings });
+  } catch {
+    // Table may not exist yet — return defaults
+    return NextResponse.json({ settings: DEFAULTS });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
+  if (user.role !== 'admin') return forbidden();
+
+  let body: Record<string, string>;
+  try { body = await request.json(); } catch {
+    return NextResponse.json({ error: 'Невірний формат' }, { status: 400 });
+  }
+
+  const allowed = ['teacher_salary_group', 'teacher_salary_individual'];
+  for (const key of allowed) {
+    if (key in body) {
+      const val = parseFloat(body[key]);
+      if (isNaN(val) || val < 0) {
+        return NextResponse.json({ error: `Невірне значення для ${key}` }, { status: 400 });
+      }
+      await run(
+        `INSERT INTO system_settings (key, value, updated_at) VALUES ($1, $2, NOW())
+         ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+        [key, String(val)]
+      );
+    }
+  }
+
+  return NextResponse.json({ success: true });
+}

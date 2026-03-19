@@ -114,6 +114,30 @@ export default function TeachersPage() {
   // Teacher modals from context
   const { openTeacherModal } = useTeacherModals();
 
+  // Statistics modal
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [statsMonth, setStatsMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [allTeachersStats, setAllTeachersStats] = useState<{
+    year: number;
+    month: number;
+    salary_group_rate: number;
+    salary_individual_rate: number;
+    teachers: Array<{
+      teacher_id: number;
+      teacher_name: string;
+      total_lessons: number;
+      group_lessons: number;
+      individual_lessons: number;
+      total_present: number;
+      total_makeup: number;
+      total_salary: number;
+    }>;
+  } | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
   // Copy to clipboard state
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -149,6 +173,20 @@ export default function TeachersPage() {
 
   const handleSearch = (value: string) => {
     setSearch(value);
+  };
+
+  const loadAllStats = async (month: string) => {
+    const [year, mon] = month.split('-');
+    setStatsLoading(true);
+    try {
+      const res = await fetch(`/api/teachers/statistics?year=${year}&month=${mon}`);
+      const data = await res.json();
+      setAllTeachersStats(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setStatsLoading(false);
+    }
   };
 
   const handleCreate = () => {
@@ -472,9 +510,20 @@ export default function TeachersPage() {
             />
           </div>
           {user.role === 'admin' && (
-            <button className="btn btn-primary" onClick={handleCreate}>
-              + {t('modals.newTeacher') || 'Новий викладач'}
-            </button>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => { setShowStatsModal(true); loadAllStats(statsMonth); }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '0.375rem' }}>
+                  <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+                Статистика
+              </button>
+              <button className="btn btn-primary" onClick={handleCreate}>
+                + {t('modals.newTeacher') || 'Новий викладач'}
+              </button>
+            </div>
           )}
         </div>
 
@@ -1378,6 +1427,98 @@ export default function TeachersPage() {
           {toast.message}
         </div>
       )};
+
+      {/* Teachers Statistics Modal */}
+      {showStatsModal && (
+        <div className="modal-overlay" onClick={() => setShowStatsModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', width: '95vw' }}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+                Статистика викладачів
+              </h2>
+              <button className="modal-close" onClick={() => setShowStatsModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+                <label style={{ fontWeight: 500, fontSize: '0.875rem', color: '#374151' }}>Місяць:</label>
+                <input
+                  type="month"
+                  value={statsMonth}
+                  onChange={e => { setStatsMonth(e.target.value); loadAllStats(e.target.value); }}
+                  style={{ padding: '0.375rem 0.625rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                />
+                {allTeachersStats && (
+                  <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                    Ставки: груп. {allTeachersStats.salary_group_rate} грн · інд. {allTeachersStats.salary_individual_rate} грн (за учня)
+                  </span>
+                )}
+              </div>
+              {statsLoading ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>Завантаження...</div>
+              ) : !allTeachersStats || allTeachersStats.teachers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>Немає даних за цей місяць</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                        <th style={{ padding: '0.625rem 1rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Викладач</th>
+                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Занять</th>
+                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Груп.</th>
+                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Інд.</th>
+                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Учнів</th>
+                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Відпр.</th>
+                        <th style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 600, color: '#374151' }}>Зарплата</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allTeachersStats.teachers.map(t => (
+                        <tr key={t.teacher_id} style={{ borderBottom: '1px solid #f3f4f6' }}
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
+                          <td style={{ padding: '0.625rem 1rem', fontWeight: 500, color: '#111827' }}>{t.teacher_name}</td>
+                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: '#374151' }}>{t.total_lessons}</td>
+                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: '#0369a1' }}>{t.group_lessons}</td>
+                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: '#7c3aed' }}>{t.individual_lessons}</td>
+                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>{t.total_present}</td>
+                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', color: '#d97706' }}>{t.total_makeup || '—'}</td>
+                          <td style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{t.total_salary} грн</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ borderTop: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                        <td style={{ padding: '0.625rem 1rem', fontWeight: 700, color: '#374151' }}>Разом</td>
+                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#374151' }}>
+                          {allTeachersStats.teachers.reduce((s, t) => s + t.total_lessons, 0)}
+                        </td>
+                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#0369a1' }}>
+                          {allTeachersStats.teachers.reduce((s, t) => s + t.group_lessons, 0)}
+                        </td>
+                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#7c3aed' }}>
+                          {allTeachersStats.teachers.reduce((s, t) => s + t.individual_lessons, 0)}
+                        </td>
+                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#16a34a' }}>
+                          {allTeachersStats.teachers.reduce((s, t) => s + t.total_present, 0)}
+                        </td>
+                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#d97706' }}>
+                          {allTeachersStats.teachers.reduce((s, t) => s + t.total_makeup, 0) || '—'}
+                        </td>
+                        <td style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 700, color: '#dc2626', fontSize: '1rem' }}>
+                          {allTeachersStats.teachers.reduce((s, t) => s + t.total_salary, 0)} грн
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

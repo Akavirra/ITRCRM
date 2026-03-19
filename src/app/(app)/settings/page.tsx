@@ -5,19 +5,20 @@ import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { t } from '@/i18n/t';
 import PageLoading from '@/components/PageLoading';
-import { 
-  Settings as SettingsIcon, 
-  User, 
-  Bell, 
-  Palette, 
-  Shield, 
+import {
+  Settings as SettingsIcon,
+  User,
+  Bell,
+  Palette,
+  Shield,
   Database,
   Mail,
   Clock,
   Globe,
   Save,
   ChevronRight,
-  X
+  X,
+  DollarSign
 } from 'lucide-react';
 
 interface User {
@@ -27,7 +28,7 @@ interface User {
   role: 'admin' | 'teacher';
 }
 
-type SettingsTab = 'general' | 'profile' | 'notifications' | 'system';
+type SettingsTab = 'general' | 'profile' | 'notifications' | 'system' | 'salary';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -35,6 +36,14 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [saved, setSaved] = useState(false);
+
+  // Salary settings state
+  const [salarySettings, setSalarySettings] = useState({
+    teacher_salary_group: '75',
+    teacher_salary_individual: '100',
+  });
+  const [salarySaved, setSalarySaved] = useState(false);
+  const [salaryLoading, setSalaryLoading] = useState(false);
 
   // Password change modal state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -95,6 +104,20 @@ export default function SettingsPage() {
             setSettings(prev => ({ ...prev, ...settData.settings }));
           }
         }
+
+        // Load system settings (salary rates)
+        if (authData.user.role === 'admin') {
+          const sysRes = await fetch('/api/system-settings');
+          if (sysRes.ok) {
+            const sysData = await sysRes.json();
+            if (sysData.settings) {
+              setSalarySettings({
+                teacher_salary_group: sysData.settings.teacher_salary_group || '75',
+                teacher_salary_individual: sysData.settings.teacher_salary_individual || '100',
+              });
+            }
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch user data:', error);
       } finally {
@@ -124,6 +147,24 @@ export default function SettingsPage() {
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setSettings(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSalarySave = async () => {
+    setSalaryLoading(true);
+    try {
+      const res = await fetch('/api/system-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(salarySettings),
+      });
+      if (!res.ok) throw new Error('Error');
+      setSalarySaved(true);
+      setTimeout(() => setSalarySaved(false), 2000);
+    } catch {
+      alert('Помилка збереження ставок');
+    } finally {
+      setSalaryLoading(false);
+    }
   };
 
   const handlePasswordChange = async () => {
@@ -182,6 +223,7 @@ export default function SettingsPage() {
     { id: 'profile' as const, label: 'Профіль', icon: User },
     { id: 'notifications' as const, label: 'Сповіщення', icon: Bell },
     { id: 'system' as const, label: 'Система', icon: Shield },
+    ...(user.role === 'admin' ? [{ id: 'salary' as const, label: 'Зарплата', icon: DollarSign }] : []),
   ];
 
   return (
@@ -783,30 +825,96 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {/* Salary Settings - admin only */}
+            {activeTab === 'salary' && user.role === 'admin' && (
+              <div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <DollarSign size={22} strokeWidth={1.5} />
+                  Ставки зарплати
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div className="form-section" style={{ marginBottom: 0, borderBottom: 'none' }}>
+                    <h3 style={{ fontSize: '0.8125rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Ставка за учня
+                    </h3>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1.25rem' }}>
+                      Зарплата розраховується: кількість присутніх учнів × ставка за заняття. Рахуються лише присутні (present) та відпрацювання (makeup_done).
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', maxWidth: '480px' }}>
+                      <div className="form-group">
+                        <label className="form-label">Групові / Відпрацювання</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={salarySettings.teacher_salary_group}
+                            onChange={e => setSalarySettings(s => ({ ...s, teacher_salary_group: e.target.value }))}
+                            min="0" step="5"
+                            style={{ maxWidth: '120px' }}
+                          />
+                          <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>грн/учень</span>
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Індивідуальні</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={salarySettings.teacher_salary_individual}
+                            onChange={e => setSalarySettings(s => ({ ...s, teacher_salary_individual: e.target.value }))}
+                            min="0" step="5"
+                            style={{ maxWidth: '120px' }}
+                          />
+                          <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>грн/учень</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: '1.25rem', padding: '0.875rem', backgroundColor: '#f0fdf4', borderRadius: '0.5rem', border: '1px solid #bbf7d0', fontSize: '0.8125rem', color: '#166534' }}>
+                      Індивідуальне заняття = група з capacity = 1. Решта — групові.
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleSalarySave}
+                    disabled={salaryLoading}
+                    style={{ minWidth: '120px' }}
+                  >
+                    <Save size={16} />
+                    {salarySaved ? 'Збережено!' : salaryLoading ? 'Збереження...' : 'Зберегти'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Save Button */}
-            <div style={{ 
-              marginTop: '2rem', 
-              paddingTop: '1.5rem', 
-              borderTop: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '0.75rem'
-            }}>
-              <button 
-                className="btn btn-secondary"
-                onClick={() => window.location.reload()}
-              >
-                Скинути
-              </button>
-              <button 
-                className="btn btn-primary"
-                onClick={handleSave}
-                style={{ minWidth: '120px' }}
-              >
-                <Save size={16} />
-                {saved ? 'Збережено!' : 'Зберегти'}
-              </button>
-            </div>
+            {activeTab !== 'salary' && (
+              <div style={{
+                marginTop: '2rem',
+                paddingTop: '1.5rem',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem'
+              }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => window.location.reload()}
+                >
+                  Скинути
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSave}
+                  style={{ minWidth: '120px' }}
+                >
+                  <Save size={16} />
+                  {saved ? 'Збережено!' : 'Зберегти'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

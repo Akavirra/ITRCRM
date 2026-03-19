@@ -25,6 +25,7 @@
     "db:add-media-tables": "node scripts/add-media-tables.js",
     "db:add-weather-city": "node scripts/add-weather-city.js",
     "db:add-group-teacher-assignments": "node scripts/add-group-teacher-assignments.js",
+    "db:add-system-settings": "node scripts/add-system-settings.js",
     "test": "jest"
   },
   "dependencies": {

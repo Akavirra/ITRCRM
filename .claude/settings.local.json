@@ -84,7 +84,23 @@
       "Bash(node scripts/add-media-dimensions.js)",
       "Bash(node -e \":*)",
       "Bash(node scripts/backfill-media-dimensions.js)",
-      "Bash(grep -r \"GOOGLE_OAUTH\\\\|GOOGLE_DRIVE_ROOT\" C:CProjectsITRoboticsCRMITRobotCRM --include=*.ts --include=*.tsx --include=*.js --include=*.json)"
+      "Bash(grep -r \"GOOGLE_OAUTH\\\\|GOOGLE_DRIVE_ROOT\" C:CProjectsITRoboticsCRMITRobotCRM --include=*.ts --include=*.tsx --include=*.js --include=*.json)",
+      "Bash(find /c/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/api/groups/[id] -type f -name \"*.ts\")",
+      "Bash(find /c/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/api/lessons/[id] -type f -name \"*.ts\")",
+      "Bash(grep -r \"teacher_id\\\\|replacement\\\\|created_by\" /c/CProjects/ITRoboticsCRM/ITRobotCRM/scripts/add-lesson*)",
+      "Bash(wc:*)",
+      "Bash(cat -n \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/groups/[id]/page.tsx\")",
+      "Bash(echo 'not found' ls C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/api/lessons/[id]/reschedule/)",
+      "Bash(echo 'not found' grep -n \"lesson_date\\\\|start_datetime\\\\|end_datetime\" C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/api/groups/[id]/route.ts)",
+      "Bash(grep -n \"schedule_changed\\\\|formatScheduleChanged\\\\|rescheduleGroup\\\\|handleRescheduleConfirm\\\\|showRescheduleModal\\\\|Перенести групу\\\\|Перенести розклад\" src/lib/group-history.ts src/lib/groups.ts src/app/api/groups/[id]/reschedule/route.ts src/app/\\\\\\(app\\\\\\)/groups/[id]/page.tsx src/app/\\\\\\(app\\\\\\)/groups/page.tsx)",
+      "Bash(find \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers\" -type f -name \"*.tsx\")",
+      "Bash(cat \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/page.tsx\")",
+      "Read(//tmp/**)",
+      "Bash(cat \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/settings/page.tsx\")",
+      "Bash(head -n 100 \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/page.tsx\")",
+      "Bash(tail -n 50 \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/page.tsx\")",
+      "Bash(head -n 100 \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/[id]/page.tsx\")",
+      "Bash(tail -n 50 \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/[id]/page.tsx\")"
     ]
   }
 }

@@ -141,6 +141,36 @@ export default function TeacherProfilePage() {
     name: '', email: '', phone: '', telegram_id: '', notes: '', photo: null, photoFile: null
   });
 
+  // Statistics
+  const [statsMonth, setStatsMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [statsData, setStatsData] = useState<{
+    summary: {
+      total_lessons: number;
+      group_lessons: number;
+      individual_lessons: number;
+      total_present: number;
+      total_makeup: number;
+      total_salary: number;
+      salary_group_rate: number;
+      salary_individual_rate: number;
+    };
+    lessons: Array<{
+      lesson_id: number;
+      lesson_date: string;
+      group_title: string;
+      is_individual: boolean;
+      is_replacement: boolean;
+      present_count: number;
+      makeup_count: number;
+      rate: number;
+      salary: number;
+    }>;
+  } | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -192,6 +222,18 @@ export default function TeacherProfilePage() {
       return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  // Fetch teacher statistics
+  useEffect(() => {
+    if (!teacher) return;
+    const [year, month] = statsMonth.split('-');
+    setStatsLoading(true);
+    fetch(`/api/teachers/${teacher.id}/statistics?year=${year}&month=${month}`)
+      .then(r => r.json())
+      .then(data => setStatsData(data))
+      .catch(console.error)
+      .finally(() => setStatsLoading(false));
+  }, [teacher, statsMonth]);
 
   const handleSave = async () => {
     if (!teacher) return;
@@ -1173,6 +1215,105 @@ export default function TeacherProfilePage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Statistics & Salary Card */}
+      <div className="card" style={{ marginTop: '1.5rem' }}>
+        <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--gray-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0, color: 'var(--gray-900)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gray-500)" strokeWidth="2">
+              <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+            Статистика та зарплата
+          </h2>
+          <input
+            type="month"
+            value={statsMonth}
+            onChange={e => setStatsMonth(e.target.value)}
+            style={{ padding: '0.375rem 0.625rem', fontSize: '0.875rem', border: '1px solid var(--gray-300)', borderRadius: '0.375rem', color: 'var(--gray-700)' }}
+          />
+        </div>
+        {statsLoading ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>Завантаження...</div>
+        ) : !statsData ? null : (
+          <div style={{ padding: '1.25rem' }}>
+            {/* Summary pills */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+              {[
+                { label: 'Занять проведено', value: statsData.summary.total_lessons, color: '#2563eb', bg: '#eff6ff' },
+                { label: 'Групових', value: statsData.summary.group_lessons, color: '#0369a1', bg: '#f0f9ff' },
+                { label: 'Індивідуальних', value: statsData.summary.individual_lessons, color: '#7c3aed', bg: '#f5f3ff' },
+                { label: 'Учнів присутніх', value: statsData.summary.total_present, color: '#16a34a', bg: '#f0fdf4' },
+                { label: 'Відпрацювань', value: statsData.summary.total_makeup, color: '#d97706', bg: '#fffbeb' },
+                { label: 'Зарплата', value: `${statsData.summary.total_salary} грн`, color: '#dc2626', bg: '#fef2f2', bold: true },
+              ].map(({ label, value, color, bg, bold }) => (
+                <div key={label} style={{ padding: '0.875rem', backgroundColor: bg, borderRadius: '0.5rem', border: `1px solid ${color}22` }}>
+                  <div style={{ fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', color, letterSpacing: '0.05em', marginBottom: '0.25rem' }}>{label}</div>
+                  <div style={{ fontSize: bold ? '1.25rem' : '1.5rem', fontWeight: 700, color }}>{value}</div>
+                </div>
+              ))}
+            </div>
+            {/* Rates info */}
+            <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '1rem' }}>
+              Ставки: групові {statsData.summary.salary_group_rate} грн/учень · індивідуальні {statsData.summary.salary_individual_rate} грн/учень
+            </div>
+            {/* Lessons table */}
+            {statsData.lessons.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Дата</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Група</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Тип</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Присутніх</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Відпр.</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Ставка</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, color: '#374151' }}>Зарплата</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statsData.lessons.map(lesson => (
+                      <tr key={lesson.lesson_id} style={{ borderBottom: '1px solid #f3f4f6' }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
+                        <td style={{ padding: '0.5rem 0.75rem', color: '#374151' }}>
+                          {new Date(lesson.lesson_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', timeZone: 'UTC' })}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', color: '#374151' }}>
+                          {lesson.group_title}
+                          {lesson.is_replacement && <span style={{ marginLeft: 6, fontSize: '0.7rem', backgroundColor: '#fef3c7', color: '#92400e', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>Заміна</span>}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                          <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: 999, backgroundColor: lesson.is_individual ? '#f5f3ff' : '#eff6ff', color: lesson.is_individual ? '#7c3aed' : '#2563eb', fontWeight: 500 }}>
+                            {lesson.is_individual ? 'Інд.' : 'Груп.'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>{lesson.present_count}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', color: '#d97706' }}>{lesson.makeup_count || '—'}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', color: '#6b7280' }}>{lesson.rate} грн</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>{lesson.salary} грн</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ borderTop: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                      <td colSpan={3} style={{ padding: '0.625rem 0.75rem', fontWeight: 600, color: '#374151' }}>Разом</td>
+                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#16a34a' }}>{statsData.summary.total_present}</td>
+                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#d97706' }}>{statsData.summary.total_makeup || '—'}</td>
+                      <td></td>
+                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'right', fontWeight: 700, color: '#dc2626', fontSize: '0.9375rem' }}>{statsData.summary.total_salary} грн</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ) : (
+              <p style={{ color: 'var(--gray-400)', textAlign: 'center', padding: '1.5rem 0', fontSize: '0.875rem' }}>
+                Немає проведених занять за цей місяць
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Toast notification */}
