@@ -260,7 +260,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
       .finally(() => setLoading(false));
     fetch('/api/notes/check-reminders', { method: 'POST' }).catch(() => {});
     if (students.length === 0) {
-      fetch('/api/students?limit=500').then(r => r.json()).then(d => { if (d.students) setStudents(d.students.map((s: {id:number;name:string}) => ({ id: s.id, name: s.name }))); }).catch(() => {});
+      fetch('/api/students?limit=500').then(r => r.json()).then(d => { if (d.students) setStudents(d.students.map((s: {id:number;full_name:string}) => ({ id: s.id, name: s.full_name }))); }).catch(() => {});
       fetch('/api/groups?limit=200').then(r => r.json()).then(d => { if (d.groups) setGroups(d.groups.map((g: {id:number;title:string}) => ({ id: g.id, title: g.title }))); }).catch(() => {});
     }
   }, [isOpen]);
