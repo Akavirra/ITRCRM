@@ -195,6 +195,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const [showTaskSection, setShowTaskSection] = useState(false);
   const [forceShowText, setForceShowText] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading]       = useState(false);
   const [saving, setSaving]         = useState(false);
   const [justSaved, setJustSaved]   = useState(false);
@@ -298,7 +299,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
           }),
         });
         setJustSaved(true);
-        setTimeout(() => setJustSaved(false), 1800);
+        setTimeout(() => setJustSaved(false), 2500);
       } catch { /* silent */ }
       setSaving(false);
     }, 700);
@@ -319,9 +320,10 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   useEffect(() => {
     setShowTaskSection(selectedNote ? selectedNote.tasks.length > 0 : false);
     setForceShowText(false);
-    // Reset textarea height on note change
+    // Reset textarea height on note change + autofocus title
     setTimeout(() => {
       if (textareaRef.current) autoResizeTextarea(textareaRef.current);
+      if (selectedNote && !selectedNote.title) titleRef.current?.focus();
     }, 0);
   }, [selectedId]);
 
@@ -494,11 +496,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             <line x1="16" y1="17" x2="8" y2="17"/>
             <polyline points="10 9 9 9 8 9"/>
           </svg>
-          <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#ffffff', letterSpacing: '0.03em', flex: 1 }}>
+          <span title={"Ctrl+N — нова нотатка\nCtrl+T — новий список\nCtrl+W / Esc — закрити"} style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#ffffff', letterSpacing: '0.03em', flex: 1 }}>
             Записник
-          </span>
-          <span title="Ctrl+N — нотатка  •  Ctrl+T — список  •  Ctrl+W — закрити" style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.45)', fontWeight: 500, cursor: 'default' }}>
-            Ctrl+N / T / W
           </span>
           <button
             onClick={onClose}
@@ -519,13 +518,13 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             resizeOrigin.current = { mx: e.clientX, my: e.clientY, w: size.w, h: size.h };
             e.preventDefault();
           }}
-          style={{ position: 'absolute', bottom: 2, right: 2, width: 16, height: 16, cursor: 'se-resize', zIndex: 10, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: '3px', opacity: 0.35, transition: 'opacity 0.15s' }}
-          onMouseEnter={e => { e.currentTarget.style.opacity = '0.75'; }}
-          onMouseLeave={e => { e.currentTarget.style.opacity = '0.35'; }}
+          style={{ position: 'absolute', bottom: 2, right: 2, width: 20, height: 20, cursor: 'se-resize', zIndex: 10, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: '3px', opacity: 0.5, transition: 'opacity 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '0.5'; }}
         >
-          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-            <line x1="7" y1="2" x2="2" y2="7" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round"/>
-            <line x1="7" y1="5" x2="5" y2="7" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round"/>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <line x1="9" y1="2" x2="2" y2="9" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round"/>
+            <line x1="9" y1="5.5" x2="5.5" y2="9" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         </div>
 
@@ -665,11 +664,6 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                       Нотатки
                     </div>
                   )}
-                  {rest.length > 0 && pinned.length === 0 && (
-                    <div style={{ padding: '0.75rem 1rem 0.3rem', fontSize: '0.6875rem', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.04em' }}>
-                      Нотатки
-                    </div>
-                  )}
                   {rest.map(n => (
                     <NoteListItem key={n.id} note={n} selected={selectedId === n.id} onClick={() => { setSelectedId(n.id); setNewTaskText(''); }} />
                   ))}
@@ -711,6 +705,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                       : <FileText    size={17} color="#2563eb" style={{ flexShrink: 0 }} />
                     }
                     <input
+                      ref={titleRef}
                       value={selectedNote.title}
                       onChange={e => updateNote(selectedNote.id, { title: e.target.value })}
                       onKeyDown={e => {
@@ -1091,7 +1086,13 @@ function TaskItem({ task, onToggle, onDelete, onRename }: {
       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.375rem 0.375rem', borderRadius: 8, background: hovered ? 'rgba(0,0,0,0.04)' : 'transparent', transition: 'background 0.12s', cursor: 'default' }}
     >
       {/* Drag handle */}
-      <span style={{ color: '#cbd5e1', fontSize: '0.75rem', cursor: 'grab', opacity: hovered ? 1 : 0, transition: 'opacity 0.12s', flexShrink: 0, lineHeight: 1 }}>⠿</span>
+      <span style={{ cursor: 'grab', opacity: hovered ? 1 : 0, transition: 'opacity 0.12s', flexShrink: 0, lineHeight: 1, display: 'flex' }}>
+        <svg width="10" height="14" viewBox="0 0 10 14" fill="#cbd5e1">
+          <circle cx="3" cy="2" r="1.5"/><circle cx="7" cy="2" r="1.5"/>
+          <circle cx="3" cy="7" r="1.5"/><circle cx="7" cy="7" r="1.5"/>
+          <circle cx="3" cy="12" r="1.5"/><circle cx="7" cy="12" r="1.5"/>
+        </svg>
+      </span>
 
       {/* Checkbox */}
       <button
@@ -1126,8 +1127,7 @@ function TaskItem({ task, onToggle, onDelete, onRename }: {
         />
       ) : (
         <span
-          onDoubleClick={startEdit}
-          title="Подвійний клік — редагувати"
+          onClick={startEdit}
           style={{
             flex: 1, fontSize: '0.9375rem', lineHeight: 1.5, cursor: 'text',
             color: task.done ? '#94a3b8' : '#1e293b',
