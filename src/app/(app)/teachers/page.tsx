@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';
 import Portal from '@/components/Portal';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useTeacherModals } from '@/components/TeacherModalsContext';
+import { useLessonModals } from '@/components/LessonModalsContext';
 import { t } from '@/i18n/t';
 import { formatDateKyiv } from '@/lib/date-utils';
 import PageLoading from '@/components/PageLoading';
@@ -135,6 +136,8 @@ export default function TeachersPage() {
   const { openGroupModal, closeGroupModal } = useGroupModals();
   // Teacher modals from context
   const { openTeacherModal } = useTeacherModals();
+  // Lesson modals from context
+  const { openLessonModal } = useLessonModals();
 
   // Statistics modal
   const [showStatsModal, setShowStatsModal] = useState(false);
@@ -1658,6 +1661,7 @@ export default function TeachersPage() {
                           <th style={{ padding: '0.65rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Учнів</th>
                           <th style={{ padding: '0.65rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Ставка</th>
                           <th style={{ padding: '0.65rem 1.25rem', textAlign: 'right', fontWeight: 600, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Зарплата</th>
+                          <th style={{ padding: '0.65rem 0.75rem', borderBottom: '1px solid #f1f5f9', width: 36 }}></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1684,6 +1688,17 @@ export default function TeachersPage() {
                               <td style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>{lesson.present_count}</td>
                               <td style={{ padding: '0.7rem 0.75rem', textAlign: 'center', color: '#64748b', fontSize: '0.8125rem' }}>{lesson.rate} ₴</td>
                               <td style={{ padding: '0.7rem 1.25rem', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>{lesson.salary.toLocaleString()} ₴</td>
+                              <td style={{ padding: '0.7rem 0.75rem', textAlign: 'center' }}>
+                                <button
+                                  onClick={() => openLessonModal(lesson.lesson_id, `Заняття #${lesson.lesson_id}`, undefined)}
+                                  title="Відкрити заняття"
+                                  style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0', borderRadius: 6, background: 'white', cursor: 'pointer', color: '#94a3b8', padding: 0 }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.color = '#3b82f6'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                </button>
+                              </td>
                             </tr>
                           );
                         })}
@@ -1696,6 +1711,7 @@ export default function TeachersPage() {
                           <td style={{ padding: '0.75rem 1.25rem', textAlign: 'right', fontWeight: 800, color: '#dc2626', fontSize: '1rem' }}>
                             {drillDown.lessons.reduce((s,l) => s+l.salary,0).toLocaleString()} ₴
                           </td>
+                          <td></td>
                         </tr>
                       </tfoot>
                     </table>
