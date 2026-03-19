@@ -51,10 +51,10 @@ export const PageLoading = () => {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    // Beautiful slow crossfade between tech aspects every 2.5 seconds
+    // Elegant crossfade between tech aspects every 1.8 seconds
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % ICONS.length);
-    }, 2500);
+    }, 1800);
     return () => clearInterval(timer);
   }, []);
 
@@ -147,38 +147,17 @@ export const PageLoading = () => {
         </div>
       </div>
 
-      {/* Typography: Crossfading matching label */}
-      <div style={{ marginTop: 32, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={current.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.4 }}
-            style={{
-              fontSize: 11, 
-              fontWeight: 600,
-              color: '#64748b',
-              letterSpacing: '0.25em',
-              textTransform: 'uppercase',
-            }}
-          >
-            {current.label}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
       {/* Global "Loading / Sync" text */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5, duration: 1 }}
         style={{
-          marginTop: 10,
-          fontSize: 10,
-          color: '#cbd5e1',
-          letterSpacing: '0.1em',
+          marginTop: 40,
+          fontSize: 11,
+          fontWeight: 500,
+          color: '#94a3b8',
+          letterSpacing: '0.15em',
           textTransform: 'uppercase',
         }}
       >
