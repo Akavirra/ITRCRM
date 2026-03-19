@@ -72,9 +72,13 @@ function formatDate(dateStr: string) {
 function NoteListItem({ note, selected, onClick }: { note: Note; selected: boolean; onClick: () => void }) {
   const done = note.tasks.filter(t => t.done).length;
   const total = note.tasks.length;
-  const preview = note.type === 'note'
-    ? (note.content.trim().slice(0, 50) || formatDate(note.updated_at))
-    : (total > 0 ? `${done}/${total} виконано` : formatDate(note.updated_at));
+  const hasTasks = total > 0;
+  const hasContent = note.content.trim().length > 0;
+  const preview = hasTasks && hasContent
+    ? `${done}/${total} · ${note.content.trim().slice(0, 30)}`
+    : hasTasks
+      ? `${done}/${total} виконано`
+      : (note.content.trim().slice(0, 50) || formatDate(note.updated_at));
 
   const dotColor = COLORS.find(c => c.key === note.color)?.dot ?? '#e2e8f0';
 
@@ -96,7 +100,7 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
       onMouseLeave={e => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        {note.type === 'todo'
+        {hasTasks
           ? <CheckSquare size={12} color={selected ? '#2563eb' : '#94a3b8'} style={{ flexShrink: 0 }} />
           : <FileText    size={12} color={selected ? '#2563eb' : '#94a3b8'} style={{ flexShrink: 0 }} />
         }
@@ -105,7 +109,7 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
           color: selected ? '#1d4ed8' : '#1e293b',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
         }}>
-          {note.title || (note.type === 'todo' ? 'Новий список' : 'Нова нотатка')}
+          {note.title || 'Нова нотатка'}
         </span>
         {note.is_pinned && <Pin size={11} color={selected ? '#2563eb' : '#94a3b8'} style={{ flexShrink: 0 }} />}
       </div>
@@ -188,6 +192,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const [activeTag, setActiveTag]       = useState<string | null>(null);
   const [showArchive, setShowArchive]   = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showTaskSection, setShowTaskSection] = useState(false);
   const [loading, setLoading]       = useState(false);
   const [saving, setSaving]         = useState(false);
   const [justSaved, setJustSaved]   = useState(false);
@@ -307,6 +312,11 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   }, [scheduleSave]);
 
   const selectedNote = notes.find(n => n.id === selectedId) ?? null;
+
+  // Show task section automatically if note already has tasks
+  useEffect(() => {
+    setShowTaskSection(selectedNote ? selectedNote.tasks.length > 0 : false);
+  }, [selectedId]);
 
   const createNote = async (type: 'note' | 'todo', template?: { title: string; content?: string; tasks?: Omit<Task,'id'>[] }) => {
     const res = await fetch('/api/notes', {
@@ -527,23 +537,15 @@ export default function NotesModal({ isOpen, onClose }: Props) {
               </div>
             </div>
 
-            {/* Create buttons */}
-            <div style={{ padding: '0 0.875rem 0.5rem', display: 'flex', gap: 6, flexShrink: 0 }}>
+            {/* Create button */}
+            <div style={{ padding: '0 0.875rem 0.5rem', flexShrink: 0 }}>
               <button
                 onClick={() => createNote('note')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0.5625rem 0', borderRadius: 10, background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, transition: 'background 0.15s' }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0.5625rem 0', borderRadius: 10, background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, transition: 'background 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
               >
-                <Plus size={12} strokeWidth={2.5} /> Нотатка
-              </button>
-              <button
-                onClick={() => createNote('todo')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0.5625rem 0', borderRadius: 10, background: '#fff', color: '#374151', border: '1.5px solid #e2e8f0', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, transition: 'all 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.color = '#2563eb'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#374151'; }}
-              >
-                <Plus size={12} strokeWidth={2.5} /> Список
+                <Plus size={12} strokeWidth={2.5} /> Нова нотатка
               </button>
             </div>
 
@@ -811,6 +813,20 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
                   <div style={{ flex: 1 }} />
 
+                  {/* Toggle task section */}
+                  <ActionBtn
+                    title={showTaskSection ? 'Сховати список' : 'Додати список завдань'}
+                    active={showTaskSection}
+                    activeColor="#2563eb"
+                    hoverColor="#2563eb"
+                    hoverBg="#eff6ff"
+                    onClick={() => setShowTaskSection(v => !v)}
+                  >
+                    <CheckSquare size={15} strokeWidth={2} />
+                  </ActionBtn>
+
+                  <div style={{ width: 1, height: 18, background: '#e2e8f0', flexShrink: 0, margin: '0 2px' }} />
+
                   {/* Icon buttons */}
                   <ActionBtn
                     title={selectedNote.is_pinned ? 'Відкріпити' : 'Закріпити'}
@@ -868,81 +884,85 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                 />
 
                 {/* ── Content area ── */}
-                {selectedNote.type === 'note' ? (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  {/* Text area — always visible */}
                   <textarea
                     value={selectedNote.content}
                     onChange={e => updateNote(selectedNote.id, { content: e.target.value })}
                     placeholder="Починай писати..."
                     style={{
                       flex: 1, border: 'none', outline: 'none', resize: 'none',
-                      padding: '1.25rem 1.5rem',
+                      padding: showTaskSection ? '1.25rem 1.5rem 0.75rem' : '1.25rem 1.5rem',
                       fontSize: '0.9375rem', lineHeight: 1.8, color: '#374151',
                       background: 'transparent', fontFamily: 'inherit', userSelect: 'text',
+                      minHeight: showTaskSection ? 80 : undefined,
                     }}
                   />
-                ) : (
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', background: 'transparent' }}>
 
-                    {/* Progress bar */}
-                    {totalTasks > 0 && (
-                      <div style={{ marginBottom: '1.25rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: '#94a3b8', marginBottom: 7 }}>
-                          <span>Прогрес</span>
-                          <span style={{ fontWeight: 700, color: doneTasks === totalTasks ? '#22c55e' : '#2563eb' }}>
-                            {doneTasks}/{totalTasks}
-                          </span>
+                  {/* Task section — shown when toggled or tasks exist */}
+                  {showTaskSection && (
+                    <div style={{ borderTop: '1px solid rgba(0,0,0,0.07)', flexShrink: 0, maxHeight: 280, overflowY: 'auto', padding: '1rem 1.5rem 1.25rem', background: 'transparent' }}>
+
+                      {/* Progress bar */}
+                      {totalTasks > 0 && (
+                        <div style={{ marginBottom: '1rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: '#94a3b8', marginBottom: 6 }}>
+                            <span>Прогрес</span>
+                            <span style={{ fontWeight: 700, color: doneTasks === totalTasks ? '#22c55e' : '#2563eb' }}>
+                              {doneTasks}/{totalTasks}
+                            </span>
+                          </div>
+                          <div style={{ height: 5, background: '#e5e7eb', borderRadius: 5, overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${(doneTasks / totalTasks) * 100}%`,
+                              background: doneTasks === totalTasks ? '#22c55e' : '#3b82f6',
+                              borderRadius: 5, transition: 'width 0.35s ease',
+                            }} />
+                          </div>
                         </div>
-                        <div style={{ height: 5, background: '#e5e7eb', borderRadius: 5, overflow: 'hidden' }}>
-                          <div style={{
-                            height: '100%',
-                            width: `${(doneTasks / totalTasks) * 100}%`,
-                            background: doneTasks === totalTasks ? '#22c55e' : '#3b82f6',
-                            borderRadius: 5, transition: 'width 0.35s ease',
-                          }} />
-                        </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Task items */}
-                    <TaskList
-                      tasks={selectedNote.tasks}
-                      onToggle={toggleTask}
-                      onDelete={deleteTask}
-                      onRename={renameTask}
-                      onReorder={newTasks => updateNote(selectedNote.id, { tasks: newTasks })}
-                    />
-
-                    {/* Add task input */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, padding: '0.4rem 0.375rem', borderRadius: 8, transition: 'background 0.12s' }}
-                      onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.03)'; }}
-                      onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-                    >
-                      <div style={{ width: 18, height: 18, borderRadius: 5, border: '2px dashed #d1d5db', flexShrink: 0 }} />
-                      <input
-                        value={newTaskText}
-                        onChange={e => setNewTaskText(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') addTask(); }}
-                        placeholder="Додати пункт..."
-                        style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '0.9375rem', color: '#374151', userSelect: 'text' }}
+                      {/* Task items */}
+                      <TaskList
+                        tasks={selectedNote.tasks}
+                        onToggle={toggleTask}
+                        onDelete={deleteTask}
+                        onRename={renameTask}
+                        onReorder={newTasks => updateNote(selectedNote.id, { tasks: newTasks })}
                       />
-                      {newTaskText.trim() && (
-                        <button
-                          onClick={addTask}
-                          style={{ background: '#2563eb', border: 'none', cursor: 'pointer', color: 'white', padding: '0.3rem 0.75rem', borderRadius: 8, fontSize: '0.75rem', fontWeight: 700 }}
-                        >
-                          +
-                        </button>
+
+                      {/* Add task input */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, padding: '0.4rem 0.375rem', borderRadius: 8, transition: 'background 0.12s' }}
+                        onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.03)'; }}
+                        onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                      >
+                        <div style={{ width: 18, height: 18, borderRadius: 5, border: '2px dashed #d1d5db', flexShrink: 0 }} />
+                        <input
+                          value={newTaskText}
+                          onChange={e => setNewTaskText(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') addTask(); }}
+                          placeholder="Додати пункт..."
+                          style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '0.9375rem', color: '#374151', userSelect: 'text' }}
+                        />
+                        {newTaskText.trim() && (
+                          <button
+                            onClick={addTask}
+                            style={{ background: '#2563eb', border: 'none', cursor: 'pointer', color: 'white', padding: '0.3rem 0.75rem', borderRadius: 8, fontSize: '0.75rem', fontWeight: 700 }}
+                          >
+                            +
+                          </button>
+                        )}
+                      </div>
+
+                      {totalTasks === 0 && (
+                        <div style={{ color: '#d1d5db', fontSize: '0.8125rem', paddingLeft: 28, paddingTop: 4 }}>
+                          Додай перший пункт ↑
+                        </div>
                       )}
                     </div>
-
-                    {/* Empty state */}
-                    {totalTasks === 0 && (
-                      <div style={{ textAlign: 'center', padding: '2.5rem 0', color: '#d1d5db', fontSize: '0.8125rem' }}>
-                        Додай перший пункт ↑
-                      </div>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </>
             )}
           </div>
