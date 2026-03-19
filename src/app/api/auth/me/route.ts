@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         role: user.role,
         is_owner: user.is_owner ?? false,
+        photo_url: user.photo_url ?? null,
       },
     });
   } catch (error) {

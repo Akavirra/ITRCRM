@@ -103,6 +103,10 @@ const Navbar: React.FC<NavbarProps> = ({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { calcOpen, toggleCalc } = useCalculator();
+  const [userPhotoUrl, setUserPhotoUrl] = useState<string | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+  const [profilePhotoBase64, setProfilePhotoBase64] = useState<string | null>(null);
 
   // ── Notifications state ────────────────────────────────────────────────────
   const [notifOpen, setNotifOpen] = useState(false);
@@ -314,14 +318,67 @@ const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
-  // Load current user's is_owner when settings open
+  // Load current user info (photo, is_owner) on mount and when settings open
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d?.user) return;
+        if (d.user.photo_url) setUserPhotoUrl(d.user.photo_url);
+        if (d.user.is_owner) setCurrentUserIsOwner(true);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!settingsOpen) return;
     fetch('/api/auth/me')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.user?.is_owner) setCurrentUserIsOwner(true); })
+      .then(d => {
+        if (!d?.user) return;
+        if (d.user.photo_url) setUserPhotoUrl(d.user.photo_url);
+        if (d.user.is_owner) setCurrentUserIsOwner(true);
+      })
       .catch(() => {});
   }, [settingsOpen]);
+
+  const handleProfilePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target?.result as string;
+      setProfilePhotoPreview(base64);
+      setProfilePhotoBase64(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleProfileSave = async () => {
+    setProfileSaving(true);
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: settings.displayName || undefined,
+          phone: settings.phone || undefined,
+          photo: profilePhotoBase64 || undefined,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) { alert(d.error || 'Помилка'); return; }
+      if (d.user?.photo_url) {
+        setUserPhotoUrl(d.user.photo_url);
+        setProfilePhotoPreview(null);
+        setProfilePhotoBase64(null);
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch { /* silent */ } finally {
+      setProfileSaving(false);
+    }
+  };
 
   const handleDeleteUser = async (id: number) => {
     if (!confirm('Видалити користувача? Цю дію неможливо скасувати.')) return;
@@ -609,7 +666,9 @@ const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               >
                 <div className={styles.userAvatar}>
-                  <User size={18} strokeWidth={2} />
+                  {userPhotoUrl
+                    ? <img src={userPhotoUrl} alt={userName} />
+                    : <User size={18} strokeWidth={2} />}
                 </div>
                 <div className={styles.userInfo}>
                   <span className={styles.userName}>{userName}</span>
@@ -620,11 +679,14 @@ const Navbar: React.FC<NavbarProps> = ({
 
               {dropdownOpen && (
                 <div className={styles.dropdown}>
-                  <button className={styles.dropdownItem}>
+                  <button
+                    className={styles.dropdownItem}
+                    onClick={() => { setDropdownOpen(false); setSettingsOpen(true); setActiveSettingsTab('profile'); }}
+                  >
                     <User size={16} />
                     {t('profile.title') || 'Профіль'}
                   </button>
-                  <button 
+                  <button
                     className={`${styles.dropdownItem} ${styles.danger}`}
                     onClick={handleLogout}
                   >
@@ -810,63 +872,65 @@ const Navbar: React.FC<NavbarProps> = ({
 
                 {/* Profile Tab */}
                 {activeSettingsTab === 'profile' && (
-                  <div>
-                    <h3 style={{
-                      fontSize: '0.8125rem',
-                      fontWeight: '600',
-                      color: '#374151',
-                      marginBottom: '1rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}>Особиста інформація</h3>
-                    
-                    <div className="form-group">
-                      <label className="form-label">Ім'я користувача</label>
-                      <input 
-                        type="text" 
-                        className="form-input"
-                        value={settings.displayName}
-                        onChange={(e) => handleSettingChange('displayName', e.target.value)}
-                        style={{ maxWidth: '400px' }}
-                      />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+                    {/* Avatar upload */}
+                    <div>
+                      <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Фото профілю</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                        <div style={{ width: 80, height: 80, borderRadius: 16, overflow: 'hidden', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '2px solid #e5e7eb' }}>
+                          {(profilePhotoPreview || userPhotoUrl)
+                            ? <img src={profilePhotoPreview || userPhotoUrl!} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : <User size={32} color="#4f46e5" strokeWidth={1.5} />}
+                        </div>
+                        <div>
+                          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.5rem 1rem', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; }}
+                          >
+                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleProfilePhotoSelect} />
+                            Вибрати фото
+                          </label>
+                          {profilePhotoPreview && (
+                            <button onClick={() => { setProfilePhotoPreview(null); setProfilePhotoBase64(null); }}
+                              style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#ef4444' }}>
+                              Скасувати
+                            </button>
+                          )}
+                          <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0.4rem 0 0' }}>JPG, PNG — до 5 МБ</p>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label">Email</label>
-                      <input 
-                        type="email" 
-                        className="form-input"
-                        value={settings.email}
-                        onChange={(e) => handleSettingChange('email', e.target.value)}
-                        style={{ maxWidth: '400px' }}
-                      />
+                    {/* Info fields */}
+                    <div>
+                      <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Особиста інформація</h3>
+                      <div className="form-group">
+                        <label className="form-label">Ім'я</label>
+                        <input type="text" className="form-input" value={settings.displayName}
+                          onChange={e => handleSettingChange('displayName', e.target.value)} style={{ maxWidth: '360px' }} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Email</label>
+                        <input type="email" className="form-input" value={settings.email} disabled
+                          style={{ maxWidth: '360px', opacity: 0.6 }} />
+                        <span className="form-hint">Email змінювати не можна</span>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Телефон</label>
+                        <input type="tel" className="form-input" value={settings.phone}
+                          onChange={e => handleSettingChange('phone', e.target.value)}
+                          placeholder="+38 (0__) ___-__-__" style={{ maxWidth: '360px' }} />
+                      </div>
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label">Телефон</label>
-                      <input 
-                        type="tel" 
-                        className="form-input"
-                        value={settings.phone}
-                        onChange={(e) => handleSettingChange('phone', e.target.value)}
-                        placeholder="+38 (0__) ___-__-__"
-                        style={{ maxWidth: '400px' }}
-                      />
+                    {/* Save */}
+                    <div style={{ paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem' }}>
+                      <button className="btn btn-primary" onClick={handleProfileSave} disabled={profileSaving} style={{ minWidth: 120 }}>
+                        <Save size={14} />
+                        {profileSaving ? 'Збереження...' : saved ? 'Збережено!' : 'Зберегти'}
+                      </button>
                     </div>
-
-                    <h3 style={{
-                      fontSize: '0.8125rem',
-                      fontWeight: '600',
-                      color: '#374151',
-                      marginTop: '1.5rem',
-                      marginBottom: '1rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}>Безпека</h3>
-                    
-                    <button className="btn btn-secondary">
-                      Змінити пароль
-                    </button>
                   </div>
                 )}
 
@@ -1180,8 +1244,8 @@ const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 )}
 
-                {/* Save Button — hidden on users tab */}
-                {activeSettingsTab !== 'users' && (
+                {/* Save Button — hidden on users and profile tabs */}
+                {activeSettingsTab !== 'users' && activeSettingsTab !== 'profile' && (
                   <div style={{
                     marginTop: '1.5rem',
                     paddingTop: '1rem',
