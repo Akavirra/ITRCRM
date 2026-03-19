@@ -136,9 +136,12 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const [newTaskText, setNewTaskText] = useState('');
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [pos, setPos] = useState({ x: -1, y: -1 });
-  const dragging = useRef(false);
-  const origin   = useRef({ mx: 0, my: 0, px: 0, py: 0 });
+  const [pos, setPos]   = useState({ x: -1, y: -1 });
+  const [size, setSize] = useState({ w: 640, h: 520 });
+  const dragging  = useRef(false);
+  const resizing  = useRef(false);
+  const origin    = useRef({ mx: 0, my: 0, px: 0, py: 0 });
+  const resizeOrigin = useRef({ mx: 0, my: 0, w: 640, h: 520 });
 
   // Centre on first open
   useEffect(() => {
@@ -150,13 +153,18 @@ export default function NotesModal({ isOpen, onClose }: Props) {
     }
   }, [isOpen, pos.x]);
 
-  // Drag
+  // Drag & Resize
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      if (!dragging.current) return;
-      setPos({ x: origin.current.px + e.clientX - origin.current.mx, y: origin.current.py + e.clientY - origin.current.my });
+      if (dragging.current) {
+        setPos({ x: origin.current.px + e.clientX - origin.current.mx, y: origin.current.py + e.clientY - origin.current.my });
+      } else if (resizing.current) {
+        const w = Math.max(480, resizeOrigin.current.w + e.clientX - resizeOrigin.current.mx);
+        const h = Math.max(360, resizeOrigin.current.h + e.clientY - resizeOrigin.current.my);
+        setSize({ w, h });
+      }
     };
-    const onUp = () => { dragging.current = false; };
+    const onUp = () => { dragging.current = false; resizing.current = false; };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
@@ -300,7 +308,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 9800, pointerEvents: 'none' }}>
       <div style={{
         position: 'absolute', left: pos.x, top: pos.y,
-        width: 640, height: 520,
+        width: size.w, height: size.h,
         background: '#ffffff',
         borderRadius: 20,
         boxShadow: '0 24px 64px rgba(0,0,0,0.14), 0 4px 16px rgba(0,0,0,0.07)',
@@ -620,6 +628,20 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Resize handle */}
+      <div
+        onMouseDown={e => {
+          resizing.current = true;
+          resizeOrigin.current = { mx: e.clientX, my: e.clientY, w: size.w, h: size.h };
+          e.preventDefault();
+        }}
+        style={{ position: 'absolute', bottom: 0, right: 0, width: 18, height: 18, cursor: 'se-resize', display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: '3px' }}
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M9 1L1 9M9 5L5 9M9 9" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
       </div>
     </div>
   );
