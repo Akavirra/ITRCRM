@@ -18,10 +18,12 @@ import {
   Trash2,
   ExternalLink,
   DollarSign,
+  Calculator,
 } from 'lucide-react';
 import { t } from '@/i18n/t';
 import styles from './Navbar.module.css';
 import TransitionLink from '@/components/TransitionLink';
+import CalculatorModal from '@/components/CalculatorModal';
 
 // ─── Notification types ───────────────────────────────────────────────────────
 
@@ -100,6 +102,7 @@ const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
 
   // ── Notifications state ────────────────────────────────────────────────────
   const [notifOpen, setNotifOpen] = useState(false);
@@ -337,9 +340,19 @@ const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right section */}
           <div className={styles.navbarRight}>
+            {/* Calculator Button */}
+            <button
+              className={styles.iconButton}
+              title="Калькулятор"
+              onClick={() => setCalcOpen(v => !v)}
+              style={calcOpen ? { color: '#2563eb' } : undefined}
+            >
+              <Calculator size={20} strokeWidth={1.5} />
+            </button>
+
             {/* Settings Modal Button */}
-            <button 
-              className={styles.iconButton} 
+            <button
+              className={styles.iconButton}
               title={t('nav.settings')}
               onClick={() => setSettingsOpen(true)}
             >
@@ -1032,6 +1045,8 @@ const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
       )}
+
+      <CalculatorModal isOpen={calcOpen} onClose={() => setCalcOpen(false)} />
     </>
   );
 };
