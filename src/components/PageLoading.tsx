@@ -1,17 +1,18 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 
-// Flat minimalist icons for the different IT aspects
+// Laconic, ultra-thin flat minimalist icons
 const CodeIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
     <polyline points="16 18 22 12 16 6" />
     <polyline points="8 6 2 12 8 18" />
   </svg>
 );
 
 const RobotIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
     <rect x="3" y="11" width="18" height="10" rx="2" />
     <circle cx="12" cy="5" r="2" />
     <path d="M12 7v4" />
@@ -21,7 +22,8 @@ const RobotIcon = () => (
 );
 
 const DesignIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+  // Pen tool (bezier curve)
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
     <path d="M12 19l7-7 3 3-7 7-3-3z" />
     <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
     <path d="M2 2l7.586 7.586" />
@@ -29,203 +31,158 @@ const DesignIcon = () => (
   </svg>
 );
 
-const GameIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
-    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-    <path d="M9 12h.01" />
-    <path d="M15 12h.01" />
+const TechIcon = () => (
+  // Generic Tech/Node/Connection icon
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+    <line x1="12" y1="22.08" x2="12" y2="12" />
   </svg>
 );
 
-const CoreIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
-    <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
-    <polyline points="12 22 12 12" />
-    <polyline points="22 8.5 12 12" />
-    <polyline points="2 8.5 12 12" />
-  </svg>
-);
+const ICONS = [
+  { id: 'code', component: CodeIcon, color: '#3b82f6', label: 'Програмування' }, // Blue
+  { id: 'robot', component: RobotIcon, color: '#f59e0b', label: 'Робототехніка' }, // Amber
+  { id: 'design', component: DesignIcon, color: '#ec4899', label: 'Графічний дизайн' }, // Pink
+  { id: 'tech', component: TechIcon, color: '#8b5cf6', label: 'IT Технології' }, // Violet
+];
 
 export const PageLoading = () => {
-  // Config for the aspects: Code, Robotics, Design, Game/Tech
-  const aspects = [
-    { Icon: CodeIcon,   color: '#3b82f6', bg: '#eff6ff', title: 'Code',    x: 0,    y: -65, delay: 0 },
-    { Icon: RobotIcon,  color: '#ea580c', bg: '#fff7ed', title: 'Robotics',x: 65,   y: 0,   delay: 0.2 },
-    { Icon: DesignIcon, color: '#ec4899', bg: '#fdf2f8', title: 'Design',  x: 0,    y: 65,  delay: 0.4 },
-    { Icon: GameIcon,   color: '#8b5cf6', bg: '#f5f3ff', title: 'GameDev', x: -65,  y: 0,   delay: 0.6 },
-  ];
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    // Beautiful slow crossfade between tech aspects every 2.5 seconds
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % ICONS.length);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, []);
+
+  const current = ICONS[index];
+  const CurrentIcon = current.component;
 
   return (
     <div style={{
       position: 'fixed', inset: 0,
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      backgroundColor: '#f8fafc', // Soft light background for contrast
+      backgroundColor: '#fdfdfd', // Extremely clean, bright white background
       zIndex: 1000,
     }}>
-      {/* Background soft radial glow */}
-      <div style={{
-        position: 'absolute',
-        width: 400, height: 400,
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(99,102,241,0.06) 0%, rgba(248,250,252,0) 70%)',
-        pointerEvents: 'none',
-      }} />
 
-      {/* Main IT Hub Concept */}
-      <div style={{ position: 'relative', width: 200, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* Main Container */}
+      <div style={{ position: 'relative', width: 140, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         
-        {/* Connection Lines rendered as an SVG background */}
+        {/* Soft, reactive ambient glow taking color from current icon */}
+        <motion.div
+           style={{
+             position: 'absolute', inset: -40,
+             borderRadius: '50%',
+             filter: 'blur(30px)',
+             opacity: 0.15,
+             zIndex: 0,
+           }}
+           animate={{ backgroundColor: current.color }}
+           transition={{ duration: 1.5 }}
+        />
+
+        {/* Outer Rotating Sleek Tech Ring */}
         <motion.svg 
-          style={{ position: 'absolute', width: '100%', height: '100%', inset: 0 }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1 }}
+          width="140" height="140" viewBox="0 0 100 100" 
+          style={{ position: 'absolute', inset: 0, zIndex: 1 }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 12, ease: "linear", repeat: Infinity }}
         >
-          {aspects.map((aspect, i) => (
-            <motion.line
-              key={`line-${i}`}
-              x1="100" y1="100"
-              x2={100 + aspect.x} y2={100 + aspect.y}
-              stroke="#cbd5e1"
-              strokeWidth="2"
-              strokeDasharray="4 4"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 1, delay: aspect.delay }}
-            />
-          ))}
-          {/* Animated data packets flowing from Core to nodes */}
-          {aspects.map((aspect, i) => (
-            <motion.circle
-              key={`packet-${i}`}
-              r="3"
-              fill={aspect.color}
-              initial={{ cx: 100, cy: 100, opacity: 0 }}
-              animate={{ 
-                cx: [100, 100 + aspect.x], 
-                cy: [100, 100 + aspect.y],
-                opacity: [0, 1, 0]
-              }}
-              transition={{ 
-                duration: 2, 
-                repeat: Infinity, 
-                delay: aspect.delay,
-                ease: "easeInOut"
-              }}
-            />
-          ))}
+          {/* Subtle background track */}
+          <circle cx="50" cy="50" r="46" stroke="#f1f5f9" strokeWidth="1" fill="none" />
+          
+          {/* Dynamic primary color streak */}
+          <motion.circle 
+            cx="50" cy="50" r="46" 
+            strokeWidth="1.5" 
+            fill="none" 
+            strokeLinecap="round"
+            strokeDasharray="40 250"
+            animate={{ stroke: current.color }}
+            transition={{ duration: 1.5 }}
+          />
         </motion.svg>
 
-        {/* Central Hub Node */}
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          style={{
-            position: 'absolute',
-            width: 56, height: 56,
-            borderRadius: '16px',
-            backgroundColor: '#ffffff',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#1e293b',
-            zIndex: 10
-          }}
+        {/* Inner Counter-Rotating Dash Ring */}
+        <motion.svg 
+          width="140" height="140" viewBox="0 0 100 100" 
+          style={{ position: 'absolute', inset: 0, zIndex: 1 }}
+          animate={{ rotate: -360 }}
+          transition={{ duration: 25, ease: "linear", repeat: Infinity }}
         >
-          <div style={{ width: 28, height: 28 }}>
-            <CoreIcon />
-          </div>
-        </motion.div>
+          <motion.circle 
+            cx="50" cy="50" r="38" 
+            strokeWidth="0.5" 
+            fill="none" 
+            strokeDasharray="4 6"
+            opacity="0.4"
+            animate={{ stroke: current.color }}
+            transition={{ duration: 1.5 }}
+          />
+        </motion.svg>
 
-        {/* Orbiting Specific IT Nodes */}
-        {aspects.map((aspect, i) => (
-          <motion.div
-            key={i}
-            initial={{ scale: 0, x: 0, y: 0, opacity: 0 }}
-            animate={{ scale: 1, x: aspect.x, y: aspect.y, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 150, damping: 15, delay: aspect.delay + 0.3 }}
-            whileHover={{ scale: 1.1 }}
-            style={{
-              position: 'absolute',
-              width: 44, height: 44,
-              borderRadius: '50%',
-              backgroundColor: aspect.bg,
-              color: aspect.color,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: `0 4px 14px 0 rgba(0,0,0,0.05)`,
-              border: `1px solid rgba(255,255,255,0.8)`
-            }}
-          >
-            <div style={{ width: 20, height: 20 }}>
-              <aspect.Icon />
-            </div>
-            
-            {/* Subtle rotating glow ring for each node */}
+        {/* Flawlessly Crossfading Central Emblem */}
+        <div style={{ position: 'relative', width: 44, height: 44, zIndex: 2 }}>
+          <AnimatePresence mode="wait">
             <motion.div
+              key={current.id}
+              initial={{ opacity: 0, scale: 0.6, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, scale: 1.2, filter: 'blur(4px)' }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
               style={{
-                position: 'absolute', inset: -4,
-                borderRadius: '50%',
-                border: `1px solid ${aspect.color}30`,
-                borderTopColor: aspect.color,
+                position: 'absolute', inset: 0,
+                color: current.color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-            />
-          </motion.div>
-        ))}
-
-        {/* Gentle overall floating effect */}
-        <motion.div
-          style={{ position: 'absolute', inset: 0 }}
-          animate={{ rotate: [0, 2, -2, 0] }}
-          transition={{ duration: 6, ease: "easeInOut", repeat: Infinity }}
-        />
+            >
+              <CurrentIcon />
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* Label section */}
+      {/* Typography: Crossfading matching label */}
+      <div style={{ marginTop: 32, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={current.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.4 }}
+            style={{
+              fontSize: 11, 
+              fontWeight: 600,
+              color: '#64748b',
+              letterSpacing: '0.25em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {current.label}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Global "Loading / Sync" text */}
       <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.2, duration: 0.8 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5, duration: 1 }}
         style={{
-          marginTop: 40,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 12
+          marginTop: 10,
+          fontSize: 10,
+          color: '#cbd5e1',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
         }}
       >
-        <span style={{
-          fontSize: 13, 
-          fontWeight: 600,
-          color: '#64748b',
-          letterSpacing: '0.25em',
-          textTransform: 'uppercase',
-        }}>
-          Синхронізація системи
-        </span>
-        
-        {/* Sleek loading bar */}
-        <div style={{ 
-          width: 140, height: 3, 
-          backgroundColor: '#e2e8f0', 
-          borderRadius: 4, 
-          overflow: 'hidden',
-          position: 'relative'
-        }}>
-          <motion.div
-            style={{
-              position: 'absolute',
-              top: 0, left: 0, bottom: 0,
-              width: '40%',
-              backgroundColor: '#6366f1',
-              borderRadius: 4,
-            }}
-            animate={{ left: ['-40%', '100%'] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-          />
-        </div>
+        Завантаження системи...
       </motion.div>
     </div>
   );
