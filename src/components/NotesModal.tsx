@@ -235,6 +235,11 @@ export default function NotesModal({ isOpen, onClose }: Props) {
     updateNote(selectedNote.id, { tasks: selectedNote.tasks.filter(t => t.id !== taskId) });
   };
 
+  const renameTask = (taskId: string, text: string) => {
+    if (!selectedNote) return;
+    updateNote(selectedNote.id, { tasks: selectedNote.tasks.map(t => t.id === taskId ? { ...t, text } : t) });
+  };
+
   const doneTasks  = selectedNote?.tasks.filter(t => t.done).length ?? 0;
   const totalTasks = selectedNote?.tasks.length ?? 0;
 
@@ -484,6 +489,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                           task={task}
                           onToggle={() => toggleTask(task.id)}
                           onDelete={() => deleteTask(task.id)}
+                          onRename={text => renameTask(task.id, text)}
                         />
                       ))}
                     </div>
@@ -527,8 +533,28 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
 // ── Task item ─────────────────────────────────────────────────────────────────
 
-function TaskItem({ task, onToggle, onDelete }: { task: Task; onToggle: () => void; onDelete: () => void }) {
-  const [hovered, setHovered] = useState(false);
+function TaskItem({ task, onToggle, onDelete, onRename }: {
+  task: Task;
+  onToggle: () => void;
+  onDelete: () => void;
+  onRename: (text: string) => void;
+}) {
+  const [hovered, setHovered]   = useState(false);
+  const [editing, setEditing]   = useState(false);
+  const [editText, setEditText] = useState(task.text);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const startEdit = () => {
+    setEditText(task.text);
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  };
+
+  const commitEdit = () => {
+    const trimmed = editText.trim();
+    if (trimmed && trimmed !== task.text) onRename(trimmed);
+    setEditing(false);
+  };
 
   return (
     <div
@@ -554,15 +580,33 @@ function TaskItem({ task, onToggle, onDelete }: { task: Task; onToggle: () => vo
         )}
       </button>
 
-      {/* Text */}
-      <span style={{
-        flex: 1, fontSize: '0.875rem', lineHeight: 1.4,
-        color: task.done ? '#94a3b8' : '#374151',
-        textDecoration: task.done ? 'line-through' : 'none',
-        transition: 'all 0.15s',
-      }}>
-        {task.text}
-      </span>
+      {/* Text / inline edit */}
+      {editing ? (
+        <input
+          ref={inputRef}
+          value={editText}
+          onChange={e => setEditText(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={e => {
+            if (e.key === 'Enter') commitEdit();
+            if (e.key === 'Escape') setEditing(false);
+          }}
+          style={{ flex: 1, border: 'none', borderBottom: '1.5px solid #3b82f6', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: '#1e293b', padding: '1px 0', userSelect: 'text' }}
+        />
+      ) : (
+        <span
+          onDoubleClick={startEdit}
+          title="Подвійний клік — редагувати"
+          style={{
+            flex: 1, fontSize: '0.875rem', lineHeight: 1.4, cursor: 'text',
+            color: task.done ? '#94a3b8' : '#374151',
+            textDecoration: task.done ? 'line-through' : 'none',
+            transition: 'all 0.15s',
+          }}
+        >
+          {task.text}
+        </span>
+      )}
 
       {/* Delete */}
       <button
@@ -570,7 +614,7 @@ function TaskItem({ task, onToggle, onDelete }: { task: Task; onToggle: () => vo
         style={{
           background: 'none', border: 'none', cursor: 'pointer', padding: 2,
           display: 'flex', color: '#cbd5e1', borderRadius: 4,
-          opacity: hovered ? 1 : 0, transition: 'opacity 0.15s, color 0.1s',
+          opacity: hovered && !editing ? 1 : 0, transition: 'opacity 0.15s, color 0.1s',
         }}
         onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
         onMouseLeave={e => { e.currentTarget.style.color = '#cbd5e1'; }}
