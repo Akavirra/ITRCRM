@@ -73,7 +73,7 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
   const done = note.tasks.filter(t => t.done).length;
   const total = note.tasks.length;
   const preview = note.type === 'note'
-    ? (note.content.trim().slice(0, 45) || formatDate(note.updated_at))
+    ? (note.content.trim().slice(0, 50) || formatDate(note.updated_at))
     : (total > 0 ? `${done}/${total} виконано` : formatDate(note.updated_at));
 
   const dotColor = COLORS.find(c => c.key === note.color)?.dot ?? '#e2e8f0';
@@ -86,7 +86,7 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
         background: selected ? '#eff6ff' : 'transparent',
         border: 'none',
         borderLeft: `3px solid ${selected ? '#2563eb' : dotColor}`,
-        padding: '0.625rem 0.875rem 0.625rem 0.75rem',
+        padding: '0.75rem 1rem 0.75rem 0.875rem',
         cursor: 'pointer',
         borderBottom: '1px solid #f1f5f9',
         display: 'block',
@@ -95,10 +95,10 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
       onMouseEnter={e => { if (!selected) e.currentTarget.style.background = '#f8fafc'; }}
       onMouseLeave={e => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         {note.type === 'todo'
-          ? <CheckSquare size={11} color={selected ? '#2563eb' : '#94a3b8'} style={{ flexShrink: 0 }} />
-          : <FileText    size={11} color={selected ? '#2563eb' : '#94a3b8'} style={{ flexShrink: 0 }} />
+          ? <CheckSquare size={12} color={selected ? '#2563eb' : '#94a3b8'} style={{ flexShrink: 0 }} />
+          : <FileText    size={12} color={selected ? '#2563eb' : '#94a3b8'} style={{ flexShrink: 0 }} />
         }
         <span style={{
           fontSize: '0.8125rem', fontWeight: 600,
@@ -107,20 +107,20 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
         }}>
           {note.title || (note.type === 'todo' ? 'Новий список' : 'Нова нотатка')}
         </span>
-        {note.is_pinned && <Pin size={10} color="#f59e0b" style={{ flexShrink: 0 }} />}
+        {note.is_pinned && <Pin size={11} color={selected ? '#2563eb' : '#94a3b8'} style={{ flexShrink: 0 }} />}
       </div>
-      <div style={{ fontSize: '0.6875rem', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: 16 }}>
+      <div style={{ fontSize: '0.75rem', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: 18 }}>
         {preview}
       </div>
       {(note.tags.length > 0 || note.deadline) && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, paddingLeft: 16, marginTop: 4, alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, paddingLeft: 18, marginTop: 5, alignItems: 'center' }}>
           {note.tags.slice(0, 2).map(tag => (
-            <span key={tag} style={{ fontSize: '0.5625rem', fontWeight: 700, padding: '1px 5px', borderRadius: 10, background: selected ? '#bfdbfe' : '#e2e8f0', color: selected ? '#1d4ed8' : '#64748b' }}>
+            <span key={tag} style={{ fontSize: '0.625rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: selected ? '#bfdbfe' : '#e2e8f0', color: selected ? '#1d4ed8' : '#64748b' }}>
               #{tag}
             </span>
           ))}
           {(() => { const dl = deadlineLabel(note.deadline); return dl ? (
-            <span style={{ fontSize: '0.5625rem', fontWeight: 700, padding: '1px 5px', borderRadius: 10, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a' }}>
+            <span style={{ fontSize: '0.625rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a' }}>
               {dl.text}
             </span>
           ) : null; })()}
@@ -197,11 +197,11 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pos, setPos]   = useState({ x: -1, y: -1 });
-  const [size, setSize] = useState({ w: 720, h: 560 });
+  const [size, setSize] = useState({ w: 800, h: 620 });
   const dragging  = useRef(false);
   const resizing  = useRef(false);
   const origin    = useRef({ mx: 0, my: 0, px: 0, py: 0 });
-  const resizeOrigin = useRef({ mx: 0, my: 0, w: 720, h: 560 });
+  const resizeOrigin = useRef({ mx: 0, my: 0, w: 800, h: 620 });
 
   // Restore or centre position/size on first open
   useEffect(() => {
@@ -216,8 +216,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         }
       } catch { /* ignore */ }
       setPos({
-        x: Math.max(20, window.innerWidth  / 2 - 360),
-        y: Math.max(20, window.innerHeight / 2 - 280),
+        x: Math.max(20, window.innerWidth  / 2 - 400),
+        y: Math.max(20, window.innerHeight / 2 - 310),
       });
     }
   }, [isOpen, pos.x]);
@@ -234,8 +234,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
       if (dragging.current) {
         setPos({ x: origin.current.px + e.clientX - origin.current.mx, y: origin.current.py + e.clientY - origin.current.my });
       } else if (resizing.current) {
-        const w = Math.max(520, resizeOrigin.current.w + e.clientX - resizeOrigin.current.mx);
-        const h = Math.max(380, resizeOrigin.current.h + e.clientY - resizeOrigin.current.my);
+        const w = Math.max(560, resizeOrigin.current.w + e.clientX - resizeOrigin.current.mx);
+        const h = Math.max(420, resizeOrigin.current.h + e.clientY - resizeOrigin.current.my);
         setSize({ w, h });
       }
     };
@@ -444,8 +444,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         position: 'absolute', left: pos.x, top: pos.y,
         width: size.w, height: size.h,
         background: '#ffffff',
-        borderRadius: 16,
-        boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.08)',
+        borderRadius: 18,
+        boxShadow: '0 24px 64px rgba(0,0,0,0.14), 0 4px 20px rgba(0,0,0,0.07)',
         overflow: 'hidden',
         pointerEvents: 'all',
         userSelect: 'none',
@@ -457,32 +457,31 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         <div
           onMouseDown={startDrag}
           style={{
-            padding: '0 1rem',
-            height: 44,
+            padding: '0 1.125rem',
+            height: 48,
             display: 'flex', alignItems: 'center', gap: '0.625rem',
             cursor: 'grab', flexShrink: 0,
             background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
           }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2" style={{ flexShrink: 0 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="2" style={{ flexShrink: 0 }}>
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
             <line x1="16" y1="13" x2="8" y2="13"/>
             <line x1="16" y1="17" x2="8" y2="17"/>
             <polyline points="10 9 9 9 8 9"/>
           </svg>
-          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ffffff', letterSpacing: '0.05em', flex: 1 }}>
+          <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#ffffff', letterSpacing: '0.03em', flex: 1 }}>
             Записник
           </span>
-          {/* Keyboard shortcut hints */}
-          <span style={{ fontSize: '0.625rem', color: 'rgba(255,255,255,0.5)', fontWeight: 500, letterSpacing: '0.02em' }}>
-            Ctrl+N  Ctrl+T  Ctrl+W
+          <span title="Ctrl+N — нотатка  •  Ctrl+T — список  •  Ctrl+W — закрити" style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.45)', fontWeight: 500, cursor: 'default' }}>
+            Ctrl+N / T / W
           </span>
           <button
             onClick={onClose}
-            style={{ background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', borderRadius: 8, width: 28, height: 28, transition: 'background 0.15s', flexShrink: 0 }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.5)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
+            style={{ background: 'rgba(255,255,255,0.12)', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', borderRadius: 8, width: 30, height: 30, transition: 'background 0.15s', flexShrink: 0 }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.55)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -497,7 +496,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             resizeOrigin.current = { mx: e.clientX, my: e.clientY, w: size.w, h: size.h };
             e.preventDefault();
           }}
-          style={{ position: 'absolute', bottom: 0, right: 0, width: 18, height: 18, cursor: 'se-resize', display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: '3px', zIndex: 1 }}
+          style={{ position: 'absolute', bottom: 0, right: 0, width: 20, height: 20, cursor: 'se-resize', display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: '4px', zIndex: 1 }}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
             <path d="M9 1L1 9M9 5L5 9M9 9" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
@@ -508,20 +507,20 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
           {/* ── Left panel ── */}
-          <div style={{ width: 210, borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', background: '#f8fafc', flexShrink: 0 }}>
+          <div style={{ width: 240, borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', background: '#f9fafb', flexShrink: 0 }}>
 
             {/* Archive toggle */}
-            <div style={{ padding: '0.75rem 0.75rem 0.5rem', flexShrink: 0 }}>
+            <div style={{ padding: '0.875rem 0.875rem 0.625rem', flexShrink: 0 }}>
               <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: 10, padding: 3, gap: 2 }}>
                 <button
                   onClick={() => { setShowArchive(false); setSelectedId(null); }}
-                  style={{ flex: 1, padding: '0.3rem 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 700, transition: 'all 0.15s', background: !showArchive ? '#2563eb' : 'transparent', color: !showArchive ? '#fff' : '#64748b' }}
+                  style={{ flex: 1, padding: '0.4rem 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.15s', background: !showArchive ? '#2563eb' : 'transparent', color: !showArchive ? '#fff' : '#64748b' }}
                 >
                   Активні
                 </button>
                 <button
                   onClick={() => { setShowArchive(true); setSelectedId(null); }}
-                  style={{ flex: 1, padding: '0.3rem 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 700, transition: 'all 0.15s', background: showArchive ? '#2563eb' : 'transparent', color: showArchive ? '#fff' : '#64748b' }}
+                  style={{ flex: 1, padding: '0.4rem 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.15s', background: showArchive ? '#2563eb' : 'transparent', color: showArchive ? '#fff' : '#64748b' }}
                 >
                   Архів
                 </button>
@@ -529,50 +528,50 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             </div>
 
             {/* Create buttons */}
-            <div style={{ padding: '0 0.75rem 0.375rem', display: 'flex', gap: 6, flexShrink: 0 }}>
+            <div style={{ padding: '0 0.875rem 0.5rem', display: 'flex', gap: 6, flexShrink: 0 }}>
               <button
                 onClick={() => createNote('note')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.45rem 0', borderRadius: 9, background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, transition: 'background 0.15s' }}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0.5625rem 0', borderRadius: 10, background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, transition: 'background 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
               >
-                <Plus size={11} strokeWidth={2.5} /> Нотатка
+                <Plus size={12} strokeWidth={2.5} /> Нотатка
               </button>
               <button
                 onClick={() => createNote('todo')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.45rem 0', borderRadius: 9, background: '#fff', color: '#374151', border: '1.5px solid #e2e8f0', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, transition: 'all 0.15s' }}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0.5625rem 0', borderRadius: 10, background: '#fff', color: '#374151', border: '1.5px solid #e2e8f0', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, transition: 'all 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.color = '#2563eb'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#374151'; }}
               >
-                <Plus size={11} strokeWidth={2.5} /> Список
+                <Plus size={12} strokeWidth={2.5} /> Список
               </button>
             </div>
 
             {/* Templates dropdown */}
-            <div style={{ padding: '0 0.75rem 0.5rem', flexShrink: 0, position: 'relative' }}>
+            <div style={{ padding: '0 0.875rem 0.75rem', flexShrink: 0, position: 'relative' }}>
               <button
                 onClick={() => setShowTemplates(v => !v)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0.3rem 0', borderRadius: 8, border: '1px dashed #cbd5e1', background: showTemplates ? '#eff6ff' : 'transparent', cursor: 'pointer', fontSize: '0.6875rem', color: showTemplates ? '#2563eb' : '#64748b', fontWeight: 500, transition: 'all 0.15s' }}
-                onMouseEnter={e => { if (!showTemplates) { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#94a3b8'; } }}
-                onMouseLeave={e => { if (!showTemplates) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#cbd5e1'; } }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0.3125rem 0', borderRadius: 8, border: '1px dashed #d1d5db', background: showTemplates ? '#eff6ff' : 'transparent', cursor: 'pointer', fontSize: '0.75rem', color: showTemplates ? '#2563eb' : '#94a3b8', fontWeight: 500, transition: 'all 0.15s' }}
+                onMouseEnter={e => { if (!showTemplates) { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.color = '#64748b'; } }}
+                onMouseLeave={e => { if (!showTemplates) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#94a3b8'; } }}
               >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                 Шаблони
               </button>
               {showTemplates && (
-                <div style={{ position: 'absolute', top: '100%', left: '0.75rem', right: '0.75rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 10, overflow: 'hidden', marginTop: 4 }}>
+                <div style={{ position: 'absolute', top: '100%', left: '0.875rem', right: '0.875rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 8px 28px rgba(0,0,0,0.1)', zIndex: 10, overflow: 'hidden', marginTop: 4 }}>
                   {TEMPLATES.map(tpl => (
                     <button
                       key={tpl.label}
                       onClick={() => { createNote(tpl.type, { title: tpl.label, content: tpl.content, tasks: tpl.tasks }); setShowTemplates(false); }}
-                      style={{ width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.1s' }}
+                      style={{ width: '100%', textAlign: 'left', padding: '0.625rem 0.875rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 10, transition: 'background 0.1s' }}
                       onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
                     >
-                      <span style={{ fontSize: '1rem', lineHeight: 1 }}>{tpl.icon}</span>
+                      <span style={{ fontSize: '1.125rem', lineHeight: 1 }}>{tpl.icon}</span>
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: '0.75rem' }}>{tpl.label}</div>
-                        <div style={{ fontSize: '0.625rem', color: '#94a3b8', marginTop: 1 }}>{tpl.desc}</div>
+                        <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{tpl.label}</div>
+                        <div style={{ fontSize: '0.6875rem', color: '#94a3b8', marginTop: 1 }}>{tpl.desc}</div>
                       </div>
                     </button>
                   ))}
@@ -581,21 +580,21 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             </div>
 
             {/* Search */}
-            <div style={{ padding: '0 0.75rem 0.5rem', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 9, padding: '0.3rem 0.625rem', gap: 5, border: '1.5px solid #e2e8f0', transition: 'border-color 0.15s' }}
+            <div style={{ padding: '0 0.875rem 0.75rem', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 10, padding: '0.4rem 0.75rem', gap: 6, border: '1.5px solid #e2e8f0', transition: 'border-color 0.15s' }}
                 onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#93c5fd'; }}
                 onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#e2e8f0'; }}
               >
-                <Search size={11} color="#94a3b8" style={{ flexShrink: 0 }} />
+                <Search size={12} color="#94a3b8" style={{ flexShrink: 0 }} />
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Пошук..."
-                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.75rem', color: '#374151', width: '100%', userSelect: 'text' }}
+                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.8125rem', color: '#374151', width: '100%', userSelect: 'text' }}
                 />
                 {search && (
                   <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#94a3b8' }}>
-                    <X size={11} />
+                    <X size={12} />
                   </button>
                 )}
               </div>
@@ -603,13 +602,13 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
             {/* Tag filter */}
             {allTags.length > 0 && (
-              <div style={{ padding: '0 0.75rem 0.5rem', display: 'flex', flexWrap: 'wrap', gap: 4, flexShrink: 0 }}>
+              <div style={{ padding: '0 0.875rem 0.625rem', display: 'flex', flexWrap: 'wrap', gap: 4, flexShrink: 0 }}>
                 {allTags.map(tag => (
                   <button
                     key={tag}
                     onClick={() => setActiveTag(activeTag === tag ? null : tag)}
                     style={{
-                      padding: '2px 8px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 600,
+                      padding: '2px 9px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 600,
                       background: activeTag === tag ? '#2563eb' : '#e2e8f0',
                       color: activeTag === tag ? '#ffffff' : '#64748b',
                       transition: 'all 0.15s',
@@ -624,19 +623,19 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             {/* Note list */}
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {loading ? (
-                <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#94a3b8', fontSize: '0.75rem' }}>
+                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#94a3b8', fontSize: '0.8125rem' }}>
                   Завантаження...
                 </div>
               ) : filtered.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#94a3b8', fontSize: '0.75rem', lineHeight: 1.7 }}>
+                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#94a3b8', fontSize: '0.8125rem', lineHeight: 1.7 }}>
                   {search ? 'Нічого не знайдено' : showArchive ? 'Архів порожній' : 'Немає нотаток.\nСтвори першу!'}
                 </div>
               ) : (
                 <>
                   {pinned.length > 0 && (
                     <>
-                      <div style={{ padding: '0.5rem 0.875rem 0.25rem', fontSize: '0.625rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Pin size={9} /> Закріплені
+                      <div style={{ padding: '0.75rem 1rem 0.3rem', fontSize: '0.6875rem', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Pin size={10} /> Закріплені
                       </div>
                       {pinned.map(n => (
                         <NoteListItem key={n.id} note={n} selected={selectedId === n.id} onClick={() => { setSelectedId(n.id); setNewTaskText(''); }} />
@@ -644,7 +643,12 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     </>
                   )}
                   {rest.length > 0 && pinned.length > 0 && (
-                    <div style={{ padding: '0.5rem 0.875rem 0.25rem', fontSize: '0.625rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                    <div style={{ padding: '0.875rem 1rem 0.3rem', fontSize: '0.6875rem', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.04em' }}>
+                      Нотатки
+                    </div>
+                  )}
+                  {rest.length > 0 && pinned.length === 0 && (
+                    <div style={{ padding: '0.75rem 1rem 0.3rem', fontSize: '0.6875rem', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.04em' }}>
                       Нотатки
                     </div>
                   )}
@@ -660,9 +664,9 @@ export default function NotesModal({ isOpen, onClose }: Props) {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: bg, transition: 'background 0.2s' }}>
             {!selectedNote ? (
               /* Empty state */
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, color: '#cbd5e1' }}>
-                <div style={{ width: 64, height: 64, borderRadius: 20, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, color: '#cbd5e1' }}>
+                <div style={{ width: 80, height: 80, borderRadius: 24, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                     <polyline points="14 2 14 8 20 8"/>
                     <line x1="16" y1="13" x2="8" y2="13"/>
@@ -671,28 +675,28 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                   </svg>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>Вибери нотатку</div>
-                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', lineHeight: 1.6 }}>або натисни «Нотатка» / «Список»,<br/>щоб створити нову</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 600, color: '#94a3b8', marginBottom: 8 }}>Вибери нотатку</div>
+                  <div style={{ fontSize: '0.8125rem', color: '#cbd5e1', lineHeight: 1.7 }}>або натисни «Нотатка» / «Список»,<br/>щоб створити нову</div>
                 </div>
               </div>
             ) : (
               <>
                 {/* ── Title row ── */}
                 <div style={{
-                  padding: '0.875rem 1.25rem 0.625rem',
+                  padding: '1.125rem 1.5rem 0.75rem',
                   borderBottom: '1px solid rgba(0,0,0,0.06)',
                   flexShrink: 0,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {selectedNote.type === 'todo'
-                      ? <CheckSquare size={16} color="#2563eb" style={{ flexShrink: 0 }} />
-                      : <FileText    size={16} color="#2563eb" style={{ flexShrink: 0 }} />
+                      ? <CheckSquare size={17} color="#2563eb" style={{ flexShrink: 0 }} />
+                      : <FileText    size={17} color="#2563eb" style={{ flexShrink: 0 }} />
                     }
                     <input
                       value={selectedNote.title}
                       onChange={e => updateNote(selectedNote.id, { title: e.target.value })}
                       placeholder={selectedNote.type === 'todo' ? 'Назва списку...' : 'Заголовок нотатки...'}
-                      style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem', fontWeight: 700, color: '#1e293b', userSelect: 'text' }}
+                      style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '1.0625rem', fontWeight: 700, color: '#1e293b', userSelect: 'text' }}
                     />
                     {/* Save indicator */}
                     <span style={{
@@ -715,19 +719,19 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
                 {/* ── Action bar ── */}
                 <div style={{
-                  padding: '0.375rem 1.25rem',
+                  padding: '0.5rem 1.5rem',
                   borderBottom: '1px solid rgba(0,0,0,0.06)',
                   display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, flexWrap: 'nowrap',
                 }}>
                   {/* Color dots */}
-                  <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginRight: 4 }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginRight: 4 }}>
                     {COLORS.map(c => (
                       <button
                         key={c.key ?? 'none'}
                         onClick={() => updateNote(selectedNote.id, { color: c.key })}
                         title={c.key ?? 'без кольору'}
                         style={{
-                          width: 14, height: 14, borderRadius: '50%', background: c.dot,
+                          width: 15, height: 15, borderRadius: '50%', background: c.dot,
                           border: `2px solid ${selectedNote.color === c.key ? '#2563eb' : 'transparent'}`,
                           cursor: 'pointer', padding: 0,
                           boxShadow: selectedNote.color === c.key ? '0 0 0 1px #2563eb' : '0 0 0 1px #e2e8f0',
@@ -737,7 +741,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     ))}
                   </div>
 
-                  <div style={{ width: 1, height: 18, background: '#e2e8f0', flexShrink: 0, margin: '0 2px' }} />
+                  <div style={{ width: 1, height: 18, background: '#e2e8f0', flexShrink: 0, margin: '0 4px' }} />
 
                   {/* Reminder */}
                   {(() => {
@@ -746,7 +750,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     return (
                       <label title="Нагадування" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
                         {hasRemind ? (
-                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: isPast ? '#f3f4f6' : '#eff6ff', color: isPast ? '#9ca3af' : '#2563eb', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: isPast ? '#f3f4f6' : '#eff6ff', color: isPast ? '#9ca3af' : '#2563eb', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                             {new Date(selectedNote.remind_at!).toLocaleString('uk', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
                             <button onClick={e => { e.preventDefault(); updateNote(selectedNote.id, { remind_at: null }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1, marginLeft: 1, display: 'flex' }}>
@@ -754,7 +758,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                             </button>
                           </span>
                         ) : (
-                          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', padding: '3px 8px', borderRadius: 20, border: '1px dashed #d1d5db', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.15s' }}
+                          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', padding: '3px 9px', borderRadius: 20, border: '1px dashed #d1d5db', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.15s' }}
                             onMouseEnter={e => { (e.currentTarget as HTMLSpanElement).style.borderColor = '#93c5fd'; (e.currentTarget as HTMLSpanElement).style.color = '#2563eb'; }}
                             onMouseLeave={e => { (e.currentTarget as HTMLSpanElement).style.borderColor = '#d1d5db'; (e.currentTarget as HTMLSpanElement).style.color = '#94a3b8'; }}
                           >
@@ -778,7 +782,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     return (
                       <label title="Дедлайн" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
                         {dl ? (
-                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
                             📅 {dl.text}
                             <button
                               onClick={e => { e.preventDefault(); updateNote(selectedNote.id, { deadline: null }); }}
@@ -788,7 +792,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                             </button>
                           </span>
                         ) : (
-                          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', padding: '3px 8px', borderRadius: 20, border: '1px dashed #d1d5db', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+                          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', padding: '3px 9px', borderRadius: 20, border: '1px dashed #d1d5db', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
                             onMouseEnter={e => { (e.currentTarget as HTMLSpanElement).style.borderColor = '#86efac'; (e.currentTarget as HTMLSpanElement).style.color = '#16a34a'; }}
                             onMouseLeave={e => { (e.currentTarget as HTMLSpanElement).style.borderColor = '#d1d5db'; (e.currentTarget as HTMLSpanElement).style.color = '#94a3b8'; }}
                           >
@@ -871,18 +875,18 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     placeholder="Починай писати..."
                     style={{
                       flex: 1, border: 'none', outline: 'none', resize: 'none',
-                      padding: '1rem 1.25rem',
+                      padding: '1.25rem 1.5rem',
                       fontSize: '0.9375rem', lineHeight: 1.8, color: '#374151',
                       background: 'transparent', fontFamily: 'inherit', userSelect: 'text',
                     }}
                   />
                 ) : (
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '1rem 1.25rem', background: 'transparent' }}>
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', background: 'transparent' }}>
 
                     {/* Progress bar */}
                     {totalTasks > 0 && (
-                      <div style={{ marginBottom: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: '#94a3b8', marginBottom: 6 }}>
+                      <div style={{ marginBottom: '1.25rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: '#94a3b8', marginBottom: 7 }}>
                           <span>Прогрес</span>
                           <span style={{ fontWeight: 700, color: doneTasks === totalTasks ? '#22c55e' : '#2563eb' }}>
                             {doneTasks}/{totalTasks}
@@ -909,7 +913,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     />
 
                     {/* Add task input */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, padding: '0.375rem 0.375rem', borderRadius: 8, transition: 'background 0.12s' }}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, padding: '0.4rem 0.375rem', borderRadius: 8, transition: 'background 0.12s' }}
                       onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.03)'; }}
                       onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
                     >
@@ -924,7 +928,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                       {newTaskText.trim() && (
                         <button
                           onClick={addTask}
-                          style={{ background: '#2563eb', border: 'none', cursor: 'pointer', color: 'white', padding: '0.25rem 0.625rem', borderRadius: 7, fontSize: '0.75rem', fontWeight: 700 }}
+                          style={{ background: '#2563eb', border: 'none', cursor: 'pointer', color: 'white', padding: '0.3rem 0.75rem', borderRadius: 8, fontSize: '0.75rem', fontWeight: 700 }}
                         >
                           +
                         </button>
@@ -933,7 +937,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
                     {/* Empty state */}
                     {totalTasks === 0 && (
-                      <div style={{ textAlign: 'center', padding: '2rem 0', color: '#d1d5db', fontSize: '0.8125rem' }}>
+                      <div style={{ textAlign: 'center', padding: '2.5rem 0', color: '#d1d5db', fontSize: '0.8125rem' }}>
                         Додай перший пункт ↑
                       </div>
                     )}
@@ -964,7 +968,7 @@ function ActionBtn({ children, title, onClick, active, activeColor, hoverColor, 
     <button
       onClick={onClick}
       title={title}
-      style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px', borderRadius: 7, color: active ? (activeColor ?? '#2563eb') : '#94a3b8', transition: 'all 0.15s', flexShrink: 0 }}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', borderRadius: 8, color: active ? (activeColor ?? '#2563eb') : '#94a3b8', transition: 'all 0.15s', flexShrink: 0 }}
       onMouseEnter={e => {
         e.currentTarget.style.color = active ? (activeColor ?? '#2563eb') : (hoverColor ?? '#374151');
         e.currentTarget.style.background = hoverBg ?? '#f1f5f9';
@@ -1008,7 +1012,7 @@ function TaskItem({ task, onToggle, onDelete, onRename }: {
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.3125rem 0.375rem', borderRadius: 8, background: hovered ? 'rgba(0,0,0,0.04)' : 'transparent', transition: 'background 0.12s', cursor: 'default' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.375rem 0.375rem', borderRadius: 8, background: hovered ? 'rgba(0,0,0,0.04)' : 'transparent', transition: 'background 0.12s', cursor: 'default' }}
     >
       {/* Drag handle */}
       <span style={{ color: '#cbd5e1', fontSize: '0.75rem', cursor: 'grab', opacity: hovered ? 1 : 0, transition: 'opacity 0.12s', flexShrink: 0, lineHeight: 1 }}>⠿</span>
@@ -1090,9 +1094,9 @@ function TagsRow({ tags, onAdd, onRemove, bg }: { tags: string[]; onAdd: (t: str
   };
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.5rem 1.25rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: bg, alignItems: 'center', minHeight: 36 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.625rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: bg, alignItems: 'center', minHeight: 40 }}>
       {tags.map(tag => (
-        <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 20, background: '#e0e7ff', fontSize: '0.6875rem', fontWeight: 600, color: '#3730a3' }}>
+        <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 9px', borderRadius: 20, background: '#e0e7ff', fontSize: '0.6875rem', fontWeight: 600, color: '#3730a3' }}>
           #{tag}
           <button onClick={() => onRemove(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#818cf8', lineHeight: 1 }}>
             <X size={10} />
@@ -1113,7 +1117,7 @@ function TagsRow({ tags, onAdd, onRemove, bg }: { tags: string[]; onAdd: (t: str
       ) : (
         <button
           onClick={() => { setAdding(true); setTimeout(() => inputRef.current?.focus(), 0); }}
-          style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: 20, cursor: 'pointer', padding: '2px 8px', fontSize: '0.6875rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.15s' }}
+          style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: 20, cursor: 'pointer', padding: '2px 9px', fontSize: '0.6875rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.15s' }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#a5b4fc'; e.currentTarget.style.color = '#4f46e5'; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#94a3b8'; }}
         >
@@ -1142,10 +1146,10 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
   if (!hasLinks && students.length === 0 && groups.length === 0) return null;
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.5rem 1.25rem', borderBottom: hasLinks ? '1px solid rgba(0,0,0,0.05)' : 'none', background: bg, alignItems: 'center', minHeight: 36 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.625rem 1.5rem', borderBottom: hasLinks ? '1px solid rgba(0,0,0,0.05)' : 'none', background: bg, alignItems: 'center', minHeight: 40 }}>
       {/* Student link */}
       {studentId && studentName ? (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 20, background: '#eff6ff', fontSize: '0.6875rem', fontWeight: 600, color: '#2563eb' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 9px', borderRadius: 20, background: '#eff6ff', fontSize: '0.6875rem', fontWeight: 600, color: '#2563eb' }}>
           👤 {studentName}
           <button onClick={() => onChangeStudent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#93c5fd', lineHeight: 1 }}><X size={10} /></button>
         </span>
@@ -1153,7 +1157,7 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
         <select
           value=""
           onChange={e => onChangeStudent(e.target.value ? Number(e.target.value) : null)}
-          style={{ fontSize: '0.6875rem', border: '1px dashed #d1d5db', borderRadius: 20, padding: '2px 8px', background: 'transparent', color: '#94a3b8', cursor: 'pointer', outline: 'none' }}
+          style={{ fontSize: '0.6875rem', border: '1px dashed #d1d5db', borderRadius: 20, padding: '2px 9px', background: 'transparent', color: '#94a3b8', cursor: 'pointer', outline: 'none' }}
         >
           <option value="">👤 Учень...</option>
           {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -1162,7 +1166,7 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
 
       {/* Group link */}
       {groupId && groupTitle ? (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 20, background: '#f0fdf4', fontSize: '0.6875rem', fontWeight: 600, color: '#16a34a' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 9px', borderRadius: 20, background: '#f0fdf4', fontSize: '0.6875rem', fontWeight: 600, color: '#16a34a' }}>
           👥 {groupTitle}
           <button onClick={() => onChangeGroup(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#86efac', lineHeight: 1 }}><X size={10} /></button>
         </span>
@@ -1170,7 +1174,7 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
         <select
           value=""
           onChange={e => onChangeGroup(e.target.value ? Number(e.target.value) : null)}
-          style={{ fontSize: '0.6875rem', border: '1px dashed #d1d5db', borderRadius: 20, padding: '2px 8px', background: 'transparent', color: '#94a3b8', cursor: 'pointer', outline: 'none' }}
+          style={{ fontSize: '0.6875rem', border: '1px dashed #d1d5db', borderRadius: 20, padding: '2px 9px', background: 'transparent', color: '#94a3b8', cursor: 'pointer', outline: 'none' }}
         >
           <option value="">👥 Група...</option>
           {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
