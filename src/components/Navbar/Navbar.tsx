@@ -17,6 +17,7 @@ import {
   CheckCircle,
   Trash2,
   ExternalLink,
+  DollarSign,
 } from 'lucide-react';
 import { t } from '@/i18n/t';
 import styles from './Navbar.module.css';
@@ -125,6 +126,8 @@ const Navbar: React.FC<NavbarProps> = ({
     weatherCity: 'Kyiv',
   });
   const [saved, setSaved] = useState(false);
+  const [salarySettings, setSalarySettings] = useState({ teacher_salary_group: '75', teacher_salary_individual: '100' });
+  const [salarySaving, setSalarySaving] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -250,6 +253,24 @@ const Navbar: React.FC<NavbarProps> = ({
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const handleSalarySave = async () => {
+    setSalarySaving(true);
+    try {
+      await fetch('/api/system-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacher_salary_group: parseFloat(salarySettings.teacher_salary_group) || 75,
+          teacher_salary_individual: parseFloat(salarySettings.teacher_salary_individual) || 100,
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch { /* silent */ } finally {
+      setSalarySaving(false);
+    }
+  };
+
   // Load settings when panel opens
   useEffect(() => {
     if (!settingsOpen) return;
@@ -257,6 +278,15 @@ const Navbar: React.FC<NavbarProps> = ({
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d?.settings) setSettings(prev => ({ ...prev, ...d.settings }));
+      })
+      .catch(() => {});
+    fetch('/api/system-settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) setSalarySettings({
+          teacher_salary_group: String(d.teacher_salary_group ?? 75),
+          teacher_salary_individual: String(d.teacher_salary_individual ?? 100),
+        });
       })
       .catch(() => {});
   }, [settingsOpen]);
@@ -895,9 +925,59 @@ const Navbar: React.FC<NavbarProps> = ({
                       marginTop: '1.5rem',
                       marginBottom: '1rem',
                       textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                    }}>
+                      <DollarSign size={14} />
+                      Зарплата викладачів
+                    </h3>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', maxWidth: '400px' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Групове заняття (₴)</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          min={0}
+                          step={1}
+                          value={salarySettings.teacher_salary_group}
+                          onChange={e => setSalarySettings(prev => ({ ...prev, teacher_salary_group: e.target.value }))}
+                        />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Індивідуальне (₴)</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          min={0}
+                          step={1}
+                          value={salarySettings.teacher_salary_individual}
+                          onChange={e => setSalarySettings(prev => ({ ...prev, teacher_salary_individual: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-primary"
+                      onClick={handleSalarySave}
+                      disabled={salarySaving}
+                      style={{ marginBottom: '1.5rem' }}
+                    >
+                      <Save size={14} />
+                      {salarySaving ? 'Збереження...' : 'Зберегти тарифи'}
+                    </button>
+
+                    <h3 style={{
+                      fontSize: '0.8125rem',
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginTop: '0.5rem',
+                      marginBottom: '1rem',
+                      textTransform: 'uppercase',
                       letterSpacing: '0.05em'
                     }}>Дані</h3>
-                    
+
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <button className="btn btn-secondary">Експорт даних</button>
                       <button className="btn btn-secondary">Резервна копія</button>
