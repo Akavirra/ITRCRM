@@ -5,11 +5,16 @@ import { useRouter } from 'next/navigation';
 import {
   FolderOpen, FileText, Image, Video, Music, File,
   Download, ExternalLink, Search, Trash2, LayoutGrid,
-  LayoutList, ChevronLeft, ChevronRight, MoreVertical,
+  LayoutList, MoreVertical,
 } from 'lucide-react';
-import DraggableModal from '@/components/DraggableModal';
 import Layout from '@/components/Layout';
 import PageLoading from '@/components/PageLoading';
+import {
+  useMediaViewer,
+  type MediaFile,
+  IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS,
+  isPreviewable, isAudioType, thumbUrl, formatSize, formatDate, effectiveCategory,
+} from '@/components/MediaViewerProvider';
 
 interface User {
   id: number;
@@ -113,60 +118,8 @@ interface Topic {
   file_count: number;
 }
 
-interface MediaFile {
-  id: number;
-  topic_id: number;
-  topic_name: string;
-  file_name: string;
-  file_type: string;
-  file_size: number;
-  drive_file_id: string;
-  drive_view_url: string;
-  drive_download_url: string;
-  uploaded_by_name: string | null;
-  created_at: string;
-  media_width: number | null;
-  media_height: number | null;
-}
-
 type ViewMode = 'grid' | 'list';
 type FilterType = 'all' | 'photo' | 'video' | 'document' | 'audio';
-
-function thumbUrl(fileId: string, size = 400) {
-  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size}`;
-}
-
-function formatSize(bytes: number): string {
-  if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} Б`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} МБ`;
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|bmp|svg|avif|tiff?)$/i;
-const VIDEO_EXTENSIONS = /\.(mp4|mov|avi|mkv|webm|m4v|3gp|wmv|flv|ts)$/i;
-const AUDIO_EXTENSIONS = /\.(mp3|wav|ogg|flac|aac|m4a|wma|opus|oga)$/i;
-
-function isPreviewable(type: string, fileName?: string) {
-  if (['photo', 'animation', 'video', 'audio', 'voice'].includes(type)) return true;
-  if (type === 'document' && fileName) {
-    if (IMAGE_EXTENSIONS.test(fileName)) return true;
-    if (VIDEO_EXTENSIONS.test(fileName)) return true;
-    if (AUDIO_EXTENSIONS.test(fileName)) return true;
-  }
-  return false;
-}
-
-function isAudioType(type: string, fileName?: string) {
-  if (type === 'audio' || type === 'voice') return true;
-  if (type === 'document' && fileName && AUDIO_EXTENSIONS.test(fileName)) return true;
-  return false;
-}
 
 function FileTypeIcon({ type, size = 18 }: { type: string; size?: number }) {
   const s = { width: size, height: size, flexShrink: 0 };
@@ -194,147 +147,11 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
-// ── Media Viewer Modal ────────────────────────────────────────────────────────
-
-const HEADER_H = 52; // DraggableModal header height px
-
-function calcMediaSize(
-  mediaW: number | null | undefined,
-  mediaH: number | null | undefined,
-  type: 'image' | 'video' | 'audio',
-): { width: number; height: number } {
-  if (type === 'audio') return { width: 420, height: HEADER_H + 88 };
-
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-
-  if (mediaW && mediaH) {
-    const maxW = Math.min(vw * 0.88, type === 'video' ? 1280 : 1400);
-    const maxContentH = Math.min(vh * 0.88, 900) - HEADER_H;
-    const scale = Math.min(maxW / mediaW, maxContentH / mediaH, 1);
-    const w = Math.max(Math.round(mediaW * scale), 320);
-    const h = Math.round(mediaH * scale) + HEADER_H;
-    return { width: w, height: h };
-  }
-
-  if (type === 'video') {
-    const w = Math.round(Math.min(vw * 0.82, 960));
-    const h = Math.min(Math.round(w * 9 / 16) + HEADER_H, vh * 0.9);
-    return { width: w, height: h };
-  }
-  return { width: 760, height: 520 };
-}
-
-function MediaViewerModal({ files, index, onClose, onPrev, onNext }: {
-  files: MediaFile[];
-  index: number;
-  onClose: () => void;
-  onPrev: () => void;
-  onNext: () => void;
-}) {
-  const file = files[index];
-  const isVideo = file.file_type === 'video' || VIDEO_EXTENSIONS.test(file.file_name ?? '');
-  const isAudio = isAudioType(file.file_type, file.file_name);
-  const mediaType = isAudio ? 'audio' : isVideo ? 'video' : 'image';
-  const hasNav = files.length > 1;
-
-  const [modalSize, setModalSize] = useState<{ width: number; height: number }>(() => {
-    if (typeof window === 'undefined') return { width: 760, height: 520 };
-    return calcMediaSize(file.media_width, file.media_height, mediaType);
-  });
-
-  // Recalculate when switching files
-  useEffect(() => {
-    setModalSize(calcMediaSize(file.media_width, file.media_height, mediaType));
-  }, [file.id, mediaType, file.media_width, file.media_height]);
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowLeft') onPrev();
-      if (e.key === 'ArrowRight') onNext();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose, onPrev, onNext]);
-
-  // Fallback: recalculate from actual image element if DB dimensions missing
-  function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
-    if (file.media_width && file.media_height) return;
-    const img = e.currentTarget;
-    if (!img.naturalWidth || !img.naturalHeight) return;
-    setModalSize(calcMediaSize(img.naturalWidth, img.naturalHeight, 'image'));
-  }
-
-  const headerAction = (
-    <KebabMenu
-      counter={hasNav ? `${index + 1} / ${files.length}` : undefined}
-      items={[
-        { label: 'Завантажити', icon: <Download size={14} />, href: file.drive_download_url },
-        { label: 'Відкрити в Google Drive', icon: <ExternalLink size={14} />, href: file.drive_view_url },
-      ]}
-    />
-  );
-
-  return (
-    <DraggableModal
-      id="media-viewer"
-      isOpen
-      onClose={onClose}
-      title={file.file_name}
-      initialWidth={modalSize.width}
-      initialHeight={modalSize.height}
-      minWidth={320}
-      minHeight={240}
-      headerAction={headerAction}
-      contentStyle={{ padding: 0, background: isAudio ? '#f8fafc' : '#0f172a', overflow: 'hidden', position: 'relative' }}
-    >
-      <style>{`@keyframes mediaFadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-
-        {/* Prev arrow — hidden for audio */}
-        {!isAudio && hasNav && index > 0 && (
-          <button onClick={onPrev}
-            style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
-            <ChevronLeft size={22} />
-          </button>
-        )}
-
-        {/* Content */}
-        {isAudio || isVideo ? (
-          <iframe
-            key={file.drive_file_id}
-            src={`https://drive.google.com/file/d/${file.drive_file_id}/preview`}
-            allow="autoplay"
-            style={{ ...(isAudio ? { width: '100%', height: '100%' } : { position: 'absolute', inset: 0, width: '100%', height: '100%' }), border: 'none', animation: 'mediaFadeIn 0.2s ease' }}
-          />
-        ) : (
-          <img
-            key={file.drive_file_id}
-            src={thumbUrl(file.drive_file_id, 1600)}
-            alt={file.file_name}
-            onLoad={handleImageLoad}
-            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', animation: 'mediaFadeIn 0.2s ease' }}
-          />
-        )}
-
-        {/* Next arrow — hidden for audio */}
-        {!isAudio && hasNav && index < files.length - 1 && (
-          <button onClick={onNext}
-            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)' }}>
-            <ChevronRight size={22} />
-          </button>
-        )}
-      </div>
-    </DraggableModal>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function MaterialsPage() {
   const router = useRouter();
+  const { openMediaViewer } = useMediaViewer();
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -347,7 +164,6 @@ export default function MaterialsPage() {
   const [editingTopicId, setEditingTopicId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchInput, setSearchInput] = useState('');
 
@@ -412,19 +228,6 @@ export default function MaterialsPage() {
   const selectedTopic = topics.find(t => t.id === selectedTopicId);
   const totalFiles = topics.reduce((s, t) => s + t.file_count, 0);
 
-  // Resolve effective category based on file_type + filename extension
-  function effectiveCategory(f: MediaFile): FilterType {
-    if (f.file_type === 'photo' || f.file_type === 'animation') return 'photo';
-    if (f.file_type === 'video') return 'video';
-    if (f.file_type === 'audio' || f.file_type === 'voice') return 'audio';
-    if (f.file_type === 'document') {
-      if (IMAGE_EXTENSIONS.test(f.file_name)) return 'photo';
-      if (VIDEO_EXTENSIONS.test(f.file_name)) return 'video';
-      if (AUDIO_EXTENSIONS.test(f.file_name)) return 'audio';
-    }
-    return 'document';
-  }
-
   // Filter by type
   const filteredFiles = files.filter(f =>
     filterType === 'all' || effectiveCategory(f) === filterType
@@ -435,7 +238,7 @@ export default function MaterialsPage() {
 
   function openLightbox(file: MediaFile) {
     const idx = visualFiles.findIndex(f => f.id === file.id);
-    if (idx !== -1) setLightboxIndex(idx);
+    if (idx !== -1) openMediaViewer(visualFiles, idx);
   }
 
   const filterTabs: { key: FilterType; label: string; icon: React.ReactNode }[] = [
@@ -455,17 +258,6 @@ export default function MaterialsPage() {
   return (
     <Layout user={user}>
     <div>
-      {/* Media Viewer */}
-      {lightboxIndex !== null && (
-        <MediaViewerModal
-          files={visualFiles}
-          index={lightboxIndex}
-          onClose={() => setLightboxIndex(null)}
-          onPrev={() => setLightboxIndex(i => (i !== null && i > 0 ? i - 1 : i))}
-          onNext={() => setLightboxIndex(i => (i !== null && i < visualFiles.length - 1 ? i + 1 : i))}
-        />
-      )}
-
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
         <FolderOpen size={26} color="#3b82f6" />

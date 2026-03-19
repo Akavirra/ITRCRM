@@ -16,6 +16,7 @@ import { ToastProvider } from '@/components/Toast/ToastContext';
 import ToastContainer from '@/components/Toast/ToastContainer';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { CalculatorProvider } from '@/components/CalculatorProvider';
+import { MediaViewerProvider } from '@/components/MediaViewerProvider';
 
 export const metadata: Metadata = {
   title: 'Адміністрування школи',
@@ -31,6 +32,7 @@ export default function RootLayout({
     <html lang="uk">
       <body>
         <ErrorBoundary>
+          <MediaViewerProvider>
           <CalculatorProvider>
             <ToastProvider>
               <PageTransitionProvider>
@@ -55,6 +57,7 @@ export default function RootLayout({
               </PageTransitionProvider>
             </ToastProvider>
           </CalculatorProvider>
+          </MediaViewerProvider>
         </ErrorBoundary>
       </body>
     </html>
