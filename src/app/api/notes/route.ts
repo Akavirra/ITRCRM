@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
   if (!currentUser) return unauthorized();
 
   const notes = await all(
-    `SELECT id, type, title, content, tasks, color, is_pinned, tags, deadline, is_archived, remind_at, reminded, created_at, updated_at
+    `SELECT id, type, title, content, tasks, color, is_pinned, tags, deadline, is_archived, remind_at, reminded,
+            linked_student_id, linked_group_id, created_at, updated_at
      FROM notes
      WHERE user_id = $1
      ORDER BY is_pinned DESC, updated_at DESC`,
@@ -29,9 +30,10 @@ export async function POST(request: NextRequest) {
   const type = body.type === 'todo' ? 'todo' : 'note';
 
   const result = await all<{ id: number; type: string; title: string; content: string; tasks: unknown[]; color: string | null; is_pinned: boolean; created_at: string; updated_at: string }>(
-    `INSERT INTO notes (user_id, type, title, content, tasks, color, is_pinned, tags, deadline, is_archived, remind_at, reminded)
-     VALUES ($1, $2, '', '', '[]', NULL, FALSE, '{}', NULL, FALSE, NULL, FALSE)
-     RETURNING id, type, title, content, tasks, color, is_pinned, tags, deadline, is_archived, remind_at, reminded, created_at, updated_at`,
+    `INSERT INTO notes (user_id, type, title, content, tasks, color, is_pinned, tags, deadline, is_archived, remind_at, reminded, linked_student_id, linked_group_id)
+     VALUES ($1, $2, '', '', '[]', NULL, FALSE, '{}', NULL, FALSE, NULL, FALSE, NULL, NULL)
+     RETURNING id, type, title, content, tasks, color, is_pinned, tags, deadline, is_archived, remind_at, reminded,
+               linked_student_id, linked_group_id, created_at, updated_at`,
     [currentUser.id, type]
   );
 

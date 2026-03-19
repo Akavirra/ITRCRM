@@ -34,7 +34,9 @@ export async function PATCH(
   if (body.tags !== undefined)      { fields.push(`tags = $${idx++}`);      values.push(body.tags); }
   if (body.deadline !== undefined)    { fields.push(`deadline = $${idx++}`);     values.push(body.deadline || null); }
   if (body.is_archived !== undefined) { fields.push(`is_archived = $${idx++}`);  values.push(body.is_archived); }
-  if (body.remind_at !== undefined)   { fields.push(`remind_at = $${idx++}`);    values.push(body.remind_at || null); fields.push(`reminded = FALSE`); }
+  if (body.remind_at !== undefined)          { fields.push(`remind_at = $${idx++}`);          values.push(body.remind_at || null); fields.push(`reminded = FALSE`); }
+  if (body.linked_student_id !== undefined)  { fields.push(`linked_student_id = $${idx++}`);  values.push(body.linked_student_id || null); }
+  if (body.linked_group_id !== undefined)    { fields.push(`linked_group_id = $${idx++}`);    values.push(body.linked_group_id || null); }
 
   if (fields.length === 0) return NextResponse.json({ ok: true });
 

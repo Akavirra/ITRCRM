@@ -20,6 +20,8 @@ interface Note {
   is_archived: boolean;
   remind_at: string | null;
   reminded: boolean;
+  linked_student_id: number | null;
+  linked_group_id: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -187,6 +189,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const [loading, setLoading]       = useState(false);
   const [saving, setSaving]         = useState(false);
   const [justSaved, setJustSaved]   = useState(false);
+  const [students, setStudents]     = useState<{ id: number; name: string }[]>([]);
+  const [groups, setGroups]         = useState<{ id: number; title: string }[]>([]);
   const [newTaskText, setNewTaskText] = useState('');
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -255,6 +259,10 @@ export default function NotesModal({ isOpen, onClose }: Props) {
       .catch(() => {})
       .finally(() => setLoading(false));
     fetch('/api/notes/check-reminders', { method: 'POST' }).catch(() => {});
+    if (students.length === 0) {
+      fetch('/api/students?limit=500').then(r => r.json()).then(d => { if (d.students) setStudents(d.students.map((s: {id:number;name:string}) => ({ id: s.id, name: s.name }))); }).catch(() => {});
+      fetch('/api/groups?limit=200').then(r => r.json()).then(d => { if (d.groups) setGroups(d.groups.map((g: {id:number;title:string}) => ({ id: g.id, title: g.title }))); }).catch(() => {});
+    }
   }, [isOpen]);
 
   // Auto-save (debounced 700ms)
@@ -275,7 +283,9 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             tags:      note.tags,
             deadline:    note.deadline,
             is_archived: note.is_archived,
-            remind_at:   note.remind_at,
+            remind_at:          note.remind_at,
+            linked_student_id:  note.linked_student_id,
+            linked_group_id:    note.linked_group_id,
           }),
         });
         setJustSaved(true);
@@ -769,6 +779,17 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                 {/* Tags row */}
                 <TagsRow tags={selectedNote.tags} onAdd={addTag} onRemove={removeTag} bg={bg} />
 
+                {/* Linked entity row */}
+                <LinkedRow
+                  studentId={selectedNote.linked_student_id}
+                  groupId={selectedNote.linked_group_id}
+                  students={students}
+                  groups={groups}
+                  bg={bg}
+                  onChangeStudent={id => updateNote(selectedNote.id, { linked_student_id: id })}
+                  onChangeGroup={id => updateNote(selectedNote.id, { linked_group_id: id })}
+                />
+
                 {/* Content area */}
                 {selectedNote.type === 'note' ? (
                   <textarea
@@ -1004,6 +1025,62 @@ function TagsRow({ tags, onAdd, onRemove, bg }: { tags: string[]; onAdd: (t: str
         >
           <Plus size={9} strokeWidth={2.5} /> тег
         </button>
+      )}
+    </div>
+  );
+}
+
+// ── Linked entity row ─────────────────────────────────────────────────────────
+
+function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, onChangeGroup }: {
+  studentId: number | null;
+  groupId: number | null;
+  students: { id: number; name: string }[];
+  groups: { id: number; title: string }[];
+  bg: string;
+  onChangeStudent: (id: number | null) => void;
+  onChangeGroup: (id: number | null) => void;
+}) {
+  const hasLinks = !!studentId || !!groupId;
+  const studentName = students.find(s => s.id === studentId)?.name;
+  const groupTitle  = groups.find(g => g.id === groupId)?.title;
+
+  if (!hasLinks && students.length === 0 && groups.length === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.375rem 1.125rem', borderBottom: hasLinks ? '1px solid #f1f5f9' : 'none', background: bg, alignItems: 'center', minHeight: hasLinks ? undefined : 0 }}>
+      {/* Student link */}
+      {studentId && studentName ? (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '0.125rem 0.5rem', borderRadius: 20, background: '#eff6ff', fontSize: '0.6875rem', fontWeight: 600, color: '#2563eb' }}>
+          👤 {studentName}
+          <button onClick={() => onChangeStudent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1 }}><X size={10} /></button>
+        </span>
+      ) : students.length > 0 && (
+        <select
+          value=""
+          onChange={e => onChangeStudent(e.target.value ? Number(e.target.value) : null)}
+          style={{ fontSize: '0.6875rem', border: '1px dashed #d1d5db', borderRadius: 20, padding: '0.125rem 0.5rem', background: 'transparent', color: '#94a3b8', cursor: 'pointer', outline: 'none' }}
+        >
+          <option value="">👤 Учень...</option>
+          {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      )}
+
+      {/* Group link */}
+      {groupId && groupTitle ? (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '0.125rem 0.5rem', borderRadius: 20, background: '#f0fdf4', fontSize: '0.6875rem', fontWeight: 600, color: '#16a34a' }}>
+          👥 {groupTitle}
+          <button onClick={() => onChangeGroup(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1 }}><X size={10} /></button>
+        </span>
+      ) : groups.length > 0 && (
+        <select
+          value=""
+          onChange={e => onChangeGroup(e.target.value ? Number(e.target.value) : null)}
+          style={{ fontSize: '0.6875rem', border: '1px dashed #d1d5db', borderRadius: 20, padding: '0.125rem 0.5rem', background: 'transparent', color: '#94a3b8', cursor: 'pointer', outline: 'none' }}
+        >
+          <option value="">👥 Група...</option>
+          {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+        </select>
       )}
     </div>
   );
