@@ -19,6 +19,7 @@ type AttendanceStatus = 'present' | 'absent' | 'makeup_planned' | 'makeup_done';
 interface StudentAttendanceLesson {
   lesson_id: number;
   lesson_date: string;
+  lesson_status: string;
   attendance_status: AttendanceStatus | null;
   is_makeup: boolean;
   group_title: string | null;
@@ -169,6 +170,7 @@ export default function StudentModalsManager() {
   const [statsDataMap, setStatsDataMap] = useState<Record<number, StudentAttendanceData>>({});
   const [statsLoadingMap, setStatsLoadingMap] = useState<Record<number, boolean>>({});
   const [lessonsListOpen, setLessonsListOpen] = useState<Record<number, boolean>>({});
+  const [statsTypeFilter, setStatsTypeFilter] = useState<Record<number, 'all' | 'group' | 'individual' | 'makeup'>>({});
 
   useEffect(() => {
     setIsHydrated(true);
@@ -828,16 +830,36 @@ export default function StudentModalsManager() {
                         const sd = statsDataMap[student.id];
                         if (!sd) return null;
 
-                        // Aggregate totals
-                        const allLessons = sd.groups.flatMap(g => g.lessons);
-                        const totalPresent = sd.groups.reduce((s, g) => s + g.present, 0);
-                        const totalAbsent = sd.groups.reduce((s, g) => s + g.absent, 0);
-                        const totalMakeup = sd.groups.reduce((s, g) => s + g.makeup, 0);
-                        const totalNotMarked = sd.groups.reduce((s, g) => s + g.not_marked, 0);
-                        const totalLessons = sd.groups.reduce((s, g) => s + g.total, 0);
+                        // Filter out future (non-done) lessons
+                        const doneGroups: StudentAttendanceGroup[] = sd.groups.map(g => ({
+                          ...g,
+                          lessons: g.lessons.filter(l => l.lesson_status === 'done'),
+                        })).filter(g => g.lessons.length > 0);
+
+                        const typeFilter = statsTypeFilter[student.id] || 'all';
+
+                        const visibleGroups = doneGroups.filter(g => {
+                          if (typeFilter === 'group') return !g.is_individual && !g.is_makeup_group;
+                          if (typeFilter === 'individual') return g.is_individual;
+                          if (typeFilter === 'makeup') return g.is_makeup_group;
+                          return true;
+                        });
+
+                        const allDoneLessons = doneGroups.flatMap(g => g.lessons);
+                        const totalPresent = doneGroups.reduce((s, g) => s + g.present, 0);
+                        const totalAbsent = doneGroups.reduce((s, g) => s + g.absent, 0);
+                        const totalMakeup = doneGroups.reduce((s, g) => s + g.makeup, 0);
+                        const totalLessons = doneGroups.reduce((s, g) => s + g.total, 0);
                         const rate = totalLessons > 0 ? Math.round((totalPresent + totalMakeup) / totalLessons * 100) : 0;
 
                         const isExpanded = !!lessonsListOpen[student.id];
+
+                        const statusMap: Record<string, { label: string; color: string; bg: string }> = {
+                          present: { label: 'Присутній', color: '#16a34a', bg: '#f0fdf4' },
+                          absent: { label: 'Відсутній', color: '#dc2626', bg: '#fef2f2' },
+                          makeup_planned: { label: 'Заплановано', color: '#d97706', bg: '#fffbeb' },
+                          makeup_done: { label: 'Відпрацював', color: '#2563eb', bg: '#eff6ff' },
+                        };
 
                         return (
                           <>
@@ -858,21 +880,46 @@ export default function StudentModalsManager() {
                             </div>
 
                             {/* Lessons list (collapsible) */}
-                            {allLessons.length > 0 && (
+                            {allDoneLessons.length > 0 && (
                               <div>
+                                {/* Toggle header */}
                                 <button
                                   onClick={() => setLessonsListOpen(prev => ({ ...prev, [student.id]: !prev[student.id] }))}
-                                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: isExpanded ? '0.5rem' : 0, width: '100%', textAlign: 'left' }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: isExpanded ? '0.625rem' : 0, width: '100%', textAlign: 'left' }}
                                 >
                                   <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                                    Заняття ({allLessons.length})
+                                    Заняття ({allDoneLessons.length})
                                   </span>
                                   <span style={{ fontSize: '0.6875rem', color: '#94a3b8', marginLeft: 'auto' }}>{isExpanded ? '▲ Згорнути' : '▼ Розгорнути'}</span>
                                 </button>
 
                                 {isExpanded && (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {sd.groups.map((group, gi) => (
+                                    {/* Type filter tabs */}
+                                    <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                                      {([
+                                        { key: 'all', label: 'Всі' },
+                                        { key: 'group', label: 'Групові' },
+                                        { key: 'individual', label: 'Індивід.' },
+                                        { key: 'makeup', label: 'Відпрацювання' },
+                                      ] as const).map(tab => {
+                                        const isActive = typeFilter === tab.key;
+                                        return (
+                                          <button
+                                            key={tab.key}
+                                            onClick={() => setStatsTypeFilter(prev => ({ ...prev, [student.id]: tab.key }))}
+                                            style={{ padding: '0.25rem 0.625rem', borderRadius: 8, border: `1px solid ${isActive ? '#3b82f6' : '#e2e8f0'}`, background: isActive ? '#eff6ff' : 'white', color: isActive ? '#1d4ed8' : '#64748b', fontSize: '0.75rem', fontWeight: isActive ? 700 : 500, cursor: 'pointer' }}
+                                          >
+                                            {tab.label}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+
+                                    {/* Groups */}
+                                    {visibleGroups.length === 0 ? (
+                                      <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: 8, color: '#94a3b8', fontSize: '0.8125rem', textAlign: 'center' }}>Немає занять цього типу</div>
+                                    ) : visibleGroups.map((group, gi) => (
                                       <div key={group.group_id ?? `group-${gi}`}>
                                         {/* Group header */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0.5rem', background: '#f8fafc', borderRadius: 6, marginBottom: '0.25rem' }}>
@@ -882,18 +929,12 @@ export default function StudentModalsManager() {
                                           {group.course_title && !group.is_individual && !group.is_makeup_group && (
                                             <span style={{ fontSize: '0.625rem', color: '#94a3b8' }}>{group.course_title}</span>
                                           )}
-                                          <span style={{ fontSize: '0.625rem', fontWeight: 600, color: '#16a34a' }}>{group.present + group.makeup}/{group.total}</span>
+                                          <span style={{ fontSize: '0.625rem', fontWeight: 600, color: '#16a34a' }}>{group.present + group.makeup}/{group.lessons.length}</span>
                                         </div>
                                         {/* Lesson rows */}
                                         <div style={{ borderRadius: 8, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
                                           {group.lessons.map((lesson, li) => {
                                             const d = new Date(lesson.lesson_date);
-                                            const statusMap: Record<string, { label: string; color: string; bg: string }> = {
-                                              present: { label: 'Присутній', color: '#16a34a', bg: '#f0fdf4' },
-                                              absent: { label: 'Відсутній', color: '#dc2626', bg: '#fef2f2' },
-                                              makeup_planned: { label: 'Заплановано', color: '#d97706', bg: '#fffbeb' },
-                                              makeup_done: { label: 'Відпрацював', color: '#2563eb', bg: '#eff6ff' },
-                                            };
                                             const statusInfo = (lesson.attendance_status && statusMap[lesson.attendance_status]) || { label: 'Не відмічений', color: '#94a3b8', bg: '#f9fafb' };
                                             return (
                                               <div
@@ -930,8 +971,8 @@ export default function StudentModalsManager() {
                               </div>
                             )}
 
-                            {allLessons.length === 0 && (
-                              <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: 8, color: '#94a3b8', fontSize: '0.8125rem', textAlign: 'center' }}>Немає занять за цей місяць</div>
+                            {allDoneLessons.length === 0 && (
+                              <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: 8, color: '#94a3b8', fontSize: '0.8125rem', textAlign: 'center' }}>Немає проведених занять за цей місяць</div>
                             )}
                           </>
                         );
