@@ -15,6 +15,7 @@ interface Note {
   tasks: Task[];
   color: string | null;
   is_pinned: boolean;
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
@@ -87,6 +88,15 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
       <div style={{ fontSize: '0.6875rem', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: 16 }}>
         {preview}
       </div>
+      {note.tags.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, paddingLeft: 16, marginTop: 3 }}>
+          {note.tags.slice(0, 3).map(tag => (
+            <span key={tag} style={{ fontSize: '0.5625rem', fontWeight: 700, padding: '0 0.3rem', borderRadius: 10, background: selected ? '#bfdbfe' : '#e2e8f0', color: selected ? '#1d4ed8' : '#64748b' }}>
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )}
     </button>
   );
 }
@@ -99,6 +109,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const [notes, setNotes]           = useState<Note[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch]         = useState('');
+  const [activeTag, setActiveTag]   = useState<string | null>(null);
   const [loading, setLoading]       = useState(false);
   const [saving, setSaving]         = useState(false);
   const [justSaved, setJustSaved]   = useState(false);
@@ -163,6 +174,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             tasks:     note.tasks,
             color:     note.color,
             is_pinned: note.is_pinned,
+            tags:      note.tags,
           }),
         });
         setJustSaved(true);
@@ -204,8 +216,12 @@ export default function NotesModal({ isOpen, onClose }: Props) {
     if (selectedId === id) setSelectedId(null);
   };
 
+  // All unique tags across notes
+  const allTags = Array.from(new Set(notes.flatMap(n => n.tags))).sort();
+
   // Filter
   const filtered = notes.filter(n => {
+    if (activeTag && !n.tags.includes(activeTag)) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -238,6 +254,18 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const renameTask = (taskId: string, text: string) => {
     if (!selectedNote) return;
     updateNote(selectedNote.id, { tasks: selectedNote.tasks.map(t => t.id === taskId ? { ...t, text } : t) });
+  };
+
+  const addTag = (tag: string) => {
+    if (!selectedNote) return;
+    const t = tag.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!t || selectedNote.tags.includes(t)) return;
+    updateNote(selectedNote.id, { tags: [...selectedNote.tags, t] });
+  };
+
+  const removeTag = (tag: string) => {
+    if (!selectedNote) return;
+    updateNote(selectedNote.id, { tags: selectedNote.tags.filter(t => t !== tag) });
   };
 
   const doneTasks  = selectedNote?.tasks.filter(t => t.done).length ?? 0;
@@ -330,6 +358,26 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                 )}
               </div>
             </div>
+
+            {/* Tag filter */}
+            {allTags.length > 0 && (
+              <div style={{ padding: '0 0.625rem 0.5rem', display: 'flex', flexWrap: 'wrap', gap: 4, flexShrink: 0 }}>
+                {allTags.map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                    style={{
+                      padding: '0.125rem 0.5rem', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 600,
+                      background: activeTag === tag ? '#1e293b' : '#e2e8f0',
+                      color: activeTag === tag ? '#ffffff' : '#64748b',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Note list */}
             <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -443,6 +491,9 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     <Trash2 size={14} strokeWidth={2} />
                   </button>
                 </div>
+
+                {/* Tags row */}
+                <TagsRow tags={selectedNote.tags} onAdd={addTag} onRemove={removeTag} bg={bg} />
 
                 {/* Content area */}
                 {selectedNote.type === 'note' ? (
@@ -620,6 +671,52 @@ function TaskItem({ task, onToggle, onDelete, onRename }: {
       >
         <X size={12} />
       </button>
+    </div>
+  );
+}
+
+// ── Tags row ──────────────────────────────────────────────────────────────────
+
+function TagsRow({ tags, onAdd, onRemove, bg }: { tags: string[]; onAdd: (t: string) => void; onRemove: (t: string) => void; bg: string }) {
+  const [adding, setAdding] = useState(false);
+  const [input, setInput]   = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const commit = () => {
+    if (input.trim()) onAdd(input);
+    setInput('');
+    setAdding(false);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.375rem 1.125rem', borderBottom: tags.length > 0 || adding ? '1px solid #f1f5f9' : 'none', background: bg, minHeight: tags.length > 0 || adding ? undefined : 0, alignItems: 'center' }}>
+      {tags.map(tag => (
+        <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '0.125rem 0.5rem', borderRadius: 20, background: '#e2e8f0', fontSize: '0.6875rem', fontWeight: 600, color: '#475569' }}>
+          #{tag}
+          <button onClick={() => onRemove(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#94a3b8', lineHeight: 1 }}>
+            <X size={10} />
+          </button>
+        </span>
+      ))}
+      {adding ? (
+        <input
+          ref={inputRef}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onBlur={commit}
+          onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setAdding(false); setInput(''); } }}
+          placeholder="мітка..."
+          autoFocus
+          style={{ border: 'none', borderBottom: '1.5px solid #3b82f6', background: 'transparent', outline: 'none', fontSize: '0.6875rem', width: 70, color: '#374151', userSelect: 'text' }}
+        />
+      ) : (
+        <button
+          onClick={() => { setAdding(true); setTimeout(() => inputRef.current?.focus(), 0); }}
+          style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: 20, cursor: 'pointer', padding: '0.125rem 0.5rem', fontSize: '0.6875rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 3 }}
+        >
+          <Plus size={9} strokeWidth={2.5} /> тег
+        </button>
+      )}
     </div>
   );
 }

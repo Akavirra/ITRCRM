@@ -104,7 +104,8 @@
       "Bash(node scripts/add-salary-extra-items.js)",
       "Bash(head:*)",
       "Bash(find C:/CProjects/ITRoboticsCRM/ITRobotCRM -name *.sql -not -path */node_modules/*)",
-      "Bash(grep -rn \"img-src\\\\|Content-Security\\\\|CSP\" C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/ C:/CProjects/ITRoboticsCRM/ITRobotCRM/next.config.*)"
+      "Bash(grep -rn \"img-src\\\\|Content-Security\\\\|CSP\" C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/ C:/CProjects/ITRoboticsCRM/ITRobotCRM/next.config.*)",
+      "Bash(node scripts/add-notes-tags.js)"
     ]
   }
 }

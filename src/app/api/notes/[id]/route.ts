@@ -31,6 +31,7 @@ export async function PATCH(
   if (body.tasks !== undefined)     { fields.push(`tasks = $${idx++}`);     values.push(JSON.stringify(body.tasks)); }
   if (body.color !== undefined)     { fields.push(`color = $${idx++}`);     values.push(body.color); }
   if (body.is_pinned !== undefined) { fields.push(`is_pinned = $${idx++}`); values.push(body.is_pinned); }
+  if (body.tags !== undefined)      { fields.push(`tags = $${idx++}`);      values.push(body.tags); }
 
   if (fields.length === 0) return NextResponse.json({ ok: true });
 

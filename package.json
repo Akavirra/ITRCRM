@@ -29,6 +29,7 @@
     "db:add-salary-extra-items": "node scripts/add-salary-extra-items.js",
     "db:add-is-owner": "node scripts/add-is-owner.js",
     "db:add-notes": "node scripts/add-notes.js",
+    "db:add-notes-tags": "node scripts/add-notes-tags.js",
     "test": "jest"
   },
   "dependencies": {
