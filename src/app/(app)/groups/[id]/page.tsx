@@ -136,6 +136,12 @@ export default function GroupDetailsPage() {
   const [addingStudentId, setAddingStudentId] = useState<number | null>(null);
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Change teacher state
+  const [showChangeTeacher, setShowChangeTeacher] = useState(false);
+  const [changeTeacherForm, setChangeTeacherForm] = useState({ newTeacherId: '', reason: '' });
+  const [changingTeacher, setChangingTeacher] = useState(false);
+  const [changeTeacherError, setChangeTeacherError] = useState('');
+
   // Edit group form
   const [editForm, setEditForm] = useState({
     course_id: '',
@@ -389,6 +395,34 @@ export default function GroupDetailsPage() {
       console.error('Failed to save group:', error);
     } finally {
       setSavingGroup(false);
+    }
+  };
+
+  const handleChangeTeacher = async () => {
+    if (!changeTeacherForm.newTeacherId) return;
+    setChangingTeacher(true);
+    setChangeTeacherError('');
+    try {
+      const res = await fetch(`/api/groups/${groupId}/change-teacher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          newTeacherId: parseInt(changeTeacherForm.newTeacherId),
+          reason: changeTeacherForm.reason.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setChangeTeacherError(data.error || 'Помилка зміни викладача');
+        return;
+      }
+      setGroup(data.group);
+      setShowChangeTeacher(false);
+      setChangeTeacherForm({ newTeacherId: '', reason: '' });
+    } catch {
+      setChangeTeacherError('Помилка з\'єднання');
+    } finally {
+      setChangingTeacher(false);
     }
   };
 
@@ -1002,16 +1036,76 @@ export default function GroupDetailsPage() {
 
               {/* Викладач */}
               <div style={{ marginBottom: '0.875rem', padding: '0.875rem', backgroundColor: 'var(--gray-50)', borderRadius: '0.5rem', border: '1px solid var(--gray-200)' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', color: 'var(--gray-500)', letterSpacing: '0.05em', marginBottom: '0.375rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                  Викладач
+                <div style={{ fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', color: 'var(--gray-500)', letterSpacing: '0.05em', marginBottom: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    Викладач
+                  </div>
+                  {user?.role === 'admin' && !showChangeTeacher && (
+                    <button
+                      onClick={() => {
+                        setShowChangeTeacher(true);
+                        setChangeTeacherForm({ newTeacherId: '', reason: '' });
+                        setChangeTeacherError('');
+                      }}
+                      style={{ fontSize: '0.7rem', fontWeight: '600', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: '4px', textTransform: 'none', letterSpacing: 0 }}
+                      onMouseOver={e => { e.currentTarget.style.background = '#eff6ff'; }}
+                      onMouseOut={e => { e.currentTarget.style.background = 'none'; }}
+                    >
+                      Змінити
+                    </button>
+                  )}
                 </div>
                 <div style={{ fontSize: '1.0625rem', fontWeight: '500', color: 'var(--gray-900)' }}>
                   {group.teacher_name}
                 </div>
+
+                {/* Inline change-teacher form */}
+                {showChangeTeacher && (
+                  <div style={{ marginTop: '0.75rem', padding: '0.875rem', background: '#fff', borderRadius: '0.5rem', border: '1px solid #dbeafe' }}>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: '600', color: '#1e40af', marginBottom: '0.625rem' }}>
+                      Замінити викладача групи
+                    </div>
+                    <select
+                      value={changeTeacherForm.newTeacherId}
+                      onChange={e => setChangeTeacherForm(f => ({ ...f, newTeacherId: e.target.value }))}
+                      style={{ width: '100%', padding: '0.5rem 0.625rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', marginBottom: '0.5rem', color: changeTeacherForm.newTeacherId ? '#111827' : '#9ca3af', background: '#fff' }}
+                    >
+                      <option value="">Оберіть нового викладача...</option>
+                      {teachers.filter(t => t.id !== group.teacher_id).map(t => (
+                        <option key={t.id} value={String(t.id)}>{t.name}</option>
+                      ))}
+                    </select>
+                    <textarea
+                      placeholder="Причина зміни (необов'язково)"
+                      value={changeTeacherForm.reason}
+                      onChange={e => setChangeTeacherForm(f => ({ ...f, reason: e.target.value }))}
+                      rows={2}
+                      style={{ width: '100%', padding: '0.5rem 0.625rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', marginBottom: '0.5rem', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                    {changeTeacherError && (
+                      <div style={{ fontSize: '0.8rem', color: '#dc2626', marginBottom: '0.5rem' }}>{changeTeacherError}</div>
+                    )}
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        onClick={() => { setShowChangeTeacher(false); setChangeTeacherError(''); }}
+                        style={{ flex: 1, padding: '0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', background: '#fff', color: '#374151', cursor: 'pointer' }}
+                      >
+                        Скасувати
+                      </button>
+                      <button
+                        onClick={handleChangeTeacher}
+                        disabled={!changeTeacherForm.newTeacherId || changingTeacher}
+                        style={{ flex: 2, padding: '0.5rem', fontSize: '0.8125rem', borderRadius: '0.375rem', border: 'none', background: !changeTeacherForm.newTeacherId || changingTeacher ? '#93c5fd' : '#2563eb', color: '#fff', cursor: !changeTeacherForm.newTeacherId || changingTeacher ? 'not-allowed' : 'pointer', fontWeight: '600' }}
+                      >
+                        {changingTeacher ? 'Збереження...' : 'Змінити викладача'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Розклад */}

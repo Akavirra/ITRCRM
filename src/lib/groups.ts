@@ -524,3 +524,65 @@ export async function reactivateStudentInGroup(studentId: number, groupId: numbe
 export async function searchGroups(query: string, includeInactive: boolean = false): Promise<GroupWithDetails[]> {
   return await getGroupsFiltered({ search: query, includeInactive });
 }
+
+// ── Teacher assignment history ────────────────────────────────────────────────
+
+export interface TeacherAssignment {
+  id: number;
+  group_id: number;
+  teacher_id: number;
+  teacher_name: string;
+  started_at: string;
+  ended_at: string | null;
+  changed_by: number | null;
+  changed_by_name: string | null;
+  reason: string | null;
+  created_at: string;
+}
+
+/**
+ * Permanently change the group's teacher.
+ * Closes the current assignment record and opens a new one,
+ * then updates groups.teacher_id.
+ * Future lessons with teacher_id IS NULL will automatically inherit the new teacher.
+ */
+export async function changeGroupTeacher(
+  groupId: number,
+  newTeacherId: number,
+  changedBy: number,
+  reason?: string | null
+): Promise<void> {
+  // 1. Close current open assignment
+  await run(
+    `UPDATE group_teacher_assignments SET ended_at = NOW() WHERE group_id = $1 AND ended_at IS NULL`,
+    [groupId]
+  );
+
+  // 2. Create new assignment record
+  await run(
+    `INSERT INTO group_teacher_assignments (group_id, teacher_id, changed_by, reason)
+     VALUES ($1, $2, $3, $4)`,
+    [groupId, newTeacherId, changedBy, reason || null]
+  );
+
+  // 3. Update the group's permanent teacher
+  await run(
+    `UPDATE groups SET teacher_id = $1, updated_at = NOW() WHERE id = $2`,
+    [newTeacherId, groupId]
+  );
+}
+
+/** Returns the full teacher assignment history for a group (newest first). */
+export async function getGroupTeacherAssignments(groupId: number): Promise<TeacherAssignment[]> {
+  return await all<TeacherAssignment>(
+    `SELECT gta.*,
+            u.name  AS teacher_name,
+            cb.name AS changed_by_name
+     FROM group_teacher_assignments gta
+     JOIN users u   ON gta.teacher_id  = u.id
+     LEFT JOIN users cb ON gta.changed_by = cb.id
+     WHERE gta.group_id = $1
+     ORDER BY gta.started_at DESC`,
+    [groupId]
+  );
+}
