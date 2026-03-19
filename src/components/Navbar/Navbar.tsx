@@ -685,7 +685,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     onClick={() => { setDropdownOpen(false); setSettingsOpen(true); setActiveSettingsTab('profile'); }}
                   >
                     <User size={16} />
-                    {t('profile.title') || 'Профіль'}
+                    Мій профіль
                   </button>
                   <button
                     className={`${styles.dropdownItem} ${styles.danger}`}
@@ -896,8 +896,20 @@ const Navbar: React.FC<NavbarProps> = ({
                           </label>
                           {profilePhotoPreview && (
                             <button onClick={() => { setProfilePhotoPreview(null); setProfilePhotoBase64(null); }}
-                              style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#ef4444' }}>
+                              style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#64748b' }}>
                               Скасувати
+                            </button>
+                          )}
+                          {!profilePhotoPreview && userPhotoUrl && (
+                            <button
+                              onClick={async () => {
+                                if (!confirm('Видалити фото профілю?')) return;
+                                await fetch('/api/auth/profile', { method: 'DELETE' });
+                                setUserPhotoUrl(null);
+                              }}
+                              style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#ef4444' }}
+                            >
+                              Видалити фото
                             </button>
                           )}
                           <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0.4rem 0 0' }}>JPG, PNG — до 5 МБ</p>

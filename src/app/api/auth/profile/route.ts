@@ -5,6 +5,23 @@ import { uploadImage, deleteImage, getPublicIdFromUrl } from '@/lib/cloudinary';
 
 export const dynamic = 'force-dynamic';
 
+// DELETE /api/auth/profile — remove own photo
+export async function DELETE(request: NextRequest) {
+  const currentUser = await getAuthUser(request);
+  if (!currentUser) return unauthorized();
+
+  const existing = await get<{ photo_url: string | null }>(
+    `SELECT photo_url FROM users WHERE id = $1`,
+    [currentUser.id]
+  );
+  if (existing?.photo_url) {
+    const publicId = getPublicIdFromUrl(existing.photo_url);
+    if (publicId) await deleteImage(publicId).catch(() => {});
+  }
+  await run(`UPDATE users SET photo_url = NULL, updated_at = NOW() WHERE id = $1`, [currentUser.id]);
+  return NextResponse.json({ ok: true });
+}
+
 // PATCH /api/auth/profile — update own name, phone, photo
 export async function PATCH(request: NextRequest) {
   const currentUser = await getAuthUser(request);
