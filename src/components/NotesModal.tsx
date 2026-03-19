@@ -143,15 +143,30 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const origin    = useRef({ mx: 0, my: 0, px: 0, py: 0 });
   const resizeOrigin = useRef({ mx: 0, my: 0, w: 640, h: 520 });
 
-  // Centre on first open
+  // Restore or centre position/size on first open
   useEffect(() => {
     if (isOpen && pos.x === -1) {
+      try {
+        const saved = localStorage.getItem('itrobot-notes-layout');
+        if (saved) {
+          const { x, y, w, h } = JSON.parse(saved);
+          setPos({ x, y });
+          setSize({ w, h });
+          return;
+        }
+      } catch { /* ignore */ }
       setPos({
         x: Math.max(20, window.innerWidth  / 2 - 320),
         y: Math.max(20, window.innerHeight / 2 - 260),
       });
     }
   }, [isOpen, pos.x]);
+
+  // Persist layout when pos/size change
+  useEffect(() => {
+    if (pos.x === -1) return;
+    localStorage.setItem('itrobot-notes-layout', JSON.stringify({ x: pos.x, y: pos.y, w: size.w, h: size.h }));
+  }, [pos, size]);
 
   // Drag & Resize
   useEffect(() => {
