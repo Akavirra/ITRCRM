@@ -151,21 +151,21 @@ export default function CalculatorModal({ isOpen, onClose }: Props) {
           userSelect: 'none',
         }}
       >
-        {/* Drag handle / header */}
+        {/* Drag handle / header — dark */}
         <div
           onMouseDown={startDrag}
-          style={{ padding: '0.75rem 0.875rem 0.375rem', display: 'flex', alignItems: 'center', cursor: 'grab', background: 'white' }}
+          style={{ padding: '0.75rem 0.875rem 0', display: 'flex', alignItems: 'center', cursor: 'grab', background: '#1e293b' }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2" style={{ marginRight: '0.375rem', flexShrink: 0 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" style={{ marginRight: '0.375rem', flexShrink: 0 }}>
             <rect x="4" y="2" width="4" height="4" rx="1"/><rect x="10" y="2" width="4" height="4" rx="1"/><rect x="16" y="2" width="4" height="4" rx="1"/>
             <rect x="4" y="8" width="4" height="4" rx="1"/><rect x="10" y="8" width="4" height="4" rx="1"/><rect x="16" y="8" width="4" height="4" rx="1"/>
           </svg>
-          <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '0.08em', flex: 1 }}>Калькулятор</span>
+          <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', flex: 1 }}>Калькулятор</span>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.125rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', borderRadius: 6, width: 24, height: 24 }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fee2e2'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#cbd5e1'; e.currentTarget.style.background = 'transparent'; }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.125rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', borderRadius: 6, width: 24, height: 24 }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.background = 'transparent'; }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -173,28 +173,25 @@ export default function CalculatorModal({ isOpen, onClose }: Props) {
           </button>
         </div>
 
-        {/* Display */}
-        <div style={{ padding: '0.125rem 1.125rem 0.875rem' }}>
-          <div style={{ fontSize: '0.625rem', color: '#cbd5e1', height: '1.125rem', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {/* Display — dark background */}
+        <div style={{ background: '#1e293b', padding: '0.5rem 1.125rem 1.125rem' }}>
+          <div style={{ fontSize: '0.6875rem', color: '#64748b', height: '1.25rem', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {expression || '\u00a0'}
           </div>
           <div style={{
-            fontSize: display.length > 10 ? '1.625rem' : '2.375rem',
+            fontSize: display.length > 10 ? '1.75rem' : '2.5rem',
             fontWeight: 700,
-            color: '#0f172a',
+            color: '#f1f5f9',
             textAlign: 'right',
             lineHeight: 1.15,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            letterSpacing: '-0.01em',
+            letterSpacing: '-0.02em',
           }}>
             {display}
           </div>
         </div>
-
-        {/* Divider */}
-        <div style={{ height: 1, background: '#f1f5f9', margin: '0 0.875rem' }} />
 
         {/* Button grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4375rem', padding: '0.875rem' }}>
