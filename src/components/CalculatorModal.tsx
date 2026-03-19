@@ -83,13 +83,13 @@ export default function CalculatorModal({ isOpen, onClose }: Props) {
     if (prevValue !== null && !waiting) {
       const result = compute(prevValue, val, operator!);
       const s = fmt(result);
-      setDisplay(s);
       setPrevValue(result);
       setExpression(s + ' ' + o);
     } else {
       setPrevValue(val);
       setExpression(display + ' ' + o);
     }
+    setDisplay('0');
     setOperator(o);
     setWaiting(true);
   };
