@@ -84,9 +84,6 @@ export default function GroupsPage() {
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
   
-  // Status change
-  const [changingStatus, setChangingStatus] = useState<number | null>(null);
-
   // Graduate modal state
   const [showGraduateModal, setShowGraduateModal] = useState(false);
   const [groupToGraduate, setGroupToGraduate] = useState<Group | null>(null);
@@ -270,26 +267,6 @@ export default function GroupsPage() {
         return 'badge-gray';
       default:
         return 'badge-gray';
-    }
-  };
-
-  const handleStatusChange = async (groupId: number, newStatus: string) => {
-    setChangingStatus(groupId);
-    try {
-      await fetch(`/api/groups/${groupId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      
-      // Refresh groups
-      const res = await fetch('/api/groups?includeInactive=true');
-      const data = await res.json();
-      setGroups(data.groups || []);
-    } catch (error) {
-      console.error('Failed to change status:', error);
-    } finally {
-      setChangingStatus(null);
     }
   };
 
@@ -944,36 +921,9 @@ export default function GroupsPage() {
                       {getMonthsSinceCreated(group.created_at)}
                     </td>
                     <td>
-                      {user.role === 'admin' && changingStatus !== group.id ? (
-                        <select
-                          value={group.status}
-                          onChange={(e) => handleStatusChange(group.id, e.target.value)}
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            fontSize: '0.75rem',
-                            borderRadius: '0.375rem',
-                            border: `2px solid ${
-                              group.status === 'active' ? '#10b981' :
-                              group.status === 'graduate' ? '#3b82f6' :
-                              '#6b7280'
-                            }`,
-                            backgroundColor: 'white',
-                            cursor: 'pointer',
-                            fontWeight: 500,
-                            color: group.status === 'active' ? '#065f46' :
-                                   group.status === 'graduate' ? '#1e40af' :
-                                   '#374151',
-                          }}
-                        >
-                          <option value="active">{uk.groupStatus.active}</option>
-                          <option value="graduate">{uk.groupStatus.graduate}</option>
-                          <option value="inactive">{uk.groupStatus.inactive}</option>
-                        </select>
-                      ) : (
-                        <span className={`badge ${getStatusBadgeClass(group.status)}`}>
-                          {changingStatus === group.id ? '...' : getStatusLabel(group.status)}
-                        </span>
-                      )}
+                      <span className={`badge ${getStatusBadgeClass(group.status)}`}>
+                        {getStatusLabel(group.status)}
+                      </span>
                     </td>
                     <td>
                       {group.note ? (
