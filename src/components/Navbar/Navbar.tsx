@@ -109,7 +109,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [clearing, setClearing] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const prevUnreadRef = useRef<number | null>(null);
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'profile' | 'notifications' | 'system'>('general');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'profile' | 'notifications' | 'salary' | 'system'>('general');
   const [settings, setSettings] = useState({
     displayName: user?.name || '',
     email: '',
@@ -676,6 +676,7 @@ const Navbar: React.FC<NavbarProps> = ({
                   { id: 'general', label: 'Загальні' },
                   { id: 'profile', label: 'Профіль' },
                   { id: 'notifications', label: 'Сповіщення' },
+                  { id: 'salary', label: 'Ціни та зарплата' },
                   { id: 'system', label: 'Система' },
                 ].map((tab) => (
                   <button
@@ -879,6 +880,73 @@ const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 )}
 
+                {/* Salary Tab */}
+                {activeSettingsTab === 'salary' && (
+                  <div>
+                    <h3 style={{
+                      fontSize: '0.8125rem', fontWeight: '600', color: '#374151',
+                      marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em',
+                      display: 'flex', alignItems: 'center', gap: '0.4rem',
+                    }}>
+                      <DollarSign size={14} />
+                      Зарплата викладачів
+                    </h3>
+                    <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '1.25rem' }}>
+                      Ставка за <b>1 дитину</b> на одному занятті
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', maxWidth: '400px', marginBottom: '1.25rem' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Групове заняття (₴)</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          min={0}
+                          step={1}
+                          value={salarySettings.teacher_salary_group}
+                          onChange={e => setSalarySettings(prev => ({ ...prev, teacher_salary_group: e.target.value }))}
+                        />
+                        <span className="form-hint">₴ за 1 учня</span>
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Індивідуальне (₴)</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          min={0}
+                          step={1}
+                          value={salarySettings.teacher_salary_individual}
+                          onChange={e => setSalarySettings(prev => ({ ...prev, teacher_salary_individual: e.target.value }))}
+                        />
+                        <span className="form-hint">₴ за 1 учня</span>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      padding: '0.875rem 1rem',
+                      background: '#f0f9ff',
+                      border: '1px solid #bae6fd',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.8125rem',
+                      color: '#0369a1',
+                      maxWidth: '400px',
+                      marginBottom: '1.25rem',
+                      lineHeight: 1.5,
+                    }}>
+                      <b>Приклад:</b> Групове заняття з 5 дітей → {parseFloat(salarySettings.teacher_salary_group) || 0} × 5 = <b>{((parseFloat(salarySettings.teacher_salary_group) || 0) * 5).toFixed(0)} ₴</b>
+                    </div>
+
+                    <button
+                      className="btn btn-primary"
+                      onClick={handleSalarySave}
+                      disabled={salarySaving}
+                    >
+                      <Save size={14} />
+                      {salarySaving ? 'Збереження...' : 'Зберегти тарифи'}
+                    </button>
+                  </div>
+                )}
+
                 {/* System Tab */}
                 {activeSettingsTab === 'system' && (
                   <div>
@@ -923,56 +991,6 @@ const Navbar: React.FC<NavbarProps> = ({
                       fontWeight: '600',
                       color: '#374151',
                       marginTop: '1.5rem',
-                      marginBottom: '1rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                    }}>
-                      <DollarSign size={14} />
-                      Зарплата викладачів
-                    </h3>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', maxWidth: '400px' }}>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label">Групове заняття (₴)</label>
-                        <input
-                          type="number"
-                          className="form-input"
-                          min={0}
-                          step={1}
-                          value={salarySettings.teacher_salary_group}
-                          onChange={e => setSalarySettings(prev => ({ ...prev, teacher_salary_group: e.target.value }))}
-                        />
-                      </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label">Індивідуальне (₴)</label>
-                        <input
-                          type="number"
-                          className="form-input"
-                          min={0}
-                          step={1}
-                          value={salarySettings.teacher_salary_individual}
-                          onChange={e => setSalarySettings(prev => ({ ...prev, teacher_salary_individual: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                    <button
-                      className="btn btn-primary"
-                      onClick={handleSalarySave}
-                      disabled={salarySaving}
-                      style={{ marginBottom: '1.5rem' }}
-                    >
-                      <Save size={14} />
-                      {salarySaving ? 'Збереження...' : 'Зберегти тарифи'}
-                    </button>
-
-                    <h3 style={{
-                      fontSize: '0.8125rem',
-                      fontWeight: '600',
-                      color: '#374151',
-                      marginTop: '0.5rem',
                       marginBottom: '1rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
