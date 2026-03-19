@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     teacher_id: number;
     teacher_name: string;
     lesson_id: number;
+    group_id: number | null;
     capacity: number | null;
     present_count: string;
     makeup_count: string;
@@ -39,18 +40,19 @@ export async function GET(request: NextRequest) {
       COALESCE(ltr.replacement_teacher_id, l.teacher_id, g.teacher_id) AS teacher_id,
       u.name AS teacher_name,
       l.id AS lesson_id,
+      l.group_id,
       g.capacity,
       COUNT(a.id) FILTER (WHERE a.status IN ('present', 'makeup_done')) AS present_count,
       COUNT(a.id) FILTER (WHERE a.status = 'makeup_done') AS makeup_count
     FROM lessons l
-    JOIN groups g ON l.group_id = g.id
+    LEFT JOIN groups g ON l.group_id = g.id
     LEFT JOIN lesson_teacher_replacements ltr ON ltr.lesson_id = l.id
     JOIN users u ON u.id = COALESCE(ltr.replacement_teacher_id, l.teacher_id, g.teacher_id)
     LEFT JOIN attendance a ON a.lesson_id = l.id
     WHERE l.status = 'done'
       AND EXTRACT(YEAR FROM l.lesson_date) = $1
       AND EXTRACT(MONTH FROM l.lesson_date) = $2
-    GROUP BY COALESCE(ltr.replacement_teacher_id, l.teacher_id, g.teacher_id), u.name, l.id, g.capacity
+    GROUP BY COALESCE(ltr.replacement_teacher_id, l.teacher_id, g.teacher_id), u.name, l.id, l.group_id, g.capacity
     ORDER BY u.name ASC
   `, [year, month]);
 
@@ -83,7 +85,7 @@ export async function GET(request: NextRequest) {
     const t = teacherMap.get(tid)!;
     const presentCount = parseInt(row.present_count as unknown as string, 10) || 0;
     const makeupCount = parseInt(row.makeup_count as unknown as string, 10) || 0;
-    const isIndividual = row.capacity === 1;
+    const isIndividual = !row.group_id || row.capacity === 1;
     const rate = isIndividual ? salaryIndividual : salaryGroup;
 
     t.total_lessons++;

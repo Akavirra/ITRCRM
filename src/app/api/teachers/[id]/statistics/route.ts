@@ -36,8 +36,8 @@ export async function GET(
   const lessons = await all<{
     lesson_id: number;
     lesson_date: string;
-    group_id: number;
-    group_title: string;
+    group_id: number | null;
+    group_title: string | null;
     capacity: number | null;
     is_replacement: boolean;
     original_teacher_id: number | null;
@@ -55,7 +55,7 @@ export async function GET(
       COUNT(a.id) FILTER (WHERE a.status IN ('present', 'makeup_done')) AS present_count,
       COUNT(a.id) FILTER (WHERE a.status = 'makeup_done') AS makeup_count
     FROM lessons l
-    JOIN groups g ON l.group_id = g.id
+    LEFT JOIN groups g ON l.group_id = g.id
     LEFT JOIN lesson_teacher_replacements ltr ON ltr.lesson_id = l.id
     LEFT JOIN attendance a ON a.lesson_id = l.id
     WHERE l.status = 'done'
@@ -76,7 +76,7 @@ export async function GET(
   const lessonRows = lessons.map(row => {
     const presentCount = parseInt(row.present_count as unknown as string, 10) || 0;
     const makeupCount = parseInt(row.makeup_count as unknown as string, 10) || 0;
-    const isIndividual = row.capacity === 1;
+    const isIndividual = !row.group_id || row.capacity === 1;
     const rate = isIndividual ? salaryIndividual : salaryGroup;
     const salary = presentCount * rate;
 
