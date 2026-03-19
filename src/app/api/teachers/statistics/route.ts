@@ -44,8 +44,8 @@ export async function GET(request: NextRequest) {
       COUNT(a.id) FILTER (WHERE a.status = 'makeup_done') AS makeup_count
     FROM lessons l
     JOIN groups g ON l.group_id = g.id
-    JOIN users u ON u.id = COALESCE(ltr.replacement_teacher_id, l.teacher_id, g.teacher_id)
     LEFT JOIN lesson_teacher_replacements ltr ON ltr.lesson_id = l.id
+    JOIN users u ON u.id = COALESCE(ltr.replacement_teacher_id, l.teacher_id, g.teacher_id)
     LEFT JOIN attendance a ON a.lesson_id = l.id
     WHERE l.status = 'done'
       AND EXTRACT(YEAR FROM l.lesson_date) = $1
