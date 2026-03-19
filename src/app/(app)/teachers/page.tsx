@@ -205,6 +205,14 @@ export default function TeachersPage() {
   const [addingItem, setAddingItem] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
 
+  // Salaries modal (standalone, with teacher switcher)
+  const [showSalariesModal, setShowSalariesModal] = useState(false);
+  const [salariesMonth, setSalariesMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [selectedSalaryTeacherId, setSelectedSalaryTeacherId] = useState<number | null>(null);
+
   // Copy to clipboard state
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -256,19 +264,29 @@ export default function TeachersPage() {
     }
   };
 
-  const openSalaryModal = async (teacher: { teacher_id: number; teacher_name: string }) => {
-    setSalaryModal({ teacherId: teacher.teacher_id, teacherName: teacher.teacher_name });
+  const fetchSalaryData = async (teacherId: number, teacherName: string, month: string) => {
     setSalaryData(null);
     setSalaryLoading(true);
     setNewItemDesc('');
     setNewItemAmount('');
-    const [year, mon] = statsMonth.split('-');
+    const [year, mon] = month.split('-');
     try {
-      const res = await fetch(`/api/teachers/${teacher.teacher_id}/salary?year=${year}&month=${mon}`);
+      const res = await fetch(`/api/teachers/${teacherId}/salary?year=${year}&month=${mon}`);
       if (res.ok) setSalaryData(await res.json());
     } catch { /* silent */ } finally {
       setSalaryLoading(false);
     }
+  };
+
+  const openSalaryModal = async (teacher: { teacher_id: number; teacher_name: string }) => {
+    setSalaryModal({ teacherId: teacher.teacher_id, teacherName: teacher.teacher_name });
+    await fetchSalaryData(teacher.teacher_id, teacher.teacher_name, statsMonth);
+  };
+
+  const selectSalaryTeacher = async (teacher: Teacher) => {
+    setSelectedSalaryTeacherId(teacher.id);
+    setSalaryModal({ teacherId: teacher.id, teacherName: teacher.name });
+    await fetchSalaryData(teacher.id, teacher.name, salariesMonth);
   };
 
   const addSalaryExtraItem = async () => {
@@ -661,6 +679,21 @@ export default function TeachersPage() {
                   <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
                 </svg>
                 Статистика
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowSalariesModal(true);
+                  const activeTeachers = teachers.filter(t => t.is_active !== false);
+                  if (activeTeachers.length > 0 && !selectedSalaryTeacherId) {
+                    selectSalaryTeacher(activeTeachers[0]);
+                  }
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '0.375rem' }}>
+                  <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                Зарплати
               </button>
               <button className="btn btn-primary" onClick={handleCreate}>
                 + {t('modals.newTeacher') || 'Новий викладач'}
@@ -1569,6 +1602,231 @@ export default function TeachersPage() {
           {toast.message}
         </div>
       )};
+
+      {/* Salaries Modal */}
+      {showSalariesModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(5px)', zIndex: 9050, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowSalariesModal(false)}
+        >
+          <div
+            style={{ background: 'white', borderRadius: 20, boxShadow: '0 28px 90px rgba(0,0,0,0.22)', width: 980, maxWidth: '97vw', maxHeight: '93vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #f1f5f9', background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700, color: '#14532d', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Зарплати викладачів
+              </h2>
+              <input
+                type="month"
+                value={salariesMonth}
+                onChange={e => {
+                  setSalariesMonth(e.target.value);
+                  if (selectedSalaryTeacherId) {
+                    const t = teachers.find(t => t.id === selectedSalaryTeacherId);
+                    if (t) fetchSalaryData(t.id, t.name, e.target.value);
+                  }
+                }}
+                style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', border: '1.5px solid #bbf7d0', borderRadius: 8, background: 'white', color: '#14532d', outline: 'none' }}
+              />
+              <button
+                onClick={() => setShowSalariesModal(false)}
+                style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'rgba(0,0,0,0.06)', borderRadius: 8, cursor: 'pointer', color: '#166534', fontSize: '1.25rem' }}
+              >×</button>
+            </div>
+
+            {/* Body: sidebar + content */}
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              {/* Teacher list sidebar */}
+              <div style={{ width: 200, flexShrink: 0, borderRight: '1px solid #f1f5f9', overflow: 'auto', background: '#fafafa', padding: '0.5rem' }}>
+                {teachers.filter(t => t.is_active !== false).map(t => {
+                  const isSelected = selectedSalaryTeacherId === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => selectSalaryTeacher(t)}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        padding: '0.625rem 0.75rem', marginBottom: '0.2rem', borderRadius: 10,
+                        border: 'none', background: isSelected ? '#dcfce7' : 'transparent',
+                        color: isSelected ? '#14532d' : '#374151',
+                        fontWeight: isSelected ? 700 : 400, fontSize: '0.875rem',
+                        cursor: 'pointer', textAlign: 'left', transition: 'all 0.1s',
+                      }}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f0fdf4'; }}
+                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: isSelected ? '#16a34a' : '#e5e7eb', color: isSelected ? 'white' : '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
+                        {t.name.charAt(0)}
+                      </div>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Salary content */}
+              <div style={{ flex: 1, overflow: 'auto', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {!selectedSalaryTeacherId ? (
+                  <div style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>Оберіть викладача</div>
+                ) : salaryLoading ? (
+                  <div style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>Завантаження...</div>
+                ) : !salaryData ? (
+                  <div style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>Немає даних</div>
+                ) : (
+                  <>
+                    {/* Teacher name + rates */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, flexShrink: 0 }}>
+                        {salaryData.teacher.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>{salaryData.teacher.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                          {MONTHS_UK[salaryData.month - 1]} {salaryData.year} · {salaryData.salary_group_rate} ₴ груп. / {salaryData.salary_individual_rate} ₴ інд.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Lessons */}
+                    <div>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.625rem' }}>
+                        Заняття ({salaryData.lessons.length})
+                      </div>
+                      {salaryData.lessons.length === 0 ? (
+                        <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: 10, color: '#94a3b8', fontSize: '0.875rem', textAlign: 'center' }}>Немає занять за цей місяць</div>
+                      ) : (
+                        <div style={{ borderRadius: 10, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                            <thead>
+                              <tr style={{ background: '#f8fafc' }}>
+                                <th style={{ padding: '0.5rem 0.875rem', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Дата</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Група / тип</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Учнів</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Ставка</th>
+                                <th style={{ padding: '0.5rem 0.875rem', textAlign: 'right', fontWeight: 600, color: '#64748b', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9' }}>Сума</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {salaryData.lessons.map((l, i) => {
+                                const d = new Date(l.lesson_date);
+                                return (
+                                  <tr key={l.lesson_id} style={{ borderBottom: '1px solid #f8fafc', background: i % 2 === 0 ? 'white' : '#fafbfc' }}>
+                                    <td style={{ padding: '0.5rem 0.875rem', color: '#374151', whiteSpace: 'nowrap' }}>{d.getUTCDate()} {MONTHS_UK_GEN[d.getUTCMonth()]}</td>
+                                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                        <span style={{ color: '#374151' }}>{l.group_title || 'Без групи'}</span>
+                                        {l.is_individual && <span style={{ background: '#f5f3ff', color: '#7c3aed', borderRadius: 8, padding: '0.05rem 0.4rem', fontSize: '0.625rem', fontWeight: 600 }}>Інд.</span>}
+                                        {l.is_replacement && <span style={{ background: '#fff7ed', color: '#c2410c', borderRadius: 8, padding: '0.05rem 0.4rem', fontSize: '0.625rem', fontWeight: 600 }}>Заміна</span>}
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>{l.present_count}</td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', color: '#64748b' }}>{l.rate} ₴</td>
+                                    <td style={{ padding: '0.5rem 0.875rem', textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>{l.salary.toLocaleString()} ₴</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                            <tfoot>
+                              <tr style={{ background: '#f0fdf4', borderTop: '1.5px solid #bbf7d0' }}>
+                                <td colSpan={4} style={{ padding: '0.5rem 0.875rem', fontWeight: 700, color: '#14532d', fontSize: '0.8125rem' }}>Разом за заняття</td>
+                                <td style={{ padding: '0.5rem 0.875rem', textAlign: 'right', fontWeight: 800, color: '#14532d', fontSize: '0.9375rem' }}>{salaryData.lessons_total.toLocaleString()} ₴</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Extra items */}
+                    <div>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.625rem' }}>
+                        Додаткові нарахування
+                      </div>
+                      {salaryData.extra_items.length > 0 && (
+                        <div style={{ borderRadius: 10, border: '1px solid #f1f5f9', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                          {salaryData.extra_items.map((item, i) => (
+                            <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 0.875rem', borderBottom: i < salaryData.extra_items.length - 1 ? '1px solid #f8fafc' : 'none', background: 'white' }}>
+                              <div style={{ flex: 1, fontWeight: 500, color: '#1e293b', fontSize: '0.875rem' }}>{item.description}</div>
+                              <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9375rem', whiteSpace: 'nowrap' }}>{Number(item.amount).toLocaleString()} ₴</div>
+                              <button
+                                onClick={() => deleteSalaryExtraItem(item.id)}
+                                disabled={deletingItemId === item.id}
+                                title="Видалити"
+                                style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', color: '#94a3b8', padding: 0, opacity: deletingItemId === item.id ? 0.4 : 1 }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#dc2626'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8'; }}
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="Опис (напр. майстер-клас)"
+                          value={newItemDesc}
+                          onChange={e => setNewItemDesc(e.target.value)}
+                          style={{ flex: 1, fontSize: '0.875rem' }}
+                          onKeyDown={e => { if (e.key === 'Enter') addSalaryExtraItem(); }}
+                        />
+                        <input
+                          type="number"
+                          className="form-input"
+                          placeholder="Сума ₴"
+                          value={newItemAmount}
+                          onChange={e => setNewItemAmount(e.target.value)}
+                          min={0}
+                          style={{ width: 110, fontSize: '0.875rem' }}
+                          onKeyDown={e => { if (e.key === 'Enter') addSalaryExtraItem(); }}
+                        />
+                        <button
+                          onClick={addSalaryExtraItem}
+                          disabled={addingItem || !newItemDesc.trim() || !newItemAmount}
+                          className="btn btn-primary"
+                          style={{ whiteSpace: 'nowrap', opacity: addingItem ? 0.6 : 1 }}
+                        >
+                          + Додати
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Receipt */}
+                    <div style={{ background: 'linear-gradient(135deg,#0f172a,#1e293b)', borderRadius: 14, padding: '1.5rem', color: 'white' }}>
+                      <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                        <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.25rem' }}>Зарплатний чек</div>
+                        <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: '0.9375rem' }}>{salaryData.teacher.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{MONTHS_UK[salaryData.month - 1]} {salaryData.year}</div>
+                      </div>
+                      <div style={{ borderTop: '1px dashed #334155', borderBottom: '1px dashed #334155', padding: '0.875rem 0', marginBottom: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                          <span style={{ color: '#94a3b8' }}>Заняття ({salaryData.lessons.length} шт.)</span>
+                          <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{salaryData.lessons_total.toLocaleString()} ₴</span>
+                        </div>
+                        {salaryData.extra_items.map(item => (
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                            <span style={{ color: '#94a3b8' }}>{item.description}</span>
+                            <span style={{ color: '#e2e8f0', fontWeight: 600 }}>+{Number(item.amount).toLocaleString()} ₴</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Разом</span>
+                        <span style={{ fontSize: '1.625rem', fontWeight: 800, color: '#4ade80' }}>{salaryData.grand_total.toLocaleString()} ₴</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Teachers Statistics Modal */}
       {showStatsModal && (
