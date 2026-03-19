@@ -1619,7 +1619,7 @@ export default function TeachersPage() {
                         { label: 'Викладачів', value: allTeachersStats.teachers.length, color: '#3b82f6', bg: '#eff6ff' },
                         { label: 'Всього занять', value: allTeachersStats.teachers.reduce((s,tr) => s+tr.total_lessons,0), color: '#6366f1', bg: '#eef2ff' },
                         { label: 'Всього учнів', value: allTeachersStats.teachers.reduce((s,tr) => s+tr.total_present,0), color: '#16a34a', bg: '#f0fdf4' },
-                        { label: 'Загальна зарплата', value: allTeachersStats.teachers.reduce((s,tr) => s+tr.total_salary,0).toLocaleString() + ' ₴', color: '#dc2626', bg: '#fef2f2' },
+                        { label: 'Загальна зарплата за заняття', value: allTeachersStats.teachers.reduce((s,tr) => s+tr.total_salary,0).toLocaleString() + ' ₴', color: '#dc2626', bg: '#fef2f2' },
                       ].map((pill, i) => (
                         <div key={i} style={{ background: pill.bg, borderRadius: 12, padding: '0.875rem 1.125rem' }}>
                           <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: pill.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem' }}>{pill.label}</div>
@@ -1640,7 +1640,7 @@ export default function TeachersPage() {
                               { label: 'Індивід.', align: 'center' as const },
                               { label: 'Відпр.', align: 'center' as const },
                               { label: 'Учнів', align: 'center' as const },
-                              { label: 'Зарплата', align: 'right' as const, pr: '1rem' },
+                              { label: 'Зарплата за заняття', align: 'right' as const, pr: '1rem' },
                               { label: '', align: 'center' as const },
                             ].map((h, i) => (
                               <th key={i} style={{ padding: '0.7rem ' + (h.pl || '0.75rem'), textAlign: h.align, fontWeight: 600, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9', paddingRight: h.pr || '0.75rem' }}>{h.label}</th>
@@ -1712,7 +1712,7 @@ export default function TeachersPage() {
                                   onMouseLeave={e => { e.currentTarget.style.background = '#f0fdf4'; }}
                                 >
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                                  Зарплата
+                                  Зарплата за заняття
                                 </button>
                               </td>
                             </tr>
