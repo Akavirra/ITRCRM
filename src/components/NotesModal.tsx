@@ -315,6 +315,21 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const doneTasks  = selectedNote?.tasks.filter(t => t.done).length ?? 0;
   const totalTasks = selectedNote?.tasks.length ?? 0;
 
+  // Keyboard shortcuts
+  const shortcutRef = useRef({ createNote, onClose });
+  useEffect(() => { shortcutRef.current = { createNote, onClose }; });
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      if (e.key === 'n') { e.preventDefault(); shortcutRef.current.createNote('note'); }
+      if (e.key === 't') { e.preventDefault(); shortcutRef.current.createNote('todo'); }
+      if (e.key === 'w') { e.preventDefault(); shortcutRef.current.onClose(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen]);
+
   if (!isOpen || pos.x === -1) return null;
 
   const bg = selectedNote ? colorBg(selectedNote.color) : '#ffffff';
