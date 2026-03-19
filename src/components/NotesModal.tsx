@@ -482,17 +482,13 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     )}
 
                     {/* Task items */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {selectedNote.tasks.map(task => (
-                        <TaskItem
-                          key={task.id}
-                          task={task}
-                          onToggle={() => toggleTask(task.id)}
-                          onDelete={() => deleteTask(task.id)}
-                          onRename={text => renameTask(task.id, text)}
-                        />
-                      ))}
-                    </div>
+                    <TaskList
+                      tasks={selectedNote.tasks}
+                      onToggle={toggleTask}
+                      onDelete={deleteTask}
+                      onRename={renameTask}
+                      onReorder={newTasks => updateNote(selectedNote.id, { tasks: newTasks })}
+                    />
 
                     {/* Add task input */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, padding: '0.375rem 0' }}>
@@ -560,8 +556,11 @@ function TaskItem({ task, onToggle, onDelete, onRename }: {
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.3125rem 0.375rem', borderRadius: 7, background: hovered ? 'rgba(0,0,0,0.04)' : 'transparent', transition: 'background 0.12s' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.3125rem 0.375rem', borderRadius: 7, background: hovered ? 'rgba(0,0,0,0.04)' : 'transparent', transition: 'background 0.12s', cursor: 'default' }}
     >
+      {/* Drag handle */}
+      <span style={{ color: '#d1d5db', fontSize: '0.75rem', cursor: 'grab', opacity: hovered ? 1 : 0, transition: 'opacity 0.12s', flexShrink: 0, lineHeight: 1 }}>⠿</span>
+
       {/* Checkbox */}
       <button
         onClick={onToggle}
@@ -621,6 +620,68 @@ function TaskItem({ task, onToggle, onDelete, onRename }: {
       >
         <X size={12} />
       </button>
+    </div>
+  );
+}
+
+// ── Task list with drag-and-drop ──────────────────────────────────────────────
+
+function TaskList({ tasks, onToggle, onDelete, onRename, onReorder }: {
+  tasks: Task[];
+  onToggle: (id: string) => void;
+  onDelete: (id: string) => void;
+  onRename: (id: string, text: string) => void;
+  onReorder: (tasks: Task[]) => void;
+}) {
+  const dragId  = useRef<string | null>(null);
+  const overId  = useRef<string | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
+
+  const onDragStart = (id: string) => { dragId.current = id; };
+
+  const onDragEnter = (id: string) => {
+    overId.current = id;
+    setDragOver(id);
+  };
+
+  const onDrop = () => {
+    if (!dragId.current || !overId.current || dragId.current === overId.current) {
+      setDragOver(null);
+      return;
+    }
+    const from = tasks.findIndex(t => t.id === dragId.current);
+    const to   = tasks.findIndex(t => t.id === overId.current);
+    if (from === -1 || to === -1) { setDragOver(null); return; }
+    const next = [...tasks];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    onReorder(next);
+    dragId.current = null;
+    overId.current = null;
+    setDragOver(null);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {tasks.map(task => (
+        <div
+          key={task.id}
+          draggable
+          onDragStart={() => onDragStart(task.id)}
+          onDragEnter={() => onDragEnter(task.id)}
+          onDragOver={e => e.preventDefault()}
+          onDragEnd={() => { setDragOver(null); dragId.current = null; }}
+          onDrop={onDrop}
+          style={{ outline: dragOver === task.id ? '2px solid #3b82f6' : '2px solid transparent', borderRadius: 7, transition: 'outline 0.1s' }}
+        >
+          <TaskItem
+            task={task}
+            onToggle={() => onToggle(task.id)}
+            onDelete={() => onDelete(task.id)}
+            onRename={text => onRename(task.id, text)}
+          />
+        </div>
+      ))}
     </div>
   );
 }
