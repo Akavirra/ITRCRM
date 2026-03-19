@@ -17,6 +17,7 @@ interface Note {
   is_pinned: boolean;
   tags: string[];
   deadline: string | null;
+  is_archived: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -129,7 +130,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const [notes, setNotes]           = useState<Note[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch]         = useState('');
-  const [activeTag, setActiveTag]   = useState<string | null>(null);
+  const [activeTag, setActiveTag]     = useState<string | null>(null);
+  const [showArchive, setShowArchive] = useState(false);
   const [loading, setLoading]       = useState(false);
   const [saving, setSaving]         = useState(false);
   const [justSaved, setJustSaved]   = useState(false);
@@ -218,7 +220,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             color:     note.color,
             is_pinned: note.is_pinned,
             tags:      note.tags,
-            deadline:  note.deadline,
+            deadline:    note.deadline,
+            is_archived: note.is_archived,
           }),
         });
         setJustSaved(true);
@@ -260,11 +263,12 @@ export default function NotesModal({ isOpen, onClose }: Props) {
     if (selectedId === id) setSelectedId(null);
   };
 
-  // All unique tags across notes
-  const allTags = Array.from(new Set(notes.flatMap(n => n.tags))).sort();
+  // All unique tags (non-archived only)
+  const allTags = Array.from(new Set(notes.filter(n => !n.is_archived).flatMap(n => n.tags))).sort();
 
   // Filter
   const filtered = notes.filter(n => {
+    if (n.is_archived !== showArchive) return false;
     if (activeTag && !n.tags.includes(activeTag)) return false;
     if (!search) return true;
     const q = search.toLowerCase();
@@ -380,8 +384,18 @@ export default function NotesModal({ isOpen, onClose }: Props) {
           {/* Left panel — note list */}
           <div style={{ width: 200, borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', background: '#f8fafc', flexShrink: 0 }}>
 
+            {/* Archive toggle */}
+            <div style={{ padding: '0.5rem 0.625rem 0', display: 'flex', gap: 4, flexShrink: 0 }}>
+              <button onClick={() => { setShowArchive(false); setSelectedId(null); }} style={{ flex: 1, padding: '0.25rem 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 700, background: !showArchive ? '#1e293b' : '#f1f5f9', color: !showArchive ? '#fff' : '#64748b' }}>
+                Активні
+              </button>
+              <button onClick={() => { setShowArchive(true); setSelectedId(null); }} style={{ flex: 1, padding: '0.25rem 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 700, background: showArchive ? '#1e293b' : '#f1f5f9', color: showArchive ? '#fff' : '#64748b' }}>
+                Архів
+              </button>
+            </div>
+
             {/* Create buttons */}
-            <div style={{ padding: '0.625rem', display: 'flex', gap: 6, flexShrink: 0 }}>
+            <div style={{ padding: '0.5rem 0.625rem 0.25rem', display: 'flex', gap: 6, flexShrink: 0 }}>
               <button
                 onClick={() => createNote('note')}
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.4rem 0', borderRadius: 8, background: '#1e293b', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
@@ -563,6 +577,19 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
                   >
                     <Pin size={14} strokeWidth={2} />
+                  </button>
+
+                  {/* Archive / Unarchive */}
+                  <button
+                    onClick={() => { updateNote(selectedNote.id, { is_archived: !selectedNote.is_archived }); setSelectedId(null); }}
+                    title={selectedNote.is_archived ? 'Відновити' : 'Архівувати'}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 3, borderRadius: 5, color: '#94a3b8' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#f59e0b'; e.currentTarget.style.background = '#fffbeb'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'none'; }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+                    </svg>
                   </button>
 
                   {/* Delete */}
