@@ -28,7 +28,7 @@ interface User {
   role: 'admin' | 'teacher';
 }
 
-type SettingsTab = 'general' | 'profile' | 'notifications' | 'system' | 'salary';
+type SettingsTab = 'general' | 'profile' | 'notifications' | 'system';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -223,7 +223,6 @@ export default function SettingsPage() {
     { id: 'profile' as const, label: 'Профіль', icon: User },
     { id: 'notifications' as const, label: 'Сповіщення', icon: Bell },
     { id: 'system' as const, label: 'Система', icon: Shield },
-    ...(user.role === 'admin' ? [{ id: 'salary' as const, label: 'Зарплата', icon: DollarSign }] : []),
   ];
 
   return (
@@ -821,24 +820,16 @@ export default function SettingsPage() {
                       </button>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
 
-            {/* Salary Settings - admin only */}
-            {activeTab === 'salary' && user.role === 'admin' && (
-              <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <DollarSign size={22} strokeWidth={1.5} />
-                  Ставки зарплати
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  <div className="form-section" style={{ marginBottom: 0, borderBottom: 'none' }}>
-                    <h3 style={{ fontSize: '0.8125rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Ставка за учня
+                  {/* Salary rates — admin only */}
+                  {user.role === 'admin' && (
+                  <div className="form-section" style={{ marginBottom: 0, borderBottom: 'none', paddingTop: '0.5rem' }}>
+                    <h3 style={{ fontSize: '0.8125rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <DollarSign size={14} />
+                      Ставки зарплати викладачів
                     </h3>
                     <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1.25rem' }}>
-                      Зарплата розраховується: кількість присутніх учнів × ставка за заняття. Рахуються лише присутні (present) та відпрацювання (makeup_done).
+                      Зарплата = кількість присутніх учнів × ставка. Рахуються лише присутні (present) та відпрацювання (makeup_done).
                     </p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', maxWidth: '480px' }}>
                       <div className="form-group">
@@ -873,48 +864,47 @@ export default function SettingsPage() {
                     <div style={{ marginTop: '1.25rem', padding: '0.875rem', backgroundColor: '#f0fdf4', borderRadius: '0.5rem', border: '1px solid #bbf7d0', fontSize: '0.8125rem', color: '#166534' }}>
                       Індивідуальне заняття = група з capacity = 1. Решта — групові.
                     </div>
+                    <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-start' }}>
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleSalarySave}
+                        disabled={salaryLoading}
+                        style={{ minWidth: '120px' }}
+                      >
+                        <Save size={16} />
+                        {salarySaved ? 'Збережено!' : salaryLoading ? 'Збереження...' : 'Зберегти ставки'}
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleSalarySave}
-                    disabled={salaryLoading}
-                    style={{ minWidth: '120px' }}
-                  >
-                    <Save size={16} />
-                    {salarySaved ? 'Збережено!' : salaryLoading ? 'Збереження...' : 'Зберегти'}
-                  </button>
+                  )}
                 </div>
               </div>
             )}
 
             {/* Save Button */}
-            {activeTab !== 'salary' && (
-              <div style={{
-                marginTop: '2rem',
-                paddingTop: '1.5rem',
-                borderTop: '1px solid #e5e7eb',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '0.75rem'
-              }}>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => window.location.reload()}
-                >
-                  Скинути
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={handleSave}
-                  style={{ minWidth: '120px' }}
-                >
-                  <Save size={16} />
-                  {saved ? 'Збережено!' : 'Зберегти'}
-                </button>
-              </div>
-            )}
+            <div style={{
+              marginTop: '2rem',
+              paddingTop: '1.5rem',
+              borderTop: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem'
+            }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => window.location.reload()}
+              >
+                Скинути
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleSave}
+                style={{ minWidth: '120px' }}
+              >
+                <Save size={16} />
+                {saved ? 'Збережено!' : 'Зберегти'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
