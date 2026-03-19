@@ -175,7 +175,7 @@ export default function CalculatorModal({ isOpen, onClose }: Props) {
 
         {/* Display — dark background */}
         <div style={{ background: '#1e293b', padding: '0.5rem 1.125rem 1.125rem' }}>
-          <div style={{ fontSize: '0.6875rem', color: '#64748b', height: '1.25rem', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: '0.8125rem', color: '#cbd5e1', height: '1.25rem', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {expression || '\u00a0'}
           </div>
           <div style={{
