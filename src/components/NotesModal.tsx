@@ -54,9 +54,6 @@ const COLORS: { key: string | null; bg: string; dot: string }[] = [
 function colorBg(color: string | null) {
   return COLORS.find(c => c.key === color)?.bg ?? '#ffffff';
 }
-function colorDot(color: string | null) {
-  return COLORS.find(c => c.key === color)?.dot ?? '#e2e8f0';
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -79,19 +76,26 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
     ? (note.content.trim().slice(0, 45) || formatDate(note.updated_at))
     : (total > 0 ? `${done}/${total} виконано` : formatDate(note.updated_at));
 
+  const dotColor = COLORS.find(c => c.key === note.color)?.dot ?? '#e2e8f0';
+
   return (
     <button
       onClick={onClick}
       style={{
-        width: '100%', textAlign: 'left', background: selected ? '#eff6ff' : 'transparent',
-        border: 'none', borderLeft: `3px solid ${colorDot(note.color)}`,
-        padding: '0.5rem 0.75rem 0.5rem 0.625rem', cursor: 'pointer',
-        borderBottom: '1px solid #f1f5f9', display: 'block', transition: 'background 0.1s',
+        width: '100%', textAlign: 'left',
+        background: selected ? '#eff6ff' : 'transparent',
+        border: 'none',
+        borderLeft: `3px solid ${selected ? '#2563eb' : dotColor}`,
+        padding: '0.625rem 0.875rem 0.625rem 0.75rem',
+        cursor: 'pointer',
+        borderBottom: '1px solid #f1f5f9',
+        display: 'block',
+        transition: 'background 0.12s',
       }}
       onMouseEnter={e => { if (!selected) e.currentTarget.style.background = '#f8fafc'; }}
       onMouseLeave={e => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
         {note.type === 'todo'
           ? <CheckSquare size={11} color={selected ? '#2563eb' : '#94a3b8'} style={{ flexShrink: 0 }} />
           : <FileText    size={11} color={selected ? '#2563eb' : '#94a3b8'} style={{ flexShrink: 0 }} />
@@ -109,14 +113,14 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
         {preview}
       </div>
       {(note.tags.length > 0 || note.deadline) && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, paddingLeft: 16, marginTop: 3, alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, paddingLeft: 16, marginTop: 4, alignItems: 'center' }}>
           {note.tags.slice(0, 2).map(tag => (
-            <span key={tag} style={{ fontSize: '0.5625rem', fontWeight: 700, padding: '0 0.3rem', borderRadius: 10, background: selected ? '#bfdbfe' : '#e2e8f0', color: selected ? '#1d4ed8' : '#64748b' }}>
+            <span key={tag} style={{ fontSize: '0.5625rem', fontWeight: 700, padding: '1px 5px', borderRadius: 10, background: selected ? '#bfdbfe' : '#e2e8f0', color: selected ? '#1d4ed8' : '#64748b' }}>
               #{tag}
             </span>
           ))}
           {(() => { const dl = deadlineLabel(note.deadline); return dl ? (
-            <span style={{ fontSize: '0.5625rem', fontWeight: 700, padding: '0 0.3rem', borderRadius: 10, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a' }}>
+            <span style={{ fontSize: '0.5625rem', fontWeight: 700, padding: '1px 5px', borderRadius: 10, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a' }}>
               {dl.text}
             </span>
           ) : null; })()}
@@ -125,8 +129,6 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
     </button>
   );
 }
-
-// ── Main modal ────────────────────────────────────────────────────────────────
 
 // ── Templates ─────────────────────────────────────────────────────────────────
 
@@ -195,11 +197,11 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pos, setPos]   = useState({ x: -1, y: -1 });
-  const [size, setSize] = useState({ w: 640, h: 520 });
+  const [size, setSize] = useState({ w: 720, h: 560 });
   const dragging  = useRef(false);
   const resizing  = useRef(false);
   const origin    = useRef({ mx: 0, my: 0, px: 0, py: 0 });
-  const resizeOrigin = useRef({ mx: 0, my: 0, w: 640, h: 520 });
+  const resizeOrigin = useRef({ mx: 0, my: 0, w: 720, h: 560 });
 
   // Restore or centre position/size on first open
   useEffect(() => {
@@ -214,8 +216,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         }
       } catch { /* ignore */ }
       setPos({
-        x: Math.max(20, window.innerWidth  / 2 - 320),
-        y: Math.max(20, window.innerHeight / 2 - 260),
+        x: Math.max(20, window.innerWidth  / 2 - 360),
+        y: Math.max(20, window.innerHeight / 2 - 280),
       });
     }
   }, [isOpen, pos.x]);
@@ -232,8 +234,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
       if (dragging.current) {
         setPos({ x: origin.current.px + e.clientX - origin.current.mx, y: origin.current.py + e.clientY - origin.current.my });
       } else if (resizing.current) {
-        const w = Math.max(480, resizeOrigin.current.w + e.clientX - resizeOrigin.current.mx);
-        const h = Math.max(360, resizeOrigin.current.h + e.clientY - resizeOrigin.current.my);
+        const w = Math.max(520, resizeOrigin.current.w + e.clientX - resizeOrigin.current.mx);
+        const h = Math.max(380, resizeOrigin.current.h + e.clientY - resizeOrigin.current.my);
         setSize({ w, h });
       }
     };
@@ -338,7 +340,6 @@ export default function NotesModal({ isOpen, onClose }: Props) {
     });
     const d = await res.json();
     if (!d.note) return;
-    // Immediately patch with the source content
     await fetch(`/api/notes/${d.note.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -443,8 +444,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         position: 'absolute', left: pos.x, top: pos.y,
         width: size.w, height: size.h,
         background: '#ffffff',
-        borderRadius: 20,
-        boxShadow: '0 24px 64px rgba(0,0,0,0.14), 0 4px 16px rgba(0,0,0,0.07)',
+        borderRadius: 16,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.08)',
         overflow: 'hidden',
         pointerEvents: 'all',
         userSelect: 'none',
@@ -455,89 +456,123 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         {/* ── Header ── */}
         <div
           onMouseDown={startDrag}
-          style={{ padding: '0.75rem 0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'grab', background: '#1e293b', flexShrink: 0 }}
+          style={{
+            padding: '0 1rem',
+            height: 44,
+            display: 'flex', alignItems: 'center', gap: '0.625rem',
+            cursor: 'grab', flexShrink: 0,
+            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+          }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" style={{ flexShrink: 0 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2" style={{ flexShrink: 0 }}>
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
             <line x1="16" y1="13" x2="8" y2="13"/>
             <line x1="16" y1="17" x2="8" y2="17"/>
             <polyline points="10 9 9 9 8 9"/>
           </svg>
-          <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.08em', flex: 1 }}>Записник</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ffffff', letterSpacing: '0.05em', flex: 1 }}>
+            Записник
+          </span>
+          {/* Keyboard shortcut hints */}
+          <span style={{ fontSize: '0.625rem', color: 'rgba(255,255,255,0.5)', fontWeight: 500, letterSpacing: '0.02em' }}>
+            Ctrl+N  Ctrl+T  Ctrl+W
+          </span>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.125rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', borderRadius: 6, width: 24, height: 24 }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.background = 'transparent'; }}
+            style={{ background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', borderRadius: 8, width: 28, height: 28, transition: 'background 0.15s', flexShrink: 0 }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.5)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
           </button>
         </div>
 
+        {/* Resize handle */}
+        <div
+          onMouseDown={e => {
+            resizing.current = true;
+            resizeOrigin.current = { mx: e.clientX, my: e.clientY, w: size.w, h: size.h };
+            e.preventDefault();
+          }}
+          style={{ position: 'absolute', bottom: 0, right: 0, width: 18, height: 18, cursor: 'se-resize', display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: '3px', zIndex: 1 }}
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path d="M9 1L1 9M9 5L5 9M9 9" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </div>
+
         {/* ── Body ── */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-          {/* Left panel — note list */}
-          <div style={{ width: 200, borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', background: '#f8fafc', flexShrink: 0 }}>
+          {/* ── Left panel ── */}
+          <div style={{ width: 210, borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', background: '#f8fafc', flexShrink: 0 }}>
 
             {/* Archive toggle */}
-            <div style={{ padding: '0.5rem 0.625rem 0', display: 'flex', gap: 4, flexShrink: 0 }}>
-              <button onClick={() => { setShowArchive(false); setSelectedId(null); }} style={{ flex: 1, padding: '0.25rem 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 700, background: !showArchive ? '#1e293b' : '#f1f5f9', color: !showArchive ? '#fff' : '#64748b' }}>
-                Активні
-              </button>
-              <button onClick={() => { setShowArchive(true); setSelectedId(null); }} style={{ flex: 1, padding: '0.25rem 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 700, background: showArchive ? '#1e293b' : '#f1f5f9', color: showArchive ? '#fff' : '#64748b' }}>
-                Архів
-              </button>
+            <div style={{ padding: '0.75rem 0.75rem 0.5rem', flexShrink: 0 }}>
+              <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: 10, padding: 3, gap: 2 }}>
+                <button
+                  onClick={() => { setShowArchive(false); setSelectedId(null); }}
+                  style={{ flex: 1, padding: '0.3rem 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 700, transition: 'all 0.15s', background: !showArchive ? '#2563eb' : 'transparent', color: !showArchive ? '#fff' : '#64748b' }}
+                >
+                  Активні
+                </button>
+                <button
+                  onClick={() => { setShowArchive(true); setSelectedId(null); }}
+                  style={{ flex: 1, padding: '0.3rem 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 700, transition: 'all 0.15s', background: showArchive ? '#2563eb' : 'transparent', color: showArchive ? '#fff' : '#64748b' }}
+                >
+                  Архів
+                </button>
+              </div>
             </div>
 
             {/* Create buttons */}
-            <div style={{ padding: '0.5rem 0.625rem 0.25rem', display: 'flex', gap: 6, flexShrink: 0 }}>
+            <div style={{ padding: '0 0.75rem 0.375rem', display: 'flex', gap: 6, flexShrink: 0 }}>
               <button
                 onClick={() => createNote('note')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.4rem 0', borderRadius: 8, background: '#1e293b', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#334155'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#1e293b'; }}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.45rem 0', borderRadius: 9, background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, transition: 'background 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
               >
                 <Plus size={11} strokeWidth={2.5} /> Нотатка
               </button>
               <button
                 onClick={() => createNote('todo')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.4rem 0', borderRadius: 8, background: '#f1f5f9', color: '#1e293b', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; }}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.45rem 0', borderRadius: 9, background: '#fff', color: '#374151', border: '1.5px solid #e2e8f0', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, transition: 'all 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.color = '#2563eb'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#374151'; }}
               >
                 <Plus size={11} strokeWidth={2.5} /> Список
               </button>
             </div>
 
             {/* Templates dropdown */}
-            <div style={{ padding: '0 0.625rem 0.25rem', flexShrink: 0, position: 'relative' }}>
+            <div style={{ padding: '0 0.75rem 0.5rem', flexShrink: 0, position: 'relative' }}>
               <button
                 onClick={() => setShowTemplates(v => !v)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.25rem 0', borderRadius: 7, border: '1px dashed #d1d5db', background: 'transparent', cursor: 'pointer', fontSize: '0.6875rem', color: '#64748b' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0.3rem 0', borderRadius: 8, border: '1px dashed #cbd5e1', background: showTemplates ? '#eff6ff' : 'transparent', cursor: 'pointer', fontSize: '0.6875rem', color: showTemplates ? '#2563eb' : '#64748b', fontWeight: 500, transition: 'all 0.15s' }}
+                onMouseEnter={e => { if (!showTemplates) { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#94a3b8'; } }}
+                onMouseLeave={e => { if (!showTemplates) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#cbd5e1'; } }}
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                 Шаблони
               </button>
               {showTemplates && (
-                <div style={{ position: 'absolute', top: '100%', left: '0.625rem', right: '0.625rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 10, overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: '100%', left: '0.75rem', right: '0.75rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 10, overflow: 'hidden', marginTop: 4 }}>
                   {TEMPLATES.map(tpl => (
                     <button
                       key={tpl.label}
                       onClick={() => { createNote(tpl.type, { title: tpl.label, content: tpl.content, tasks: tpl.tasks }); setShowTemplates(false); }}
-                      style={{ width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 8 }}
+                      style={{ width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.1s' }}
                       onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
                     >
-                      <span style={{ fontSize: '0.875rem' }}>{tpl.icon}</span>
+                      <span style={{ fontSize: '1rem', lineHeight: 1 }}>{tpl.icon}</span>
                       <div>
-                        <div style={{ fontWeight: 600 }}>{tpl.label}</div>
-                        <div style={{ fontSize: '0.625rem', color: '#94a3b8' }}>{tpl.desc}</div>
+                        <div style={{ fontWeight: 600, fontSize: '0.75rem' }}>{tpl.label}</div>
+                        <div style={{ fontSize: '0.625rem', color: '#94a3b8', marginTop: 1 }}>{tpl.desc}</div>
                       </div>
                     </button>
                   ))}
@@ -546,8 +581,11 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             </div>
 
             {/* Search */}
-            <div style={{ padding: '0 0.625rem 0.5rem', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', borderRadius: 8, padding: '0.25rem 0.5rem', gap: 5, border: '1px solid #e2e8f0' }}>
+            <div style={{ padding: '0 0.75rem 0.5rem', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 9, padding: '0.3rem 0.625rem', gap: 5, border: '1.5px solid #e2e8f0', transition: 'border-color 0.15s' }}
+                onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#93c5fd'; }}
+                onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#e2e8f0'; }}
+              >
                 <Search size={11} color="#94a3b8" style={{ flexShrink: 0 }} />
                 <input
                   value={search}
@@ -565,14 +603,14 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
             {/* Tag filter */}
             {allTags.length > 0 && (
-              <div style={{ padding: '0 0.625rem 0.5rem', display: 'flex', flexWrap: 'wrap', gap: 4, flexShrink: 0 }}>
+              <div style={{ padding: '0 0.75rem 0.5rem', display: 'flex', flexWrap: 'wrap', gap: 4, flexShrink: 0 }}>
                 {allTags.map(tag => (
                   <button
                     key={tag}
                     onClick={() => setActiveTag(activeTag === tag ? null : tag)}
                     style={{
-                      padding: '0.125rem 0.5rem', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 600,
-                      background: activeTag === tag ? '#1e293b' : '#e2e8f0',
+                      padding: '2px 8px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 600,
+                      background: activeTag === tag ? '#2563eb' : '#e2e8f0',
                       color: activeTag === tag ? '#ffffff' : '#64748b',
                       transition: 'all 0.15s',
                     }}
@@ -586,19 +624,19 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             {/* Note list */}
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {loading ? (
-                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#94a3b8', fontSize: '0.75rem' }}>
+                <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#94a3b8', fontSize: '0.75rem' }}>
                   Завантаження...
                 </div>
               ) : filtered.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#94a3b8', fontSize: '0.75rem', lineHeight: 1.6 }}>
-                  {search ? 'Нічого не знайдено' : 'Немає нотаток.\nСтвори першу!'}
+                <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#94a3b8', fontSize: '0.75rem', lineHeight: 1.7 }}>
+                  {search ? 'Нічого не знайдено' : showArchive ? 'Архів порожній' : 'Немає нотаток.\nСтвори першу!'}
                 </div>
               ) : (
                 <>
                   {pinned.length > 0 && (
                     <>
-                      <div style={{ padding: '0.375rem 0.75rem 0.125rem', fontSize: '0.625rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                        📌 Закріплені
+                      <div style={{ padding: '0.5rem 0.875rem 0.25rem', fontSize: '0.625rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Pin size={9} /> Закріплені
                       </div>
                       {pinned.map(n => (
                         <NoteListItem key={n.id} note={n} selected={selectedId === n.id} onClick={() => { setSelectedId(n.id); setNewTaskText(''); }} />
@@ -606,7 +644,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     </>
                   )}
                   {rest.length > 0 && pinned.length > 0 && (
-                    <div style={{ padding: '0.375rem 0.75rem 0.125rem', fontSize: '0.625rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                    <div style={{ padding: '0.5rem 0.875rem 0.25rem', fontSize: '0.625rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                       Нотатки
                     </div>
                   )}
@@ -618,75 +656,108 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             </div>
           </div>
 
-          {/* Right panel — editor */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* ── Right panel — editor ── */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: bg, transition: 'background 0.2s' }}>
             {!selectedNote ? (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: '#cbd5e1' }}>
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10 9 9 9 8 9"/>
-                </svg>
-                <span style={{ fontSize: '0.8125rem', color: '#94a3b8' }}>Обери нотатку або створи нову</span>
+              /* Empty state */
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, color: '#cbd5e1' }}>
+                <div style={{ width: 64, height: 64, borderRadius: 20, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>Вибери нотатку</div>
+                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', lineHeight: 1.6 }}>або натисни «Нотатка» / «Список»,<br/>щоб створити нову</div>
+                </div>
               </div>
             ) : (
               <>
-                {/* Toolbar */}
+                {/* ── Title row ── */}
                 <div style={{
-                  padding: '0.625rem 1rem',
-                  borderBottom: '1px solid #e5e7eb',
-                  display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
-                  background: bg,
-                  transition: 'background 0.2s',
+                  padding: '0.875rem 1.25rem 0.625rem',
+                  borderBottom: '1px solid rgba(0,0,0,0.06)',
+                  flexShrink: 0,
                 }}>
-                  <input
-                    value={selectedNote.title}
-                    onChange={e => updateNote(selectedNote.id, { title: e.target.value })}
-                    placeholder="Заголовок..."
-                    style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '0.9375rem', fontWeight: 600, color: '#1e293b', userSelect: 'text' }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {selectedNote.type === 'todo'
+                      ? <CheckSquare size={16} color="#2563eb" style={{ flexShrink: 0 }} />
+                      : <FileText    size={16} color="#2563eb" style={{ flexShrink: 0 }} />
+                    }
+                    <input
+                      value={selectedNote.title}
+                      onChange={e => updateNote(selectedNote.id, { title: e.target.value })}
+                      placeholder={selectedNote.type === 'todo' ? 'Назва списку...' : 'Заголовок нотатки...'}
+                      style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem', fontWeight: 700, color: '#1e293b', userSelect: 'text' }}
+                    />
+                    {/* Save indicator */}
+                    <span style={{
+                      fontSize: '0.6875rem', whiteSpace: 'nowrap', transition: 'opacity 0.3s',
+                      opacity: saving || justSaved ? 1 : 0,
+                      color: saving ? '#f59e0b' : '#22c55e',
+                      display: 'flex', alignItems: 'center', gap: 3,
+                    }}>
+                      {saving ? (
+                        <>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                          Збереження...
+                        </>
+                      ) : (
+                        <>✓ Збережено</>
+                      )}
+                    </span>
+                  </div>
+                </div>
 
-                  {/* Save indicator */}
-                  <span style={{
-                    fontSize: '0.6875rem', whiteSpace: 'nowrap', transition: 'color 0.3s',
-                    color: saving ? '#f59e0b' : justSaved ? '#22c55e' : 'transparent',
-                  }}>
-                    {saving ? 'Збереження...' : '✓ Збережено'}
-                  </span>
-
+                {/* ── Action bar ── */}
+                <div style={{
+                  padding: '0.375rem 1.25rem',
+                  borderBottom: '1px solid rgba(0,0,0,0.06)',
+                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, flexWrap: 'nowrap',
+                }}>
                   {/* Color dots */}
-                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginRight: 4 }}>
                     {COLORS.map(c => (
                       <button
                         key={c.key ?? 'none'}
                         onClick={() => updateNote(selectedNote.id, { color: c.key })}
                         title={c.key ?? 'без кольору'}
                         style={{
-                          width: 13, height: 13, borderRadius: '50%', background: c.dot,
+                          width: 14, height: 14, borderRadius: '50%', background: c.dot,
                           border: `2px solid ${selectedNote.color === c.key ? '#2563eb' : 'transparent'}`,
-                          cursor: 'pointer', padding: 0, outline: selectedNote.color === c.key ? '1px solid #2563eb' : '1px solid #e2e8f0',
-                          outlineOffset: 1, transition: 'outline 0.15s',
+                          cursor: 'pointer', padding: 0,
+                          boxShadow: selectedNote.color === c.key ? '0 0 0 1px #2563eb' : '0 0 0 1px #e2e8f0',
+                          transition: 'box-shadow 0.15s',
                         }}
                       />
                     ))}
                   </div>
+
+                  <div style={{ width: 1, height: 18, background: '#e2e8f0', flexShrink: 0, margin: '0 2px' }} />
 
                   {/* Reminder */}
                   {(() => {
                     const hasRemind = !!selectedNote.remind_at;
                     const isPast = hasRemind && new Date(selectedNote.remind_at!) <= new Date();
                     return (
-                      <label title="Нагадування" style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', position: 'relative' }}>
+                      <label title="Нагадування" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
                         {hasRemind ? (
-                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '0.125rem 0.5rem', borderRadius: 20, background: isPast ? '#f3f4f6' : '#eff6ff', color: isPast ? '#9ca3af' : '#2563eb', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: isPast ? '#f3f4f6' : '#eff6ff', color: isPast ? '#9ca3af' : '#2563eb', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                             {new Date(selectedNote.remind_at!).toLocaleString('uk', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
-                            <button onClick={e => { e.preventDefault(); updateNote(selectedNote.id, { remind_at: null }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1 }}>×</button>
+                            <button onClick={e => { e.preventDefault(); updateNote(selectedNote.id, { remind_at: null }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1, marginLeft: 1, display: 'flex' }}>
+                              <X size={9} />
+                            </button>
                           </span>
                         ) : (
-                          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', padding: '0.125rem 0.375rem', borderRadius: 20, border: '1px dashed #d1d5db', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', padding: '3px 8px', borderRadius: 20, border: '1px dashed #d1d5db', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.15s' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLSpanElement).style.borderColor = '#93c5fd'; (e.currentTarget as HTMLSpanElement).style.color = '#2563eb'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLSpanElement).style.borderColor = '#d1d5db'; (e.currentTarget as HTMLSpanElement).style.color = '#94a3b8'; }}
+                          >
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                             нагадати
                           </span>
@@ -705,17 +776,24 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                   {selectedNote.type === 'todo' && (() => {
                     const dl = deadlineLabel(selectedNote.deadline);
                     return (
-                      <label title="Дедлайн" style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', position: 'relative' }}>
+                      <label title="Дедлайн" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
                         {dl ? (
-                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '0.125rem 0.5rem', borderRadius: 20, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a', whiteSpace: 'nowrap' }}>
-                            {dl.text}
+                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
+                            📅 {dl.text}
                             <button
                               onClick={e => { e.preventDefault(); updateNote(selectedNote.id, { deadline: null }); }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 0 3px', color: 'inherit', lineHeight: 1, verticalAlign: 'middle' }}
-                            >×</button>
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1, display: 'flex', marginLeft: 1 }}
+                            >
+                              <X size={9} />
+                            </button>
                           </span>
                         ) : (
-                          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', padding: '0.125rem 0.375rem', borderRadius: 20, border: '1px dashed #d1d5db', whiteSpace: 'nowrap' }}>+ дедлайн</span>
+                          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', padding: '3px 8px', borderRadius: 20, border: '1px dashed #d1d5db', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLSpanElement).style.borderColor = '#86efac'; (e.currentTarget as HTMLSpanElement).style.color = '#16a34a'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLSpanElement).style.borderColor = '#d1d5db'; (e.currentTarget as HTMLSpanElement).style.color = '#94a3b8'; }}
+                          >
+                            + дедлайн
+                          </span>
                         )}
                         <input
                           type="date"
@@ -727,59 +805,54 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     );
                   })()}
 
-                  {/* Pin */}
-                  <button
-                    onClick={() => updateNote(selectedNote.id, { is_pinned: !selectedNote.is_pinned })}
-                    title={selectedNote.is_pinned ? 'Відкріпити' : 'Закріпити'}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 3, borderRadius: 5, color: selectedNote.is_pinned ? '#f59e0b' : '#94a3b8' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
-                  >
-                    <Pin size={14} strokeWidth={2} />
-                  </button>
+                  <div style={{ flex: 1 }} />
 
-                  {/* Duplicate */}
-                  <button
-                    onClick={() => duplicateNote(selectedNote)}
-                    title="Дублювати нотатку"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 3, borderRadius: 5, color: '#94a3b8' }}
-                    onMouseEnter={e => { e.currentTarget.style.color = '#2563eb'; e.currentTarget.style.background = '#eff6ff'; }}
-                    onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'none'; }}
+                  {/* Icon buttons */}
+                  <ActionBtn
+                    title={selectedNote.is_pinned ? 'Відкріпити' : 'Закріпити'}
+                    active={selectedNote.is_pinned}
+                    activeColor="#f59e0b"
+                    onClick={() => updateNote(selectedNote.id, { is_pinned: !selectedNote.is_pinned })}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <Pin size={15} strokeWidth={2} />
+                  </ActionBtn>
+
+                  <ActionBtn
+                    title="Дублювати нотатку"
+                    hoverColor="#2563eb"
+                    hoverBg="#eff6ff"
+                    onClick={() => duplicateNote(selectedNote)}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                     </svg>
-                  </button>
+                  </ActionBtn>
 
-                  {/* Archive / Unarchive */}
-                  <button
-                    onClick={() => { updateNote(selectedNote.id, { is_archived: !selectedNote.is_archived }); setSelectedId(null); }}
+                  <ActionBtn
                     title={selectedNote.is_archived ? 'Відновити' : 'Архівувати'}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 3, borderRadius: 5, color: '#94a3b8' }}
-                    onMouseEnter={e => { e.currentTarget.style.color = '#f59e0b'; e.currentTarget.style.background = '#fffbeb'; }}
-                    onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'none'; }}
+                    hoverColor="#d97706"
+                    hoverBg="#fffbeb"
+                    onClick={() => { updateNote(selectedNote.id, { is_archived: !selectedNote.is_archived }); setSelectedId(null); }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
                     </svg>
-                  </button>
+                  </ActionBtn>
 
-                  {/* Delete */}
-                  <button
-                    onClick={() => deleteNote(selectedNote.id)}
+                  <ActionBtn
                     title="Видалити нотатку"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 3, borderRadius: 5, color: '#94a3b8' }}
-                    onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fef2f2'; }}
-                    onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'none'; }}
+                    hoverColor="#ef4444"
+                    hoverBg="#fef2f2"
+                    onClick={() => deleteNote(selectedNote.id)}
                   >
-                    <Trash2 size={14} strokeWidth={2} />
-                  </button>
+                    <Trash2 size={15} strokeWidth={2} />
+                  </ActionBtn>
                 </div>
 
-                {/* Tags row */}
+                {/* ── Tags row ── */}
                 <TagsRow tags={selectedNote.tags} onAdd={addTag} onRemove={removeTag} bg={bg} />
 
-                {/* Linked entity row */}
+                {/* ── Linked entity row ── */}
                 <LinkedRow
                   studentId={selectedNote.linked_student_id}
                   groupId={selectedNote.linked_group_id}
@@ -790,7 +863,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                   onChangeGroup={id => updateNote(selectedNote.id, { linked_group_id: id })}
                 />
 
-                {/* Content area */}
+                {/* ── Content area ── */}
                 {selectedNote.type === 'note' ? (
                   <textarea
                     value={selectedNote.content}
@@ -798,30 +871,29 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     placeholder="Починай писати..."
                     style={{
                       flex: 1, border: 'none', outline: 'none', resize: 'none',
-                      padding: '1rem 1.125rem',
-                      fontSize: '0.875rem', lineHeight: 1.75, color: '#374151',
-                      background: bg, fontFamily: 'inherit', userSelect: 'text',
-                      transition: 'background 0.2s',
+                      padding: '1rem 1.25rem',
+                      fontSize: '0.9375rem', lineHeight: 1.8, color: '#374151',
+                      background: 'transparent', fontFamily: 'inherit', userSelect: 'text',
                     }}
                   />
                 ) : (
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '0.875rem 1.125rem', background: bg, transition: 'background 0.2s' }}>
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '1rem 1.25rem', background: 'transparent' }}>
 
                     {/* Progress bar */}
                     {totalTasks > 0 && (
                       <div style={{ marginBottom: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: '#94a3b8', marginBottom: 5 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: '#94a3b8', marginBottom: 6 }}>
                           <span>Прогрес</span>
-                          <span style={{ fontWeight: 600, color: doneTasks === totalTasks ? '#22c55e' : '#64748b' }}>
+                          <span style={{ fontWeight: 700, color: doneTasks === totalTasks ? '#22c55e' : '#2563eb' }}>
                             {doneTasks}/{totalTasks}
                           </span>
                         </div>
-                        <div style={{ height: 4, background: '#e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ height: 5, background: '#e5e7eb', borderRadius: 5, overflow: 'hidden' }}>
                           <div style={{
                             height: '100%',
                             width: `${(doneTasks / totalTasks) * 100}%`,
                             background: doneTasks === totalTasks ? '#22c55e' : '#3b82f6',
-                            borderRadius: 4, transition: 'width 0.35s ease',
+                            borderRadius: 5, transition: 'width 0.35s ease',
                           }} />
                         </div>
                       </div>
@@ -837,19 +909,22 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     />
 
                     {/* Add task input */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, padding: '0.375rem 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, padding: '0.375rem 0.375rem', borderRadius: 8, transition: 'background 0.12s' }}
+                      onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.03)'; }}
+                      onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                    >
                       <div style={{ width: 18, height: 18, borderRadius: 5, border: '2px dashed #d1d5db', flexShrink: 0 }} />
                       <input
                         value={newTaskText}
                         onChange={e => setNewTaskText(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') addTask(); }}
                         placeholder="Додати пункт..."
-                        style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: '#374151', userSelect: 'text' }}
+                        style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '0.9375rem', color: '#374151', userSelect: 'text' }}
                       />
                       {newTaskText.trim() && (
                         <button
                           onClick={addTask}
-                          style={{ background: '#1e293b', border: 'none', cursor: 'pointer', color: 'white', padding: '0.2rem 0.5rem', borderRadius: 5, fontSize: '0.75rem', fontWeight: 600 }}
+                          style={{ background: '#2563eb', border: 'none', cursor: 'pointer', color: 'white', padding: '0.25rem 0.625rem', borderRadius: 7, fontSize: '0.75rem', fontWeight: 700 }}
                         >
                           +
                         </button>
@@ -858,7 +933,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
                     {/* Empty state */}
                     {totalTasks === 0 && (
-                      <div style={{ textAlign: 'center', padding: '2rem 0', color: '#cbd5e1', fontSize: '0.8125rem' }}>
+                      <div style={{ textAlign: 'center', padding: '2rem 0', color: '#d1d5db', fontSize: '0.8125rem' }}>
                         Додай перший пункт ↑
                       </div>
                     )}
@@ -870,20 +945,37 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         </div>
       </div>
 
-      {/* Resize handle */}
-      <div
-        onMouseDown={e => {
-          resizing.current = true;
-          resizeOrigin.current = { mx: e.clientX, my: e.clientY, w: size.w, h: size.h };
-          e.preventDefault();
-        }}
-        style={{ position: 'absolute', bottom: 0, right: 0, width: 18, height: 18, cursor: 'se-resize', display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: '3px' }}
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path d="M9 1L1 9M9 5L5 9M9 9" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-      </div>
     </div>
+  );
+}
+
+// ── Action button helper ───────────────────────────────────────────────────────
+
+function ActionBtn({ children, title, onClick, active, activeColor, hoverColor, hoverBg }: {
+  children: React.ReactNode;
+  title: string;
+  onClick: () => void;
+  active?: boolean;
+  activeColor?: string;
+  hoverColor?: string;
+  hoverBg?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px', borderRadius: 7, color: active ? (activeColor ?? '#2563eb') : '#94a3b8', transition: 'all 0.15s', flexShrink: 0 }}
+      onMouseEnter={e => {
+        e.currentTarget.style.color = active ? (activeColor ?? '#2563eb') : (hoverColor ?? '#374151');
+        e.currentTarget.style.background = hoverBg ?? '#f1f5f9';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.color = active ? (activeColor ?? '#2563eb') : '#94a3b8';
+        e.currentTarget.style.background = 'none';
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -916,10 +1008,10 @@ function TaskItem({ task, onToggle, onDelete, onRename }: {
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.3125rem 0.375rem', borderRadius: 7, background: hovered ? 'rgba(0,0,0,0.04)' : 'transparent', transition: 'background 0.12s', cursor: 'default' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.3125rem 0.375rem', borderRadius: 8, background: hovered ? 'rgba(0,0,0,0.04)' : 'transparent', transition: 'background 0.12s', cursor: 'default' }}
     >
       {/* Drag handle */}
-      <span style={{ color: '#d1d5db', fontSize: '0.75rem', cursor: 'grab', opacity: hovered ? 1 : 0, transition: 'opacity 0.12s', flexShrink: 0, lineHeight: 1 }}>⠿</span>
+      <span style={{ color: '#cbd5e1', fontSize: '0.75rem', cursor: 'grab', opacity: hovered ? 1 : 0, transition: 'opacity 0.12s', flexShrink: 0, lineHeight: 1 }}>⠿</span>
 
       {/* Checkbox */}
       <button
@@ -950,14 +1042,14 @@ function TaskItem({ task, onToggle, onDelete, onRename }: {
             if (e.key === 'Enter') commitEdit();
             if (e.key === 'Escape') setEditing(false);
           }}
-          style={{ flex: 1, border: 'none', borderBottom: '1.5px solid #3b82f6', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: '#1e293b', padding: '1px 0', userSelect: 'text' }}
+          style={{ flex: 1, border: 'none', borderBottom: '1.5px solid #3b82f6', background: 'transparent', outline: 'none', fontSize: '0.9375rem', color: '#1e293b', padding: '1px 0', userSelect: 'text' }}
         />
       ) : (
         <span
           onDoubleClick={startEdit}
           title="Подвійний клік — редагувати"
           style={{
-            flex: 1, fontSize: '0.875rem', lineHeight: 1.4, cursor: 'text',
+            flex: 1, fontSize: '0.9375rem', lineHeight: 1.5, cursor: 'text',
             color: task.done ? '#94a3b8' : '#374151',
             textDecoration: task.done ? 'line-through' : 'none',
             transition: 'all 0.15s',
@@ -971,14 +1063,14 @@ function TaskItem({ task, onToggle, onDelete, onRename }: {
       <button
         onClick={onDelete}
         style={{
-          background: 'none', border: 'none', cursor: 'pointer', padding: 2,
+          background: 'none', border: 'none', cursor: 'pointer', padding: 3,
           display: 'flex', color: '#cbd5e1', borderRadius: 4,
           opacity: hovered && !editing ? 1 : 0, transition: 'opacity 0.15s, color 0.1s',
         }}
         onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
         onMouseLeave={e => { e.currentTarget.style.color = '#cbd5e1'; }}
       >
-        <X size={12} />
+        <X size={13} />
       </button>
     </div>
   );
@@ -998,11 +1090,11 @@ function TagsRow({ tags, onAdd, onRemove, bg }: { tags: string[]; onAdd: (t: str
   };
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.375rem 1.125rem', borderBottom: tags.length > 0 || adding ? '1px solid #f1f5f9' : 'none', background: bg, minHeight: tags.length > 0 || adding ? undefined : 0, alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.5rem 1.25rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: bg, alignItems: 'center', minHeight: 36 }}>
       {tags.map(tag => (
-        <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '0.125rem 0.5rem', borderRadius: 20, background: '#e2e8f0', fontSize: '0.6875rem', fontWeight: 600, color: '#475569' }}>
+        <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 20, background: '#e0e7ff', fontSize: '0.6875rem', fontWeight: 600, color: '#3730a3' }}>
           #{tag}
-          <button onClick={() => onRemove(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#94a3b8', lineHeight: 1 }}>
+          <button onClick={() => onRemove(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#818cf8', lineHeight: 1 }}>
             <X size={10} />
           </button>
         </span>
@@ -1021,7 +1113,9 @@ function TagsRow({ tags, onAdd, onRemove, bg }: { tags: string[]; onAdd: (t: str
       ) : (
         <button
           onClick={() => { setAdding(true); setTimeout(() => inputRef.current?.focus(), 0); }}
-          style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: 20, cursor: 'pointer', padding: '0.125rem 0.5rem', fontSize: '0.6875rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 3 }}
+          style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: 20, cursor: 'pointer', padding: '2px 8px', fontSize: '0.6875rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#a5b4fc'; e.currentTarget.style.color = '#4f46e5'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#94a3b8'; }}
         >
           <Plus size={9} strokeWidth={2.5} /> тег
         </button>
@@ -1048,18 +1142,18 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
   if (!hasLinks && students.length === 0 && groups.length === 0) return null;
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.375rem 1.125rem', borderBottom: hasLinks ? '1px solid #f1f5f9' : 'none', background: bg, alignItems: 'center', minHeight: hasLinks ? undefined : 0 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.5rem 1.25rem', borderBottom: hasLinks ? '1px solid rgba(0,0,0,0.05)' : 'none', background: bg, alignItems: 'center', minHeight: 36 }}>
       {/* Student link */}
       {studentId && studentName ? (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '0.125rem 0.5rem', borderRadius: 20, background: '#eff6ff', fontSize: '0.6875rem', fontWeight: 600, color: '#2563eb' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 20, background: '#eff6ff', fontSize: '0.6875rem', fontWeight: 600, color: '#2563eb' }}>
           👤 {studentName}
-          <button onClick={() => onChangeStudent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1 }}><X size={10} /></button>
+          <button onClick={() => onChangeStudent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#93c5fd', lineHeight: 1 }}><X size={10} /></button>
         </span>
       ) : students.length > 0 && (
         <select
           value=""
           onChange={e => onChangeStudent(e.target.value ? Number(e.target.value) : null)}
-          style={{ fontSize: '0.6875rem', border: '1px dashed #d1d5db', borderRadius: 20, padding: '0.125rem 0.5rem', background: 'transparent', color: '#94a3b8', cursor: 'pointer', outline: 'none' }}
+          style={{ fontSize: '0.6875rem', border: '1px dashed #d1d5db', borderRadius: 20, padding: '2px 8px', background: 'transparent', color: '#94a3b8', cursor: 'pointer', outline: 'none' }}
         >
           <option value="">👤 Учень...</option>
           {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -1068,15 +1162,15 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
 
       {/* Group link */}
       {groupId && groupTitle ? (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '0.125rem 0.5rem', borderRadius: 20, background: '#f0fdf4', fontSize: '0.6875rem', fontWeight: 600, color: '#16a34a' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 20, background: '#f0fdf4', fontSize: '0.6875rem', fontWeight: 600, color: '#16a34a' }}>
           👥 {groupTitle}
-          <button onClick={() => onChangeGroup(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1 }}><X size={10} /></button>
+          <button onClick={() => onChangeGroup(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#86efac', lineHeight: 1 }}><X size={10} /></button>
         </span>
       ) : groups.length > 0 && (
         <select
           value=""
           onChange={e => onChangeGroup(e.target.value ? Number(e.target.value) : null)}
-          style={{ fontSize: '0.6875rem', border: '1px dashed #d1d5db', borderRadius: 20, padding: '0.125rem 0.5rem', background: 'transparent', color: '#94a3b8', cursor: 'pointer', outline: 'none' }}
+          style={{ fontSize: '0.6875rem', border: '1px dashed #d1d5db', borderRadius: 20, padding: '2px 8px', background: 'transparent', color: '#94a3b8', cursor: 'pointer', outline: 'none' }}
         >
           <option value="">👥 Група...</option>
           {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
@@ -1134,7 +1228,7 @@ function TaskList({ tasks, onToggle, onDelete, onRename, onReorder }: {
           onDragOver={e => e.preventDefault()}
           onDragEnd={() => { setDragOver(null); dragId.current = null; }}
           onDrop={onDrop}
-          style={{ outline: dragOver === task.id ? '2px solid #3b82f6' : '2px solid transparent', borderRadius: 7, transition: 'outline 0.1s' }}
+          style={{ outline: dragOver === task.id ? '2px solid #3b82f6' : '2px solid transparent', borderRadius: 8, transition: 'outline 0.1s' }}
         >
           <TaskItem
             task={task}
