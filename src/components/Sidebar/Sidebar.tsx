@@ -42,7 +42,6 @@ const reportsMenuItems = [
   { href: '/reports', labelKey: 'nav.reports', icon: BarChart3 },
 ];
 
-const adminMenuItems: { href: string; labelKey: string; icon: React.ComponentType<{ size?: number }> }[] = [];
 
 // ── Combined date/time + weather widget ───────────────────────────────────────
 
@@ -600,38 +599,6 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             );
           })}
 
-          {user.role === 'admin' && adminMenuItems.length > 0 && (
-            <>
-              <div style={{ height: '1px', backgroundColor: '#f0f0f0', margin: '16px 12px' }} />
-              {adminMenuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-                return (
-                  <TransitionLink
-                    key={item.href}
-                    href={item.href}
-                    onClick={onClose}
-                    style={navItemStyle(isActive)}
-                    onMouseOver={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = '#f5f5f5';
-                        e.currentTarget.style.color = '#333333';
-                      }
-                    }}
-                    onMouseOut={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = '#666666';
-                      }
-                    }}
-                  >
-                    <Icon width="20" height="20" style={{ color: isActive ? '#1565c0' : '#666666', flexShrink: 0 }} />
-                    {t(item.labelKey)}
-                  </TransitionLink>
-                );
-              })}
-            </>
-          )}
         </nav>
 
         {/* Date / time / weather widget */}
