@@ -1589,19 +1589,6 @@ export default function TeachersPage() {
                             </tr>
                           ))}
                         </tbody>
-                        <tfoot>
-                          <tr style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0' }}>
-                            <td style={{ padding: '0.75rem 0.75rem 0.75rem 1rem', fontWeight: 700, color: '#374151' }}>Разом</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: '#4f46e5' }}>{allTeachersStats.teachers.reduce((s,tr) => s+tr.total_lessons,0)}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: '#0369a1' }}>{allTeachersStats.teachers.reduce((s,tr) => s+tr.group_lessons,0)}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: '#7c3aed' }}>{allTeachersStats.teachers.reduce((s,tr) => s+tr.individual_lessons,0)}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: '#16a34a' }}>{allTeachersStats.teachers.reduce((s,tr) => s+tr.total_present,0)}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: '#d97706' }}>{allTeachersStats.teachers.reduce((s,tr) => s+tr.total_makeup,0) || '—'}</td>
-                            <td style={{ padding: '0.75rem 1rem 0.75rem 0.75rem', textAlign: 'right', fontWeight: 800, color: '#dc2626', fontSize: '1rem' }}>
-                              {allTeachersStats.teachers.reduce((s,tr) => s+tr.total_salary,0).toLocaleString()} ₴
-                            </td>
-                          </tr>
-                        </tfoot>
                       </table>
                     </div>
                   </>
