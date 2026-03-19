@@ -194,6 +194,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showTaskSection, setShowTaskSection] = useState(false);
   const [forceShowText, setForceShowText] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [loading, setLoading]       = useState(false);
   const [saving, setSaving]         = useState(false);
   const [justSaved, setJustSaved]   = useState(false);
@@ -318,7 +319,16 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   useEffect(() => {
     setShowTaskSection(selectedNote ? selectedNote.tasks.length > 0 : false);
     setForceShowText(false);
+    // Reset textarea height on note change
+    setTimeout(() => {
+      if (textareaRef.current) autoResizeTextarea(textareaRef.current);
+    }, 0);
   }, [selectedId]);
+
+  const autoResizeTextarea = (el: HTMLTextAreaElement) => {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  };
 
   const createNote = async (type: 'note' | 'todo', template?: { title: string; content?: string; tasks?: Omit<Task,'id'>[] }) => {
     const res = await fetch('/api/notes', {
@@ -437,6 +447,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); shortcutRef.current.onClose(); return; }
       if (!e.ctrlKey && !e.metaKey) return;
       if (e.key === 'n') { e.preventDefault(); shortcutRef.current.createNote('note'); }
       if (e.key === 't') { e.preventDefault(); shortcutRef.current.createNote('todo'); }
@@ -508,10 +519,13 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             resizeOrigin.current = { mx: e.clientX, my: e.clientY, w: size.w, h: size.h };
             e.preventDefault();
           }}
-          style={{ position: 'absolute', bottom: 0, right: 0, width: 20, height: 20, cursor: 'se-resize', display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: '4px', zIndex: 1 }}
+          style={{ position: 'absolute', bottom: 2, right: 2, width: 16, height: 16, cursor: 'se-resize', zIndex: 10, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: '3px', opacity: 0.35, transition: 'opacity 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '0.75'; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '0.35'; }}
         >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M9 1L1 9M9 5L5 9M9 9" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
+          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+            <line x1="7" y1="2" x2="2" y2="7" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round"/>
+            <line x1="7" y1="5" x2="5" y2="7" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         </div>
 
@@ -692,14 +706,20 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                   flexShrink: 0,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {selectedNote.type === 'todo'
+                    {selectedNote.tasks.length > 0
                       ? <CheckSquare size={17} color="#2563eb" style={{ flexShrink: 0 }} />
                       : <FileText    size={17} color="#2563eb" style={{ flexShrink: 0 }} />
                     }
                     <input
                       value={selectedNote.title}
                       onChange={e => updateNote(selectedNote.id, { title: e.target.value })}
-                      placeholder={selectedNote.type === 'todo' ? 'Назва списку...' : 'Заголовок нотатки...'}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          textareaRef.current?.focus();
+                        }
+                      }}
+                      placeholder="Заголовок нотатки..."
                       style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '1.0625rem', fontWeight: 700, color: '#1e293b', userSelect: 'text' }}
                     />
                     {/* Save indicator */}
@@ -891,20 +911,25 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                   // When tasks exist and there's no text — list takes full height
                   const tasksFull = showTaskSection && !hasContent && !forceShowText;
                   return (
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden' }}>
 
-                  {/* Text area — hidden when list is full-screen */}
+                  {/* Text area — auto-height, hidden when list is full-screen */}
                   {!tasksFull && (
                   <textarea
+                    ref={textareaRef}
                     value={selectedNote.content}
-                    onChange={e => updateNote(selectedNote.id, { content: e.target.value })}
+                    onChange={e => {
+                      updateNote(selectedNote.id, { content: e.target.value });
+                      autoResizeTextarea(e.currentTarget);
+                    }}
                     placeholder="Починай писати..."
+                    rows={1}
                     style={{
-                      flex: 1, border: 'none', outline: 'none', resize: 'none',
+                      width: '100%', border: 'none', outline: 'none', resize: 'none',
                       padding: showTaskSection ? '1.25rem 1.5rem 0.75rem' : '1.25rem 1.5rem',
                       fontSize: '0.9375rem', lineHeight: 1.8, color: '#374151',
                       background: 'transparent', fontFamily: 'inherit', userSelect: 'text',
-                      minHeight: showTaskSection ? 80 : undefined,
+                      overflow: 'hidden', minHeight: 56, boxSizing: 'border-box',
                     }}
                   />
                   )}
@@ -913,11 +938,9 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                   {showTaskSection && (
                     <div style={{
                       borderTop: tasksFull ? 'none' : '1px solid rgba(0,0,0,0.07)',
-                      flex: tasksFull ? 1 : '0 0 auto',
-                      maxHeight: tasksFull ? 'none' : 280,
-                      overflowY: 'auto',
-                      padding: tasksFull ? '1.25rem 1.5rem' : '1rem 1.5rem 1.25rem',
+                      padding: tasksFull ? '1.25rem 1.5rem' : '1rem 1.5rem 1.5rem',
                       background: 'transparent',
+                      flexShrink: 0,
                     }}>
                       {/* "Add text" hint when in full-list mode */}
                       {tasksFull && (
@@ -1107,9 +1130,9 @@ function TaskItem({ task, onToggle, onDelete, onRename }: {
           title="Подвійний клік — редагувати"
           style={{
             flex: 1, fontSize: '0.9375rem', lineHeight: 1.5, cursor: 'text',
-            color: task.done ? '#94a3b8' : '#374151',
+            color: task.done ? '#94a3b8' : '#1e293b',
             textDecoration: task.done ? 'line-through' : 'none',
-            transition: 'all 0.15s',
+            transition: 'color 0.15s, text-decoration 0.15s',
           }}
         >
           {task.text}
