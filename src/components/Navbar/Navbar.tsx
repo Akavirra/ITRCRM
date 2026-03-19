@@ -20,11 +20,13 @@ import {
   DollarSign,
   Calculator,
   Shuffle,
+  NotebookPen,
 } from 'lucide-react';
 import { t } from '@/i18n/t';
 import styles from './Navbar.module.css';
 import TransitionLink from '@/components/TransitionLink';
 import { useCalculator } from '@/components/CalculatorProvider';
+import { useNotes } from '@/components/NotesProvider';
 
 // ─── Notification types ───────────────────────────────────────────────────────
 
@@ -104,6 +106,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { calcOpen, toggleCalc } = useCalculator();
+  const { notesOpen, toggleNotes } = useNotes();
   const [userPhotoUrl, setUserPhotoUrl] = useState<string | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
@@ -485,6 +488,16 @@ const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right section */}
           <div className={styles.navbarRight}>
+            {/* Notes Button */}
+            <button
+              className={styles.iconButton}
+              title="Записник"
+              onClick={toggleNotes}
+              style={notesOpen ? { color: '#2563eb' } : undefined}
+            >
+              <NotebookPen size={20} strokeWidth={1.5} />
+            </button>
+
             {/* Calculator Button */}
             <button
               className={styles.iconButton}

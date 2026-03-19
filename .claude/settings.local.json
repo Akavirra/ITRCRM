@@ -101,7 +101,10 @@
       "Bash(tail -n 50 \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/page.tsx\")",
       "Bash(head -n 100 \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/[id]/page.tsx\")",
       "Bash(tail -n 50 \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/[id]/page.tsx\")",
-      "Bash(node scripts/add-salary-extra-items.js)"
+      "Bash(node scripts/add-salary-extra-items.js)",
+      "Bash(head:*)",
+      "Bash(find C:/CProjects/ITRoboticsCRM/ITRobotCRM -name *.sql -not -path */node_modules/*)",
+      "Bash(grep -rn \"img-src\\\\|Content-Security\\\\|CSP\" C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/ C:/CProjects/ITRoboticsCRM/ITRobotCRM/next.config.*)"
     ]
   }
 }

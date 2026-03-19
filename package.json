@@ -28,6 +28,7 @@
     "db:add-system-settings": "node scripts/add-system-settings.js",
     "db:add-salary-extra-items": "node scripts/add-salary-extra-items.js",
     "db:add-is-owner": "node scripts/add-is-owner.js",
+    "db:add-notes": "node scripts/add-notes.js",
     "test": "jest"
   },
   "dependencies": {
