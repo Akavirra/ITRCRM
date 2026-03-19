@@ -4,6 +4,48 @@ import { useState, useEffect } from 'react';
 import DraggableModal from './DraggableModal';
 import { useStudentModals } from './StudentModalsContext';
 import { useGroupModals } from './GroupModalsContext';
+import { useLessonModals } from './LessonModalsContext';
+
+const MONTHS_UK = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+const MONTHS_UK_GEN = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
+
+function getDefaultMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+type AttendanceStatus = 'present' | 'absent' | 'makeup_planned' | 'makeup_done';
+
+interface StudentAttendanceLesson {
+  lesson_id: number;
+  lesson_date: string;
+  attendance_status: AttendanceStatus | null;
+  is_makeup: boolean;
+  group_title: string | null;
+  topic: string | null;
+  lesson_teacher_name: string | null;
+}
+
+interface StudentAttendanceGroup {
+  group_id: number | null;
+  group_title: string | null;
+  course_title: string | null;
+  lessons: StudentAttendanceLesson[];
+  total: number;
+  present: number;
+  absent: number;
+  not_marked: number;
+  makeup: number;
+  rate: number;
+  is_individual: boolean;
+  is_makeup_group: boolean;
+}
+
+interface StudentAttendanceData {
+  year: number;
+  month: number;
+  groups: StudentAttendanceGroup[];
+}
 
 interface StudentData {
   id: number;
@@ -108,17 +150,25 @@ function getStatusBadge(status: 'studying' | 'not_studying') {
 export default function StudentModalsManager() {
   const { openModals, updateModalState, closeStudentModal } = useStudentModals();
   const { openGroupModal } = useGroupModals();
+  const { openLessonModal } = useLessonModals();
   const [studentData, setStudentData] = useState<Record<number, StudentWithGroups>>({});
   const [loadingStudents, setLoadingStudents] = useState<Record<number, boolean>>({});
   const [isHydrated, setIsHydrated] = useState(false);
-  
+
   // Notes editing state
   const [editingNotes, setEditingNotes] = useState<Record<number, boolean>>({});
   const [editedNotes, setEditedNotes] = useState<Record<number, string>>({});
   const [savingNotes, setSavingNotes] = useState<Record<number, boolean>>({});
-  
+
   // Copy state
   const [copiedField, setCopiedField] = useState<{ studentId: number; field: string } | null>(null);
+
+  // Stats section state (per student)
+  const [statsSectionOpen, setStatsSectionOpen] = useState<Record<number, boolean>>({});
+  const [statsMonthMap, setStatsMonthMap] = useState<Record<number, string>>({});
+  const [statsDataMap, setStatsDataMap] = useState<Record<number, StudentAttendanceData>>({});
+  const [statsLoadingMap, setStatsLoadingMap] = useState<Record<number, boolean>>({});
+  const [lessonsListOpen, setLessonsListOpen] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     setIsHydrated(true);
@@ -160,6 +210,34 @@ export default function StudentModalsManager() {
 
   const handleUpdateSize = (studentId: number, size: { width: number; height: number }) => {
     updateModalState(studentId, { size });
+  };
+
+  // ── Stats helpers ─────────────────────────────────────────────────────────
+
+  const fetchStudentStats = async (studentId: number, month: string) => {
+    const [year, mon] = month.split('-');
+    setStatsLoadingMap(prev => ({ ...prev, [studentId]: true }));
+    setStatsDataMap(prev => { const n = { ...prev }; delete n[studentId]; return n; });
+    setLessonsListOpen(prev => ({ ...prev, [studentId]: false }));
+    try {
+      const res = await fetch(`/api/students/${studentId}/attendance?view=monthly&year=${year}&month=${parseInt(mon, 10)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setStatsDataMap(prev => ({ ...prev, [studentId]: data }));
+      }
+    } catch { /* silent */ } finally {
+      setStatsLoadingMap(prev => ({ ...prev, [studentId]: false }));
+    }
+  };
+
+  const toggleStatsSection = (studentId: number) => {
+    const willOpen = !statsSectionOpen[studentId];
+    setStatsSectionOpen(prev => ({ ...prev, [studentId]: willOpen }));
+    if (willOpen && !statsDataMap[studentId] && !statsLoadingMap[studentId]) {
+      const month = statsMonthMap[studentId] || getDefaultMonth();
+      setStatsMonthMap(prev => ({ ...prev, [studentId]: prev[studentId] || month }));
+      fetchStudentStats(studentId, month);
+    }
   };
 
   if (!isHydrated || openModals.length === 0) return null;
@@ -719,6 +797,149 @@ export default function StudentModalsManager() {
                     )
                   )}
                 </div>
+                {/* ── Stats section ──────────────────────────────────────────── */}
+                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
+                  <button
+                    onClick={() => toggleStatsSection(student.id)}
+                    style={{ display: 'flex', alignItems: 'center', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '0.125rem 0', gap: '0.5rem' }}
+                  >
+                    <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', flex: 1, textAlign: 'left' }}>
+                      Статистика відвідуваності
+                    </span>
+                    <span style={{ fontSize: '0.6875rem', color: '#94a3b8' }}>{statsSectionOpen[student.id] ? '▲ Згорнути' : '▼ Розгорнути'}</span>
+                  </button>
+
+                  {statsSectionOpen[student.id] && (
+                    <div style={{ marginTop: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                      {/* Month picker */}
+                      <input
+                        type="month"
+                        value={statsMonthMap[student.id] || getDefaultMonth()}
+                        onChange={e => {
+                          setStatsMonthMap(prev => ({ ...prev, [student.id]: e.target.value }));
+                          fetchStudentStats(student.id, e.target.value);
+                        }}
+                        style={{ padding: '0.375rem 0.625rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.8125rem', color: '#374151', background: '#f8fafc', cursor: 'pointer', width: 'fit-content' }}
+                      />
+
+                      {statsLoadingMap[student.id] ? (
+                        <div style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8', fontSize: '0.875rem' }}>Завантаження...</div>
+                      ) : (() => {
+                        const sd = statsDataMap[student.id];
+                        if (!sd) return null;
+
+                        // Aggregate totals
+                        const allLessons = sd.groups.flatMap(g => g.lessons);
+                        const totalPresent = sd.groups.reduce((s, g) => s + g.present, 0);
+                        const totalAbsent = sd.groups.reduce((s, g) => s + g.absent, 0);
+                        const totalMakeup = sd.groups.reduce((s, g) => s + g.makeup, 0);
+                        const totalNotMarked = sd.groups.reduce((s, g) => s + g.not_marked, 0);
+                        const totalLessons = sd.groups.reduce((s, g) => s + g.total, 0);
+                        const rate = totalLessons > 0 ? Math.round((totalPresent + totalMakeup) / totalLessons * 100) : 0;
+
+                        const isExpanded = !!lessonsListOpen[student.id];
+
+                        return (
+                          <>
+                            {/* Summary pills */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                              {[
+                                { label: 'Занять', value: totalLessons, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe' },
+                                { label: 'Присутній', value: totalPresent, color: '#065f46', bg: '#f0fdf4', border: '#bbf7d0' },
+                                { label: 'Відсутній', value: totalAbsent, color: '#991b1b', bg: '#fef2f2', border: '#fecaca' },
+                                { label: 'Відпрац.', value: totalMakeup, color: '#92400e', bg: '#fffbeb', border: '#fde68a' },
+                                { label: '%', value: `${rate}%`, color: '#0e7490', bg: '#ecfeff', border: '#a5f3fc' },
+                              ].map(p => (
+                                <div key={p.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.375rem 0.625rem', background: p.bg, border: `1px solid ${p.border}`, borderRadius: 10, minWidth: 52 }}>
+                                  <span style={{ fontSize: '1rem', fontWeight: 700, color: p.color, lineHeight: 1.1 }}>{p.value}</span>
+                                  <span style={{ fontSize: '0.625rem', color: p.color, opacity: 0.75, fontWeight: 600, marginTop: 1 }}>{p.label}</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Lessons list (collapsible) */}
+                            {allLessons.length > 0 && (
+                              <div>
+                                <button
+                                  onClick={() => setLessonsListOpen(prev => ({ ...prev, [student.id]: !prev[student.id] }))}
+                                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: isExpanded ? '0.5rem' : 0, width: '100%', textAlign: 'left' }}
+                                >
+                                  <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                    Заняття ({allLessons.length})
+                                  </span>
+                                  <span style={{ fontSize: '0.6875rem', color: '#94a3b8', marginLeft: 'auto' }}>{isExpanded ? '▲ Згорнути' : '▼ Розгорнути'}</span>
+                                </button>
+
+                                {isExpanded && (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {sd.groups.map((group, gi) => (
+                                      <div key={group.group_id ?? `group-${gi}`}>
+                                        {/* Group header */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0.5rem', background: '#f8fafc', borderRadius: 6, marginBottom: '0.25rem' }}>
+                                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', flex: 1 }}>
+                                            {group.is_individual ? 'Індивідуальні' : group.is_makeup_group ? 'Відпрацювання' : (group.group_title || 'Без групи')}
+                                          </span>
+                                          {group.course_title && !group.is_individual && !group.is_makeup_group && (
+                                            <span style={{ fontSize: '0.625rem', color: '#94a3b8' }}>{group.course_title}</span>
+                                          )}
+                                          <span style={{ fontSize: '0.625rem', fontWeight: 600, color: '#16a34a' }}>{group.present + group.makeup}/{group.total}</span>
+                                        </div>
+                                        {/* Lesson rows */}
+                                        <div style={{ borderRadius: 8, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+                                          {group.lessons.map((lesson, li) => {
+                                            const d = new Date(lesson.lesson_date);
+                                            const statusMap: Record<string, { label: string; color: string; bg: string }> = {
+                                              present: { label: 'Присутній', color: '#16a34a', bg: '#f0fdf4' },
+                                              absent: { label: 'Відсутній', color: '#dc2626', bg: '#fef2f2' },
+                                              makeup_planned: { label: 'Заплановано', color: '#d97706', bg: '#fffbeb' },
+                                              makeup_done: { label: 'Відпрацював', color: '#2563eb', bg: '#eff6ff' },
+                                            };
+                                            const statusInfo = (lesson.attendance_status && statusMap[lesson.attendance_status]) || { label: 'Не відмічений', color: '#94a3b8', bg: '#f9fafb' };
+                                            return (
+                                              <div
+                                                key={lesson.lesson_id}
+                                                onClick={() => openLessonModal(lesson.lesson_id, `Заняття #${lesson.lesson_id}`, undefined)}
+                                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.625rem', borderBottom: li < group.lessons.length - 1 ? '1px solid #f8fafc' : 'none', background: li % 2 === 0 ? 'white' : '#fafbfc', cursor: 'pointer' }}
+                                                onMouseEnter={e => (e.currentTarget.style.background = '#f0f9ff')}
+                                                onMouseLeave={e => (e.currentTarget.style.background = li % 2 === 0 ? 'white' : '#fafbfc')}
+                                              >
+                                                <span style={{ fontSize: '0.8125rem', color: '#374151', whiteSpace: 'nowrap', minWidth: 60 }}>
+                                                  {d.getUTCDate()} {MONTHS_UK_GEN[d.getUTCMonth()]}
+                                                </span>
+                                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
+                                                  {lesson.is_makeup && (
+                                                    <span style={{ background: '#f5f3ff', color: '#7c3aed', borderRadius: 6, padding: '0 0.3rem', fontSize: '0.5625rem', fontWeight: 700 }}>Відпрац.</span>
+                                                  )}
+                                                  {lesson.topic && (
+                                                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }} title={lesson.topic}>
+                                                      {lesson.topic.length > 20 ? lesson.topic.slice(0, 20) + '…' : lesson.topic}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: statusInfo.color, background: statusInfo.bg, borderRadius: 6, padding: '0.1rem 0.375rem', whiteSpace: 'nowrap' }}>
+                                                  {statusInfo.label}
+                                                </span>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {allLessons.length === 0 && (
+                              <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: 8, color: '#94a3b8', fontSize: '0.8125rem', textAlign: 'center' }}>Немає занять за цей місяць</div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
