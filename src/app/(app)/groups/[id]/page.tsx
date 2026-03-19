@@ -241,7 +241,7 @@ export default function GroupDetailsPage() {
           const coursesData = await coursesRes.json();
           setCourses(coursesData.courses || []);
           
-          const teachersRes = await fetch('/api/teachers');
+          const teachersRes = await fetch('/api/teachers?simple=true');
           const teachersData = await teachersRes.json();
           setTeachers(teachersData.teachers || []);
         }
