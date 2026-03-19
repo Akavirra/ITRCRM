@@ -502,24 +502,57 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             onClick={isSmallScreen ? onClose : undefined}
             style={{ textDecoration: 'none', width: '100%' }}
           >
-            <div className="flex items-center gap-3 cursor-pointer group px-1">
-              {/* Airy Icon */}
-              <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 border border-slate-100 shadow-sm group-hover:shadow-md group-hover:border-blue-200 transition-all duration-300">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500 group-hover:text-indigo-500 transition-colors duration-300">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                  <circle cx="12" cy="12" r="3" className="fill-blue-50 group-hover:fill-indigo-100 transition-colors duration-300" />
-                </svg>
-              </div>
-              {/* Typography */}
-              <div className="flex flex-col justify-center">
-                <span className="text-[18px] tracking-[0.14em] leading-none mb-[4px]">
-                  <span className="font-light text-slate-400">ITR</span>
-                  <span className="font-extrabold bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">CRM</span>
-                </span>
-                <span className="text-[8px] font-semibold tracking-[0.3em] text-slate-400 uppercase">
-                  IT Robotics
-                </span>
-              </div>
+            <div className="flex items-center justify-center cursor-pointer group py-2 w-full select-none">
+              
+              {/* Custom Vector Typography Logo: ITRCRM constructed of tech/circuit lines */}
+              <svg width="100%" height="auto" style={{ maxWidth: '150px' }} viewBox="0 0 130 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="group-hover:scale-[1.03] transition-transform duration-400">
+                <defs>
+                  <linearGradient id="itr-grad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#6366f1" />
+                  </linearGradient>
+                  <linearGradient id="crm-grad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#64748b" />
+                    <stop offset="100%" stopColor="#334155" />
+                  </linearGradient>
+                  <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="1.5" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                {/* ITR - Cybernetic style with gradient */}
+                <g stroke="url(#itr-grad)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:stroke-indigo-500 transition-colors duration-500">
+                  {/* I */}
+                  <path d="M 12 14 L 12 32" />
+                  <circle cx="12" cy="7" r="2.5" fill="#3b82f6" strokeWidth="0" filter="url(#glow)" className="group-hover:fill-indigo-400 transition-colors duration-300" />
+                  
+                  {/* T */}
+                  <path d="M 20 8 L 34 8" />
+                  <path d="M 27 8 L 27 32" />
+                  
+                  {/* R */}
+                  <path d="M 42 32 L 42 8 L 49 8 Q 55 8 55 14 Q 55 20 49 20 L 42 20" />
+                  <path d="M 47 20 L 55 32" />
+                </g>
+
+                {/* CRM - Sleek geometric style */}
+                <g stroke="url(#crm-grad)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:stroke-slate-700 transition-colors duration-500">
+                  {/* C */}
+                  <path d="M 77 14 Q 77 8 71 8 Q 65 8 65 14 L 65 26 Q 65 32 71 32 Q 77 32 77 26" />
+                  
+                  {/* R */}
+                  <path d="M 85 32 L 85 8 L 92 8 Q 98 8 98 14 Q 98 20 92 20 L 85 20" />
+                  <path d="M 90 20 L 98 32" />
+                  
+                  {/* M */}
+                  <path d="M 106 32 L 106 8 L 114 18 L 122 8 L 122 32" />
+                </g>
+              </svg>
+
             </div>
           </TransitionLink>
         </div>
