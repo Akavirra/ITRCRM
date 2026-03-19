@@ -156,16 +156,16 @@ export default function CalculatorModal({ isOpen, onClose }: Props) {
           onMouseDown={startDrag}
           style={{ padding: '0.75rem 0.875rem 0', display: 'flex', alignItems: 'center', cursor: 'grab', background: '#1e293b' }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" style={{ marginRight: '0.375rem', flexShrink: 0 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" style={{ marginRight: '0.375rem', flexShrink: 0 }}>
             <rect x="4" y="2" width="4" height="4" rx="1"/><rect x="10" y="2" width="4" height="4" rx="1"/><rect x="16" y="2" width="4" height="4" rx="1"/>
             <rect x="4" y="8" width="4" height="4" rx="1"/><rect x="10" y="8" width="4" height="4" rx="1"/><rect x="16" y="8" width="4" height="4" rx="1"/>
           </svg>
-          <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', flex: 1 }}>Калькулятор</span>
+          <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.08em', flex: 1 }}>Калькулятор</span>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.125rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', borderRadius: 6, width: 24, height: 24 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.125rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', borderRadius: 6, width: 24, height: 24 }}
             onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.background = 'transparent'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.background = 'transparent'; }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
