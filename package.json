@@ -26,6 +26,7 @@
     "db:add-weather-city": "node scripts/add-weather-city.js",
     "db:add-group-teacher-assignments": "node scripts/add-group-teacher-assignments.js",
     "db:add-system-settings": "node scripts/add-system-settings.js",
+    "db:add-salary-extra-items": "node scripts/add-salary-extra-items.js",
     "test": "jest"
   },
   "dependencies": {

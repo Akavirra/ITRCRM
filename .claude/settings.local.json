@@ -100,7 +100,8 @@
       "Bash(head -n 100 \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/page.tsx\")",
       "Bash(tail -n 50 \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/page.tsx\")",
       "Bash(head -n 100 \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/[id]/page.tsx\")",
-      "Bash(tail -n 50 \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/[id]/page.tsx\")"
+      "Bash(tail -n 50 \"C:/CProjects/ITRoboticsCRM/ITRobotCRM/src/app/\\(app\\)/teachers/[id]/page.tsx\")",
+      "Bash(node scripts/add-salary-extra-items.js)"
     ]
   }
 }
