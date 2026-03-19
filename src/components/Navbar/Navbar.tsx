@@ -897,30 +897,32 @@ const Navbar: React.FC<NavbarProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                         <div style={{ width: 80, height: 80, borderRadius: 16, overflow: 'hidden', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '2px solid #e5e7eb' }}>
                           <img
-                            src={profilePhotoPreview || userPhotoUrl || dicebearUrl(settings.displayName || userName)}
+                            src={profilePhotoPreview || userPhotoUrl || dicebearUrl(userName)}
                             alt="avatar"
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />
                         </div>
                         <div>
-                          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.5rem 1rem', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; }}
-                          >
-                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleProfilePhotoSelect} />
-                            Вибрати фото
-                          </label>
-                          {!userPhotoUrl && !profilePhotoPreview && (
-                            <button
-                              onClick={randomizeDicebear}
-                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: 8, padding: '0.5rem 0.625rem', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#64748b', flexShrink: 0 }}
-                              onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#1e293b'; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
-                              title="Інший робот"
+                          <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1rem', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#374151', lineHeight: 1 }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; }}
                             >
-                              <Shuffle size={15} />
-                            </button>
-                          )}
+                              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleProfilePhotoSelect} />
+                              Вибрати фото
+                            </label>
+                            {!userPhotoUrl && !profilePhotoPreview && (
+                              <button
+                                onClick={randomizeDicebear}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 0.625rem', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#64748b' }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#1e293b'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
+                                title="Інший робот"
+                              >
+                                <Shuffle size={15} />
+                              </button>
+                            )}
+                          </div>
                           {profilePhotoPreview && (
                             <button onClick={() => { setProfilePhotoPreview(null); setProfilePhotoBase64(null); }}
                               style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#64748b' }}>
