@@ -285,7 +285,6 @@ export default function TeachersPage() {
 
   const selectSalaryTeacher = async (teacher: Teacher) => {
     setSelectedSalaryTeacherId(teacher.id);
-    setSalaryModal({ teacherId: teacher.id, teacherName: teacher.name });
     await fetchSalaryData(teacher.id, teacher.name, salariesMonth);
   };
 
