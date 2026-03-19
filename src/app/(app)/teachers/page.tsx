@@ -1558,12 +1558,18 @@ export default function TeachersPage() {
                               onMouseLeave={e => { e.currentTarget.style.background = i % 2 === 0 ? 'white' : '#fafbfc'; }}
                             >
                               <td style={{ padding: '0.75rem 0.75rem 0.75rem 1rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                                <button
+                                  onClick={() => openTeacherModal(tr.teacher_id, tr.teacher_name)}
+                                  style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                                  title="Відкрити профіль викладача"
+                                  onMouseEnter={e => { (e.currentTarget.querySelector('span') as HTMLElement).style.color = '#3b82f6'; }}
+                                  onMouseLeave={e => { (e.currentTarget.querySelector('span') as HTMLElement).style.color = '#1e293b'; }}
+                                >
                                   <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#eff6ff', color: '#3b82f6', fontWeight: 700, fontSize: '0.8125rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                     {tr.teacher_name.charAt(0)}
                                   </div>
-                                  <span style={{ fontWeight: 600, color: '#1e293b' }}>{tr.teacher_name}</span>
-                                </div>
+                                  <span style={{ fontWeight: 600, color: '#1e293b', transition: 'color 0.15s' }}>{tr.teacher_name}</span>
+                                </button>
                               </td>
                               <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                                 <button
