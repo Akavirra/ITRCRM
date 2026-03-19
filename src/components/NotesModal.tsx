@@ -124,14 +124,64 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
 
 // ── Main modal ────────────────────────────────────────────────────────────────
 
+// ── Templates ─────────────────────────────────────────────────────────────────
+
+const TEMPLATES: { icon: string; label: string; desc: string; type: 'note' | 'todo'; content?: string; tasks?: Omit<Task,'id'>[] }[] = [
+  {
+    icon: '📋', type: 'todo', label: 'Щотижневий чеклист',
+    desc: 'Стандартні завдання на тиждень',
+    tasks: [
+      { text: 'Перевірити оплати учнів', done: false },
+      { text: 'Переглянути розклад груп', done: false },
+      { text: 'Оновити відвідуваність', done: false },
+      { text: 'Зв\'язатись із боржниками', done: false },
+      { text: 'Переглянути звіти', done: false },
+    ],
+  },
+  {
+    icon: '💰', type: 'todo', label: 'Перевірка оплат',
+    desc: 'Контроль фінансових надходжень',
+    tasks: [
+      { text: 'Перевірити поточні борги', done: false },
+      { text: 'Надіслати нагадування боржникам', done: false },
+      { text: 'Зафіксувати нові оплати', done: false },
+      { text: 'Звірити баланс', done: false },
+    ],
+  },
+  {
+    icon: '🎓', type: 'todo', label: 'Нова група',
+    desc: 'Кроки для запуску групи',
+    tasks: [
+      { text: 'Визначити викладача', done: false },
+      { text: 'Скласти розклад занять', done: false },
+      { text: 'Зібрати учнів', done: false },
+      { text: 'Налаштувати оплату', done: false },
+      { text: 'Провести перше заняття', done: false },
+    ],
+  },
+  {
+    icon: '📝', type: 'note', label: 'Нотатка про учня',
+    desc: 'Шаблон замітки по учню',
+    content: 'Ім\'я: \nГрупа: \nКонтакт: \n\nПримітки:\n',
+  },
+  {
+    icon: '📅', type: 'note', label: 'Нотатка про зустріч',
+    desc: 'Запис результатів зустрічі',
+    content: 'Дата: \nУчасники: \n\nОбговорені питання:\n\nРішення:\n\nНаступні кроки:\n',
+  },
+];
+
+// ── Main modal ────────────────────────────────────────────────────────────────
+
 interface Props { isOpen: boolean; onClose: () => void; }
 
 export default function NotesModal({ isOpen, onClose }: Props) {
   const [notes, setNotes]           = useState<Note[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch]         = useState('');
-  const [activeTag, setActiveTag]     = useState<string | null>(null);
-  const [showArchive, setShowArchive] = useState(false);
+  const [activeTag, setActiveTag]       = useState<string | null>(null);
+  const [showArchive, setShowArchive]   = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [loading, setLoading]       = useState(false);
   const [saving, setSaving]         = useState(false);
   const [justSaved, setJustSaved]   = useState(false);
@@ -242,18 +292,28 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
   const selectedNote = notes.find(n => n.id === selectedId) ?? null;
 
-  const createNote = async (type: 'note' | 'todo') => {
+  const createNote = async (type: 'note' | 'todo', template?: { title: string; content?: string; tasks?: Omit<Task,'id'>[] }) => {
     const res = await fetch('/api/notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type }),
     });
     const d = await res.json();
-    if (d.note) {
-      setNotes(prev => [d.note, ...prev]);
-      setSelectedId(d.note.id);
-      setNewTaskText('');
+    if (!d.note) return;
+    if (template) {
+      const patch: Partial<Note> = { title: template.title };
+      if (template.content) patch.content = template.content;
+      if (template.tasks)   patch.tasks   = template.tasks.map(t => ({ ...t, id: crypto.randomUUID() }));
+      await fetch(`/api/notes/${d.note.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      Object.assign(d.note, patch);
     }
+    setNotes(prev => [d.note, ...prev]);
+    setSelectedId(d.note.id);
+    setNewTaskText('');
   };
 
   const duplicateNote = async (note: Note) => {
@@ -437,6 +497,38 @@ export default function NotesModal({ isOpen, onClose }: Props) {
               >
                 <Plus size={11} strokeWidth={2.5} /> Список
               </button>
+            </div>
+
+            {/* Templates dropdown */}
+            <div style={{ padding: '0 0.625rem 0.25rem', flexShrink: 0, position: 'relative' }}>
+              <button
+                onClick={() => setShowTemplates(v => !v)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.25rem 0', borderRadius: 7, border: '1px dashed #d1d5db', background: 'transparent', cursor: 'pointer', fontSize: '0.6875rem', color: '#64748b' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                Шаблони
+              </button>
+              {showTemplates && (
+                <div style={{ position: 'absolute', top: '100%', left: '0.625rem', right: '0.625rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 10, overflow: 'hidden' }}>
+                  {TEMPLATES.map(tpl => (
+                    <button
+                      key={tpl.label}
+                      onClick={() => { createNote(tpl.type, { title: tpl.label, content: tpl.content, tasks: tpl.tasks }); setShowTemplates(false); }}
+                      style={{ width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 8 }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                    >
+                      <span style={{ fontSize: '0.875rem' }}>{tpl.icon}</span>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{tpl.label}</div>
+                        <div style={{ fontSize: '0.625rem', color: '#94a3b8' }}>{tpl.desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Search */}
