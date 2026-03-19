@@ -108,12 +108,16 @@ const Navbar: React.FC<NavbarProps> = ({
   const [profileSaving, setProfileSaving] = useState(false);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
   const [profilePhotoBase64, setProfilePhotoBase64] = useState<string | null>(null);
-  const [dicebearSeed, setDicebearSeed] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('itrobot-avatar-seed') || '';
+  const [dicebearSeed, setDicebearSeed] = useState<string>('');
+
+  useEffect(() => {
+    let seed = localStorage.getItem('itrobot-avatar-seed');
+    if (!seed) {
+      seed = Math.random().toString(36).slice(2);
+      localStorage.setItem('itrobot-avatar-seed', seed);
     }
-    return '';
-  });
+    setDicebearSeed(seed);
+  }, []);
 
   // ── Notifications state ────────────────────────────────────────────────────
   const [notifOpen, setNotifOpen] = useState(false);
@@ -914,7 +918,7 @@ const Navbar: React.FC<NavbarProps> = ({
                             {!userPhotoUrl && !profilePhotoPreview && (
                               <button
                                 onClick={randomizeDicebear}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 0.625rem', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#64748b' }}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem 0.625rem', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#64748b', fontSize: '0.875rem', lineHeight: 1, boxSizing: 'border-box' }}
                                 onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#1e293b'; }}
                                 onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
                                 title="Інший робот"
