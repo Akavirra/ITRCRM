@@ -821,8 +821,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Salary rates — admin only */}
-                  {user.role === 'admin' && (
+                  {/* Salary rates */}
                   <div className="form-section" style={{ marginBottom: 0, borderBottom: 'none', paddingTop: '0.5rem' }}>
                     <h3 style={{ fontSize: '0.8125rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <DollarSign size={14} />
@@ -876,7 +875,6 @@ export default function SettingsPage() {
                       </button>
                     </div>
                   </div>
-                  )}
                 </div>
               </div>
             )}
