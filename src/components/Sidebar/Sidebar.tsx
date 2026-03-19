@@ -489,25 +489,39 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       <aside style={sidebarStyle}>
         {/* Logo area */}
         <div style={{ 
-          padding: '1rem', 
+          padding: '1.25rem 1rem', 
           backgroundColor: '#ffffff',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
           flexShrink: 0,
-          borderBottom: '1px solid #f5f5f5',
-          minHeight: isSmallScreen ? '64px' : 'auto',
+          borderBottom: '1px solid #f8fafc',
+          minHeight: isSmallScreen ? '72px' : 'auto',
         }}>
-          <img 
-            src="/logo.svg" 
-            alt="IT Robotics" 
-            style={{ 
-              width: '100%', 
-              maxWidth: '160px', 
-              height: 'auto', 
-              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-            }}
-          />
+          <TransitionLink 
+            href="/dashboard" 
+            onClick={isSmallScreen ? onClose : undefined}
+            style={{ textDecoration: 'none', width: '100%' }}
+          >
+            <div className="flex items-center gap-3 cursor-pointer group px-1">
+              {/* Airy Icon */}
+              <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 border border-slate-100 shadow-sm group-hover:shadow-md group-hover:border-blue-200 transition-all duration-300">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500 group-hover:text-indigo-500 transition-colors duration-300">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  <circle cx="12" cy="12" r="3" className="fill-blue-50 group-hover:fill-indigo-100 transition-colors duration-300" />
+                </svg>
+              </div>
+              {/* Typography */}
+              <div className="flex flex-col justify-center">
+                <span className="text-[18px] tracking-[0.14em] leading-none mb-[4px]">
+                  <span className="font-light text-slate-400">ITR</span>
+                  <span className="font-extrabold bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">CRM</span>
+                </span>
+                <span className="text-[8px] font-semibold tracking-[0.3em] text-slate-400 uppercase">
+                  IT Robotics
+                </span>
+              </div>
+            </div>
+          </TransitionLink>
         </div>
 
         {/* Navigation */}
