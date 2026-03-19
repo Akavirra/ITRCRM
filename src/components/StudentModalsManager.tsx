@@ -199,6 +199,12 @@ export default function StudentModalsManager() {
       if (modal.isOpen && !studentData[modal.id]) {
         loadStudentData(modal.id);
       }
+      // Auto-load stats for newly opened modals (section is open by default)
+      if (modal.isOpen && !statsDataMap[modal.id] && !statsLoadingMap[modal.id]) {
+        const month = statsMonthMap[modal.id] || getDefaultMonth();
+        setStatsMonthMap(prev => ({ ...prev, [modal.id]: prev[modal.id] || month }));
+        fetchStudentStats(modal.id, month);
+      }
     });
   }, [openModals]);
 
@@ -233,9 +239,10 @@ export default function StudentModalsManager() {
   };
 
   const toggleStatsSection = (studentId: number) => {
-    const willOpen = !statsSectionOpen[studentId];
-    setStatsSectionOpen(prev => ({ ...prev, [studentId]: willOpen }));
-    if (willOpen && !statsDataMap[studentId] && !statsLoadingMap[studentId]) {
+    // undefined = open by default, so treat undefined as open
+    const currentlyOpen = statsSectionOpen[studentId] !== false;
+    setStatsSectionOpen(prev => ({ ...prev, [studentId]: !currentlyOpen }));
+    if (!currentlyOpen && !statsDataMap[studentId] && !statsLoadingMap[studentId]) {
       const month = statsMonthMap[studentId] || getDefaultMonth();
       setStatsMonthMap(prev => ({ ...prev, [studentId]: prev[studentId] || month }));
       fetchStudentStats(studentId, month);
@@ -808,10 +815,10 @@ export default function StudentModalsManager() {
                     <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', flex: 1, textAlign: 'left' }}>
                       Статистика відвідуваності
                     </span>
-                    <span style={{ fontSize: '0.6875rem', color: '#94a3b8' }}>{statsSectionOpen[student.id] ? '▲ Згорнути' : '▼ Розгорнути'}</span>
+                    <span style={{ fontSize: '0.6875rem', color: '#94a3b8' }}>{statsSectionOpen[student.id] !== false ? '▲ Згорнути' : '▼ Розгорнути'}</span>
                   </button>
 
-                  {statsSectionOpen[student.id] && (
+                  {statsSectionOpen[student.id] !== false && (
                     <div style={{ marginTop: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
                       {/* Month picker */}
                       <input
