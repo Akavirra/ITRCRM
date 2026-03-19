@@ -16,8 +16,23 @@ interface Note {
   color: string | null;
   is_pinned: boolean;
   tags: string[];
+  deadline: string | null;
   created_at: string;
   updated_at: string;
+}
+
+function deadlineLabel(d: string | null): { text: string; overdue: boolean } | null {
+  if (!d) return null;
+  const deadline = new Date(d);
+  deadline.setHours(23, 59, 59);
+  const now = new Date();
+  const diff = deadline.getTime() - now.getTime();
+  const days = Math.ceil(diff / 86400000);
+  const overdue = diff < 0;
+  if (overdue) return { text: `Прострочено ${Math.abs(days)} д тому`, overdue: true };
+  if (days === 0) return { text: 'Сьогодні', overdue: false };
+  if (days === 1) return { text: 'Завтра', overdue: false };
+  return { text: `${String(deadline.getDate()).padStart(2,'0')}.${String(deadline.getMonth()+1).padStart(2,'0')}`, overdue: false };
 }
 
 // ── Color palette ─────────────────────────────────────────────────────────────
@@ -88,13 +103,18 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
       <div style={{ fontSize: '0.6875rem', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: 16 }}>
         {preview}
       </div>
-      {note.tags.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, paddingLeft: 16, marginTop: 3 }}>
-          {note.tags.slice(0, 3).map(tag => (
+      {(note.tags.length > 0 || note.deadline) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, paddingLeft: 16, marginTop: 3, alignItems: 'center' }}>
+          {note.tags.slice(0, 2).map(tag => (
             <span key={tag} style={{ fontSize: '0.5625rem', fontWeight: 700, padding: '0 0.3rem', borderRadius: 10, background: selected ? '#bfdbfe' : '#e2e8f0', color: selected ? '#1d4ed8' : '#64748b' }}>
               #{tag}
             </span>
           ))}
+          {(() => { const dl = deadlineLabel(note.deadline); return dl ? (
+            <span style={{ fontSize: '0.5625rem', fontWeight: 700, padding: '0 0.3rem', borderRadius: 10, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a' }}>
+              {dl.text}
+            </span>
+          ) : null; })()}
         </div>
       )}
     </button>
@@ -175,6 +195,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             color:     note.color,
             is_pinned: note.is_pinned,
             tags:      note.tags,
+            deadline:  note.deadline,
           }),
         });
         setJustSaved(true);
@@ -468,6 +489,32 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                       />
                     ))}
                   </div>
+
+                  {/* Deadline (todo only) */}
+                  {selectedNote.type === 'todo' && (() => {
+                    const dl = deadlineLabel(selectedNote.deadline);
+                    return (
+                      <label title="Дедлайн" style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', position: 'relative' }}>
+                        {dl ? (
+                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '0.125rem 0.5rem', borderRadius: 20, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a', whiteSpace: 'nowrap' }}>
+                            {dl.text}
+                            <button
+                              onClick={e => { e.preventDefault(); updateNote(selectedNote.id, { deadline: null }); }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 0 3px', color: 'inherit', lineHeight: 1, verticalAlign: 'middle' }}
+                            >×</button>
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', padding: '0.125rem 0.375rem', borderRadius: 20, border: '1px dashed #d1d5db', whiteSpace: 'nowrap' }}>+ дедлайн</span>
+                        )}
+                        <input
+                          type="date"
+                          value={selectedNote.deadline?.slice(0, 10) ?? ''}
+                          onChange={e => updateNote(selectedNote.id, { deadline: e.target.value || null })}
+                          style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0, cursor: 'pointer' }}
+                        />
+                      </label>
+                    );
+                  })()}
 
                   {/* Pin */}
                   <button
