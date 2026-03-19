@@ -131,7 +131,8 @@ const Navbar: React.FC<NavbarProps> = ({
   const [saved, setSaved] = useState(false);
   const [salarySettings, setSalarySettings] = useState({ teacher_salary_group: '75', teacher_salary_individual: '100' });
   const [salarySaving, setSalarySaving] = useState(false);
-  const [sysUsers, setSysUsers] = useState<{ id: number; name: string; email: string; role: string; is_active: boolean; created_at: string }[]>([]);
+  const [sysUsers, setSysUsers] = useState<{ id: number; name: string; email: string; role: string; is_active: boolean; is_owner: boolean; created_at: string }[]>([]);
+  const [currentUserIsOwner, setCurrentUserIsOwner] = useState(false);
   const [sysUsersLoading, setSysUsersLoading] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [createUserForm, setCreateUserForm] = useState({ name: '', email: '', password: '', role: 'admin' });
@@ -311,6 +312,23 @@ const Navbar: React.FC<NavbarProps> = ({
     } catch { /* silent */ } finally {
       setCreateUserSaving(false);
     }
+  };
+
+  // Load current user's is_owner when settings open
+  useEffect(() => {
+    if (!settingsOpen) return;
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.user?.is_owner) setCurrentUserIsOwner(true); })
+      .catch(() => {});
+  }, [settingsOpen]);
+
+  const handleDeleteUser = async (id: number) => {
+    if (!confirm('Видалити користувача? Цю дію неможливо скасувати.')) return;
+    const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+    const d = await res.json();
+    if (!res.ok) { alert(d.error || 'Помилка'); return; }
+    setSysUsers(prev => prev.filter(u => u.id !== id));
   };
 
   // Load settings when panel opens
@@ -1113,15 +1131,22 @@ const Navbar: React.FC<NavbarProps> = ({
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                           <thead>
                             <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
-                              {['Ім\'я', 'Email', 'Статус', 'Створено'].map(h => (
-                                <th key={h} style={{ padding: '0.625rem 0.875rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
+                              {['Ім\'я', 'Email', 'Статус', 'Створено', ...(currentUserIsOwner ? ['Дії'] : [])].map((h) => (
+                                <th key={h} style={{ padding: '0.625rem 0.875rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h !== 'Дії' ? h : ''}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody>
                             {sysUsers.map((u, i) => (
                               <tr key={u.id} style={{ borderBottom: i < sysUsers.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                                <td style={{ padding: '0.625rem 0.875rem', fontWeight: 500, color: '#1e293b' }}>{u.name}</td>
+                                <td style={{ padding: '0.625rem 0.875rem', fontWeight: 500, color: '#1e293b' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    {u.name}
+                                    {u.is_owner && (
+                                      <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '1px 6px', borderRadius: 5, background: '#fef3c7', color: '#92400e' }}>owner</span>
+                                    )}
+                                  </div>
+                                </td>
                                 <td style={{ padding: '0.625rem 0.875rem', color: '#64748b' }}>{u.email}</td>
                                 <td style={{ padding: '0.625rem 0.875rem' }}>
                                   <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: u.is_active ? '#f0fdf4' : '#fef2f2', color: u.is_active ? '#16a34a' : '#dc2626' }}>
@@ -1131,6 +1156,21 @@ const Navbar: React.FC<NavbarProps> = ({
                                 <td style={{ padding: '0.625rem 0.875rem', color: '#94a3b8', fontSize: '0.8125rem' }}>
                                   {new Date(u.created_at).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 </td>
+                                {currentUserIsOwner && (
+                                  <td style={{ padding: '0.625rem 0.875rem' }}>
+                                    {!u.is_owner && (
+                                      <button
+                                        onClick={() => handleDeleteUser(u.id)}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '3px 6px', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 500 }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                                        title="Видалити користувача"
+                                      >
+                                        Видалити
+                                      </button>
+                                    )}
+                                  </td>
+                                )}
                               </tr>
                             ))}
                           </tbody>

@@ -27,6 +27,7 @@
     "db:add-group-teacher-assignments": "node scripts/add-group-teacher-assignments.js",
     "db:add-system-settings": "node scripts/add-system-settings.js",
     "db:add-salary-extra-items": "node scripts/add-salary-extra-items.js",
+    "db:add-is-owner": "node scripts/add-is-owner.js",
     "test": "jest"
   },
   "dependencies": {

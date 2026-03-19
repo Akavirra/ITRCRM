@@ -16,6 +16,7 @@ export interface User {
   photo_url?: string | null;
   notes?: string | null;
   is_active: boolean;
+  is_owner: boolean;
   created_at: string;
   updated_at: string;
 }
