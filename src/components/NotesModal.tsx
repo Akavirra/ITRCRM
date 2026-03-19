@@ -193,6 +193,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const [showArchive, setShowArchive]   = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showTaskSection, setShowTaskSection] = useState(false);
+  const [forceShowText, setForceShowText] = useState(false);
   const [loading, setLoading]       = useState(false);
   const [saving, setSaving]         = useState(false);
   const [justSaved, setJustSaved]   = useState(false);
@@ -316,6 +317,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   // Show task section automatically if note already has tasks
   useEffect(() => {
     setShowTaskSection(selectedNote ? selectedNote.tasks.length > 0 : false);
+    setForceShowText(false);
   }, [selectedId]);
 
   const createNote = async (type: 'note' | 'todo', template?: { title: string; content?: string; tasks?: Omit<Task,'id'>[] }) => {
@@ -884,8 +886,15 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                 />
 
                 {/* ── Content area ── */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  {/* Text area — always visible */}
+                {(() => {
+                  const hasContent = selectedNote.content.trim().length > 0;
+                  // When tasks exist and there's no text — list takes full height
+                  const tasksFull = showTaskSection && !hasContent && !forceShowText;
+                  return (
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+                  {/* Text area — hidden when list is full-screen */}
+                  {!tasksFull && (
                   <textarea
                     value={selectedNote.content}
                     onChange={e => updateNote(selectedNote.id, { content: e.target.value })}
@@ -898,10 +907,32 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                       minHeight: showTaskSection ? 80 : undefined,
                     }}
                   />
+                  )}
 
                   {/* Task section — shown when toggled or tasks exist */}
                   {showTaskSection && (
-                    <div style={{ borderTop: '1px solid rgba(0,0,0,0.07)', flexShrink: 0, maxHeight: 280, overflowY: 'auto', padding: '1rem 1.5rem 1.25rem', background: 'transparent' }}>
+                    <div style={{
+                      borderTop: tasksFull ? 'none' : '1px solid rgba(0,0,0,0.07)',
+                      flex: tasksFull ? 1 : '0 0 auto',
+                      maxHeight: tasksFull ? 'none' : 280,
+                      overflowY: 'auto',
+                      padding: tasksFull ? '1.25rem 1.5rem' : '1rem 1.5rem 1.25rem',
+                      background: 'transparent',
+                    }}>
+                      {/* "Add text" hint when in full-list mode */}
+                      {tasksFull && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+                          <button
+                            onClick={() => setForceShowText(true)}
+                            style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: 20, cursor: 'pointer', padding: '2px 10px', fontSize: '0.6875rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.15s' }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.color = '#2563eb'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#94a3b8'; }}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Додати текст
+                          </button>
+                        </div>
+                      )}
 
                       {/* Progress bar */}
                       {totalTasks > 0 && (
@@ -962,7 +993,9 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                       )}
                     </div>
                   )}
-                </div>
+                  </div>
+                  );
+                })()}
               </>
             )}
           </div>
