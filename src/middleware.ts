@@ -9,6 +9,10 @@ const PUBLIC_ROUTES = [
   '/telegram',
   '/teacher-app',
   '/api/teacher-app',
+  '/tg-app',
+  '/admin-app',
+  '/api/admin-app',
+  '/api/tg-app',
 ]
 
 // Check if pathname starts with any of the public routes
