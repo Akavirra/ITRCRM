@@ -500,39 +500,64 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         }}>
           <style dangerouslySetInnerHTML={{ __html: `
             .itrcrm-logo { transition: transform 0.3s ease; }
-            .itrcrm-logo:hover { transform: scale(1.04); }
-            .itrcrm-logo:hover .logo-dot { animation: logoPulse 1.2s ease-in-out infinite; }
-            .itrcrm-logo:hover .logo-letters { filter: drop-shadow(0 2px 8px rgba(37,99,235,0.25)); }
-            .itrcrm-logo:hover .logo-accent { animation: logoShift 0.6s ease forwards; }
-            @keyframes logoPulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.4); } }
-            @keyframes logoShift { 0% { transform: translateX(0); } 100% { transform: translateX(2px); } }
+            .itrcrm-logo:hover { transform: scale(1.03); }
+            .itrcrm-logo:hover .logo-icon { filter: drop-shadow(0 3px 10px rgba(37,99,235,0.35)); }
+            .itrcrm-logo:hover .logo-eye-l, .itrcrm-logo:hover .logo-eye-r { animation: logoBlink 0.4s ease; }
+            .itrcrm-logo:hover .logo-antenna { animation: logoWiggle 0.6s ease; transform-origin: 50% 100%; }
+            .itrcrm-logo:hover .logo-letters { filter: drop-shadow(0 2px 6px rgba(37,99,235,0.2)); }
+            @keyframes logoBlink { 0%,100% { transform: scaleY(1); } 40% { transform: scaleY(0.1); } }
+            @keyframes logoWiggle { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(12deg); } 75% { transform: rotate(-8deg); } }
           `}} />
           <TransitionLink
             href="/dashboard"
             onClick={isSmallScreen ? onClose : undefined}
             style={{ textDecoration: 'none' }}
           >
-            <div className="itrcrm-logo" style={{ display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none', cursor: 'pointer' }}>
-              {/* Icon mark */}
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
-                <rect width="32" height="32" rx="9" fill="url(#logoGrad)" />
-                <path d="M9 11h14M9 16h10M9 21h7" stroke="white" strokeWidth="2.2" strokeLinecap="round" className="logo-accent" />
-                <circle cx="24" cy="21" r="3" fill="white" opacity="0.9" className="logo-dot" />
+            <div className="itrcrm-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, userSelect: 'none', cursor: 'pointer', padding: '4px 0' }}>
+              {/* Robot icon */}
+              <svg className="logo-icon" width="44" height="44" viewBox="0 0 44 44" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease' }}>
                 <defs>
-                  <linearGradient id="logoGrad" x1="0" y1="0" x2="32" y2="32">
+                  <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44">
                     <stop offset="0%" stopColor="#3b82f6" />
                     <stop offset="100%" stopColor="#1d4ed8" />
                   </linearGradient>
                 </defs>
+                {/* Antenna */}
+                <g className="logo-antenna">
+                  <line x1="22" y1="4" x2="22" y2="10" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx="22" cy="3" r="2.5" fill="#60a5fa" />
+                </g>
+                {/* Head */}
+                <rect x="6" y="10" width="32" height="24" rx="7" fill="url(#logoGrad)" />
+                {/* Screen / face area */}
+                <rect x="10" y="14" width="24" height="12" rx="4" fill="white" opacity="0.2" />
+                {/* Eyes */}
+                <rect className="logo-eye-l" x="14" y="17" width="5" height="6" rx="2.5" fill="white" />
+                <rect className="logo-eye-r" x="25" y="17" width="5" height="6" rx="2.5" fill="white" />
+                {/* Mouth — code bracket */}
+                <path d="M16 28 L19 26 L16 24" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+                <path d="M28 28 L25 26 L28 24" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+                <line x1="20" y1="27.5" x2="24" y2="24.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.7" />
+                {/* Ears / connectors */}
+                <rect x="2" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
+                <rect x="38" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
+                {/* Bottom — gear teeth */}
+                <rect x="14" y="34" width="4" height="4" rx="1" fill="#93c5fd" />
+                <rect x="20" y="34" width="4" height="4" rx="1" fill="#93c5fd" />
+                <rect x="26" y="34" width="4" height="4" rx="1" fill="#93c5fd" />
               </svg>
               {/* Text */}
-              <div className="logo-letters" style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1, transition: 'filter 0.3s ease' }}>
-                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+              <div className="logo-letters" style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1, transition: 'filter 0.3s ease', gap: 1 }}>
+                <span style={{ fontSize: '1.375rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
                   ITR
                 </span>
-                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#2563eb', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+                <span style={{ fontSize: '1.375rem', fontWeight: 800, color: '#2563eb', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
                   CRM
                 </span>
+              </div>
+              {/* Subtitle */}
+              <div style={{ fontSize: '0.5625rem', fontWeight: 500, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: -1 }}>
+                IT Школа · Робототехніка
               </div>
             </div>
           </TransitionLink>
