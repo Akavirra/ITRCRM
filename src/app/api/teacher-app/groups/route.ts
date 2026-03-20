@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
 
     // Find teacher by telegram_id
     const teacher = await queryOne(
-      `SELECT id, name, telegram_id, role, phone, email, created_at 
+      `SELECT id, name, telegram_id, role, phone, email, photo_url, created_at
        FROM users WHERE telegram_id = $1 AND is_active = TRUE LIMIT 1`,
       [telegramId]
     );
@@ -198,6 +198,7 @@ export async function GET(request: NextRequest) {
         role: teacher.role,
         phone: teacher.phone || null,
         email: teacher.email || null,
+        photo_url: teacher.photo_url || null,
         created_at: teacher.created_at,
       },
       groups: groupsWithStudents,

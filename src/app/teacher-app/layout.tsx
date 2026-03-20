@@ -427,6 +427,25 @@ const globalStyles = `
     color: white;
   }
 
+  .tg-action-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none !important;
+    box-shadow: none;
+  }
+
+  /* Lesson link in stats breakdown */
+  .tg-lesson-link {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .tg-lesson-link:hover,
+  .tg-lesson-link:active {
+    border-color: var(--tg-link-color) !important;
+    box-shadow: var(--shadow-sm);
+  }
+
   /* Divider */
   .tg-divider {
     height: 1px;
