@@ -488,26 +488,48 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
 
       <aside style={sidebarStyle}>
         {/* Logo area */}
-        <div style={{ 
-          padding: '1rem', 
+        <div style={{
+          padding: '1rem 1rem 0.875rem',
           backgroundColor: '#ffffff',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          borderBottom: '1px solid #f5f5f5',
+          borderBottom: '1px solid #f0f0f0',
           minHeight: isSmallScreen ? '64px' : 'auto',
         }}>
-          <img 
-            src="/logo.svg" 
-            alt="IT Robotics" 
-            style={{ 
-              width: '100%', 
-              maxWidth: '160px', 
-              height: 'auto', 
-              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-            }}
-          />
+          <style dangerouslySetInnerHTML={{ __html: `
+            .itrcrm-logo { cursor: default; transition: transform 0.3s ease; }
+            .itrcrm-logo:hover { transform: scale(1.04); }
+            .itrcrm-logo:hover .logo-dot { animation: logoPulse 1.2s ease-in-out infinite; }
+            .itrcrm-logo:hover .logo-letters { filter: drop-shadow(0 2px 8px rgba(37,99,235,0.25)); }
+            .itrcrm-logo:hover .logo-accent { animation: logoShift 0.6s ease forwards; }
+            @keyframes logoPulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.4); } }
+            @keyframes logoShift { 0% { transform: translateX(0); } 100% { transform: translateX(2px); } }
+          `}} />
+          <div className="itrcrm-logo" style={{ display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none' }}>
+            {/* Icon mark */}
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
+              <rect width="32" height="32" rx="9" fill="url(#logoGrad)" />
+              <path d="M9 11h14M9 16h10M9 21h7" stroke="white" strokeWidth="2.2" strokeLinecap="round" className="logo-accent" />
+              <circle cx="24" cy="21" r="3" fill="white" opacity="0.9" className="logo-dot" />
+              <defs>
+                <linearGradient id="logoGrad" x1="0" y1="0" x2="32" y2="32">
+                  <stop offset="0%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#1d4ed8" />
+                </linearGradient>
+              </defs>
+            </svg>
+            {/* Text */}
+            <div className="logo-letters" style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1, transition: 'filter 0.3s ease' }}>
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+                ITR
+              </span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#2563eb', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+                CRM
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Navigation */}
