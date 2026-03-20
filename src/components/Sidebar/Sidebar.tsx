@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { t } from '@/i18n/t';
 import {
   Home,
@@ -405,6 +405,88 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
 
   const isSmallScreen = isMobile || isTablet;
 
+  // --- Interactive robot logo ---
+  const logoRef = useRef<HTMLDivElement>(null);
+  const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
+  const [isBlinking, setIsBlinking] = useState(false);
+  const [robotEmotion, setRobotEmotion] = useState<string | null>(null);
+
+  // Eyes follow mouse
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!logoRef.current) return;
+    const rect = logoRef.current.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const maxShift = 2.5;
+    const factor = Math.min(dist / 200, 1);
+    setEyeOffset({
+      x: (dx / (dist || 1)) * maxShift * factor,
+      y: (dy / (dist || 1)) * maxShift * factor,
+    });
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [handleMouseMove]);
+
+  // Idle blink every 3-5s
+  useEffect(() => {
+    const blink = () => {
+      setIsBlinking(true);
+      setTimeout(() => setIsBlinking(false), 200);
+    };
+    const schedule = () => {
+      const delay = 3000 + Math.random() * 2000;
+      return setTimeout(() => { blink(); timerId = schedule(); }, delay);
+    };
+    let timerId = schedule();
+    return () => clearTimeout(timerId);
+  }, []);
+
+  // Click = random emotion
+  const emotions = [
+    { name: 'love', eyeShape: '❤', color: '#f43f5e' },
+    { name: 'star', eyeShape: '★', color: '#eab308' },
+    { name: 'happy', eyeShape: '◡', color: 'white' },
+    { name: 'surprise', eyeShape: '○', color: 'white' },
+    { name: 'wink', eyeShape: '−', color: 'white' },
+  ];
+
+  const handleRobotClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const emotion = emotions[Math.floor(Math.random() * emotions.length)];
+    setRobotEmotion(emotion.name);
+    setTimeout(() => setRobotEmotion(null), 1200);
+  }, []);
+
+  const getEyeContent = (side: 'l' | 'r') => {
+    if (!robotEmotion) return null;
+    const em = emotions.find(e => e.name === robotEmotion);
+    if (!em) return null;
+    const cx = side === 'l' ? 16.5 : 27.5;
+    const cy = 20;
+    // For wink, only right eye changes
+    if (em.name === 'wink' && side === 'l') return null;
+    return (
+      <text
+        x={cx}
+        y={cy + 1}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill={em.color}
+        fontSize="7"
+        style={{ pointerEvents: 'none' }}
+      >
+        {em.eyeShape}
+      </text>
+    );
+  };
+
   // On mobile/tablet, sidebar slides from left as overlay
   // On desktop, sidebar is fixed in place
   const getSidebarLeft = () => {
@@ -502,18 +584,23 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             .itrcrm-logo { transition: transform 0.3s ease; }
             .itrcrm-logo:hover { transform: scale(1.03); }
             .itrcrm-logo:hover .logo-icon { filter: drop-shadow(0 3px 10px rgba(37,99,235,0.35)); }
-            .itrcrm-logo:hover .logo-eye-l, .itrcrm-logo:hover .logo-eye-r { animation: logoBlink 0.4s ease; }
             .itrcrm-logo:hover .logo-antenna { animation: logoWiggle 0.6s ease; transform-origin: 50% 100%; }
             .itrcrm-logo:hover .logo-letters { filter: drop-shadow(0 2px 6px rgba(37,99,235,0.2)); }
-            @keyframes logoBlink { 0%,100% { transform: scaleY(1); } 40% { transform: scaleY(0.1); } }
             @keyframes logoWiggle { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(12deg); } 75% { transform: rotate(-8deg); } }
+            .robot-emotion { animation: emotionPop 0.4s ease; }
+            @keyframes emotionPop { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
           `}} />
           <TransitionLink
             href="/dashboard"
             onClick={isSmallScreen ? onClose : undefined}
             style={{ textDecoration: 'none' }}
           >
-            <div className="itrcrm-logo" style={{ display: 'flex', alignItems: 'center', gap: 10, userSelect: 'none', cursor: 'pointer', padding: '4px 0' }}>
+            <div
+              ref={logoRef}
+              className="itrcrm-logo"
+              onClick={handleRobotClick}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, userSelect: 'none', cursor: 'pointer', padding: '4px 0' }}
+            >
               {/* Robot icon */}
               <svg className="logo-icon" width="52" height="52" viewBox="0 0 44 44" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease' }}>
                 <defs>
@@ -531,9 +618,43 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 <rect x="6" y="10" width="32" height="24" rx="7" fill="url(#logoGrad)" />
                 {/* Screen / face area */}
                 <rect x="10" y="14" width="24" height="12" rx="4" fill="white" opacity="0.2" />
-                {/* Eyes */}
-                <rect className="logo-eye-l" x="14" y="17" width="5" height="6" rx="2.5" fill="white" />
-                <rect className="logo-eye-r" x="25" y="17" width="5" height="6" rx="2.5" fill="white" />
+                {/* Eyes — white sclera */}
+                <rect x="13" y="16" width="7" height="8" rx="3.5" fill="white" />
+                <rect x="24" y="16" width="7" height="8" rx="3.5" fill="white" />
+                {/* Pupils — follow mouse */}
+                {!robotEmotion && (
+                  <>
+                    <circle
+                      cx={16.5 + eyeOffset.x}
+                      cy={20 + eyeOffset.y}
+                      r="2.2"
+                      fill="#1e293b"
+                      style={{
+                        transition: 'cx 0.08s ease, cy 0.08s ease',
+                        transform: isBlinking ? 'scaleY(0.1)' : 'scaleY(1)',
+                        transformOrigin: '16.5px 20px',
+                      }}
+                    />
+                    <circle
+                      cx={27.5 + eyeOffset.x}
+                      cy={20 + eyeOffset.y}
+                      r="2.2"
+                      fill="#1e293b"
+                      style={{
+                        transition: 'cx 0.08s ease, cy 0.08s ease',
+                        transform: isBlinking ? 'scaleY(0.1)' : 'scaleY(1)',
+                        transformOrigin: '27.5px 20px',
+                      }}
+                    />
+                  </>
+                )}
+                {/* Emotion overlay */}
+                {robotEmotion && (
+                  <g className="robot-emotion">
+                    {getEyeContent('l')}
+                    {getEyeContent('r')}
+                  </g>
+                )}
                 {/* Ears / connectors */}
                 <rect x="2" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
                 <rect x="38" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
