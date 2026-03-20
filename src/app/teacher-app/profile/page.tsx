@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useTelegramInitData } from '@/components/TelegramWebAppProvider';
 
 interface Teacher {
@@ -423,8 +424,9 @@ export default function TeacherProfilePage() {
                 {showLessons && (
                   <div>
                     {monthStats.lessons.map(lesson => (
-                      <div
+                      <Link
                         key={lesson.lesson_id}
+                        href={`/teacher-app/lesson/${lesson.lesson_id}`}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -434,7 +436,10 @@ export default function TeacherProfilePage() {
                           border: '1px solid var(--tg-border)',
                           borderRadius: 'var(--radius-md)',
                           marginBottom: '8px',
+                          textDecoration: 'none',
+                          cursor: 'pointer',
                         }}
+                        className="tg-lesson-link"
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{
@@ -466,15 +471,13 @@ export default function TeacherProfilePage() {
                             {lesson.present_count} учн. × ₴{lesson.rate}
                           </div>
                         </div>
-                        <div style={{
-                          fontWeight: 700,
-                          fontSize: '15px',
-                          color: 'var(--tg-success)',
-                          flexShrink: 0,
-                        }}>
-                          {formatMoney(lesson.salary)}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                          <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--tg-success)' }}>
+                            {formatMoney(lesson.salary)}
+                          </span>
+                          <span style={{ fontSize: '16px', color: 'var(--tg-hint-color)' }}>›</span>
                         </div>
-                      </div>
+                      </Link>
                     ))}
 
                     {/* Extra items */}
