@@ -160,7 +160,7 @@ function FormatToolbar({ textareaRef, noteId, content, onUpdate }: {
   ];
 
   return (
-    <div style={{ display: 'flex', gap: 1, padding: '0 1.5rem 0.25rem', flexShrink: 0 }}>
+    <div style={{ display: 'flex', gap: 1, padding: '0.5rem 2.5rem 0.25rem', flexShrink: 0 }}>
       {btns.map(b => (
         <button
           key={b.label}
@@ -209,18 +209,19 @@ function NoteListItem({ note, selected, onClick, bulkMode, bulkSelected, onBulkT
       onDragEnd={onDragEnd}
       onDrop={e => { e.preventDefault(); onDrop?.(); }}
       style={{
-        width: '100%', textAlign: 'left',
-        background: selected ? '#eff6ff' : 'transparent',
+        width: 'calc(100% - 0.75rem)', textAlign: 'left',
+        background: selected ? '#e8f0fe' : 'transparent',
         border: 'none',
-        borderLeft: `3px solid ${selected ? '#2563eb' : dotColor}`,
-        borderTop: dragOver ? '2px solid #3b82f6' : '2px solid transparent',
-        padding: '0.625rem 1rem 0.75rem 0.875rem',
+        borderLeft: `4px solid ${selected ? '#1a73e8' : (note.color ? dotColor : 'transparent')}`,
+        borderRadius: '0 24px 24px 0',
+        padding: '0.75rem 1rem 0.75rem 0.875rem',
         cursor: 'pointer',
-        borderBottom: '1px solid #f1f5f9',
+        margin: '2px 0',
         display: 'block',
-        transition: 'background 0.12s',
+        transition: 'background 0.2s',
+        boxShadow: dragOver ? '0 -2px 0 0 #1a73e8' : 'none',
       }}
-      onMouseEnter={e => { if (!selected) e.currentTarget.style.background = '#f8fafc'; }}
+      onMouseEnter={e => { if (!selected) e.currentTarget.style.background = '#f1f3f4'; }}
       onMouseLeave={e => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
@@ -702,7 +703,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         position: 'absolute', left: pos.x, top: pos.y,
         width: size.w, height: size.h,
         background: '#ffffff',
-        borderRadius: 18,
+        borderRadius: 24,
         boxShadow: '0 24px 64px rgba(0,0,0,0.14), 0 4px 20px rgba(0,0,0,0.07)',
         overflow: 'hidden',
         pointerEvents: 'all',
@@ -772,7 +773,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
           {/* ── Left panel ── */}
-          <div style={{ width: sidebarW, borderRight: 'none', display: 'flex', flexDirection: 'column', background: '#f9fafb', flexShrink: 0, position: 'relative' }}>
+          <div style={{ width: sidebarW, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: '#f8f9fa', flexShrink: 0, position: 'relative' }}>
             {/* Sidebar resize handle */}
             <div
               onMouseDown={e => {
@@ -786,17 +787,17 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             />
 
             {/* Archive toggle */}
-            <div style={{ padding: '0.875rem 0.875rem 0.5rem', flexShrink: 0 }}>
-              <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: 10, padding: 3, gap: 2 }}>
+            <div style={{ padding: '1.25rem 1rem 0.5rem', flexShrink: 0 }}>
+              <div style={{ display: 'flex', background: '#e9eef6', borderRadius: 24, padding: 4, gap: 2 }}>
                 <button
                   onClick={() => { setShowArchive(false); setSelectedId(null); }}
-                  style={{ flex: 1, padding: '0.4rem 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.15s', background: !showArchive ? '#2563eb' : 'transparent', color: !showArchive ? '#fff' : '#64748b' }}
+                  style={{ flex: 1, padding: '0.45rem 0', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, transition: 'all 0.2s ease', background: !showArchive ? '#ffffff' : 'transparent', color: !showArchive ? '#1a73e8' : '#5f6368', boxShadow: !showArchive ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}
                 >
                   Активні
                 </button>
                 <button
                   onClick={() => { setShowArchive(true); setSelectedId(null); }}
-                  style={{ flex: 1, padding: '0.4rem 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.15s', background: showArchive ? '#2563eb' : 'transparent', color: showArchive ? '#fff' : '#64748b' }}
+                  style={{ flex: 1, padding: '0.45rem 0', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, transition: 'all 0.2s ease', background: showArchive ? '#ffffff' : 'transparent', color: showArchive ? '#1a73e8' : '#5f6368', boxShadow: showArchive ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}
                 >
                   Архів
                 </button>
@@ -804,23 +805,25 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             </div>
 
             {/* Create + Templates row */}
-            <div style={{ padding: '0 0.875rem 0.625rem', flexShrink: 0, display: 'flex', gap: 4, position: 'relative' }}>
+            <div style={{ padding: '0.5rem 1rem 0.75rem', flexShrink: 0, display: 'flex', gap: 6, position: 'relative' }}>
               <button
                 onClick={() => createNote('note')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0.5rem 0', borderRadius: 10, background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, transition: 'background 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0.625rem 0', borderRadius: 24, background: '#1a73e8', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(26,115,232,0.3)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#155ebc'; e.currentTarget.style.boxShadow = '0 2px 6px rgba(26,115,232,0.4)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#1a73e8'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(26,115,232,0.3)'; }}
+                onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
+                onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
               >
-                <Plus size={12} strokeWidth={2.5} /> Нова нотатка
+                <Plus size={14} strokeWidth={2.5} /> Нова нотатка
               </button>
               <button
                 onClick={() => setShowTemplates(v => !v)}
                 title="Шаблони"
-                style={{ width: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, border: '1.5px solid #e2e8f0', background: showTemplates ? '#eff6ff' : '#fff', cursor: 'pointer', color: showTemplates ? '#2563eb' : '#94a3b8', transition: 'all 0.15s', flexShrink: 0 }}
-                onMouseEnter={e => { if (!showTemplates) { e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.color = '#2563eb'; } }}
-                onMouseLeave={e => { if (!showTemplates) { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#94a3b8'; } }}
+                style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 20, border: '1px solid #e0e0e0', background: showTemplates ? '#e8f0fe' : '#fff', cursor: 'pointer', color: showTemplates ? '#1a73e8' : '#5f6368', transition: 'all 0.2s', flexShrink: 0 }}
+                onMouseEnter={e => { if (!showTemplates) { e.currentTarget.style.background = '#f8f9fa'; } }}
+                onMouseLeave={e => { if (!showTemplates) { e.currentTarget.style.background = '#fff'; } }}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
               </button>
             </div>
 
@@ -848,21 +851,21 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             )}
 
             {/* Search */}
-            <div style={{ padding: '0 0.875rem 0.75rem', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 10, padding: '0.4rem 0.75rem', gap: 6, border: '1.5px solid #e2e8f0', transition: 'border-color 0.15s' }}
-                onFocusCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#93c5fd'; }}
-                onBlurCapture={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#e2e8f0'; }}
+            <div style={{ padding: '0 1rem 1rem', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', background: '#f1f3f4', borderRadius: 24, padding: '0.5rem 1rem', gap: 8, transition: 'background 0.2s, box-shadow 0.2s' }}
+                onFocusCapture={e => { const el = e.currentTarget as HTMLDivElement; el.style.background = '#ffffff'; el.style.boxShadow = '0 1px 4px rgba(0,0,0,0.1)'; }}
+                onBlurCapture={e => { const el = e.currentTarget as HTMLDivElement; el.style.background = '#f1f3f4'; el.style.boxShadow = 'none'; }}
               >
-                <Search size={12} color="#94a3b8" style={{ flexShrink: 0 }} />
+                <Search size={16} color="#5f6368" style={{ flexShrink: 0 }} />
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Пошук..."
-                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.8125rem', color: '#374151', width: '100%', userSelect: 'text' }}
+                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: '#202124', width: '100%', userSelect: 'text' }}
                 />
                 {search && (
-                  <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#94a3b8' }}>
-                    <X size={12} />
+                  <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#5f6368' }}>
+                    <X size={14} />
                   </button>
                 )}
               </div>
@@ -1092,14 +1095,13 @@ export default function NotesModal({ isOpen, onClose }: Props) {
               <>
                 {/* ── Title row ── */}
                 <div style={{
-                  padding: '1.125rem 1.5rem 0.75rem',
-                  borderBottom: '1px solid rgba(0,0,0,0.06)',
+                  padding: '2rem 2.5rem 0.5rem',
                   flexShrink: 0,
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {selectedNote.tasks.length > 0
-                      ? <CheckSquare size={17} color="#2563eb" style={{ flexShrink: 0 }} />
-                      : <FileText    size={17} color="#2563eb" style={{ flexShrink: 0 }} />
+                      ? <CheckSquare size={22} color="#1a73e8" style={{ flexShrink: 0 }} />
+                      : <FileText    size={22} color="#1a73e8" style={{ flexShrink: 0 }} />
                     }
                     <input
                       ref={titleRef}
@@ -1112,14 +1114,14 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                         }
                       }}
                       placeholder="Заголовок нотатки..."
-                      style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '1.0625rem', fontWeight: 700, color: '#1e293b', userSelect: 'text' }}
+                      style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '1.5rem', fontWeight: 400, color: '#202124', userSelect: 'text', fontFamily: 'inherit' }}
                     />
                     {/* Save indicator */}
                     <span style={{
-                      fontSize: '0.6875rem', whiteSpace: 'nowrap', transition: 'opacity 0.3s',
+                      fontSize: '0.75rem', whiteSpace: 'nowrap', transition: 'opacity 0.3s',
                       opacity: saving || justSaved ? 1 : 0,
-                      color: saving ? '#f59e0b' : '#22c55e',
-                      display: 'flex', alignItems: 'center', gap: 3,
+                      color: saving ? '#f59e0b' : '#1a73e8',
+                      display: 'flex', alignItems: 'center', gap: 4,
                     }}>
                       {saving ? (
                         <>
@@ -1135,9 +1137,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
                 {/* ── Action bar ── */}
                 <div style={{
-                  padding: '0.5rem 1.5rem',
-                  borderBottom: '1px solid rgba(0,0,0,0.06)',
-                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, flexWrap: 'nowrap',
+                  padding: '0 2.5rem 0.5rem',
+                  display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'nowrap',
                 }}>
                   {/* Color dots */}
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginRight: 4 }}>
@@ -1359,7 +1360,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     <div
                       onClick={() => setMdPreview(false)}
                       style={{
-                        padding: showTaskSection ? '1.25rem 1.5rem 0.75rem' : '1.25rem 1.5rem',
+                        padding: showTaskSection ? '1.25rem 2.5rem 0.75rem' : '1.25rem 2.5rem',
                         fontSize: '0.9375rem', lineHeight: 1.8, color: '#374151',
                         cursor: 'text', minHeight: 56,
                       }}
@@ -1394,7 +1395,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     rows={1}
                     style={{
                       width: '100%', border: 'none', outline: 'none', resize: 'none',
-                      padding: showTaskSection ? '0.5rem 1.5rem 0.75rem' : '0.5rem 1.5rem',
+                      padding: showTaskSection ? '0.75rem 2.5rem 0.75rem' : '0.75rem 2.5rem',
                       fontSize: '0.9375rem', lineHeight: 1.8, color: '#374151',
                       background: 'transparent', fontFamily: 'inherit', userSelect: 'text',
                       overflow: 'hidden', minHeight: 56, boxSizing: 'border-box',
@@ -1407,7 +1408,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                   {showTaskSection && (
                     <div style={{
                       borderTop: tasksFull ? 'none' : '1px solid rgba(0,0,0,0.07)',
-                      padding: tasksFull ? '1.25rem 1.5rem' : '1rem 1.5rem 1.5rem',
+                      padding: tasksFull ? '1.25rem 2.5rem' : '1rem 2.5rem 1.5rem',
                       background: 'transparent',
                       flexShrink: 0,
                     }}>
@@ -1513,13 +1514,13 @@ function ActionBtn({ children, title, onClick, active, activeColor, hoverColor, 
     <button
       onClick={onClick}
       title={title}
-      style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', borderRadius: 8, color: active ? (activeColor ?? '#2563eb') : '#94a3b8', transition: 'all 0.15s', flexShrink: 0 }}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', color: active ? (activeColor ?? '#1a73e8') : '#5f6368', transition: 'all 0.2s', flexShrink: 0 }}
       onMouseEnter={e => {
-        e.currentTarget.style.color = active ? (activeColor ?? '#2563eb') : (hoverColor ?? '#374151');
-        e.currentTarget.style.background = hoverBg ?? '#f1f5f9';
+        e.currentTarget.style.color = active ? (activeColor ?? '#1a73e8') : (hoverColor ?? '#202124');
+        e.currentTarget.style.background = hoverBg ?? 'rgba(0,0,0,0.04)';
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.color = active ? (activeColor ?? '#2563eb') : '#94a3b8';
+        e.currentTarget.style.color = active ? (activeColor ?? '#1a73e8') : '#5f6368';
         e.currentTarget.style.background = 'none';
       }}
     >
@@ -1644,7 +1645,7 @@ function TagsRow({ tags, onAdd, onRemove, bg }: { tags: string[]; onAdd: (t: str
   };
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.625rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: bg, alignItems: 'center', minHeight: 40 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.625rem 2.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: bg, alignItems: 'center', minHeight: 40 }}>
       {tags.map(tag => (
         <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 9px', borderRadius: 20, background: '#e0e7ff', fontSize: '0.6875rem', fontWeight: 600, color: '#3730a3' }}>
           #{tag}
@@ -1783,7 +1784,7 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
   const matchedGroups = q ? groups.filter(g => g.title.toLowerCase().includes(q)).slice(0, 15) : groups.slice(0, 10);
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.5rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: bg, alignItems: 'center', minHeight: 36 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.5rem 2.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: bg, alignItems: 'center', minHeight: 36 }}>
       {/* Linked student badge */}
       {studentId && studentName && (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 9px', borderRadius: 20, background: '#eff6ff', fontSize: '0.6875rem', fontWeight: 600, color: '#2563eb' }}>
