@@ -351,7 +351,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const [newTaskText, setNewTaskText] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [sortBy, setSortBy] = useState<'updated' | 'created' | 'title'>('updated');
+  const [sortBy, setSortBy] = useState<'updated' | 'created' | 'title' | 'manual'>('updated');
   const [activeColor, setActiveColor] = useState<string | null>(null);
   const [sidebarW, setSidebarW] = useState(240);
   const sidebarResizing = useRef(false);
@@ -570,6 +570,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
   // Filter + sort
   const sortFn = (a: Note, b: Note) => {
+    if (sortBy === 'manual') return 0; // preserve array order
     if (sortBy === 'title') return (a.title || '').localeCompare(b.title || '', 'uk');
     if (sortBy === 'created') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
@@ -629,6 +630,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
   const reorderNotes = useCallback((fromId: number, toId: number) => {
     if (fromId === toId) return;
+    setSortBy('manual');
     setNotes(prev => {
       const next = [...prev];
       const fromIdx = next.findIndex(n => n.id === fromId);
@@ -870,7 +872,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             <div style={{ padding: '0 0.875rem 0.625rem', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               {/* Sort selector */}
               <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: 6, padding: 2, gap: 1, flex: 1 }}>
-                {([['updated', 'Оновл.'], ['created', 'Створ.'], ['title', 'Назва']] as const).map(([key, label]) => (
+                {([['updated', 'Оновл.'], ['created', 'Створ.'], ['title', 'Назва'], ['manual', '⇅']] as const).map(([key, label]) => (
                   <button
                     key={key}
                     onClick={() => setSortBy(key)}
