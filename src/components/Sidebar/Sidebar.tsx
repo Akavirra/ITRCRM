@@ -190,19 +190,57 @@ function SidebarInfoWidget() {
     setWeatherOpen(o => !o);
   };
 
+  // Generate dynamic styles based on time & weather
+  const getWidgetTheme = () => {
+    let bg = 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.4) 100%)';
+    let borderColor = 'rgba(255, 255, 255, 0.8)';
+    let shadow = '0 8px 32px -4px rgba(15, 23, 42, 0.04)';
+
+    const currentHour = now.getHours();
+
+    if (currentHour >= 20 || currentHour < 6) { // Night
+      bg = 'linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(226, 232, 240, 0.5) 100%)';
+      borderColor = 'rgba(255, 255, 255, 0.6)';
+    } else if (currentHour >= 6 && currentHour < 10) { // Morning
+      bg = 'linear-gradient(135deg, rgba(255, 253, 245, 0.9) 0%, rgba(255, 248, 231, 0.5) 100%)';
+    } else if (currentHour >= 17 && currentHour < 20) { // Evening
+      bg = 'linear-gradient(135deg, rgba(255, 247, 245, 0.9) 0%, rgba(255, 235, 235, 0.4) 100%)';
+    } else if (weather) { // Day, depend on weather
+      if (weather.code >= 200 && weather.code < 700) { // rain / snow / clouds
+        bg = 'linear-gradient(135deg, rgba(244, 244, 245, 0.9) 0%, rgba(228, 228, 231, 0.5) 100%)';
+      } else if (weather.code === 800 || weather.code === 801) { // clear/sunny
+        bg = 'linear-gradient(135deg, rgba(255, 254, 245, 0.95) 0%, rgba(255, 249, 219, 0.4) 100%)';
+      }
+    }
+    return { bg, borderColor, shadow };
+  };
+
+  const widgetTheme = getWidgetTheme();
+
   return (
     <div id="sidebar-info-widget" style={{ margin: '0 12px 12px', flexShrink: 0, position: 'relative' }}>
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes weatherFloat {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-3px) scale(1.1); }
+        }
+        .weather-btn-hover:hover .weather-icon-anim {
+          animation: weatherFloat 2s ease-in-out infinite;
+          display: inline-block;
+        }
+      `}} />
       <div style={{
         padding: '14px 18px',
         borderRadius: '20px',
-        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.4) 100%)',
+        background: widgetTheme.bg,
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
-        boxShadow: '0 8px 32px -4px rgba(15, 23, 42, 0.04), inset 0 0 0 1px rgba(255, 255, 255, 0.8)',
+        boxShadow: `${widgetTheme.shadow}, inset 0 0 0 1px ${widgetTheme.borderColor}`,
         border: 'none',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        transition: 'background 1s ease, box-shadow 1s ease'
       }}>
         {/* Left side: Time & Date */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -245,6 +283,7 @@ function SidebarInfoWidget() {
         {/* Right side: Weather */}
         {weather && (
           <button
+            className="weather-btn-hover"
             ref={weatherBtnRef}
             onClick={handleWeatherClick}
             style={{
@@ -274,7 +313,7 @@ function SidebarInfoWidget() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '20px', lineHeight: 1 }}>{weatherIcon(weather.code)}</span>
+              <span className="weather-icon-anim" style={{ fontSize: '20px', lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code)}</span>
               <span style={{ fontSize: '22px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
                 {weather.temp}°
               </span>
