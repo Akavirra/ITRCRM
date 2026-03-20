@@ -264,7 +264,7 @@ function SidebarInfoWidget() {
                 setCalOpen(o => !o);
               }}
               style={{
-                fontSize: '12px',
+                fontSize: '11px',
                 color: calOpen ? '#3b82f6' : '#64748b',
                 fontWeight: '400',
                 background: 'none',
@@ -296,7 +296,7 @@ function SidebarInfoWidget() {
               border: 'none',
               cursor: 'pointer',
               padding: '8px 10px',
-              margin: '-8px -10px -8px 0',
+              margin: '-8px -16px -8px 0',
               borderRadius: '14px',
               transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               opacity: weatherOpen ? 1 : 0.85,
