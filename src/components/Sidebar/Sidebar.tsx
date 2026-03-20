@@ -576,42 +576,129 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     return '#1e293b';
   };
 
-  // Seasonal accessory SVG
+  // Whether a seasonal accessory replaces the antenna
+  const hasAccessoryHat = hasBirthday || isNewYear || isSep1;
+
+  // Seasonal accessory SVG (replaces antenna)
   const renderAccessory = () => {
-    // Birthday party hat
+    // Birthday — big party hat replaces antenna
     if (hasBirthday) return (
-      <g style={{ transformOrigin: '22px 0px' }}>
-        <polygon points="22,0 15,10 29,10" fill="#f43f5e" />
-        <polygon points="22,0 18,6 26,6" fill="#fb923c" opacity="0.6" />
-        <circle cx="22" cy="-1" r="2" fill="#eab308" />
+      <g>
+        <polygon points="22,-6 12,11 32,11" fill="#f43f5e" />
+        <polygon points="22,-6 16,5 28,5" fill="#fb923c" opacity="0.5" />
+        <circle cx="22" cy="-7" r="3" fill="#eab308" />
+        {/* Confetti dots */}
+        <circle cx="15" cy="3" r="1" fill="#eab308" />
+        <circle cx="29" cy="5" r="1" fill="#60a5fa" />
+        <circle cx="18" cy="7" r="0.8" fill="#a78bfa" />
       </g>
     );
-    // New Year — Santa hat
+    // New Year — Santa hat with pompom replaces antenna
     if (isNewYear) return (
       <g>
-        <path d="M10,12 Q22,-4 34,12" fill="#dc2626" />
-        <path d="M10,12 Q22,-2 34,12" fill="#dc2626" />
-        <rect x="8" y="10" width="28" height="4" rx="2" fill="white" />
-        <circle cx="32" cy="0" r="3" fill="white" />
+        <path d="M8,12 Q22,-8 36,12" fill="#dc2626" />
+        <rect x="6" y="10" width="32" height="5" rx="2.5" fill="white" />
+        <circle cx="34" cy="-4" r="4" fill="white" />
       </g>
     );
-    // Halloween — pumpkin beside robot (rendered separately)
-    // Sep 1 — graduation cap
+    // Sep 1 — graduation cap replaces antenna
     if (isSep1) return (
       <g>
-        <rect x="10" y="5" width="24" height="3" rx="1" fill="#1e293b" />
-        <rect x="16" y="2" width="12" height="5" rx="1" fill="#1e293b" />
-        <line x1="22" y1="2" x2="22" y2="-1" stroke="#eab308" strokeWidth="1.5" />
-        <rect x="20" y="-2" width="4" height="2" rx="0.5" fill="#eab308" />
+        <polygon points="22,-2 6,7 38,7" fill="#1e293b" />
+        <rect x="12" y="7" width="20" height="4" rx="1" fill="#334155" />
+        <line x1="32" y1="4" x2="36" y2="9" stroke="#eab308" strokeWidth="1.5" strokeLinecap="round" />
+        <rect x="34" y="9" width="5" height="2" rx="1" fill="#eab308" />
       </g>
     );
-    // Easter — bunny ears
+    // Easter — bunny ears (antenna stays)
     if (isEaster) return (
       <g>
-        <ellipse cx="14" cy="2" rx="3.5" ry="8" fill="#fecdd3" />
-        <ellipse cx="14" cy="2" rx="2" ry="6" fill="#fda4af" />
-        <ellipse cx="30" cy="2" rx="3.5" ry="8" fill="#fecdd3" />
-        <ellipse cx="30" cy="2" rx="2" ry="6" fill="#fda4af" />
+        <ellipse cx="13" cy="0" rx="4" ry="10" fill="#fecdd3" />
+        <ellipse cx="13" cy="0" rx="2.5" ry="7" fill="#fda4af" />
+        <ellipse cx="31" cy="0" rx="4" ry="10" fill="#fecdd3" />
+        <ellipse cx="31" cy="0" rx="2.5" ry="7" fill="#fda4af" />
+      </g>
+    );
+    return null;
+  };
+
+  // Seasonal side item (cake, tree, backpack, basket, pumpkin)
+  const renderSideItem = () => {
+    if (hasBirthday) return (
+      // Birthday cake
+      <g transform="translate(40, 24)">
+        {/* Cake base */}
+        <rect x="0" y="6" width="12" height="8" rx="2" fill="#fbbf24" />
+        <rect x="0" y="6" width="12" height="3" rx="1.5" fill="#f472b6" />
+        {/* Frosting drip */}
+        <circle cx="3" cy="9" r="1" fill="#f472b6" />
+        <circle cx="9" cy="10" r="0.8" fill="#f472b6" />
+        {/* Candle */}
+        <rect x="5" y="2" width="2" height="5" rx="0.5" fill="#60a5fa" />
+        {/* Flame */}
+        <ellipse cx="6" cy="1" rx="1.5" ry="2" fill="#fb923c" />
+        <ellipse cx="6" cy="0.5" rx="0.8" ry="1.2" fill="#fbbf24" />
+      </g>
+    );
+    if (isNewYear) return (
+      // Christmas tree
+      <g transform="translate(40, 14)">
+        {/* Tree layers */}
+        <polygon points="7,-2 1,6 13,6" fill="#16a34a" />
+        <polygon points="7,2 0,10 14,10" fill="#15803d" />
+        <polygon points="7,6 -1,14 15,14" fill="#166534" />
+        {/* Trunk */}
+        <rect x="5" y="14" width="4" height="4" rx="1" fill="#92400e" />
+        {/* Star */}
+        <text x="7" y="0" textAnchor="middle" fontSize="5" fill="#eab308">★</text>
+        {/* Ornaments */}
+        <circle cx="5" cy="5" r="1.2" fill="#dc2626" />
+        <circle cx="9" cy="8" r="1.2" fill="#eab308" />
+        <circle cx="4" cy="11" r="1.2" fill="#3b82f6" />
+      </g>
+    );
+    if (isSep1) return (
+      // School backpack
+      <g transform="translate(40, 20)">
+        {/* Backpack body */}
+        <rect x="1" y="2" width="11" height="14" rx="3" fill="#3b82f6" />
+        {/* Front pocket */}
+        <rect x="3" y="8" width="7" height="6" rx="2" fill="#2563eb" />
+        {/* Pocket flap */}
+        <rect x="3" y="7" width="7" height="3" rx="1.5" fill="#1d4ed8" />
+        {/* Straps */}
+        <line x1="3" y1="2" x2="2" y2="0" stroke="#1e40af" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="10" y1="2" x2="11" y2="0" stroke="#1e40af" strokeWidth="1.5" strokeLinecap="round" />
+        {/* Buckle */}
+        <rect x="5.5" y="8.5" width="2" height="1.5" rx="0.5" fill="#fbbf24" />
+      </g>
+    );
+    if (isEaster) return (
+      // Easter basket
+      <g transform="translate(38, 26)">
+        {/* Basket */}
+        <path d="M0,6 Q1,14 7,14 Q13,14 14,6" fill="#d97706" />
+        <path d="M0,6 L14,6" stroke="#b45309" strokeWidth="1" />
+        {/* Handle */}
+        <path d="M2,6 Q7,-2 12,6" fill="none" stroke="#b45309" strokeWidth="1.5" />
+        {/* Eggs */}
+        <ellipse cx="4" cy="7" rx="2" ry="2.5" fill="#fecdd3" />
+        <ellipse cx="8" cy="6.5" rx="2" ry="2.5" fill="#bfdbfe" />
+        <ellipse cx="11" cy="7.5" rx="1.8" ry="2.2" fill="#d9f99d" />
+        {/* Egg patterns */}
+        <line x1="3" y1="7" x2="5" y2="7" stroke="#f9a8d4" strokeWidth="0.5" />
+        <line x1="7" y1="6.5" x2="9" y2="6.5" stroke="#93c5fd" strokeWidth="0.5" />
+      </g>
+    );
+    if (isHalloween) return (
+      // Pumpkin
+      <g transform="translate(38, 26)">
+        <ellipse cx="6" cy="7" rx="7" ry="6" fill="#f97316" />
+        <rect x="5" y="-1" width="2" height="4" rx="0.8" fill="#65a30d" />
+        {/* Face */}
+        <path d="M2,5 L4,7 L2,7" fill="#1e293b" />
+        <path d="M8,7 L10,5 L10,7" fill="#1e293b" />
+        <path d="M3,9 Q6,12 9,9" stroke="#1e293b" strokeWidth="0.8" fill="none" />
       </g>
     );
     return null;
@@ -743,20 +830,22 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
               {/* Speech bubble */}
               {speechBubble && <div className="robot-speech">{speechBubble}</div>}
               {/* Robot icon */}
-              <svg className="logo-icon" width="52" height="52" viewBox="0 0 44 44" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease' }}>
+              <svg className="logo-icon" width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
                 <defs>
                   <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44">
                     <stop offset="0%" stopColor={isNight ? '#1e3a5f' : '#3b82f6'} />
                     <stop offset="100%" stopColor={isNight ? '#0f172a' : '#1d4ed8'} />
                   </linearGradient>
                 </defs>
-                {/* Seasonal accessory (behind antenna) */}
+                {/* Seasonal accessory (replaces antenna when hat) */}
                 {renderAccessory()}
-                {/* Antenna */}
-                <g className={`logo-antenna${hasNotifications ? ' logo-antenna-pulse' : ''}`}>
-                  <line x1="22" y1="4" x2="22" y2="10" stroke={isNight ? '#1e40af' : '#3b82f6'} strokeWidth="2" strokeLinecap="round" />
-                  <circle className="logo-antenna-tip" cx="22" cy="3" r="2.5" fill={isNight ? '#3b82f6' : '#60a5fa'} />
-                </g>
+                {/* Antenna — hidden when seasonal hat is on */}
+                {!hasAccessoryHat && (
+                  <g className={`logo-antenna${hasNotifications ? ' logo-antenna-pulse' : ''}`}>
+                    <line x1="22" y1="4" x2="22" y2="10" stroke={isNight ? '#1e40af' : '#3b82f6'} strokeWidth="2" strokeLinecap="round" />
+                    <circle className="logo-antenna-tip" cx="22" cy="3" r="2.5" fill={isNight ? '#3b82f6' : '#60a5fa'} />
+                  </g>
+                )}
                 {/* Head */}
                 <rect x="6" y="10" width="32" height="24" rx="7" fill="url(#logoGrad)" />
                 {/* Screen / face area */}
@@ -808,21 +897,19 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 {/* Zzz when sleeping */}
                 {isSleeping && (
                   <>
-                    <text className="robot-zzz" x="33" y="10" fontSize="7" fill="#94a3b8" fontWeight="bold">z</text>
-                    <text className="robot-zzz" x="36" y="5" fontSize="5" fill="#94a3b8" fontWeight="bold" style={{ animationDelay: '0.7s' }}>z</text>
-                    <text className="robot-zzz" x="38" y="1" fontSize="4" fill="#94a3b8" fontWeight="bold" style={{ animationDelay: '1.4s' }}>z</text>
+                    <text className="robot-zzz" x="32" y="8" fontSize="10" fill="#94a3b8" fontWeight="bold">Z</text>
+                    <text className="robot-zzz" x="37" y="1" fontSize="8" fill="#94a3b8" fontWeight="bold" style={{ animationDelay: '0.7s' }}>Z</text>
+                    <text className="robot-zzz" x="41" y="-5" fontSize="6" fill="#94a3b8" fontWeight="bold" style={{ animationDelay: '1.4s' }}>z</text>
+                    {/* Pillow */}
+                    <g transform="translate(-5, 28)">
+                      <ellipse cx="10" cy="6" rx="12" ry="5" fill="#c7d2fe" />
+                      <ellipse cx="10" cy="5.5" rx="10" ry="3.5" fill="#e0e7ff" />
+                      <ellipse cx="10" cy="5" rx="6" ry="2" fill="#eef2ff" opacity="0.6" />
+                    </g>
                   </>
                 )}
-                {/* Halloween pumpkin */}
-                {isHalloween && (
-                  <g transform="translate(35, 28)">
-                    <circle cx="4" cy="4" r="5" fill="#f97316" />
-                    <rect x="3" y="-2" width="2" height="3" rx="0.5" fill="#65a30d" />
-                    <path d="M1.5,3 L2.5,4.5 L3.5,3" fill="#1e293b" />
-                    <path d="M4.5,3 L5.5,4.5 L6.5,3" fill="#1e293b" />
-                    <path d="M2,6 Q4,7.5 6,6" stroke="#1e293b" strokeWidth="0.8" fill="none" />
-                  </g>
-                )}
+                {/* Seasonal side item */}
+                {renderSideItem()}
                 {/* Ears / connectors */}
                 <rect x="2" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
                 <rect x="38" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
