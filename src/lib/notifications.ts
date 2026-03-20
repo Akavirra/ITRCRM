@@ -148,6 +148,22 @@ export async function safeCreateLessonDoneNotification(
   }
 }
 
+// ─── Birthday check (lightweight, for robot logo) ────────────────────────────
+
+export async function hasTodayBirthdays(): Promise<boolean> {
+  const kyivNow = toZonedTime(new Date(), 'Europe/Kyiv');
+  const month = kyivNow.getMonth() + 1;
+  const day = kyivNow.getDate();
+  const row = await get<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM students
+     WHERE is_active = TRUE AND birth_date IS NOT NULL
+       AND EXTRACT(MONTH FROM birth_date) = $1
+       AND EXTRACT(DAY FROM birth_date) = $2`,
+    [month, day]
+  );
+  return parseInt(row?.cnt ?? '0', 10) > 0;
+}
+
 // ─── Birthday notifications ───────────────────────────────────────────────────
 
 export async function createBirthdayNotificationsForToday(): Promise<number> {

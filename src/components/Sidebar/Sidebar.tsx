@@ -411,8 +411,25 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const [isBlinking, setIsBlinking] = useState(false);
   const [robotEmotion, setRobotEmotion] = useState<string | null>(null);
   const [hasNotifications, setHasNotifications] = useState(false);
+  const [hasBirthday, setHasBirthday] = useState(false);
+  const [isSleeping, setIsSleeping] = useState(false);
+  const [speechBubble, setSpeechBubble] = useState<string | null>(null);
+  const lastMoveRef = useRef(Date.now());
+  const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Poll unread notifications for antenna pulse
+  // Seasonal detection
+  const now = new Date();
+  const month = now.getMonth() + 1; // 1-12
+  const day = now.getDate();
+  const hour = now.getHours();
+  const isNight = hour >= 22 || hour < 6;
+  const isNewYear = (month === 12 && day >= 20) || (month === 1 && day <= 7);
+  const isHalloween = month === 10 && day >= 25 && day <= 31;
+  const isSep1 = month === 9 && day >= 1 && day <= 3;
+  // Easter approximate (for 2026: April 12, show April 5-19; for 2027: May 2)
+  const isEaster = (month === 4 && day >= 5 && day <= 19) || (month === 5 && day >= 1 && day <= 5);
+
+  // Poll unread notifications + birthdays
   useEffect(() => {
     const check = async () => {
       try {
@@ -420,6 +437,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         if (res.ok) {
           const data = await res.json();
           setHasNotifications((data.unreadCount ?? 0) > 0);
+          setHasBirthday(!!data.hasBirthday);
         }
       } catch {}
     };
@@ -428,8 +446,11 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     return () => clearInterval(interval);
   }, []);
 
-  // Eyes follow mouse
+  // Eyes follow mouse + idle sleep detection
   const handleMouseMove = useCallback((e: MouseEvent) => {
+    lastMoveRef.current = Date.now();
+    if (isSleeping) setIsSleeping(false);
+
     if (!logoRef.current) return;
     const rect = logoRef.current.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
@@ -443,18 +464,31 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       x: (dx / (dist || 1)) * maxShift * factor,
       y: (dy / (dist || 1)) * maxShift * factor,
     });
-  }, []);
+  }, [isSleeping]);
 
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [handleMouseMove]);
 
-  // Idle blink every 3-5s
+  // Idle sleep after 30s of no mouse movement
+  useEffect(() => {
+    const checkIdle = () => {
+      if (Date.now() - lastMoveRef.current > 30_000) {
+        setIsSleeping(true);
+      }
+    };
+    const interval = setInterval(checkIdle, 5_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Idle blink every 3-5s (not when sleeping)
   useEffect(() => {
     const blink = () => {
-      setIsBlinking(true);
-      setTimeout(() => setIsBlinking(false), 200);
+      if (!isSleeping) {
+        setIsBlinking(true);
+        setTimeout(() => setIsBlinking(false), 200);
+      }
     };
     const schedule = () => {
       const delay = 3000 + Math.random() * 2000;
@@ -462,7 +496,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     };
     let timerId = schedule();
     return () => clearTimeout(timerId);
-  }, []);
+  }, [isSleeping]);
 
   // Click = random emotion
   const emotions = [
@@ -473,13 +507,46 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     { name: 'wink', eyeShape: '−', color: 'white' },
   ];
 
+  const playBeep = useCallback(() => {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 800;
+      gain.gain.value = 0.1;
+      osc.start();
+      osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.1);
+      osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 0.2);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+      osc.stop(ctx.currentTime + 0.3);
+    } catch {}
+  }, []);
+
   const handleRobotClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isSleeping) {
+      setIsSleeping(false);
+      lastMoveRef.current = Date.now();
+      return;
+    }
     const emotion = emotions[Math.floor(Math.random() * emotions.length)];
     setRobotEmotion(emotion.name);
     setTimeout(() => setRobotEmotion(null), 1200);
-  }, []);
+  }, [isSleeping]);
+
+  // Double click = beep + speech bubble
+  const bubbles = ['Біп-боп!', 'Привіт! 👋', 'Я робот! 🤖', 'Працюємо! 💪', '01100001'];
+  const handleRobotDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    playBeep();
+    const msg = bubbles[Math.floor(Math.random() * bubbles.length)];
+    setSpeechBubble(msg);
+    setTimeout(() => setSpeechBubble(null), 2000);
+  }, [playBeep]);
 
   const getEyeContent = (side: 'l' | 'r') => {
     if (!robotEmotion) return null;
@@ -487,7 +554,6 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     if (!em) return null;
     const cx = side === 'l' ? 16.5 : 27.5;
     const cy = 20;
-    // For wink, only right eye changes
     if (em.name === 'wink' && side === 'l') return null;
     return (
       <text
@@ -502,6 +568,53 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         {em.eyeShape}
       </text>
     );
+  };
+
+  // Halloween eye color
+  const getEyeFill = () => {
+    if (isHalloween) return '#f97316';
+    return '#1e293b';
+  };
+
+  // Seasonal accessory SVG
+  const renderAccessory = () => {
+    // Birthday party hat
+    if (hasBirthday) return (
+      <g style={{ transformOrigin: '22px 0px' }}>
+        <polygon points="22,0 15,10 29,10" fill="#f43f5e" />
+        <polygon points="22,0 18,6 26,6" fill="#fb923c" opacity="0.6" />
+        <circle cx="22" cy="-1" r="2" fill="#eab308" />
+      </g>
+    );
+    // New Year — Santa hat
+    if (isNewYear) return (
+      <g>
+        <path d="M10,12 Q22,-4 34,12" fill="#dc2626" />
+        <path d="M10,12 Q22,-2 34,12" fill="#dc2626" />
+        <rect x="8" y="10" width="28" height="4" rx="2" fill="white" />
+        <circle cx="32" cy="0" r="3" fill="white" />
+      </g>
+    );
+    // Halloween — pumpkin beside robot (rendered separately)
+    // Sep 1 — graduation cap
+    if (isSep1) return (
+      <g>
+        <rect x="10" y="5" width="24" height="3" rx="1" fill="#1e293b" />
+        <rect x="16" y="2" width="12" height="5" rx="1" fill="#1e293b" />
+        <line x1="22" y1="2" x2="22" y2="-1" stroke="#eab308" strokeWidth="1.5" />
+        <rect x="20" y="-2" width="4" height="2" rx="0.5" fill="#eab308" />
+      </g>
+    );
+    // Easter — bunny ears
+    if (isEaster) return (
+      <g>
+        <ellipse cx="14" cy="2" rx="3.5" ry="8" fill="#fecdd3" />
+        <ellipse cx="14" cy="2" rx="2" ry="6" fill="#fda4af" />
+        <ellipse cx="30" cy="2" rx="3.5" ry="8" fill="#fecdd3" />
+        <ellipse cx="30" cy="2" rx="2" ry="6" fill="#fda4af" />
+      </g>
+    );
+    return null;
   };
 
   // On mobile/tablet, sidebar slides from left as overlay
@@ -608,6 +721,12 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             @keyframes emotionPop { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
             .logo-antenna-pulse .logo-antenna-tip { animation: antennaPulse 1.5s ease-in-out infinite; }
             @keyframes antennaPulse { 0%,100% { fill: #60a5fa; filter: drop-shadow(0 0 2px #60a5fa); } 50% { fill: #f59e0b; filter: drop-shadow(0 0 8px #f59e0b); } }
+            .robot-sleeping .logo-icon { filter: brightness(0.85); transition: filter 1s ease; }
+            .robot-zzz { animation: zzzFloat 2s ease-in-out infinite; }
+            @keyframes zzzFloat { 0% { opacity: 0; transform: translate(0,0) scale(0.5); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(6px,-12px) scale(1.1); } }
+            .robot-speech { animation: speechIn 0.3s ease; position: absolute; top: -8px; right: -12px; background: white; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 3px 8px; font-size: 11px; font-weight: 600; color: #334155; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10; pointer-events: none; }
+            @keyframes speechIn { 0% { opacity: 0; transform: scale(0.5) translateY(4px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+            .robot-night .logo-icon { filter: brightness(0.7) saturate(0.7); }
           `}} />
           <TransitionLink
             href="/dashboard"
@@ -616,38 +735,50 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
           >
             <div
               ref={logoRef}
-              className="itrcrm-logo"
+              className={`itrcrm-logo${isSleeping ? ' robot-sleeping' : ''}${isNight ? ' robot-night' : ''}`}
               onClick={handleRobotClick}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, userSelect: 'none', cursor: 'pointer', padding: '4px 0' }}
+              onDoubleClick={handleRobotDoubleClick}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, userSelect: 'none', cursor: 'pointer', padding: '4px 0', position: 'relative' }}
             >
+              {/* Speech bubble */}
+              {speechBubble && <div className="robot-speech">{speechBubble}</div>}
               {/* Robot icon */}
               <svg className="logo-icon" width="52" height="52" viewBox="0 0 44 44" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease' }}>
                 <defs>
                   <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44">
-                    <stop offset="0%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#1d4ed8" />
+                    <stop offset="0%" stopColor={isNight ? '#1e3a5f' : '#3b82f6'} />
+                    <stop offset="100%" stopColor={isNight ? '#0f172a' : '#1d4ed8'} />
                   </linearGradient>
                 </defs>
+                {/* Seasonal accessory (behind antenna) */}
+                {renderAccessory()}
                 {/* Antenna */}
                 <g className={`logo-antenna${hasNotifications ? ' logo-antenna-pulse' : ''}`}>
-                  <line x1="22" y1="4" x2="22" y2="10" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" />
-                  <circle className="logo-antenna-tip" cx="22" cy="3" r="2.5" fill="#60a5fa" />
+                  <line x1="22" y1="4" x2="22" y2="10" stroke={isNight ? '#1e40af' : '#3b82f6'} strokeWidth="2" strokeLinecap="round" />
+                  <circle className="logo-antenna-tip" cx="22" cy="3" r="2.5" fill={isNight ? '#3b82f6' : '#60a5fa'} />
                 </g>
                 {/* Head */}
                 <rect x="6" y="10" width="32" height="24" rx="7" fill="url(#logoGrad)" />
                 {/* Screen / face area */}
-                <rect x="10" y="14" width="24" height="12" rx="4" fill="white" opacity="0.2" />
+                <rect x="10" y="14" width="24" height="12" rx="4" fill={isNight ? 'white' : 'white'} opacity={isNight ? 0.1 : 0.2} />
                 {/* Eyes — white sclera */}
-                <rect x="13" y="16" width="7" height="8" rx="3.5" fill="white" />
-                <rect x="24" y="16" width="7" height="8" rx="3.5" fill="white" />
-                {/* Pupils — follow mouse */}
-                {!robotEmotion && (
+                <rect x="13" y="16" width="7" height="8" rx="3.5" fill="white" opacity={isSleeping ? 0.5 : 1} />
+                <rect x="24" y="16" width="7" height="8" rx="3.5" fill="white" opacity={isSleeping ? 0.5 : 1} />
+                {/* Sleeping — closed eyes (horizontal lines) */}
+                {isSleeping && !robotEmotion && (
+                  <>
+                    <line x1="14" y1="20" x2="19" y2="20" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
+                    <line x1="25" y1="20" x2="30" y2="20" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
+                  </>
+                )}
+                {/* Pupils — follow mouse (not when sleeping) */}
+                {!robotEmotion && !isSleeping && (
                   <>
                     <circle
                       cx={16.5 + eyeOffset.x}
                       cy={20 + eyeOffset.y}
                       r="2.2"
-                      fill="#1e293b"
+                      fill={getEyeFill()}
                       style={{
                         transition: 'cx 0.08s ease, cy 0.08s ease',
                         transform: isBlinking ? 'scaleY(0.1)' : 'scaleY(1)',
@@ -658,7 +789,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                       cx={27.5 + eyeOffset.x}
                       cy={20 + eyeOffset.y}
                       r="2.2"
-                      fill="#1e293b"
+                      fill={getEyeFill()}
                       style={{
                         transition: 'cx 0.08s ease, cy 0.08s ease',
                         transform: isBlinking ? 'scaleY(0.1)' : 'scaleY(1)',
@@ -672,6 +803,24 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                   <g className="robot-emotion">
                     {getEyeContent('l')}
                     {getEyeContent('r')}
+                  </g>
+                )}
+                {/* Zzz when sleeping */}
+                {isSleeping && (
+                  <>
+                    <text className="robot-zzz" x="33" y="10" fontSize="7" fill="#94a3b8" fontWeight="bold">z</text>
+                    <text className="robot-zzz" x="36" y="5" fontSize="5" fill="#94a3b8" fontWeight="bold" style={{ animationDelay: '0.7s' }}>z</text>
+                    <text className="robot-zzz" x="38" y="1" fontSize="4" fill="#94a3b8" fontWeight="bold" style={{ animationDelay: '1.4s' }}>z</text>
+                  </>
+                )}
+                {/* Halloween pumpkin */}
+                {isHalloween && (
+                  <g transform="translate(35, 28)">
+                    <circle cx="4" cy="4" r="5" fill="#f97316" />
+                    <rect x="3" y="-2" width="2" height="3" rx="0.5" fill="#65a30d" />
+                    <path d="M1.5,3 L2.5,4.5 L3.5,3" fill="#1e293b" />
+                    <path d="M4.5,3 L5.5,4.5 L6.5,3" fill="#1e293b" />
+                    <path d="M2,6 Q4,7.5 6,6" stroke="#1e293b" strokeWidth="0.8" fill="none" />
                   </g>
                 )}
                 {/* Ears / connectors */}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized } from '@/lib/api-utils';
-import { getNotificationsForUser, getUnreadCountForUser, markNotificationsAsRead, clearNotificationsForUser } from '@/lib/notifications';
+import { getNotificationsForUser, getUnreadCountForUser, markNotificationsAsRead, clearNotificationsForUser, hasTodayBirthdays } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,8 +13,11 @@ export async function GET(request: NextRequest) {
   const countOnly = new URL(request.url).searchParams.get('count') === 'true';
 
   if (countOnly) {
-    const unreadCount = await getUnreadCountForUser(user.id);
-    return NextResponse.json({ unreadCount });
+    const [unreadCount, hasBirthday] = await Promise.all([
+      getUnreadCountForUser(user.id),
+      hasTodayBirthdays(),
+    ]);
+    return NextResponse.json({ unreadCount, hasBirthday });
   }
 
   const notifications = await getNotificationsForUser(user.id, 50);
