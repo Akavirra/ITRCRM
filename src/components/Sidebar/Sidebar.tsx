@@ -1199,12 +1199,12 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
               className={`itrcrm-logo${isSleeping ? ' robot-sleeping' : ''}${isNight && !nightLampOn ? ' robot-night' : ''}${isNight && nightLampOn ? ' robot-lamp-on' : ''}`}
               onClick={handleRobotClick}
               onDoubleClick={handleRobotDoubleClick}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, userSelect: 'none', cursor: 'pointer', padding: '4px 0', position: 'relative' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, userSelect: 'none', cursor: 'pointer', padding: '4px 0', position: 'relative' }}
             >
               {/* Speech bubble */}
               {speechBubble && <div className="robot-speech">{speechBubble}</div>}
               {/* Robot icon */}
-              <svg className={`logo-icon${birthdayParty || newYearParty || sep1Party || easterParty ? ' robot-dancing' : ''}${halloweenParty ? ' robot-scared' : ''}`} width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
+              <svg className={`logo-icon${birthdayParty || newYearParty || sep1Party || easterParty ? ' robot-dancing' : ''}${halloweenParty ? ' robot-scared' : ''}`} width="62" height="62" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
                 <defs>
                   <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44">
                     <stop offset="0%" stopColor={isNight && !nightLampOn ? '#1e3a5f' : '#3b82f6'} />
