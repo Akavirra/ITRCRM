@@ -410,6 +410,23 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
   const [isBlinking, setIsBlinking] = useState(false);
   const [robotEmotion, setRobotEmotion] = useState<string | null>(null);
+  const [hasNotifications, setHasNotifications] = useState(false);
+
+  // Poll unread notifications for antenna pulse
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch('/api/notifications?count=true');
+        if (res.ok) {
+          const data = await res.json();
+          setHasNotifications((data.unreadCount ?? 0) > 0);
+        }
+      } catch {}
+    };
+    check();
+    const interval = setInterval(check, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Eyes follow mouse
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -589,6 +606,8 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             @keyframes logoWiggle { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(12deg); } 75% { transform: rotate(-8deg); } }
             .robot-emotion { animation: emotionPop 0.4s ease; }
             @keyframes emotionPop { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
+            .logo-antenna-pulse .logo-antenna-tip { animation: antennaPulse 1.5s ease-in-out infinite; }
+            @keyframes antennaPulse { 0%,100% { fill: #60a5fa; filter: drop-shadow(0 0 2px #60a5fa); } 50% { fill: #f59e0b; filter: drop-shadow(0 0 8px #f59e0b); } }
           `}} />
           <TransitionLink
             href="/dashboard"
@@ -610,9 +629,9 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                   </linearGradient>
                 </defs>
                 {/* Antenna */}
-                <g className="logo-antenna">
+                <g className={`logo-antenna${hasNotifications ? ' logo-antenna-pulse' : ''}`}>
                   <line x1="22" y1="4" x2="22" y2="10" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="22" cy="3" r="2.5" fill="#60a5fa" />
+                  <circle className="logo-antenna-tip" cx="22" cy="3" r="2.5" fill="#60a5fa" />
                 </g>
                 {/* Head */}
                 <rect x="6" y="10" width="32" height="24" rx="7" fill="url(#logoGrad)" />
