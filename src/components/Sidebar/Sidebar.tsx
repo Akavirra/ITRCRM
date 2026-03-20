@@ -564,7 +564,6 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const emotions = [
     { name: 'love', eyeShape: '❤', color: '#f43f5e' },
     { name: 'star', eyeShape: '★', color: '#eab308' },
-    { name: 'happy', eyeShape: '◡', color: 'white' },
     { name: 'surprise', eyeShape: '○', color: 'white' },
     { name: 'wink', eyeShape: '−', color: 'white' },
     { name: 'annoyed', eyeShape: '¬_¬', color: '#94a3b8' },
