@@ -132,7 +132,20 @@ export default function AdminProfilePage() {
     }
   };
 
-  if (initLoading || loading) {
+  if (initLoading) {
+    return <div className="tg-loading"><div className="tg-spinner"></div></div>;
+  }
+
+  if (!initData && !loading) {
+    return (
+      <div className="tg-error">
+        <div className="tg-error-title">Помилка</div>
+        <div className="tg-error-text">Не вдалося отримати дані Telegram. Спробуйте закрити та відкрити додаток.</div>
+      </div>
+    );
+  }
+
+  if (loading) {
     return <div className="tg-loading"><div className="tg-spinner"></div></div>;
   }
 
