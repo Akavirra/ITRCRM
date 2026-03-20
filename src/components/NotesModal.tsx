@@ -186,7 +186,7 @@ function FormatToolbar({ textareaRef, noteId, content, onUpdate }: {
 
 // ── Note list item ────────────────────────────────────────────────────────────
 
-function NoteListItem({ note, selected, onClick, bulkMode, bulkSelected, onBulkToggle }: { note: Note; selected: boolean; onClick: () => void; bulkMode?: boolean; bulkSelected?: boolean; onBulkToggle?: () => void }) {
+function NoteListItem({ note, selected, onClick, bulkMode, bulkSelected, onBulkToggle, dragOver, onDragStart, onDragEnter, onDragEnd, onDrop }: { note: Note; selected: boolean; onClick: () => void; bulkMode?: boolean; bulkSelected?: boolean; onBulkToggle?: () => void; dragOver?: boolean; onDragStart?: () => void; onDragEnter?: () => void; onDragEnd?: () => void; onDrop?: () => void }) {
   const done = note.tasks.filter(t => t.done).length;
   const total = note.tasks.length;
   const hasTasks = total > 0;
@@ -202,12 +202,19 @@ function NoteListItem({ note, selected, onClick, bulkMode, bulkSelected, onBulkT
   return (
     <button
       onClick={onClick}
+      draggable={!bulkMode}
+      onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart?.(); }}
+      onDragEnter={onDragEnter}
+      onDragOver={e => e.preventDefault()}
+      onDragEnd={onDragEnd}
+      onDrop={e => { e.preventDefault(); onDrop?.(); }}
       style={{
         width: '100%', textAlign: 'left',
         background: selected ? '#eff6ff' : 'transparent',
         border: 'none',
         borderLeft: `3px solid ${selected ? '#2563eb' : dotColor}`,
-        padding: '0.75rem 1rem 0.75rem 0.875rem',
+        borderTop: dragOver ? '2px solid #3b82f6' : '2px solid transparent',
+        padding: '0.625rem 1rem 0.75rem 0.875rem',
         cursor: 'pointer',
         borderBottom: '1px solid #f1f5f9',
         display: 'block',
@@ -355,6 +362,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const undoStack = useRef<{ noteId: number; prev: Partial<Note> }[]>([]);
   const [undoToast, setUndoToast] = useState(false);
   const [copiedToast, setCopiedToast] = useState(false);
+  const [noteDragId, setNoteDragId] = useState<number | null>(null);
+  const [noteDragOver, setNoteDragOver] = useState<number | null>(null);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pos, setPos]   = useState({ x: -1, y: -1 });
@@ -618,6 +627,19 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const doneTasks  = selectedNote?.tasks.filter(t => t.done).length ?? 0;
   const totalTasks = selectedNote?.tasks.length ?? 0;
 
+  const reorderNotes = useCallback((fromId: number, toId: number) => {
+    if (fromId === toId) return;
+    setNotes(prev => {
+      const next = [...prev];
+      const fromIdx = next.findIndex(n => n.id === fromId);
+      const toIdx   = next.findIndex(n => n.id === toId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next;
+    });
+  }, []);
+
   const performUndo = useCallback(() => {
     const entry = undoStack.current.pop();
     if (!entry) return;
@@ -762,7 +784,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             />
 
             {/* Archive toggle */}
-            <div style={{ padding: '0.875rem 0.875rem 0.625rem', flexShrink: 0 }}>
+            <div style={{ padding: '0.875rem 0.875rem 0.5rem', flexShrink: 0 }}>
               <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: 10, padding: 3, gap: 2 }}>
                 <button
                   onClick={() => { setShowArchive(false); setSelectedId(null); }}
@@ -779,57 +801,49 @@ export default function NotesModal({ isOpen, onClose }: Props) {
               </div>
             </div>
 
-            {/* Create buttons */}
-            <div style={{ padding: '0 0.875rem 0.5rem', flexShrink: 0, display: 'flex', gap: 4 }}>
+            {/* Create + Templates row */}
+            <div style={{ padding: '0 0.875rem 0.625rem', flexShrink: 0, display: 'flex', gap: 4, position: 'relative' }}>
               <button
                 onClick={() => createNote('note')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.5rem 0', borderRadius: 10, background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, transition: 'background 0.15s' }}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0.5rem 0', borderRadius: 10, background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, transition: 'background 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
               >
-                <FileText size={11} strokeWidth={2.5} /> Нотатка
+                <Plus size={12} strokeWidth={2.5} /> Нова нотатка
               </button>
               <button
-                onClick={() => createNote('todo')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0.5rem 0', borderRadius: 10, background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, transition: 'background 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
+                onClick={() => setShowTemplates(v => !v)}
+                title="Шаблони"
+                style={{ width: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, border: '1.5px solid #e2e8f0', background: showTemplates ? '#eff6ff' : '#fff', cursor: 'pointer', color: showTemplates ? '#2563eb' : '#94a3b8', transition: 'all 0.15s', flexShrink: 0 }}
+                onMouseEnter={e => { if (!showTemplates) { e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.color = '#2563eb'; } }}
+                onMouseLeave={e => { if (!showTemplates) { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#94a3b8'; } }}
               >
-                <CheckSquare size={11} strokeWidth={2.5} /> Список
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
               </button>
             </div>
 
-            {/* Templates dropdown */}
-            <div style={{ padding: '0 0.875rem 0.75rem', flexShrink: 0, position: 'relative' }}>
-              <button
-                onClick={() => setShowTemplates(v => !v)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '0.3125rem 0', borderRadius: 8, border: '1px dashed #d1d5db', background: showTemplates ? '#eff6ff' : 'transparent', cursor: 'pointer', fontSize: '0.75rem', color: showTemplates ? '#2563eb' : '#94a3b8', fontWeight: 500, transition: 'all 0.15s' }}
-                onMouseEnter={e => { if (!showTemplates) { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.color = '#64748b'; } }}
-                onMouseLeave={e => { if (!showTemplates) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#94a3b8'; } }}
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                Шаблони
-              </button>
-              {showTemplates && (
-                <div style={{ position: 'absolute', top: '100%', left: '0.875rem', right: '0.875rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 8px 28px rgba(0,0,0,0.1)', zIndex: 10, overflow: 'hidden', marginTop: 4 }}>
+            {/* Templates dropdown (attached to button above) */}
+            {showTemplates && (
+              <div style={{ padding: '0 0.875rem 0.5rem', flexShrink: 0 }}>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                   {TEMPLATES.map(tpl => (
                     <button
                       key={tpl.label}
                       onClick={() => { createNote(tpl.type, { title: tpl.label, content: tpl.content, tasks: tpl.tasks }); setShowTemplates(false); }}
-                      style={{ width: '100%', textAlign: 'left', padding: '0.625rem 0.875rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 10, transition: 'background 0.1s' }}
+                      style={{ width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 10, transition: 'background 0.1s' }}
                       onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
                     >
-                      <span style={{ fontSize: '1.125rem', lineHeight: 1 }}>{tpl.icon}</span>
+                      <span style={{ fontSize: '1rem', lineHeight: 1 }}>{tpl.icon}</span>
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{tpl.label}</div>
-                        <div style={{ fontSize: '0.6875rem', color: '#94a3b8', marginTop: 1 }}>{tpl.desc}</div>
+                        <div style={{ fontWeight: 600, fontSize: '0.75rem' }}>{tpl.label}</div>
+                        <div style={{ fontSize: '0.625rem', color: '#94a3b8', marginTop: 1 }}>{tpl.desc}</div>
                       </div>
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Search */}
             <div style={{ padding: '0 0.875rem 0.75rem', flexShrink: 0 }}>
@@ -998,7 +1012,16 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                         <Pin size={10} /> Закріплені
                       </div>
                       {pinned.map(n => (
-                        <NoteListItem key={n.id} note={n} selected={selectedId === n.id} onClick={() => { if (bulkMode) { setBulkIds(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; }); } else { setSelectedId(n.id); setNewTaskText(''); } }} bulkMode={bulkMode} bulkSelected={bulkIds.has(n.id)} onBulkToggle={() => setBulkIds(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; })} />
+                        <NoteListItem key={n.id} note={n} selected={selectedId === n.id}
+                          onClick={() => { if (bulkMode) { setBulkIds(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; }); } else { setSelectedId(n.id); setNewTaskText(''); } }}
+                          bulkMode={bulkMode} bulkSelected={bulkIds.has(n.id)}
+                          onBulkToggle={() => setBulkIds(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; })}
+                          dragOver={noteDragOver === n.id}
+                          onDragStart={() => setNoteDragId(n.id)}
+                          onDragEnter={() => setNoteDragOver(n.id)}
+                          onDragEnd={() => { setNoteDragId(null); setNoteDragOver(null); }}
+                          onDrop={() => { if (noteDragId !== null) reorderNotes(noteDragId, n.id); setNoteDragId(null); setNoteDragOver(null); }}
+                        />
                       ))}
                     </>
                   )}
@@ -1008,7 +1031,16 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     </div>
                   )}
                   {rest.map(n => (
-                    <NoteListItem key={n.id} note={n} selected={selectedId === n.id} onClick={() => { if (bulkMode) { setBulkIds(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; }); } else { setSelectedId(n.id); setNewTaskText(''); } }} bulkMode={bulkMode} bulkSelected={bulkIds.has(n.id)} onBulkToggle={() => setBulkIds(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; })} />
+                    <NoteListItem key={n.id} note={n} selected={selectedId === n.id}
+                      onClick={() => { if (bulkMode) { setBulkIds(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; }); } else { setSelectedId(n.id); setNewTaskText(''); } }}
+                      bulkMode={bulkMode} bulkSelected={bulkIds.has(n.id)}
+                      onBulkToggle={() => setBulkIds(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; })}
+                      dragOver={noteDragOver === n.id}
+                      onDragStart={() => setNoteDragId(n.id)}
+                      onDragEnter={() => setNoteDragOver(n.id)}
+                      onDragEnd={() => { setNoteDragId(null); setNoteDragOver(null); }}
+                      onDrop={() => { if (noteDragId !== null) reorderNotes(noteDragId, n.id); setNoteDragId(null); setNoteDragOver(null); }}
+                    />
                   ))}
                 </>
               )}
@@ -1714,7 +1746,7 @@ function SearchableDropdown({ icon, placeholder, items, onSelect, activeBg, acti
   );
 }
 
-// ── Linked entity row ─────────────────────────────────────────────────────────
+// ── Linked entity row (unified search) ────────────────────────────────────────
 
 function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, onChangeGroup }: {
   studentId: number | null;
@@ -1725,16 +1757,33 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
   onChangeStudent: (id: number | null) => void;
   onChangeGroup: (id: number | null) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const hasLinks = !!studentId || !!groupId;
   const studentName = students.find(s => s.id === studentId)?.name;
   const groupTitle  = groups.find(g => g.id === groupId)?.title;
 
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
   if (!hasLinks && students.length === 0 && groups.length === 0) return null;
 
+  const q = query.toLowerCase();
+  const matchedStudents = q ? students.filter(s => s.name.toLowerCase().includes(q)).slice(0, 15) : students.slice(0, 10);
+  const matchedGroups = q ? groups.filter(g => g.title.toLowerCase().includes(q)).slice(0, 15) : groups.slice(0, 10);
+
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.625rem 1.5rem', borderBottom: hasLinks ? '1px solid rgba(0,0,0,0.05)' : 'none', background: bg, alignItems: 'center', minHeight: 40 }}>
-      {/* Student link */}
-      {studentId && studentName ? (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.5rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: bg, alignItems: 'center', minHeight: 36 }}>
+      {/* Linked student badge */}
+      {studentId && studentName && (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 9px', borderRadius: 20, background: '#eff6ff', fontSize: '0.6875rem', fontWeight: 600, color: '#2563eb' }}>
           <a href={`/students/${studentId}`} style={{ color: 'inherit', textDecoration: 'none' }} title="Відкрити картку учня"
             onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline'; }}
@@ -1742,19 +1791,10 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
           >👤 {studentName}</a>
           <button onClick={() => onChangeStudent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#93c5fd', lineHeight: 1 }}><X size={10} /></button>
         </span>
-      ) : students.length > 0 && (
-        <SearchableDropdown
-          icon="👤"
-          placeholder="Учень..."
-          items={students.map(s => ({ id: s.id, label: s.name }))}
-          onSelect={id => onChangeStudent(id)}
-          activeBg="#eff6ff"
-          activeColor="#2563eb"
-        />
       )}
 
-      {/* Group link */}
-      {groupId && groupTitle ? (
+      {/* Linked group badge */}
+      {groupId && groupTitle && (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 9px', borderRadius: 20, background: '#f0fdf4', fontSize: '0.6875rem', fontWeight: 600, color: '#16a34a' }}>
           <a href={`/groups/${groupId}`} style={{ color: 'inherit', textDecoration: 'none' }} title="Відкрити групу"
             onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline'; }}
@@ -1762,15 +1802,73 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
           >👥 {groupTitle}</a>
           <button onClick={() => onChangeGroup(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#86efac', lineHeight: 1 }}><X size={10} /></button>
         </span>
-      ) : groups.length > 0 && (
-        <SearchableDropdown
-          icon="👥"
-          placeholder="Група..."
-          items={groups.map(g => ({ id: g.id, label: g.title }))}
-          onSelect={id => onChangeGroup(id)}
-          activeBg="#f0fdf4"
-          activeColor="#16a34a"
-        />
+      )}
+
+      {/* Unified "link" button + dropdown */}
+      {(students.length > 0 || groups.length > 0) && (
+        <div ref={containerRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => { setOpen(v => !v); setQuery(''); setTimeout(() => inputRef.current?.focus(), 0); }}
+            style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: 20, cursor: 'pointer', padding: '2px 9px', fontSize: '0.6875rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.color = '#2563eb'; }}
+            onMouseLeave={e => { if (!open) { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#94a3b8'; } }}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            {!hasLinks ? "Прив'язати" : 'Ще'}
+          </button>
+          {open && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, width: 240, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 20, overflow: 'hidden' }}>
+              <div style={{ padding: '6px 8px', borderBottom: '1px solid #f1f5f9' }}>
+                <input
+                  ref={inputRef}
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="Шукати учня або групу..."
+                  style={{ width: '100%', border: 'none', outline: 'none', fontSize: '0.75rem', color: '#374151', background: 'transparent', userSelect: 'text' }}
+                />
+              </div>
+              <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                {/* Students section */}
+                {matchedStudents.length > 0 && (
+                  <>
+                    <div style={{ padding: '6px 10px 3px', fontSize: '0.625rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.04em' }}>УЧНІ</div>
+                    {matchedStudents.map(s => (
+                      <button
+                        key={`s-${s.id}`}
+                        onClick={() => { onChangeStudent(s.id); setOpen(false); setQuery(''); }}
+                        style={{ width: '100%', textAlign: 'left', padding: '5px 10px', border: 'none', background: studentId === s.id ? '#eff6ff' : 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#374151', transition: 'background 0.1s', display: 'flex', alignItems: 'center', gap: 6 }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = studentId === s.id ? '#eff6ff' : 'none'; }}
+                      >
+                        <span style={{ color: '#93c5fd', fontSize: '0.625rem' }}>👤</span> {s.name}
+                      </button>
+                    ))}
+                  </>
+                )}
+                {/* Groups section */}
+                {matchedGroups.length > 0 && (
+                  <>
+                    <div style={{ padding: '6px 10px 3px', fontSize: '0.625rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.04em', borderTop: matchedStudents.length > 0 ? '1px solid #f1f5f9' : 'none' }}>ГРУПИ</div>
+                    {matchedGroups.map(g => (
+                      <button
+                        key={`g-${g.id}`}
+                        onClick={() => { onChangeGroup(g.id); setOpen(false); setQuery(''); }}
+                        style={{ width: '100%', textAlign: 'left', padding: '5px 10px', border: 'none', background: groupId === g.id ? '#f0fdf4' : 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#374151', transition: 'background 0.1s', display: 'flex', alignItems: 'center', gap: 6 }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#f0fdf4'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = groupId === g.id ? '#f0fdf4' : 'none'; }}
+                      >
+                        <span style={{ color: '#86efac', fontSize: '0.625rem' }}>👥</span> {g.title}
+                      </button>
+                    ))}
+                  </>
+                )}
+                {matchedStudents.length === 0 && matchedGroups.length === 0 && (
+                  <div style={{ padding: '8px 10px', fontSize: '0.6875rem', color: '#94a3b8' }}>Не знайдено</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
