@@ -230,11 +230,11 @@ function SidebarInfoWidget() {
         }
       `}} />
       <div style={{
-        padding: '14px 18px',
+        padding: '16px 20px',
         borderRadius: '20px',
         background: widgetTheme.bg,
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
         boxShadow: `${widgetTheme.shadow}, inset 0 0 0 1px ${widgetTheme.borderColor}`,
         border: 'none',
         display: 'flex',
@@ -243,32 +243,33 @@ function SidebarInfoWidget() {
         transition: 'background 1s ease, box-shadow 1s ease'
       }}>
         {/* Left side: Time & Date */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
             <span style={{ fontSize: '28px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
               {h}<span style={{ opacity: 0.3, margin: '0 1px' }}>:</span>{m}
             </span>
-            <span style={{ fontSize: '13px', fontWeight: '400', color: '#64748b', marginLeft: '2px', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: '14px', fontWeight: '400', color: '#64748b', fontVariantNumeric: 'tabular-nums' }}>
               {s}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '12px', fontWeight: '500', color: '#3b82f6', letterSpacing: '0.01em' }}>
+            <span style={{ fontSize: '13px', fontWeight: '500', color: '#3b82f6', letterSpacing: '0.01em', lineHeight: 1 }}>
               {dayName}
             </span>
-            <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#cbd5e1' }} />
+            <span style={{ fontSize: '14px', color: '#cbd5e1', lineHeight: 1, marginTop: '-1px' }}>&bull;</span>
             <button
               onClick={() => {
                 if (!calOpen) { setCalYear(todayY); setCalMonth(todayM); }
                 setCalOpen(o => !o);
               }}
               style={{
-                fontSize: '12px',
+                fontSize: '13px',
                 color: calOpen ? '#3b82f6' : '#64748b',
                 fontWeight: '400',
                 background: 'none',
                 border: 'none',
                 padding: 0,
+                lineHeight: 1,
                 cursor: 'pointer',
                 transition: 'color 0.2s',
               }}
@@ -291,19 +292,18 @@ function SidebarInfoWidget() {
               flexDirection: 'column',
               alignItems: 'flex-end',
               justifyContent: 'center',
-              gap: '4px',
               background: weatherOpen ? 'rgba(255, 255, 255, 0.6)' : 'transparent',
               border: 'none',
               cursor: 'pointer',
-              padding: '8px',
-              margin: '-8px',
-              borderRadius: '14px',
+              padding: '10px 12px',
+              margin: '-10px -12px',
+              borderRadius: '16px',
               transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               opacity: weatherOpen ? 1 : 0.85,
             }}
             onMouseOver={e => { 
               e.currentTarget.style.opacity = '1'; 
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.4)';
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)';
               e.currentTarget.style.transform = 'scale(1.02)';
             }}
             onMouseOut={e => { 
@@ -312,9 +312,9 @@ function SidebarInfoWidget() {
               e.currentTarget.style.transform = 'scale(1)';
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span className="weather-icon-anim" style={{ fontSize: '20px', lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code)}</span>
-              <span style={{ fontSize: '22px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="weather-icon-anim" style={{ fontSize: '24px', lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code)}</span>
+              <span style={{ fontSize: '24px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
                 {weather.temp}°
               </span>
             </div>
