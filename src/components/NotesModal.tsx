@@ -72,12 +72,20 @@ function formatDate(dateStr: string) {
 function renderMarkdown(text: string): string {
   const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return text.split('\n').map(line => {
+    // Horizontal rule
+    if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+      return '<div style="border-bottom:1px solid #e2e8f0;margin:0.75em 0"></div>';
+    }
     // Headings
     const h = line.match(/^(#{1,3})\s+(.*)$/);
     if (h) {
       const level = h[1].length;
       const sizes = ['1.25rem', '1.1rem', '0.95rem'];
-      return `<div style="font-weight:700;font-size:${sizes[level-1]};margin:0.5em 0 0.25em">${esc(h[2])}</div>`;
+      return `<div style="font-weight:700;font-size:${sizes[level-1]};margin:0.5em 0 0.25em">${inlineFormat(esc(h[2]))}</div>`;
+    }
+    // Blockquote
+    if (/^>\s+/.test(line)) {
+      return `<div style="padding-left:1em;border-left:3px solid #93c5fd;color:#64748b;font-style:italic;margin:0.25em 0">${inlineFormat(esc(line.replace(/^>\s+/, '')))}</div>`;
     }
     // Unordered list
     if (/^[-*]\s+/.test(line)) {
@@ -100,7 +108,80 @@ function inlineFormat(html: string): string {
     .replace(/`([^`]+)`/g, '<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:0.85em;color:#e11d48">$1</code>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/_(.+?)_/g, '<em>$1</em>');
+    .replace(/_(.+?)_/g, '<em>$1</em>')
+    .replace(/~~(.+?)~~/g, '<span style="text-decoration:line-through;color:#94a3b8">$1</span>');
+}
+
+// ── Formatting toolbar ────────────────────────────────────────────────────────
+
+function FormatToolbar({ textareaRef, noteId, content, onUpdate }: {
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  noteId: number;
+  content: string;
+  onUpdate: (id: number, patch: { content: string }) => void;
+}) {
+  const insert = (before: string, after: string = '') => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.focus();
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = content.slice(start, end);
+    const replacement = before + (selected || 'текст') + after;
+    const newContent = content.slice(0, start) + replacement + content.slice(end);
+    onUpdate(noteId, { content: newContent });
+    setTimeout(() => {
+      ta.selectionStart = start + before.length;
+      ta.selectionEnd = start + before.length + (selected || 'текст').length;
+    }, 0);
+  };
+
+  const insertLine = (prefix: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.focus();
+    const pos = ta.selectionStart;
+    // Find start of current line
+    const lineStart = content.lastIndexOf('\n', pos - 1) + 1;
+    const newContent = content.slice(0, lineStart) + prefix + content.slice(lineStart);
+    onUpdate(noteId, { content: newContent });
+    setTimeout(() => { ta.selectionStart = ta.selectionEnd = pos + prefix.length; }, 0);
+  };
+
+  const btns: { title: string; label: string; action: () => void }[] = [
+    { title: 'Жирний (Ctrl+B)', label: 'B', action: () => insert('**', '**') },
+    { title: 'Курсив (Ctrl+I)', label: 'I', action: () => insert('*', '*') },
+    { title: 'Закреслений', label: 'S', action: () => insert('~~', '~~') },
+    { title: 'Код', label: '<>', action: () => insert('`', '`') },
+    { title: 'Заголовок', label: 'H', action: () => insertLine('## ') },
+    { title: 'Список', label: '•', action: () => insertLine('- ') },
+    { title: 'Цитата', label: '>', action: () => insertLine('> ') },
+    { title: 'Лінія', label: '—', action: () => insert('\n---\n') },
+  ];
+
+  return (
+    <div style={{ display: 'flex', gap: 1, padding: '0 1.5rem 0.25rem', flexShrink: 0 }}>
+      {btns.map(b => (
+        <button
+          key={b.label}
+          onClick={b.action}
+          title={b.title}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: '3px 7px',
+            borderRadius: 5, fontSize: '0.6875rem', fontWeight: 700, color: '#94a3b8',
+            fontFamily: b.label === 'I' ? 'Georgia, serif' : 'inherit',
+            fontStyle: b.label === 'I' ? 'italic' : 'normal',
+            textDecoration: b.label === 'S' ? 'line-through' : 'none',
+            transition: 'all 0.12s', lineHeight: 1,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#374151'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#94a3b8'; }}
+        >
+          {b.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 // ── Note list item ────────────────────────────────────────────────────────────
@@ -832,14 +913,44 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             {/* Bulk mode toolbar */}
             {bulkMode && (
               <div style={{ padding: '0.5rem 0.875rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, background: '#eff6ff' }}>
+                {/* Select all checkbox */}
+                <button
+                  onClick={() => {
+                    if (bulkIds.size === filtered.length) {
+                      setBulkIds(new Set());
+                    } else {
+                      setBulkIds(new Set(filtered.map(n => n.id)));
+                    }
+                  }}
+                  style={{
+                    width: 14, height: 14, borderRadius: 3, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                    border: `2px solid ${bulkIds.size === filtered.length && filtered.length > 0 ? '#2563eb' : '#93c5fd'}`,
+                    background: bulkIds.size === filtered.length && filtered.length > 0 ? '#2563eb' : 'transparent',
+                  }}
+                  title={bulkIds.size === filtered.length ? 'Зняти всі' : 'Обрати всі'}
+                >
+                  {bulkIds.size === filtered.length && filtered.length > 0 && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  {bulkIds.size > 0 && bulkIds.size < filtered.length && <div style={{ width: 6, height: 2, background: '#2563eb', borderRadius: 1 }} />}
+                </button>
                 <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#2563eb', flex: 1 }}>
                   {bulkIds.size > 0 ? `Обрано: ${bulkIds.size}` : 'Оберіть нотатки'}
                 </span>
                 {bulkIds.size > 0 && (
                   <>
+                    {/* Bulk color change */}
+                    <div style={{ display: 'flex', gap: 2, alignItems: 'center', marginRight: 2 }}>
+                      {COLORS.slice(0, 4).map(c => (
+                        <button
+                          key={c.key ?? 'none'}
+                          onClick={() => { Array.from(bulkIds).forEach(id => updateNote(id, { color: c.key })); }}
+                          title={c.key ?? 'без кольору'}
+                          style={{ width: 10, height: 10, borderRadius: '50%', background: c.dot, border: '1px solid #d1d5db', cursor: 'pointer', padding: 0 }}
+                        />
+                      ))}
+                    </div>
                     <button
                       onClick={async () => {
-                        for (const id of bulkIds) { updateNote(id, { is_archived: true }, true); }
+                        Array.from(bulkIds).forEach(id => updateNote(id, { is_archived: true }, true));
                         setBulkIds(new Set()); setBulkMode(false); setSelectedId(null);
                       }}
                       style={{ fontSize: '0.625rem', fontWeight: 700, padding: '3px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', background: '#fef3c7', color: '#d97706' }}
@@ -848,7 +959,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     </button>
                     <button
                       onClick={async () => {
-                        for (const id of bulkIds) { await fetch(`/api/notes/${id}`, { method: 'DELETE' }); }
+                        await Promise.all(Array.from(bulkIds).map(id => fetch(`/api/notes/${id}`, { method: 'DELETE' })));
                         setNotes(prev => prev.filter(n => !bulkIds.has(n.id)));
                         if (bulkIds.has(selectedId ?? 0)) setSelectedId(null);
                         setBulkIds(new Set()); setBulkMode(false);
@@ -1221,6 +1332,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                       dangerouslySetInnerHTML={{ __html: renderMarkdown(selectedNote.content) }}
                     />
                   ) : (
+                  <>
+                  <FormatToolbar textareaRef={textareaRef} noteId={selectedNote.id} content={selectedNote.content} onUpdate={(id, patch) => updateNote(id, patch)} />
                   <textarea
                     ref={textareaRef}
                     value={selectedNote.content}
@@ -1228,16 +1341,32 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                       updateNote(selectedNote.id, { content: e.target.value });
                       autoResizeTextarea(e.currentTarget);
                     }}
+                    onKeyDown={e => {
+                      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'i')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const ta = e.currentTarget;
+                        const s = ta.selectionStart;
+                        const end = ta.selectionEnd;
+                        const sel = selectedNote.content.slice(s, end);
+                        const wrap = e.key === 'b' ? '**' : '*';
+                        const replacement = wrap + (sel || 'текст') + wrap;
+                        const newContent = selectedNote.content.slice(0, s) + replacement + selectedNote.content.slice(end);
+                        updateNote(selectedNote.id, { content: newContent });
+                        setTimeout(() => { ta.selectionStart = s + wrap.length; ta.selectionEnd = s + wrap.length + (sel || 'текст').length; }, 0);
+                      }
+                    }}
                     placeholder="Починай писати... (підтримує **bold**, *italic*, # заголовки, - списки)"
                     rows={1}
                     style={{
                       width: '100%', border: 'none', outline: 'none', resize: 'none',
-                      padding: showTaskSection ? '1.25rem 1.5rem 0.75rem' : '1.25rem 1.5rem',
+                      padding: showTaskSection ? '0.5rem 1.5rem 0.75rem' : '0.5rem 1.5rem',
                       fontSize: '0.9375rem', lineHeight: 1.8, color: '#374151',
                       background: 'transparent', fontFamily: 'inherit', userSelect: 'text',
                       overflow: 'hidden', minHeight: 56, boxSizing: 'border-box',
-                    }
+                    }}
                   />
+                  </>
                   ))}
 
                   {/* Task section — shown when toggled or tasks exist */}
