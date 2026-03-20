@@ -294,11 +294,10 @@ function SidebarInfoWidget() {
         </div>
 
         {/* Bottom row: Day + Date */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', whiteSpace: 'nowrap' }}>
           <span style={{ fontSize: '12px', fontWeight: '500', color: '#3b82f6', letterSpacing: '0.01em', lineHeight: 1 }}>
             {dayName}
           </span>
-          <span style={{ fontSize: '10px', color: '#cbd5e1', lineHeight: 1 }}>•</span>
           <button
             onClick={() => {
               if (!calOpen) { setCalYear(todayY); setCalMonth(todayM); }
