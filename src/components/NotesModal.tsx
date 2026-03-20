@@ -1165,20 +1165,28 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     const hasRemind = !!selectedNote.remind_at;
                     const isPast = hasRemind && new Date(selectedNote.remind_at!) <= new Date();
                     return (
-                      <label title="Нагадування" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
+                      <label 
+                        title="Нагадування" 
+                        style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}
+                        onMouseEnter={e => {
+                          const pill = e.currentTarget.querySelector('.empty-pill-remind') as HTMLElement | null;
+                          if (pill) { pill.style.background = '#e8eaed'; pill.style.color = '#202124'; }
+                        }}
+                        onMouseLeave={e => {
+                          const pill = e.currentTarget.querySelector('.empty-pill-remind') as HTMLElement | null;
+                          if (pill) { pill.style.background = '#f1f3f4'; pill.style.color = '#5f6368'; }
+                        }}
+                      >
                         {hasRemind ? (
                           <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: isPast ? '#f3f4f6' : '#eff6ff', color: isPast ? '#9ca3af' : '#2563eb', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                             {new Date(selectedNote.remind_at!).toLocaleString('uk', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
-                            <button onClick={e => { e.preventDefault(); updateNote(selectedNote.id, { remind_at: null }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1, marginLeft: 1, display: 'flex' }}>
+                            <button onClick={e => { e.preventDefault(); updateNote(selectedNote.id, { remind_at: null }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1, marginLeft: 1, display: 'flex', position: 'relative', zIndex: 2 }}>
                               <X size={9} />
                             </button>
                           </span>
                         ) : (
-                          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#5f6368', background: '#f1f3f4', padding: '4px 12px', borderRadius: 24, border: '1px solid transparent', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s' }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLSpanElement).style.background = '#e8eaed'; (e.currentTarget as HTMLSpanElement).style.color = '#202124'; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLSpanElement).style.background = '#f1f3f4'; (e.currentTarget as HTMLSpanElement).style.color = '#5f6368'; }}
-                          >
+                          <span className="empty-pill-remind" style={{ fontSize: '0.75rem', fontWeight: 500, color: '#5f6368', background: '#f1f3f4', padding: '4px 12px', borderRadius: 24, border: '1px solid transparent', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s' }}>
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                             нагадати
                           </span>
@@ -1187,7 +1195,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                           type="datetime-local"
                           value={selectedNote.remind_at ? new Date(selectedNote.remind_at).toISOString().slice(0,16) : ''}
                           onChange={e => updateNote(selectedNote.id, { remind_at: e.target.value || null })}
-                          style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0, cursor: 'pointer' }}
+                          style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0, cursor: 'pointer', zIndex: 1 }}
                         />
                       </label>
                     );
@@ -1197,22 +1205,30 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                   {(() => {
                     const dl = deadlineLabel(selectedNote.deadline);
                     return (
-                      <label title="Дедлайн" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
+                      <label 
+                        title="Дедлайн" 
+                        style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}
+                        onMouseEnter={e => {
+                          const pill = e.currentTarget.querySelector('.empty-pill-deadline') as HTMLElement | null;
+                          if (pill) { pill.style.background = '#e8eaed'; pill.style.color = '#202124'; }
+                        }}
+                        onMouseLeave={e => {
+                          const pill = e.currentTarget.querySelector('.empty-pill-deadline') as HTMLElement | null;
+                          if (pill) { pill.style.background = '#f1f3f4'; pill.style.color = '#5f6368'; }
+                        }}
+                      >
                         {dl ? (
                           <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
                             📅 {dl.text}
                             <button
                               onClick={e => { e.preventDefault(); updateNote(selectedNote.id, { deadline: null }); }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1, display: 'flex', marginLeft: 1 }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1, display: 'flex', marginLeft: 1, position: 'relative', zIndex: 2 }}
                             >
                               <X size={9} />
                             </button>
                           </span>
                         ) : (
-                          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#5f6368', background: '#f1f3f4', padding: '4px 12px', borderRadius: 24, border: '1px solid transparent', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLSpanElement).style.background = '#e8eaed'; (e.currentTarget as HTMLSpanElement).style.color = '#202124'; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLSpanElement).style.background = '#f1f3f4'; (e.currentTarget as HTMLSpanElement).style.color = '#5f6368'; }}
-                          >
+                          <span className="empty-pill-deadline" style={{ fontSize: '0.75rem', fontWeight: 500, color: '#5f6368', background: '#f1f3f4', padding: '4px 12px', borderRadius: 24, border: '1px solid transparent', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>
                             + дедлайн
                           </span>
                         )}
@@ -1220,7 +1236,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                           type="date"
                           value={selectedNote.deadline?.slice(0, 10) ?? ''}
                           onChange={e => updateNote(selectedNote.id, { deadline: e.target.value || null })}
-                          style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0, cursor: 'pointer' }}
+                          style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0, cursor: 'pointer', zIndex: 1 }}
                         />
                       </label>
                     );
