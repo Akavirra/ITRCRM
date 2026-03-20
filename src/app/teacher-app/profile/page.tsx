@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useTelegramInitData } from '@/components/TelegramWebAppProvider';
 
@@ -85,6 +85,12 @@ export default function TeacherProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Photo state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoMenu, setPhotoMenu] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   // Monthly stats state
   const now = new Date();
   const [statsYear, setStatsYear] = useState(now.getFullYear());
@@ -130,6 +136,68 @@ export default function TeacherProfilePage() {
       .catch(() => setMonthStats(null))
       .finally(() => setStatsLoading(false));
   }, [initData, initLoading, statsYear, statsMonth]);
+
+  // Resize image client-side before uploading (max 800×800, JPEG 85%)
+  const resizeImage = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const MAX = 800;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+          else { width = Math.round(width * MAX / height); height = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !initData) return;
+    setPhotoMenu(false);
+    setPhotoLoading(true);
+    try {
+      const base64 = await resizeImage(file);
+      const res = await fetch('/api/teacher-app/profile/photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData },
+        body: JSON.stringify({ photo: base64 }),
+      });
+      if (!res.ok) throw new Error();
+      const { photo_url } = await res.json();
+      setData(prev => prev ? { ...prev, teacher: { ...prev.teacher, photo_url } } : prev);
+    } catch {
+      // upload failed silently — no change to UI
+    } finally {
+      setPhotoLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeletePhoto = async () => {
+    if (!initData) return;
+    setConfirmDelete(false);
+    setPhotoMenu(false);
+    setPhotoLoading(true);
+    try {
+      await fetch('/api/teacher-app/profile/photo', {
+        method: 'DELETE',
+        headers: { 'X-Telegram-Init-Data': initData },
+      });
+      setData(prev => prev ? { ...prev, teacher: { ...prev.teacher, photo_url: null } } : prev);
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
 
   const isCurrentMonth = statsYear === now.getFullYear() && statsMonth === now.getMonth() + 1;
 
@@ -183,35 +251,173 @@ export default function TeacherProfilePage() {
 
       {/* Profile Card */}
       <div className="tg-card" style={{ textAlign: 'center', padding: 'var(--space-xl)' }}>
-        {teacher?.photo_url ? (
-          <img
-            src={teacher.photo_url}
-            alt={teacher.name}
+        {/* Avatar with edit button */}
+        <div style={{ position: 'relative', width: '100px', margin: '0 auto var(--space-lg)' }}>
+          {teacher?.photo_url ? (
+            <img
+              src={teacher.photo_url}
+              alt={teacher.name}
+              style={{
+                width: '100px',
+                height: '100px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                display: 'block',
+                border: '3px solid var(--tg-border)',
+                boxShadow: 'var(--shadow-md)',
+              }}
+            />
+          ) : (
+            <div
+              className="tg-avatar"
+              style={{
+                width: '100px',
+                height: '100px',
+                fontSize: '36px',
+                background: 'linear-gradient(135deg, var(--tg-primary-bg), var(--tg-link-color))',
+              }}
+            >
+              {teacher?.name?.split(' ').map(n => n[0]).join('') || '?'}
+            </div>
+          )}
+
+          {/* Camera edit button */}
+          <button
+            onClick={() => { setPhotoMenu(v => !v); setConfirmDelete(false); }}
+            disabled={photoLoading}
+            title="Змінити фото"
             style={{
-              width: '100px',
-              height: '100px',
+              position: 'absolute',
+              bottom: 0,
+              right: 0,
+              width: '32px',
+              height: '32px',
               borderRadius: '50%',
-              objectFit: 'cover',
-              margin: '0 auto var(--space-lg)',
-              display: 'block',
-              border: '3px solid var(--tg-border)',
+              background: 'var(--tg-button-color)',
+              color: 'var(--tg-button-text-color)',
+              border: '2.5px solid var(--tg-surface)',
+              cursor: photoLoading ? 'default' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '14px',
               boxShadow: 'var(--shadow-md)',
-            }}
-          />
-        ) : (
-          <div
-            className="tg-avatar"
-            style={{
-              width: '100px',
-              height: '100px',
-              fontSize: '36px',
-              margin: '0 auto var(--space-lg)',
-              background: 'linear-gradient(135deg, var(--tg-primary-bg), var(--tg-link-color))',
+              opacity: photoLoading ? 0.6 : 1,
+              transition: 'opacity 0.2s',
             }}
           >
-            {teacher?.name?.split(' ').map(n => n[0]).join('') || '?'}
+            {photoLoading ? '⏳' : '📷'}
+          </button>
+        </div>
+
+        {/* Photo action menu */}
+        {photoMenu && !confirmDelete && (
+          <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button
+              onClick={() => { setPhotoMenu(false); fileInputRef.current?.click(); }}
+              style={{
+                background: 'var(--tg-primary-bg)',
+                border: '1px solid var(--tg-link-color)',
+                borderRadius: 'var(--radius-md)',
+                padding: '10px 16px',
+                cursor: 'pointer',
+                color: 'var(--tg-link-color)',
+                fontSize: '14px',
+                fontWeight: 500,
+              }}
+            >
+              📤 {teacher?.photo_url ? 'Замінити фото' : 'Завантажити фото'}
+            </button>
+            {teacher?.photo_url && (
+              <button
+                onClick={() => { setPhotoMenu(false); setConfirmDelete(true); }}
+                style={{
+                  background: 'var(--tg-danger-bg)',
+                  border: '1px solid var(--tg-danger)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '10px 16px',
+                  cursor: 'pointer',
+                  color: 'var(--tg-danger)',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                }}
+              >
+                🗑️ Видалити фото
+              </button>
+            )}
+            <button
+              onClick={() => setPhotoMenu(false)}
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--tg-border)',
+                borderRadius: 'var(--radius-md)',
+                padding: '8px 16px',
+                cursor: 'pointer',
+                color: 'var(--tg-text-secondary)',
+                fontSize: '13px',
+              }}
+            >
+              Скасувати
+            </button>
           </div>
         )}
+
+        {/* Delete confirmation */}
+        {confirmDelete && (
+          <div style={{
+            marginBottom: '16px',
+            background: 'var(--tg-danger-bg)',
+            border: '1px solid var(--tg-danger)',
+            borderRadius: 'var(--radius-md)',
+            padding: '14px 16px',
+          }}>
+            <p style={{ fontSize: '14px', color: 'var(--tg-danger)', marginBottom: '12px', fontWeight: 500 }}>
+              Видалити фото профілю?
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleDeletePhoto}
+                style={{
+                  flex: 1,
+                  background: 'var(--tg-danger)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                }}
+              >
+                Видалити
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  color: 'var(--tg-text-secondary)',
+                  border: '1px solid var(--tg-border)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                }}
+              >
+                Скасувати
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+        />
 
         <h2 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--tg-text-color)' }}>
           {teacher?.name || 'Невідомо'}
