@@ -472,6 +472,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const [speechBubble, setSpeechBubble] = useState<string | null>(null);
   const [nightLampOn, setNightLampOn] = useState(false);
   const [birthdayParty, setBirthdayParty] = useState(false);
+  const [newYearParty, setNewYearParty] = useState(false);
   const lastMoveRef = useRef(Date.now());
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -618,6 +619,37 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     } catch { }
   }, []);
 
+  // Jingle Bells melody (first two lines)
+  const playJingleBells = useCallback(() => {
+    try {
+      const ctx = new AudioContext();
+      // E E E | E E E | E G C D E
+      // F F F F | F E E E | E D D E D G
+      const n = (f: number, s: number, d: number) => ({ freq: f, start: s, dur: d });
+      const E4 = 330, F4 = 349, G4 = 392, C4 = 262, D4 = 294;
+      const notes = [
+        n(E4,0,0.2), n(E4,0.25,0.2), n(E4,0.5,0.4),
+        n(E4,0.95,0.2), n(E4,1.2,0.2), n(E4,1.45,0.4),
+        n(E4,1.9,0.2), n(G4,2.15,0.2), n(C4,2.4,0.3), n(D4,2.75,0.15), n(E4,2.95,0.5),
+        n(F4,3.6,0.2), n(F4,3.85,0.2), n(F4,4.1,0.2), n(F4,4.35,0.15),
+        n(F4,4.55,0.2), n(E4,4.8,0.2), n(E4,5.05,0.15), n(E4,5.25,0.15),
+        n(E4,5.45,0.2), n(D4,5.7,0.2), n(D4,5.95,0.2), n(E4,6.2,0.2), n(D4,6.45,0.3), n(G4,6.8,0.5),
+      ];
+      for (const note of notes) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = note.freq;
+        gain.gain.setValueAtTime(0.07, ctx.currentTime + note.start);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + note.start + note.dur);
+        osc.start(ctx.currentTime + note.start);
+        osc.stop(ctx.currentTime + note.start + note.dur + 0.05);
+      }
+    } catch { }
+  }, []);
+
   const handleRobotClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -633,6 +665,19 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         setRobotEmotion('annoyed');
         setTimeout(() => setRobotEmotion(null), 1500);
       }
+      return;
+    }
+    // New Year: toggle party mode
+    if (isNewYear) {
+      setNewYearParty(prev => {
+        if (!prev) {
+          playJingleBells();
+          setRobotEmotion('star');
+        } else {
+          setRobotEmotion(null);
+        }
+        return !prev;
+      });
       return;
     }
     // Birthday: toggle party mode
@@ -651,7 +696,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     const emotion = emotions[Math.floor(Math.random() * emotions.length)];
     setRobotEmotion(emotion.name);
     setTimeout(() => setRobotEmotion(null), 1200);
-  }, [isSleeping, isNight, nightLampOn, hasBirthday, playHappyBirthday]);
+  }, [isSleeping, isNight, nightLampOn, isNewYear, playJingleBells, hasBirthday, playHappyBirthday]);
 
   // Double click = beep + speech bubble
   const bubbles = ['Біп-боп!', 'Привіт! 👋', 'Я робот! 🤖', 'Працюємо! 💪', '01100001'];
@@ -724,10 +769,10 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     );
     // New Year — Santa hat with pompom replaces antenna
     if (isNewYear) return (
-      <g>
+      <g className={newYearParty ? 'hat-shake' : ''}>
         <path d="M8,12 Q22,-8 36,12" fill="#dc2626" />
         <rect x="6" y="10" width="32" height="5" rx="2.5" fill="white" />
-        <circle cx="34" cy="-4" r="4" fill="white" className={hasNotifications ? 'hat-star-pulse' : ''} style={{ transformOrigin: '34px -4px' }} />
+        <circle cx="34" cy="-4" r="4" fill="white" className={hasNotifications && !newYearParty ? 'hat-star-pulse' : ''} style={{ transformOrigin: '34px -4px' }} />
       </g>
     );
     // Sep 1 — graduation cap replaces antenna
@@ -957,6 +1002,12 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             .hat-shake { animation: hatShake 0.5s ease-in-out infinite; transform-origin: 22px 11px; }
             @keyframes confettiFall { 0% { transform: translateY(-16px) rotate(0deg); opacity: 1; } 100% { transform: translateY(38px) rotate(360deg); opacity: 0; } }
             .confetti-piece { animation: confettiFall 1.8s ease-in forwards; }
+            @keyframes fireworkBurst { 0% { transform: scale(0); opacity: 1; } 50% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
+            .firework { animation: fireworkBurst 1.2s ease-out infinite; transform-origin: center; }
+            @keyframes santaFly { 0% { transform: translateX(60px); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateX(-60px); opacity: 0; } }
+            .santa-sleigh { animation: santaFly 4s linear infinite; }
+            @keyframes snowfall { 0% { transform: translateY(-10px); opacity: 0.8; } 100% { transform: translateY(42px); opacity: 0; } }
+            .snowflake { animation: snowfall 2s linear infinite; }
           `}} />
           <TransitionLink
             href="/dashboard"
@@ -973,7 +1024,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
               {/* Speech bubble */}
               {speechBubble && <div className="robot-speech">{speechBubble}</div>}
               {/* Robot icon */}
-              <svg className={`logo-icon${birthdayParty ? ' robot-dancing' : ''}`} width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
+              <svg className={`logo-icon${birthdayParty || newYearParty ? ' robot-dancing' : ''}`} width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
                 <defs>
                   <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44">
                     <stop offset="0%" stopColor={isNight && !nightLampOn ? '#1e3a5f' : '#3b82f6'} />
@@ -1101,6 +1152,89 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                         rx="0.5"
                         fill={c.color}
                         style={{ animationDelay: `${c.delay}s`, animationIterationCount: 'infinite' }}
+                      />
+                    ))}
+                  </g>
+                )}
+                {/* New Year party effects */}
+                {newYearParty && (
+                  <g>
+                    {/* Firework bursts */}
+                    <g className="firework" style={{ transformOrigin: '-4px -6px' }}>
+                      <circle cx="-4" cy="-6" r="1" fill="#f43f5e" />
+                      <circle cx="-7" cy="-9" r="0.7" fill="#eab308" />
+                      <circle cx="-1" cy="-10" r="0.7" fill="#60a5fa" />
+                      <circle cx="-7" cy="-3" r="0.6" fill="#a78bfa" />
+                      <circle cx="0" cy="-3" r="0.6" fill="#34d399" />
+                      <circle cx="-4" cy="-11" r="0.5" fill="#fb923c" />
+                    </g>
+                    <g className="firework" style={{ transformOrigin: '48px -4px', animationDelay: '0.6s' }}>
+                      <circle cx="48" cy="-4" r="1" fill="#eab308" />
+                      <circle cx="45" cy="-7" r="0.7" fill="#f43f5e" />
+                      <circle cx="51" cy="-7" r="0.7" fill="#34d399" />
+                      <circle cx="45" cy="-1" r="0.6" fill="#60a5fa" />
+                      <circle cx="51" cy="-1" r="0.6" fill="#fb923c" />
+                      <circle cx="48" cy="-9" r="0.5" fill="#a78bfa" />
+                    </g>
+                    <g className="firework" style={{ transformOrigin: '22px -14px', animationDelay: '1.0s' }}>
+                      <circle cx="22" cy="-14" r="0.8" fill="#60a5fa" />
+                      <circle cx="19" cy="-17" r="0.6" fill="#eab308" />
+                      <circle cx="25" cy="-17" r="0.6" fill="#f43f5e" />
+                      <circle cx="19" cy="-11" r="0.5" fill="#34d399" />
+                      <circle cx="25" cy="-11" r="0.5" fill="#a78bfa" />
+                    </g>
+                    {/* Santa on sleigh with reindeer */}
+                    <g className="santa-sleigh">
+                      {/* Reindeer */}
+                      <g transform="translate(-16, -16)">
+                        {/* Body */}
+                        <ellipse cx="0" cy="0" rx="3" ry="1.5" fill="#8B4513" />
+                        {/* Head */}
+                        <circle cx="-3.5" cy="-1" r="1.2" fill="#A0522D" />
+                        {/* Antlers */}
+                        <line x1="-4" y1="-2" x2="-5.5" y2="-4" stroke="#8B4513" strokeWidth="0.5" />
+                        <line x1="-5.5" y1="-4" x2="-6.5" y2="-3.5" stroke="#8B4513" strokeWidth="0.4" />
+                        <line x1="-3" y1="-2" x2="-3.5" y2="-4" stroke="#8B4513" strokeWidth="0.5" />
+                        <line x1="-3.5" y1="-4" x2="-4.5" y2="-3.5" stroke="#8B4513" strokeWidth="0.4" />
+                        {/* Nose */}
+                        <circle cx="-4.5" cy="-0.5" r="0.5" fill="#dc2626" />
+                        {/* Legs */}
+                        <line x1="-1.5" y1="1.5" x2="-2" y2="3" stroke="#8B4513" strokeWidth="0.5" />
+                        <line x1="1.5" y1="1.5" x2="2" y2="3" stroke="#8B4513" strokeWidth="0.5" />
+                        {/* Harness line */}
+                        <line x1="3" y1="0" x2="8" y2="0" stroke="#eab308" strokeWidth="0.4" strokeDasharray="1,1" />
+                      </g>
+                      {/* Sleigh */}
+                      <g transform="translate(-5, -16)">
+                        <path d="M0,-1 Q2,-3 6,-3 L8,-3 L8,0 Q6,2 0,2 Z" fill="#dc2626" />
+                        {/* Runner */}
+                        <path d="M-1,2 Q0,3 8,3 L9,2" fill="none" stroke="#eab308" strokeWidth="0.6" />
+                        {/* Santa */}
+                        <circle cx="5" cy="-4.5" r="2" fill="#dc2626" />
+                        <circle cx="5" cy="-5.5" r="1.3" fill="#fde68a" />
+                        {/* Santa hat */}
+                        <path d="M4,-6.5 Q5,-9 7,-7" fill="#dc2626" />
+                        <circle cx="7" cy="-7" r="0.6" fill="white" />
+                        {/* Gift bag */}
+                        <ellipse cx="2" cy="-3.5" rx="1.5" ry="2" fill="#16a34a" />
+                        <rect x="1" y="-4.5" width="2" height="0.6" rx="0.3" fill="#eab308" />
+                      </g>
+                    </g>
+                    {/* Snowflakes */}
+                    {[
+                      { x: 2, d: 0 }, { x: 10, d: 0.4 }, { x: 18, d: 0.8 },
+                      { x: 26, d: 1.2 }, { x: 34, d: 0.3 }, { x: 42, d: 0.9 },
+                      { x: 6, d: 1.5 }, { x: 30, d: 0.6 },
+                    ].map((s, i) => (
+                      <circle
+                        key={i}
+                        className="snowflake"
+                        cx={s.x}
+                        cy={-8}
+                        r="0.8"
+                        fill="white"
+                        opacity="0.7"
+                        style={{ animationDelay: `${s.d}s` }}
                       />
                     ))}
                   </g>
