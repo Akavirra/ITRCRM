@@ -415,6 +415,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const [isSleeping, setIsSleeping] = useState(false);
   const [speechBubble, setSpeechBubble] = useState<string | null>(null);
   const [nightLampOn, setNightLampOn] = useState(false);
+  const [birthdayParty, setBirthdayParty] = useState(false);
   const lastMoveRef = useRef(Date.now());
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -526,6 +527,41 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     } catch {}
   }, []);
 
+  // Happy Birthday melody (first line)
+  const playHappyBirthday = useCallback(() => {
+    try {
+      const ctx = new AudioContext();
+      // "Happy birthday to you" notes: G G A G C B
+      const notes = [
+        { freq: 392, start: 0,    dur: 0.25 }, // Hap-
+        { freq: 392, start: 0.3,  dur: 0.15 }, // py
+        { freq: 440, start: 0.5,  dur: 0.35 }, // birth-
+        { freq: 392, start: 0.9,  dur: 0.35 }, // day
+        { freq: 523, start: 1.3,  dur: 0.35 }, // to
+        { freq: 494, start: 1.7,  dur: 0.5  }, // you
+        // Second line: "Happy birthday to you"
+        { freq: 392, start: 2.4,  dur: 0.25 },
+        { freq: 392, start: 2.7,  dur: 0.15 },
+        { freq: 440, start: 2.9,  dur: 0.35 },
+        { freq: 392, start: 3.3,  dur: 0.35 },
+        { freq: 587, start: 3.7,  dur: 0.35 }, // D5
+        { freq: 523, start: 4.1,  dur: 0.6  }, // C5
+      ];
+      for (const n of notes) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = n.freq;
+        gain.gain.setValueAtTime(0.08, ctx.currentTime + n.start);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + n.start + n.dur);
+        osc.start(ctx.currentTime + n.start);
+        osc.stop(ctx.currentTime + n.start + n.dur + 0.05);
+      }
+    } catch {}
+  }, []);
+
   const handleRobotClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -538,16 +574,29 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     if (isNight) {
       setNightLampOn(prev => !prev);
       if (!nightLampOn) {
-        // Turning lamp on — annoyed face
         setRobotEmotion('annoyed');
         setTimeout(() => setRobotEmotion(null), 1500);
       }
       return;
     }
+    // Birthday: toggle party mode
+    if (hasBirthday) {
+      setBirthdayParty(prev => {
+        if (!prev) {
+          playHappyBirthday();
+          setRobotEmotion('star');
+          setTimeout(() => setRobotEmotion('happy'), 2000);
+          setTimeout(() => setRobotEmotion('love'), 4000);
+          setTimeout(() => setRobotEmotion(null), 5000);
+        }
+        return !prev;
+      });
+      return;
+    }
     const emotion = emotions[Math.floor(Math.random() * emotions.length)];
     setRobotEmotion(emotion.name);
     setTimeout(() => setRobotEmotion(null), 1200);
-  }, [isSleeping, isNight, nightLampOn]);
+  }, [isSleeping, isNight, nightLampOn, hasBirthday, playHappyBirthday]);
 
   // Double click = beep + speech bubble
   const bubbles = ['Біп-боп!', 'Привіт! 👋', 'Я робот! 🤖', 'Працюємо! 💪', '01100001'];
@@ -608,7 +657,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const renderAccessory = () => {
     // Birthday — big party hat replaces antenna
     if (hasBirthday) return (
-      <g>
+      <g className={birthdayParty ? 'hat-shake' : ''}>
         <polygon points="22,-6 12,11 32,11" fill="#f43f5e" />
         <polygon points="22,-6 16,5 28,5" fill="#fb923c" opacity="0.5" />
         <circle cx="22" cy="-7" r="3" fill="#eab308" />
@@ -844,6 +893,12 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             .logo-lamp { transition: opacity 0.4s ease; }
             @keyframes lampSwing { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
             .logo-lamp-swing { animation: lampSwing 3s ease-in-out infinite; transform-origin: 50% 0%; }
+            @keyframes robotDance { 0%,100% { transform: translateY(0) rotate(0deg); } 15% { transform: translateY(-3px) rotate(-4deg); } 30% { transform: translateY(0) rotate(4deg); } 45% { transform: translateY(-2px) rotate(-3deg); } 60% { transform: translateY(0) rotate(3deg); } 75% { transform: translateY(-3px) rotate(-2deg); } 90% { transform: translateY(0) rotate(2deg); } }
+            .robot-dancing { animation: robotDance 0.8s ease-in-out infinite; }
+            @keyframes hatShake { 0%,100% { transform: rotate(0deg) translateY(0); } 20% { transform: rotate(-8deg) translateY(-1px); } 40% { transform: rotate(8deg) translateY(0); } 60% { transform: rotate(-6deg) translateY(-1px); } 80% { transform: rotate(5deg) translateY(0); } }
+            .hat-shake { animation: hatShake 0.5s ease-in-out infinite; transform-origin: 22px 11px; }
+            @keyframes confettiFall { 0% { transform: translateY(-16px) rotate(0deg); opacity: 1; } 100% { transform: translateY(38px) rotate(360deg); opacity: 0; } }
+            .confetti-piece { animation: confettiFall 1.8s ease-in forwards; }
           `}} />
           <TransitionLink
             href="/dashboard"
@@ -860,7 +915,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
               {/* Speech bubble */}
               {speechBubble && <div className="robot-speech">{speechBubble}</div>}
               {/* Robot icon */}
-              <svg className="logo-icon" width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
+              <svg className={`logo-icon${birthdayParty ? ' robot-dancing' : ''}`} width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
                 <defs>
                   <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44">
                     <stop offset="0%" stopColor={isNight && !nightLampOn ? '#1e3a5f' : '#3b82f6'} />
@@ -961,6 +1016,37 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 )}
                 {/* Seasonal side item */}
                 {renderSideItem()}
+                {/* Birthday confetti */}
+                {birthdayParty && (
+                  <g>
+                    {[
+                      { x: 5, delay: 0, color: '#f43f5e', size: 2.5 },
+                      { x: 12, delay: 0.2, color: '#eab308', size: 2 },
+                      { x: 20, delay: 0.5, color: '#60a5fa', size: 2.2 },
+                      { x: 28, delay: 0.3, color: '#a78bfa', size: 1.8 },
+                      { x: 35, delay: 0.7, color: '#34d399', size: 2 },
+                      { x: 8, delay: 0.9, color: '#fb923c', size: 1.5 },
+                      { x: 17, delay: 1.1, color: '#f43f5e', size: 2 },
+                      { x: 25, delay: 0.6, color: '#eab308', size: 1.8 },
+                      { x: 32, delay: 1.0, color: '#a78bfa', size: 2.2 },
+                      { x: 40, delay: 0.4, color: '#60a5fa', size: 1.6 },
+                      { x: 3, delay: 1.3, color: '#34d399', size: 1.8 },
+                      { x: 22, delay: 0.8, color: '#fb923c', size: 2.5 },
+                    ].map((c, i) => (
+                      <rect
+                        key={i}
+                        className="confetti-piece"
+                        x={c.x}
+                        y={-12}
+                        width={c.size}
+                        height={c.size}
+                        rx="0.5"
+                        fill={c.color}
+                        style={{ animationDelay: `${c.delay}s`, animationIterationCount: 'infinite' }}
+                      />
+                    ))}
+                  </g>
+                )}
                 {/* Ears / connectors */}
                 <rect x="2" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
                 <rect x="38" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
