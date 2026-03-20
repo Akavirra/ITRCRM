@@ -1193,8 +1193,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     );
                   })()}
 
-                  {/* Deadline (todo only) */}
-                  {selectedNote.type === 'todo' && (() => {
+                  {/* Deadline */}
+                  {(() => {
                     const dl = deadlineLabel(selectedNote.deadline);
                     return (
                       <label title="Дедлайн" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
