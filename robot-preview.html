@@ -667,10 +667,10 @@ function toggleSep1Party(card) {
       p.setAttribute('stroke-width', '0.8'); p.setAttribute('fill', 'none');
       p.setAttribute('stroke-linecap', 'round'); p.classList.add('sep1-eye'); return p;
     };
-    svg.appendChild(makeCircle('16.5', '19.5'));
-    svg.appendChild(makeCircle('27.5', '19.5'));
-    svg.appendChild(makeArc('M14.5,21 Q16.5,23.5 18.5,21'));
-    svg.appendChild(makeArc('M25.5,21 Q27.5,23.5 29.5,21'));
+    svg.appendChild(makeCircle('16.5', '18'));
+    svg.appendChild(makeCircle('27.5', '18'));
+    svg.appendChild(makeArc('M14.5,19.5 Q16.5,22 18.5,19.5'));
+    svg.appendChild(makeArc('M25.5,19.5 Q27.5,22 29.5,19.5'));
   } else {
     card.classList.remove('sep1-party-border');
     svg.classList.remove('robot-dancing');

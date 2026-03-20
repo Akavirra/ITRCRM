@@ -1196,10 +1196,10 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 {/* Sep 1 happy eyes — upward arc smile eyes */}
                 {sep1Party && !robotEmotion && (
                   <>
-                    <circle cx="16.5" cy="19.5" r="2" fill="#1e293b" />
-                    <circle cx="27.5" cy="19.5" r="2" fill="#1e293b" />
-                    <path d="M14.5,21 Q16.5,23.5 18.5,21" stroke="#1e293b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
-                    <path d="M25.5,21 Q27.5,23.5 29.5,21" stroke="#1e293b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+                    <circle cx="16.5" cy="18" r="2" fill="#1e293b" />
+                    <circle cx="27.5" cy="18" r="2" fill="#1e293b" />
+                    <path d="M14.5,19.5 Q16.5,22 18.5,19.5" stroke="#1e293b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+                    <path d="M25.5,19.5 Q27.5,22 29.5,19.5" stroke="#1e293b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
                   </>
                 )}
                 {/* Pupils — follow mouse (not when sleeping) */}
