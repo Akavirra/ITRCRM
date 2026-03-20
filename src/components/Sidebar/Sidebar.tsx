@@ -414,6 +414,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const [hasBirthday, setHasBirthday] = useState(false);
   const [isSleeping, setIsSleeping] = useState(false);
   const [speechBubble, setSpeechBubble] = useState<string | null>(null);
+  const [nightLampOn, setNightLampOn] = useState(false);
   const lastMoveRef = useRef(Date.now());
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -505,6 +506,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     { name: 'happy', eyeShape: '◡', color: 'white' },
     { name: 'surprise', eyeShape: '○', color: 'white' },
     { name: 'wink', eyeShape: '−', color: 'white' },
+    { name: 'annoyed', eyeShape: '¬_¬', color: '#94a3b8' },
   ];
 
   const playBeep = useCallback(() => {
@@ -532,10 +534,20 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       lastMoveRef.current = Date.now();
       return;
     }
+    // Night mode: toggle lamp
+    if (isNight) {
+      setNightLampOn(prev => !prev);
+      if (!nightLampOn) {
+        // Turning lamp on — annoyed face
+        setRobotEmotion('annoyed');
+        setTimeout(() => setRobotEmotion(null), 1500);
+      }
+      return;
+    }
     const emotion = emotions[Math.floor(Math.random() * emotions.length)];
     setRobotEmotion(emotion.name);
     setTimeout(() => setRobotEmotion(null), 1200);
-  }, [isSleeping]);
+  }, [isSleeping, isNight, nightLampOn]);
 
   // Double click = beep + speech bubble
   const bubbles = ['Біп-боп!', 'Привіт! 👋', 'Я робот! 🤖', 'Працюємо! 💪', '01100001'];
@@ -555,6 +567,19 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     const cx = side === 'l' ? 16.5 : 27.5;
     const cy = 20;
     if (em.name === 'wink' && side === 'l') return null;
+    // Annoyed — angled eyebrows + small pupils
+    if (em.name === 'annoyed') {
+      const x1 = side === 'l' ? 13.5 : 24.5;
+      const x2 = side === 'l' ? 19.5 : 30.5;
+      const y1 = side === 'l' ? 16 : 17;
+      const y2 = side === 'l' ? 17 : 16;
+      return (
+        <g style={{ pointerEvents: 'none' }}>
+          <circle cx={cx} cy={cy} r="1.5" fill="#64748b" />
+          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
+        </g>
+      );
+    }
     return (
       <text
         x={cx}
@@ -789,13 +814,14 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         {/* Logo area */}
         <div style={{
           padding: '1rem 1rem 0.875rem',
-          backgroundColor: '#ffffff',
+          backgroundColor: isNight && !nightLampOn ? '#1e293b' : '#ffffff',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
           borderBottom: '1px solid #f0f0f0',
           minHeight: isSmallScreen ? '64px' : 'auto',
+          transition: 'background-color 0.5s ease',
         }}>
           <style dangerouslySetInnerHTML={{ __html: `
             .itrcrm-logo { transition: transform 0.3s ease; }
@@ -814,6 +840,10 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             .robot-speech { animation: speechIn 0.3s ease; position: absolute; top: -8px; right: -12px; background: white; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 3px 8px; font-size: 11px; font-weight: 600; color: #334155; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10; pointer-events: none; }
             @keyframes speechIn { 0% { opacity: 0; transform: scale(0.5) translateY(4px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
             .robot-night .logo-icon { filter: brightness(0.7) saturate(0.7); }
+            .robot-lamp-on .logo-icon { filter: brightness(1) saturate(1) drop-shadow(0 0 12px rgba(251,191,36,0.4)); transition: filter 0.5s ease; }
+            .logo-lamp { transition: opacity 0.4s ease; }
+            @keyframes lampSwing { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+            .logo-lamp-swing { animation: lampSwing 3s ease-in-out infinite; transform-origin: 50% 0%; }
           `}} />
           <TransitionLink
             href="/dashboard"
@@ -822,7 +852,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
           >
             <div
               ref={logoRef}
-              className={`itrcrm-logo${isSleeping ? ' robot-sleeping' : ''}${isNight ? ' robot-night' : ''}`}
+              className={`itrcrm-logo${isSleeping ? ' robot-sleeping' : ''}${isNight && !nightLampOn ? ' robot-night' : ''}${isNight && nightLampOn ? ' robot-lamp-on' : ''}`}
               onClick={handleRobotClick}
               onDoubleClick={handleRobotDoubleClick}
               style={{ display: 'flex', alignItems: 'center', gap: 10, userSelect: 'none', cursor: 'pointer', padding: '4px 0', position: 'relative' }}
@@ -833,8 +863,8 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
               <svg className="logo-icon" width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
                 <defs>
                   <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44">
-                    <stop offset="0%" stopColor={isNight ? '#1e3a5f' : '#3b82f6'} />
-                    <stop offset="100%" stopColor={isNight ? '#0f172a' : '#1d4ed8'} />
+                    <stop offset="0%" stopColor={isNight && !nightLampOn ? '#1e3a5f' : '#3b82f6'} />
+                    <stop offset="100%" stopColor={isNight && !nightLampOn ? '#0f172a' : '#1d4ed8'} />
                   </linearGradient>
                 </defs>
                 {/* Seasonal accessory (replaces antenna when hat) */}
@@ -842,14 +872,35 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 {/* Antenna — hidden when seasonal hat is on */}
                 {!hasAccessoryHat && (
                   <g className={`logo-antenna${hasNotifications ? ' logo-antenna-pulse' : ''}`}>
-                    <line x1="22" y1="4" x2="22" y2="10" stroke={isNight ? '#1e40af' : '#3b82f6'} strokeWidth="2" strokeLinecap="round" />
-                    <circle className="logo-antenna-tip" cx="22" cy="3" r="2.5" fill={isNight ? '#3b82f6' : '#60a5fa'} />
+                    <line x1="22" y1="4" x2="22" y2="10" stroke={isNight && !nightLampOn ? '#1e40af' : '#3b82f6'} strokeWidth="2" strokeLinecap="round" />
+                    <circle className="logo-antenna-tip" cx="22" cy="3" r="2.5" fill={isNight && !nightLampOn ? '#3b82f6' : '#60a5fa'} />
+                  </g>
+                )}
+                {/* Night lamp */}
+                {isNight && (
+                  <g className={`logo-lamp${nightLampOn ? ' logo-lamp-swing' : ''}`} style={{ opacity: nightLampOn ? 1 : 0.3 }}>
+                    {/* Lamp arm */}
+                    <line x1="42" y1="-6" x2="42" y2="6" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                    <line x1="42" y1="-6" x2="48" y2="-6" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                    <line x1="48" y1="-6" x2="48" y2="-2" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                    {/* Lamp shade */}
+                    <path d="M44,-2 L52,-2 L50,4 L46,4 Z" fill={nightLampOn ? '#fbbf24' : '#64748b'} />
+                    {/* Light cone */}
+                    {nightLampOn && (
+                      <path d="M46,4 L42,18 L54,18 L50,4" fill="#fbbf24" opacity="0.12" />
+                    )}
+                    {/* Bulb glow */}
+                    {nightLampOn && (
+                      <circle cx="48" cy="2" r="3" fill="#fbbf24" opacity="0.4" />
+                    )}
+                    {/* Base */}
+                    <rect x="40" y="6" width="4" height="2" rx="1" fill="#94a3b8" />
                   </g>
                 )}
                 {/* Head */}
                 <rect x="6" y="10" width="32" height="24" rx="7" fill="url(#logoGrad)" />
                 {/* Screen / face area */}
-                <rect x="10" y="14" width="24" height="12" rx="4" fill={isNight ? 'white' : 'white'} opacity={isNight ? 0.1 : 0.2} />
+                <rect x="10" y="14" width="24" height="12" rx="4" fill="white" opacity={isNight && !nightLampOn ? 0.1 : 0.2} />
                 {/* Eyes — white sclera */}
                 <rect x="13" y="16" width="7" height="8" rx="3.5" fill="white" opacity={isSleeping ? 0.5 : 1} />
                 <rect x="24" y="16" width="7" height="8" rx="3.5" fill="white" opacity={isSleeping ? 0.5 : 1} />
