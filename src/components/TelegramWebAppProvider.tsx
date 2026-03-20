@@ -108,13 +108,25 @@ const checkIsTelegramWebView = (): boolean => {
   return telegramPatterns.some(pattern => pattern.test(userAgent)) || hasTelegramParams;
 };
 
+const INIT_DATA_KEY = 'tg_init_data';
+
+// Save initData to sessionStorage for cross-navigation persistence
+const saveInitData = (data: string) => {
+  try { sessionStorage.setItem(INIT_DATA_KEY, data); } catch {}
+};
+
+// Read initData from sessionStorage (fallback for client-side navigation)
+const getSavedInitData = (): string | null => {
+  try { return sessionStorage.getItem(INIT_DATA_KEY); } catch { return null; }
+};
+
 // Parse initData from URL
 const parseInitDataFromUrl = (): string | null => {
   if (typeof window === 'undefined') return null;
-  
+
   const urlParams = new URLSearchParams(window.location.search);
   const possibleParams = ['tgWebAppData', 'tgwa_data', 'initData'];
-  
+
   for (const param of possibleParams) {
     const value = urlParams.get(param);
     if (value) {
@@ -125,7 +137,7 @@ const parseInitDataFromUrl = (): string | null => {
       }
     }
   }
-  
+
   const hash = window.location.hash;
   if (hash) {
     const match = hash.match(/tgWebAppData=([^&]+)/);
@@ -137,7 +149,7 @@ const parseInitDataFromUrl = (): string | null => {
       }
     }
   }
-  
+
   return null;
 };
 
@@ -215,6 +227,7 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
       if (tg.initData) {
         setWebApp(tg);
         setInitData(tg.initData);
+        saveInitData(tg.initData);
         setIsInWebView(true);
         setColorScheme(tg.colorScheme || 'light');
         if (tg.themeParams) setThemeParams(tg.themeParams);
@@ -231,6 +244,7 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
     const urlData = parseInitDataFromUrl();
     if (urlData) {
       setInitData(urlData);
+      saveInitData(urlData);
       setIsInWebView(true);
       setIsReady(true);
       setIsLoading(false);
@@ -239,11 +253,12 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
 
     // Try to load script and get Telegram
     await loadTelegramScript();
-    
+
     const tg2 = win.Telegram?.WebApp;
     if (tg2 && tg2.initData) {
       setWebApp(tg2);
       setInitData(tg2.initData);
+      saveInitData(tg2.initData);
       setIsInWebView(true);
       setColorScheme(tg2.colorScheme || 'light');
       if (tg2.themeParams) setThemeParams(tg2.themeParams);
@@ -255,10 +270,20 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
       return;
     }
 
+    // Fallback: check sessionStorage (survives client-side navigation)
+    const savedData = getSavedInitData();
+    if (savedData) {
+      setInitData(savedData);
+      setIsInWebView(true);
+      setIsReady(true);
+      setIsLoading(false);
+      return;
+    }
+
     // Check if we're in Telegram
     const inWebView = checkIsTelegramWebView();
     setIsInWebView(inWebView);
-    
+
     // If in WebView but no initData, still allow to proceed
     // The auth will handle the error
     if (inWebView) {
@@ -267,7 +292,7 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
     } else {
       setError('Not running in Telegram Mini App');
     }
-    
+
     setIsLoading(false);
   }, []);
 
