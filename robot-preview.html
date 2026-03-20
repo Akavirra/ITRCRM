@@ -650,29 +650,34 @@ function toggleSep1Party(card) {
     books.style.display = '';
     if (desc) desc.textContent = 'School! Click to stop';
 
-    // Happy eyes — ^_^
-    svg.querySelectorAll('.emo-text').forEach(e => e.remove());
+    // Happy eyes — pupils + smile arcs
+    svg.querySelectorAll('.sep1-eye').forEach(e => e.remove());
     if (pupilL) pupilL.style.display = 'none';
     if (pupilR) pupilR.style.display = 'none';
     const ns = 'http://www.w3.org/2000/svg';
-    const makeEmo = (x, shape, color) => {
-      const t = document.createElementNS(ns, 'text');
-      t.setAttribute('x', x); t.setAttribute('y', '21');
-      t.setAttribute('text-anchor', 'middle'); t.setAttribute('dominant-baseline', 'central');
-      t.setAttribute('fill', color); t.setAttribute('font-size', '7');
-      t.classList.add('emo-text', 'robot-emotion'); t.style.pointerEvents = 'none';
-      t.textContent = shape;
-      return t;
+    const makeCircle = (cx, cy) => {
+      const c = document.createElementNS(ns, 'circle');
+      c.setAttribute('cx', cx); c.setAttribute('cy', cy);
+      c.setAttribute('r', '2'); c.setAttribute('fill', '#1e293b');
+      c.classList.add('sep1-eye'); return c;
     };
-    svg.appendChild(makeEmo('16.5', '\u203F', '#f59e0b'));
-    svg.appendChild(makeEmo('27.5', '\u203F', '#f59e0b'));
+    const makeArc = (d) => {
+      const p = document.createElementNS(ns, 'path');
+      p.setAttribute('d', d); p.setAttribute('stroke', '#1e293b');
+      p.setAttribute('stroke-width', '0.8'); p.setAttribute('fill', 'none');
+      p.setAttribute('stroke-linecap', 'round'); p.classList.add('sep1-eye'); return p;
+    };
+    svg.appendChild(makeCircle('16.5', '19.5'));
+    svg.appendChild(makeCircle('27.5', '19.5'));
+    svg.appendChild(makeArc('M14.5,21 Q16.5,23.5 18.5,21'));
+    svg.appendChild(makeArc('M25.5,21 Q27.5,23.5 29.5,21'));
   } else {
     card.classList.remove('sep1-party-border');
     svg.classList.remove('robot-dancing');
     hat.classList.remove('hat-shake');
     books.style.display = 'none';
     if (desc) desc.textContent = 'Click to party!';
-    svg.querySelectorAll('.emo-text').forEach(e => e.remove());
+    svg.querySelectorAll('.sep1-eye').forEach(e => e.remove());
     if (pupilL) pupilL.style.display = '';
     if (pupilR) pupilR.style.display = '';
   }

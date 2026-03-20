@@ -778,12 +778,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     // Sep 1: toggle school mode
     if (isSep1) {
       setSep1Party(prev => {
-        if (!prev) {
-          playSchoolBell();
-          setRobotEmotion('happy');
-        } else {
-          setRobotEmotion(null);
-        }
+        if (!prev) playSchoolBell();
         return !prev;
       });
       return;
@@ -1198,8 +1193,17 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     <line x1="25" y1="16.5" x2="30" y2="15.5" stroke="#1e293b" strokeWidth="1" strokeLinecap="round" />
                   </>
                 )}
+                {/* Sep 1 happy eyes — upward arc smile eyes */}
+                {sep1Party && !robotEmotion && (
+                  <>
+                    <circle cx="16.5" cy="19.5" r="2" fill="#1e293b" />
+                    <circle cx="27.5" cy="19.5" r="2" fill="#1e293b" />
+                    <path d="M14.5,21 Q16.5,23.5 18.5,21" stroke="#1e293b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+                    <path d="M25.5,21 Q27.5,23.5 29.5,21" stroke="#1e293b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+                  </>
+                )}
                 {/* Pupils — follow mouse (not when sleeping) */}
-                {!robotEmotion && !isSleeping && !halloweenParty && (
+                {!robotEmotion && !isSleeping && !halloweenParty && !sep1Party && (
                   <>
                     <circle
                       cx={16.5 + eyeOffset.x}
