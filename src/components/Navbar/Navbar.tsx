@@ -142,6 +142,7 @@ const Navbar: React.FC<NavbarProps> = ({
     displayName: user?.name || '',
     email: '',
     phone: '',
+    telegram_id: '',
     emailNotifications: true,
     pushNotifications: true,
     lessonReminders: true,
@@ -359,6 +360,13 @@ const Navbar: React.FC<NavbarProps> = ({
         if (!d?.user) return;
         if (d.user.photo_url) setUserPhotoUrl(d.user.photo_url);
         if (d.user.is_owner) setCurrentUserIsOwner(true);
+        setSettings(prev => ({
+          ...prev,
+          displayName: d.user.name || prev.displayName,
+          email: d.user.email || prev.email,
+          phone: d.user.phone || '',
+          telegram_id: d.user.telegram_id || '',
+        }));
       })
       .catch(() => {});
   }, [settingsOpen]);
@@ -392,6 +400,7 @@ const Navbar: React.FC<NavbarProps> = ({
         body: JSON.stringify({
           name: settings.displayName || undefined,
           phone: settings.phone || undefined,
+          telegram_id: settings.telegram_id ?? undefined,
           photo: profilePhotoBase64 || undefined,
         }),
       });
@@ -993,6 +1002,13 @@ const Navbar: React.FC<NavbarProps> = ({
                         <input type="tel" className="form-input" value={settings.phone}
                           onChange={e => handleSettingChange('phone', e.target.value)}
                           placeholder="+38 (0__) ___-__-__" style={{ maxWidth: '360px' }} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Telegram ID</label>
+                        <input type="text" className="form-input" value={settings.telegram_id}
+                          onChange={e => handleSettingChange('telegram_id', e.target.value)}
+                          placeholder="123456789" style={{ maxWidth: '360px' }} />
+                        <span className="form-hint">Числовий ID в Telegram. Необхідний для доступу до міні-додатку.</span>
                       </div>
                     </div>
 

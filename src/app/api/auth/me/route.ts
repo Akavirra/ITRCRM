@@ -50,6 +50,8 @@ export async function GET(request: NextRequest) {
         role: user.role,
         is_owner: user.is_owner ?? false,
         photo_url: user.photo_url ?? null,
+        phone: user.phone ?? null,
+        telegram_id: user.telegram_id ?? null,
       },
     });
   } catch (error) {
