@@ -1,4 +1,4 @@
-'use client';
+з'use client';
 
 import { usePathname } from 'next/navigation';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -47,8 +47,8 @@ const reportsMenuItems = [
 
 const DAYS_UK = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'П\u2019ятниця', 'Субота'];
 const DAYS_SHORT_UK = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
-const MONTHS_UK = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
-const MONTHS_FULL_UK = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+const MONTHS_UK = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
+const MONTHS_FULL_UK = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
 
 interface WeatherData {
   city: string;
@@ -128,7 +128,7 @@ function SidebarInfoWidget() {
     fetch('/api/weather')
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(d => setWeather(d))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -186,7 +186,7 @@ function SidebarInfoWidget() {
         fetch('/api/weather/forecast')
           .then(r => r.ok ? r.json() : Promise.reject())
           .then(d => setForecast(d.days))
-          .catch(() => {});
+          .catch(() => { });
       }
     }
     setWeatherOpen(o => !o);
@@ -441,7 +441,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
           setHasNotifications((data.unreadCount ?? 0) > 0);
           setHasBirthday(!!data.hasBirthday);
         }
-      } catch {}
+      } catch { }
     };
     check();
     const interval = setInterval(check, 30_000);
@@ -524,7 +524,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 0.2);
       gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
       osc.stop(ctx.currentTime + 0.3);
-    } catch {}
+    } catch { }
   }, []);
 
   // Happy Birthday melody (first line)
@@ -533,19 +533,19 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       const ctx = new AudioContext();
       // "Happy birthday to you" notes: G G A G C B
       const notes = [
-        { freq: 392, start: 0,    dur: 0.25 }, // Hap-
-        { freq: 392, start: 0.3,  dur: 0.15 }, // py
-        { freq: 440, start: 0.5,  dur: 0.35 }, // birth-
-        { freq: 392, start: 0.9,  dur: 0.35 }, // day
-        { freq: 523, start: 1.3,  dur: 0.35 }, // to
-        { freq: 494, start: 1.7,  dur: 0.5  }, // you
+        { freq: 392, start: 0, dur: 0.25 }, // Hap-
+        { freq: 392, start: 0.3, dur: 0.15 }, // py
+        { freq: 440, start: 0.5, dur: 0.35 }, // birth-
+        { freq: 392, start: 0.9, dur: 0.35 }, // day
+        { freq: 523, start: 1.3, dur: 0.35 }, // to
+        { freq: 494, start: 1.7, dur: 0.5 }, // you
         // Second line: "Happy birthday to you"
-        { freq: 392, start: 2.4,  dur: 0.25 },
-        { freq: 392, start: 2.7,  dur: 0.15 },
-        { freq: 440, start: 2.9,  dur: 0.35 },
-        { freq: 392, start: 3.3,  dur: 0.35 },
-        { freq: 587, start: 3.7,  dur: 0.35 }, // D5
-        { freq: 523, start: 4.1,  dur: 0.6  }, // C5
+        { freq: 392, start: 2.4, dur: 0.25 },
+        { freq: 392, start: 2.7, dur: 0.15 },
+        { freq: 440, start: 2.9, dur: 0.35 },
+        { freq: 392, start: 3.3, dur: 0.35 },
+        { freq: 587, start: 3.7, dur: 0.35 }, // D5
+        { freq: 523, start: 4.1, dur: 0.6 }, // C5
       ];
       for (const n of notes) {
         const osc = ctx.createOscillator();
@@ -559,7 +559,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         osc.start(ctx.currentTime + n.start);
         osc.stop(ctx.currentTime + n.start + n.dur + 0.05);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   const handleRobotClick = useCallback((e: React.MouseEvent) => {
@@ -848,7 +848,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     <>
       {/* Mobile/Tablet overlay */}
       {isSmallScreen && isOpen && (
-        <div 
+        <div
           onClick={onClose}
           style={{
             position: 'fixed',
@@ -872,7 +872,8 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
           minHeight: isSmallScreen ? '64px' : 'auto',
           transition: 'background-color 0.5s ease',
         }}>
-          <style dangerouslySetInnerHTML={{ __html: `
+          <style dangerouslySetInnerHTML={{
+            __html: `
             .itrcrm-logo { transition: transform 0.3s ease; }
             .itrcrm-logo:hover { transform: scale(1.03); }
             .itrcrm-logo:hover .logo-icon { filter: drop-shadow(0 3px 10px rgba(37,99,235,0.35)); }

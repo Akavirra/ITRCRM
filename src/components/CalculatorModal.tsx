@@ -176,11 +176,13 @@ export default function CalculatorModal({ isOpen, onClose }: Props) {
           userSelect: 'none',
         }}
       >
-        {/* Drag handle / header — dark */}
-        <div
-          onMouseDown={startDrag}
-          style={{ padding: '0.75rem 0.875rem 0', display: 'flex', alignItems: 'center', cursor: 'grab', background: '#1e293b' }}
-        >
+        {/* Top Section — blue background */}
+        <div style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}>
+          {/* Drag handle / header */}
+          <div
+            onMouseDown={startDrag}
+            style={{ padding: '0.75rem 0.875rem 0', display: 'flex', alignItems: 'center', cursor: 'grab' }}
+          >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" style={{ marginRight: '0.375rem', flexShrink: 0 }}>
             <rect x="4" y="2" width="4" height="4" rx="1"/><rect x="10" y="2" width="4" height="4" rx="1"/><rect x="16" y="2" width="4" height="4" rx="1"/>
             <rect x="4" y="8" width="4" height="4" rx="1"/><rect x="10" y="8" width="4" height="4" rx="1"/><rect x="16" y="8" width="4" height="4" rx="1"/>
@@ -198,8 +200,8 @@ export default function CalculatorModal({ isOpen, onClose }: Props) {
           </button>
         </div>
 
-        {/* Display — dark background */}
-        <div style={{ background: '#1e293b', padding: '0.5rem 1.125rem 1.125rem' }}>
+        {/* Display */}
+        <div style={{ padding: '0.5rem 1.125rem 1.125rem' }}>
           <div style={{ fontSize: '0.8125rem', color: '#cbd5e1', height: '1.25rem', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {expression || '\u00a0'}
           </div>
@@ -216,6 +218,7 @@ export default function CalculatorModal({ isOpen, onClose }: Props) {
           }}>
             {display}
           </div>
+        </div>
         </div>
 
         {/* Button grid */}
