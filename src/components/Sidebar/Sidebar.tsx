@@ -715,7 +715,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       <g className={birthdayParty ? 'hat-shake' : ''}>
         <polygon points="22,-6 12,11 32,11" fill="#f43f5e" />
         <polygon points="22,-6 16,5 28,5" fill="#fb923c" opacity="0.5" />
-        <circle cx="22" cy="-7" r="3" fill="#eab308" />
+        <circle cx="22" cy="-7" r="3" fill="#eab308" className={hasNotifications ? 'hat-star-pulse' : ''} style={{ transformOrigin: '22px -7px' }} />
         {/* Confetti dots */}
         <circle cx="15" cy="3" r="1" fill="#eab308" />
         <circle cx="29" cy="5" r="1" fill="#60a5fa" />
@@ -727,7 +727,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       <g>
         <path d="M8,12 Q22,-8 36,12" fill="#dc2626" />
         <rect x="6" y="10" width="32" height="5" rx="2.5" fill="white" />
-        <circle cx="34" cy="-4" r="4" fill="white" />
+        <circle cx="34" cy="-4" r="4" fill="white" className={hasNotifications ? 'hat-star-pulse' : ''} style={{ transformOrigin: '34px -4px' }} />
       </g>
     );
     // Sep 1 — graduation cap replaces antenna
@@ -736,7 +736,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         <polygon points="22,-2 6,7 38,7" fill="#1e293b" />
         <rect x="12" y="7" width="20" height="4" rx="1" fill="#334155" />
         <line x1="32" y1="4" x2="36" y2="9" stroke="#eab308" strokeWidth="1.5" strokeLinecap="round" />
-        <rect x="34" y="9" width="5" height="2" rx="1" fill="#eab308" />
+        <rect x="34" y="9" width="5" height="2" rx="1" fill="#eab308" className={hasNotifications ? 'hat-star-pulse' : ''} style={{ transformOrigin: '36.5px 10px' }} />
       </g>
     );
     // Easter — bunny ears (antenna stays)
@@ -939,6 +939,8 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             @keyframes emotionPop { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
             .logo-antenna-pulse .logo-antenna-tip { animation: antennaPulse 1.5s ease-in-out infinite; }
             @keyframes antennaPulse { 0%,100% { fill: #60a5fa; filter: drop-shadow(0 0 2px #60a5fa); } 50% { fill: #f59e0b; filter: drop-shadow(0 0 8px #f59e0b); } }
+            .hat-star-pulse { animation: hatStarPulse 1.5s ease-in-out infinite; }
+            @keyframes hatStarPulse { 0%,100% { fill: #eab308; filter: drop-shadow(0 0 2px #eab308); transform: scale(1); } 50% { fill: #f59e0b; filter: drop-shadow(0 0 8px #f59e0b); transform: scale(1.3); } }
             .robot-sleeping .logo-icon { filter: brightness(0.85); transition: filter 1s ease; }
             .robot-zzz { animation: zzzFloat 2s ease-in-out infinite; }
             @keyframes zzzFloat { 0% { opacity: 0; transform: translate(0,0) scale(0.5); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(6px,-12px) scale(1.1); } }
