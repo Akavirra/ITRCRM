@@ -22,7 +22,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'teacher' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'teacher', telegram_id: '' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function UsersPage() {
   }, [router]);
 
   const handleCreate = () => {
-    setFormData({ name: '', email: '', password: '', role: 'teacher' });
+    setFormData({ name: '', email: '', password: '', role: 'teacher', telegram_id: '' });
     setShowModal(true);
   };
 
@@ -199,6 +199,19 @@ export default function UsersPage() {
                   <option value="teacher">{t('roles.teacher')}</option>
                   <option value="admin">{t('roles.admin')}</option>
                 </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Telegram ID</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.telegram_id}
+                  onChange={(e) => setFormData({ ...formData, telegram_id: e.target.value })}
+                  placeholder="123456789"
+                />
+                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                  Числовий ID користувача в Telegram. Необхідний для доступу до міні-додатку.
+                </p>
               </div>
             </div>
             <div className="modal-footer">

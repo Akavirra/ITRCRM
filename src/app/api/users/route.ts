@@ -56,8 +56,8 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
-    const { name, email, password, role } = body;
-    
+    const { name, email, password, role, telegram_id } = body;
+
     if (!name || !email || !password || !role) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.allFieldsRequired },
@@ -82,8 +82,8 @@ export async function POST(request: NextRequest) {
     const passwordHash = await hashPassword(password);
     
     const result = await run(
-      `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id`,
-      [name.trim(), email.trim().toLowerCase(), passwordHash, role]
+      `INSERT INTO users (name, email, password_hash, role, telegram_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [name.trim(), email.trim().toLowerCase(), passwordHash, role, telegram_id?.trim() || null]
     );
     
     return NextResponse.json({
