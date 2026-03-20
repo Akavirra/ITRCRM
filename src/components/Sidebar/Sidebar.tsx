@@ -513,9 +513,9 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             onClick={isSmallScreen ? onClose : undefined}
             style={{ textDecoration: 'none' }}
           >
-            <div className="itrcrm-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, userSelect: 'none', cursor: 'pointer', padding: '4px 0' }}>
+            <div className="itrcrm-logo" style={{ display: 'flex', alignItems: 'center', gap: 10, userSelect: 'none', cursor: 'pointer', padding: '4px 0' }}>
               {/* Robot icon */}
-              <svg className="logo-icon" width="44" height="44" viewBox="0 0 44 44" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease' }}>
+              <svg className="logo-icon" width="52" height="52" viewBox="0 0 44 44" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease' }}>
                 <defs>
                   <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44">
                     <stop offset="0%" stopColor="#3b82f6" />
@@ -547,17 +547,13 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 <rect x="26" y="34" width="4" height="4" rx="1" fill="#93c5fd" />
               </svg>
               {/* Text */}
-              <div className="logo-letters" style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1, transition: 'filter 0.3s ease', gap: 1 }}>
-                <span style={{ fontSize: '1.375rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+              <div className="logo-letters" style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1, transition: 'filter 0.3s ease', gap: 2 }}>
+                <span style={{ fontSize: '1.625rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
                   ITR
                 </span>
-                <span style={{ fontSize: '1.375rem', fontWeight: 800, color: '#2563eb', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+                <span style={{ fontSize: '1.625rem', fontWeight: 800, color: '#2563eb', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
                   CRM
                 </span>
-              </div>
-              {/* Subtitle */}
-              <div style={{ fontSize: '0.5625rem', fontWeight: 500, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: -1 }}>
-                IT Школа · Робототехніка
               </div>
             </div>
           </TransitionLink>
