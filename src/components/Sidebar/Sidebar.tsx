@@ -474,6 +474,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const [birthdayParty, setBirthdayParty] = useState(false);
   const [newYearParty, setNewYearParty] = useState(false);
   const [halloweenParty, setHalloweenParty] = useState(false);
+  const [sep1Party, setSep1Party] = useState(false);
   const lastMoveRef = useRef(Date.now());
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -686,6 +687,43 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     } catch { }
   }, []);
 
+  // School bell melody (cheerful ascending)
+  const playSchoolBell = useCallback(() => {
+    try {
+      const ctx = new AudioContext();
+      const notes = [
+        { freq: 523, start: 0, dur: 0.15 },    // C5
+        { freq: 587, start: 0.18, dur: 0.15 },  // D5
+        { freq: 659, start: 0.36, dur: 0.15 },  // E5
+        { freq: 523, start: 0.54, dur: 0.15 },  // C5
+        { freq: 659, start: 0.75, dur: 0.15 },  // E5
+        { freq: 587, start: 0.93, dur: 0.15 },  // D5
+        { freq: 523, start: 1.15, dur: 0.2 },   // C5
+        { freq: 392, start: 1.4, dur: 0.15 },   // G4
+        { freq: 523, start: 1.6, dur: 0.15 },   // C5
+        { freq: 587, start: 1.78, dur: 0.15 },  // D5
+        { freq: 659, start: 1.96, dur: 0.15 },  // E5
+        { freq: 784, start: 2.15, dur: 0.4 },   // G5
+        // Bell ring
+        { freq: 1047, start: 2.7, dur: 0.1 },   // C6
+        { freq: 1047, start: 2.85, dur: 0.1 },  // C6
+        { freq: 1047, start: 3.0, dur: 0.3 },   // C6 long
+      ];
+      for (const n of notes) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = n.freq >= 1000 ? 'sine' : 'square';
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = n.freq;
+        gain.gain.setValueAtTime(n.freq >= 1000 ? 0.05 : 0.04, ctx.currentTime + n.start);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + n.start + n.dur);
+        osc.start(ctx.currentTime + n.start);
+        osc.stop(ctx.currentTime + n.start + n.dur + 0.05);
+      }
+    } catch { }
+  }, []);
+
   const handleRobotClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -737,10 +775,23 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       });
       return;
     }
+    // Sep 1: toggle school mode
+    if (isSep1) {
+      setSep1Party(prev => {
+        if (!prev) {
+          playSchoolBell();
+          setRobotEmotion('happy');
+        } else {
+          setRobotEmotion(null);
+        }
+        return !prev;
+      });
+      return;
+    }
     const emotion = emotions[Math.floor(Math.random() * emotions.length)];
     setRobotEmotion(emotion.name);
     setTimeout(() => setRobotEmotion(null), 1200);
-  }, [isSleeping, isNight, nightLampOn, isNewYear, playJingleBells, hasBirthday, playHappyBirthday, isHalloween, playHalloweenMelody]);
+  }, [isSleeping, isNight, nightLampOn, isNewYear, playJingleBells, hasBirthday, playHappyBirthday, isHalloween, playHalloweenMelody, isSep1, playSchoolBell]);
 
   // Double click = beep + speech bubble
   const bubbles = ['Біп-боп!', 'Привіт! 👋', 'Я робот! 🤖', 'Працюємо! 💪', '01100001'];
@@ -821,7 +872,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     );
     // Sep 1 — graduation cap replaces antenna
     if (isSep1) return (
-      <g>
+      <g className={sep1Party ? 'hat-shake' : ''}>
         <polygon points="22,-2 6,7 38,7" fill="#1e293b" />
         <rect x="12" y="7" width="20" height="4" rx="1" fill="#334155" />
         <line x1="32" y1="4" x2="36" y2="9" stroke="#eab308" strokeWidth="1.5" strokeLinecap="round" />
@@ -1068,6 +1119,8 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             @keyframes ghostFloat { 0% { transform: translate(0,0) scale(0.8); opacity: 0; } 20% { opacity: 0.7; } 50% { transform: translate(var(--gx,5px), var(--gy,-10px)) scale(1); opacity: 0.6; } 80% { opacity: 0.4; } 100% { transform: translate(var(--gx2,10px), var(--gy2,-18px)) scale(0.7); opacity: 0; } }
             .ghost-float { animation: ghostFloat 3s ease-in-out infinite; }
             .pumpkin-glow { filter: drop-shadow(0 0 4px #fbbf24) drop-shadow(0 0 8px #f97316); }
+            @keyframes bookFall { 0% { transform: translateY(-14px) rotate(0deg); opacity: 0; } 10% { opacity: 1; } 85% { opacity: 0.8; } 100% { transform: translateY(44px) rotate(var(--br, 180deg)); opacity: 0; } }
+            .book-fall { animation: bookFall 3.5s ease-in infinite; }
           `}} />
           <TransitionLink
             href="/dashboard"
@@ -1084,7 +1137,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
               {/* Speech bubble */}
               {speechBubble && <div className="robot-speech">{speechBubble}</div>}
               {/* Robot icon */}
-              <svg className={`logo-icon${birthdayParty || newYearParty ? ' robot-dancing' : ''}${halloweenParty ? ' robot-scared' : ''}`} width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
+              <svg className={`logo-icon${birthdayParty || newYearParty || sep1Party ? ' robot-dancing' : ''}${halloweenParty ? ' robot-scared' : ''}`} width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
                 <defs>
                   <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44">
                     <stop offset="0%" stopColor={isNight && !nightLampOn ? '#1e3a5f' : '#3b82f6'} />
@@ -1335,6 +1388,32 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                         <circle cx="2.5" cy="3.5" r="0.8" fill="#1e293b" />
                       </g>
                     </g>
+                  </g>
+                )}
+                {/* Sep 1 party effects — falling books */}
+                {sep1Party && (
+                  <g>
+                    {[
+                      { x: 0, delay: 0, color: '#dc2626', pages: '#fca5a5', rot: 180 },
+                      { x: 10, delay: 0.6, color: '#2563eb', pages: '#93c5fd', rot: -120 },
+                      { x: 22, delay: 1.2, color: '#16a34a', pages: '#86efac', rot: 200 },
+                      { x: 34, delay: 0.3, color: '#9333ea', pages: '#c4b5fd', rot: -160 },
+                      { x: 44, delay: 0.9, color: '#ea580c', pages: '#fdba74', rot: 140 },
+                      { x: 6, delay: 1.8, color: '#0891b2', pages: '#67e8f9', rot: -200 },
+                      { x: 28, delay: 1.5, color: '#ca8a04', pages: '#fde047', rot: 220 },
+                      { x: 16, delay: 2.1, color: '#be185d', pages: '#f9a8d4', rot: -140 },
+                    ].map((b, i) => (
+                      <g key={i} className="book-fall" style={{ animationDelay: `${b.delay}s`, '--br': `${b.rot}deg` } as React.CSSProperties}>
+                        <g transform={`translate(${b.x}, -10)`}>
+                          {/* Book cover */}
+                          <rect x="0" y="0" width="7" height="5" rx="0.5" fill={b.color} />
+                          {/* Pages */}
+                          <rect x="1" y="0.5" width="5" height="4" rx="0.3" fill={b.pages} />
+                          {/* Spine */}
+                          <line x1="0.5" y1="0.3" x2="0.5" y2="4.7" stroke={b.color} strokeWidth="0.8" />
+                        </g>
+                      </g>
+                    ))}
                   </g>
                 )}
                 {/* Ears / connectors */}
