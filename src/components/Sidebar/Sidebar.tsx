@@ -1529,11 +1529,11 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 <rect x="26" y="34" width="4" height="4" rx="1" fill="#93c5fd" />
               </svg>
               {/* Text */}
-              <div className="logo-letters" style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1, transition: 'filter 0.3s ease', gap: 2, marginTop: 8 }}>
-                <span style={{ fontSize: '1.625rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+              <div className="logo-letters" style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1, transition: 'filter 0.3s ease', gap: 2, marginTop: 14 }}>
+                <span style={{ fontSize: '1.85rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
                   ITR
                 </span>
-                <span style={{ fontSize: '1.625rem', fontWeight: 800, color: '#2563eb', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+                <span style={{ fontSize: '1.85rem', fontWeight: 800, color: '#2563eb', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
                   CRM
                 </span>
               </div>
