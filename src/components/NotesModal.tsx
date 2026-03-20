@@ -1161,86 +1161,18 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
 
                   {/* Reminder */}
-                  {(() => {
-                    const hasRemind = !!selectedNote.remind_at;
-                    const isPast = hasRemind && new Date(selectedNote.remind_at!) <= new Date();
-                    return (
-                      <label 
-                        title="Нагадування" 
-                        style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}
-                        onMouseEnter={e => {
-                          const pill = e.currentTarget.querySelector('.empty-pill-remind') as HTMLElement | null;
-                          if (pill) { pill.style.background = '#e8eaed'; pill.style.color = '#202124'; }
-                        }}
-                        onMouseLeave={e => {
-                          const pill = e.currentTarget.querySelector('.empty-pill-remind') as HTMLElement | null;
-                          if (pill) { pill.style.background = '#f1f3f4'; pill.style.color = '#5f6368'; }
-                        }}
-                      >
-                        {hasRemind ? (
-                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: isPast ? '#f3f4f6' : '#eff6ff', color: isPast ? '#9ca3af' : '#2563eb', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                            {new Date(selectedNote.remind_at!).toLocaleString('uk', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
-                            <button onClick={e => { e.preventDefault(); updateNote(selectedNote.id, { remind_at: null }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1, marginLeft: 1, display: 'flex', position: 'relative', zIndex: 2 }}>
-                              <X size={9} />
-                            </button>
-                          </span>
-                        ) : (
-                          <span className="empty-pill-remind" style={{ fontSize: '0.75rem', fontWeight: 500, color: '#5f6368', background: '#f1f3f4', padding: '4px 12px', borderRadius: 24, border: '1px solid transparent', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s' }}>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                            нагадати
-                          </span>
-                        )}
-                        <input
-                          type="datetime-local"
-                          value={selectedNote.remind_at ? new Date(selectedNote.remind_at).toISOString().slice(0,16) : ''}
-                          onChange={e => updateNote(selectedNote.id, { remind_at: e.target.value || null })}
-                          style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0, cursor: 'pointer', zIndex: 1 }}
-                        />
-                      </label>
-                    );
-                  })()}
+                  <ReminderDropdown
+                    remindAt={selectedNote.remind_at ?? null}
+                    onChange={val => updateNote(selectedNote.id, { remind_at: val })}
+                    onClear={() => updateNote(selectedNote.id, { remind_at: null })}
+                  />
 
                   {/* Deadline */}
-                  {(() => {
-                    const dl = deadlineLabel(selectedNote.deadline);
-                    return (
-                      <label 
-                        title="Дедлайн" 
-                        style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}
-                        onMouseEnter={e => {
-                          const pill = e.currentTarget.querySelector('.empty-pill-deadline') as HTMLElement | null;
-                          if (pill) { pill.style.background = '#e8eaed'; pill.style.color = '#202124'; }
-                        }}
-                        onMouseLeave={e => {
-                          const pill = e.currentTarget.querySelector('.empty-pill-deadline') as HTMLElement | null;
-                          if (pill) { pill.style.background = '#f1f3f4'; pill.style.color = '#5f6368'; }
-                        }}
-                      >
-                        {dl ? (
-                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
-                            📅 {dl.text}
-                            <button
-                              onClick={e => { e.preventDefault(); updateNote(selectedNote.id, { deadline: null }); }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1, display: 'flex', marginLeft: 1, position: 'relative', zIndex: 2 }}
-                            >
-                              <X size={9} />
-                            </button>
-                          </span>
-                        ) : (
-                          <span className="empty-pill-deadline" style={{ fontSize: '0.75rem', fontWeight: 500, color: '#5f6368', background: '#f1f3f4', padding: '4px 12px', borderRadius: 24, border: '1px solid transparent', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>
-                            + дедлайн
-                          </span>
-                        )}
-                        <input
-                          type="date"
-                          value={selectedNote.deadline?.slice(0, 10) ?? ''}
-                          onChange={e => updateNote(selectedNote.id, { deadline: e.target.value || null })}
-                          style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0, cursor: 'pointer', zIndex: 1 }}
-                        />
-                      </label>
-                    );
-                  })()}
+                  <DeadlineDropdown
+                    deadline={selectedNote.deadline ?? null}
+                    onChange={val => updateNote(selectedNote.id, { deadline: val })}
+                    onClear={() => updateNote(selectedNote.id, { deadline: null })}
+                  />
 
                   <div style={{ flex: 1 }} />
 
@@ -1963,6 +1895,181 @@ function TaskList({ tasks, onToggle, onDelete, onRename, onReorder }: {
         </div>
       )}
       {done.map(renderItem)}
+    </div>
+  );
+}
+
+// ── Modern Reminder Dropdown ──────────────────────────────────────────────────
+
+function ReminderDropdown({ remindAt, onChange, onClear }: {
+  remindAt: string | null;
+  onChange: (val: string | null) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  const isPast = remindAt && new Date(remindAt) <= new Date();
+
+  const setPreset = (hoursOffset: number) => {
+    const d = new Date();
+    d.setHours(d.getHours() + hoursOffset);
+    onChange(d.toISOString().slice(0, 16));
+    setOpen(false);
+  };
+
+  const setTomorrow = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(9, 0, 0, 0);
+    onChange(d.toISOString().slice(0, 16));
+    setOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', display: 'flex', flexShrink: 0 }}>
+      {remindAt ? (
+        <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: isPast ? '#f3f4f6' : '#eff6ff', color: isPast ? '#9ca3af' : '#2563eb', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+          onClick={() => setOpen(v => !v)}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          {new Date(remindAt).toLocaleString('uk', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
+          <button onClick={e => { e.stopPropagation(); onClear(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1, marginLeft: 2, display: 'flex', opacity: 0.7 }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}>
+            <X size={10} />
+          </button>
+        </span>
+      ) : (
+        <button
+          onClick={() => setOpen(v => !v)}
+          title="Нагадування"
+          style={{ display: 'flex', alignItems: 'center', gap: 4, background: open ? '#e8eaed' : '#f1f3f4', border: 'none', borderRadius: 24, cursor: 'pointer', padding: '4px 12px', fontSize: '0.75rem', fontWeight: 500, color: open ? '#202124' : '#5f6368', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+          onMouseEnter={e => { if (!open) { e.currentTarget.style.background = '#e8eaed'; e.currentTarget.style.color = '#202124'; } }}
+          onMouseLeave={e => { if (!open) { e.currentTarget.style.background = '#f1f3f4'; e.currentTarget.style.color = '#5f6368'; } }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          нагадати
+        </button>
+      )}
+
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, width: 220, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 30, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '8px 12px', fontSize: '0.6875rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', borderBottom: '1px solid #f1f5f9' }}>КОЛИ НАГАДАТИ?</div>
+          
+          <button onClick={setTomorrow} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#1e293b', textAlign: 'left', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+            <span style={{ fontSize: '1rem' }}>🌅</span> Завтра зранку (09:00)
+          </button>
+          
+          <button onClick={() => setPreset(3)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#1e293b', textAlign: 'left', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+            <span style={{ fontSize: '1rem' }}>⏳</span> Через 3 години
+          </button>
+
+          <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', background: '#f8f9fa', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: '0.6875rem', color: '#64748b' }}>Або оберіть точний час:</span>
+            <input 
+              type="datetime-local" 
+              value={remindAt ? new Date(remindAt).toISOString().slice(0,16) : ''} 
+              onChange={e => { onChange(e.target.value || null); setOpen(false); }}
+              onClick={e => e.stopPropagation()}
+              style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.8125rem', color: '#1e293b', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Modern Deadline Dropdown ──────────────────────────────────────────────────
+
+function DeadlineDropdown({ deadline, onChange, onClear }: {
+  deadline: string | null;
+  onChange: (val: string | null) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  const dl = deadlineLabel(deadline);
+
+  const setNextWeek = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    onChange(d.toISOString().slice(0, 10));
+    setOpen(false);
+  };
+
+  const setTomorrow = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    onChange(d.toISOString().slice(0, 10));
+    setOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', display: 'flex', flexShrink: 0 }}>
+      {dl ? (
+        <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: dl.overdue ? '#fee2e2' : '#dcfce7', color: dl.overdue ? '#dc2626' : '#16a34a', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+          onClick={() => setOpen(v => !v)}
+        >
+          📅 {dl.text}
+          <button onClick={e => { e.stopPropagation(); onClear(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', lineHeight: 1, marginLeft: 2, display: 'flex', opacity: 0.7 }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}>
+            <X size={10} />
+          </button>
+        </span>
+      ) : (
+        <button
+          onClick={() => setOpen(v => !v)}
+          title="Дедлайн"
+          style={{ display: 'flex', alignItems: 'center', gap: 4, background: open ? '#e8eaed' : '#f1f3f4', border: 'none', borderRadius: 24, cursor: 'pointer', padding: '4px 12px', fontSize: '0.75rem', fontWeight: 500, color: open ? '#202124' : '#5f6368', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+          onMouseEnter={e => { if (!open) { e.currentTarget.style.background = '#e8eaed'; e.currentTarget.style.color = '#202124'; } }}
+          onMouseLeave={e => { if (!open) { e.currentTarget.style.background = '#f1f3f4'; e.currentTarget.style.color = '#5f6368'; } }}
+        >
+          + дедлайн
+        </button>
+      )}
+
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, width: 220, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 30, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '8px 12px', fontSize: '0.6875rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', borderBottom: '1px solid #f1f5f9' }}>ТЕРМІН ВИКОНАННЯ</div>
+          
+          <button onClick={setTomorrow} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#1e293b', textAlign: 'left', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+            <span style={{ fontSize: '1rem' }}>📆</span> До завтра
+          </button>
+
+          <button onClick={setNextWeek} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#1e293b', textAlign: 'left', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+            <span style={{ fontSize: '1rem' }}>🗓️</span> Наступного тижня
+          </button>
+
+          <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', background: '#f8f9fa', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: '0.6875rem', color: '#64748b' }}>Або оберіть точну дату:</span>
+            <input 
+              type="date" 
+              value={deadline?.slice(0, 10) ?? ''} 
+              onChange={e => { onChange(e.target.value || null); setOpen(false); }}
+              onClick={e => e.stopPropagation()}
+              style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.8125rem', color: '#1e293b', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box', cursor: 'text' }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
