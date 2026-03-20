@@ -534,10 +534,6 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 {/* Eyes */}
                 <rect className="logo-eye-l" x="14" y="17" width="5" height="6" rx="2.5" fill="white" />
                 <rect className="logo-eye-r" x="25" y="17" width="5" height="6" rx="2.5" fill="white" />
-                {/* Mouth — code bracket */}
-                <path d="M16 28 L19 26 L16 24" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
-                <path d="M28 28 L25 26 L28 24" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
-                <line x1="20" y1="27.5" x2="24" y2="24.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.7" />
                 {/* Ears / connectors */}
                 <rect x="2" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
                 <rect x="38" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
