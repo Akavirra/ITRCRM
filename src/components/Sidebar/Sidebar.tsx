@@ -641,9 +641,8 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         if (!prev) {
           playHappyBirthday();
           setRobotEmotion('star');
-          setTimeout(() => setRobotEmotion('happy'), 2000);
-          setTimeout(() => setRobotEmotion('love'), 4000);
-          setTimeout(() => setRobotEmotion(null), 5000);
+        } else {
+          setRobotEmotion(null);
         }
         return !prev;
       });
