@@ -141,11 +141,7 @@ export default function LessonDetailPage() {
   const updateAttendance = async (studentId: number, status: 'present' | 'absent' | 'sick') => {
     if (!initData) return;
 
-    // Prevent updating attendance for past lessons
-    if (isPastLesson) {
-      alert('Неможливо редагувати відвідуваність занять минулих днів.');
-      return;
-    }
+    if (isPastLesson) return;
 
     // Optimistic update
     setStudents(prev => prev.map(s => 
