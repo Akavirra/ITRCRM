@@ -66,6 +66,15 @@
   @keyframes bookFall { 0% { transform: translateY(-14px) rotate(0deg); opacity: 0; } 10% { opacity: 1; } 85% { opacity: 0.8; } 100% { transform: translateY(44px) rotate(var(--br, 180deg)); opacity: 0; } }
   .book-fall { animation: bookFall 3.5s ease-in infinite; }
   .sep1-party-border { box-shadow: 0 0 0 3px #2563eb, 0 4px 12px rgba(37,99,235,0.25) !important; }
+  @keyframes bunnyWiggle { 0%,100% { transform: rotate(0deg) scaleY(1); } 20% { transform: rotate(-6deg) scaleY(0.95); } 40% { transform: rotate(6deg) scaleY(1.05); } 60% { transform: rotate(-4deg) scaleY(0.97); } 80% { transform: rotate(4deg) scaleY(1.03); } }
+  .bunny-wiggle { animation: bunnyWiggle 0.7s ease-in-out infinite; transform-origin: 22px 10px; }
+  @keyframes eggBounce { 0% { transform: translateY(0); } 40% { transform: translateY(var(--ey, -8px)); } 60% { transform: translateY(var(--ey, -8px)); } 100% { transform: translateY(0); } }
+  .egg-bounce { animation: eggBounce 1.2s ease-in-out infinite; }
+  @keyframes chickPop { 0% { transform: scale(0) translateY(4px); opacity: 0; } 30% { transform: scale(1.3) translateY(-2px); opacity: 1; } 50% { transform: scale(0.9) translateY(0); } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+  .chick-pop { animation: chickPop 0.8s ease forwards; }
+  @keyframes basketShake { 0%,100% { transform: translate(38px,26px) rotate(0deg); } 25% { transform: translate(38px,26px) rotate(-3deg); } 75% { transform: translate(38px,26px) rotate(3deg); } }
+  .basket-shake { animation: basketShake 0.4s ease-in-out infinite; }
+  .easter-party-border { box-shadow: 0 0 0 3px #f472b6, 0 4px 12px rgba(244,114,182,0.25) !important; }
 </style>
 </head>
 <body>
@@ -437,14 +446,26 @@
     <span class="hint">Click: party on/off</span>
   </div>
 
-  <!-- Easter -->
-  <div class="card" onclick="animateRobot(this, 'normal')" ondblclick="speechBubble(this)">
-    <svg width="90" height="90" viewBox="-2 -14 62 58" fill="none">
+  <!-- Easter — click to toggle party -->
+  <div class="card easter-card" onclick="toggleEasterParty(this)" ondblclick="speechBubble(this)">
+    <svg class="easter-svg" width="90" height="90" viewBox="-2 -14 62 58" fill="none">
       <defs><linearGradient id="g9" x1="0" y1="0" x2="44" y2="44"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
-      <ellipse cx="13" cy="0" rx="4" ry="10" fill="#fecdd3"/>
-      <ellipse cx="13" cy="0" rx="2.5" ry="7" fill="#fda4af"/>
-      <ellipse cx="31" cy="0" rx="4" ry="10" fill="#fecdd3"/>
-      <ellipse cx="31" cy="0" rx="2.5" ry="7" fill="#fda4af"/>
+      <!-- Bouncing eggs (hidden by default) -->
+      <g class="easter-eggs" style="display:none;">
+        <g class="egg-bounce" style="--ey:-10px;animation-delay:0s;"><g transform="translate(-4,30)"><ellipse cx="0" cy="0" rx="3" ry="3.8" fill="#fecdd3"/><line x1="-2" y1="0" x2="2" y2="0" stroke="#f9a8d4" stroke-width="0.8"/></g></g>
+        <g class="egg-bounce" style="--ey:-6px;animation-delay:0.3s;"><g transform="translate(8,-8)"><ellipse cx="0" cy="0" rx="3" ry="3.8" fill="#bfdbfe"/><line x1="-2" y1="0" x2="2" y2="0" stroke="#93c5fd" stroke-width="0.8"/></g></g>
+        <g class="egg-bounce" style="--ey:-8px;animation-delay:0.6s;"><g transform="translate(36,-6)"><ellipse cx="0" cy="0" rx="3" ry="3.8" fill="#d9f99d"/><line x1="-2" y1="0" x2="2" y2="0" stroke="#86efac" stroke-width="0.8"/></g></g>
+        <g class="egg-bounce" style="--ey:-12px;animation-delay:0.2s;"><g transform="translate(48,28)"><ellipse cx="0" cy="0" rx="3" ry="3.8" fill="#fde68a"/><line x1="-2" y1="0" x2="2" y2="0" stroke="#fbbf24" stroke-width="0.8"/></g></g>
+        <g class="egg-bounce" style="--ey:-7px;animation-delay:0.8s;"><g transform="translate(-2,10)"><ellipse cx="0" cy="0" rx="3" ry="3.8" fill="#c4b5fd"/><line x1="-2" y1="0" x2="2" y2="0" stroke="#a78bfa" stroke-width="0.8"/></g></g>
+        <g class="egg-bounce" style="--ey:-9px;animation-delay:0.5s;"><g transform="translate(46,12)"><ellipse cx="0" cy="0" rx="3" ry="3.8" fill="#fbcfe8"/><line x1="-2" y1="0" x2="2" y2="0" stroke="#f472b6" stroke-width="0.8"/></g></g>
+      </g>
+      <!-- Bunny ears -->
+      <g class="easter-ears">
+        <ellipse cx="13" cy="0" rx="4" ry="10" fill="#fecdd3"/>
+        <ellipse cx="13" cy="0" rx="2.5" ry="7" fill="#fda4af"/>
+        <ellipse cx="31" cy="0" rx="4" ry="10" fill="#fecdd3"/>
+        <ellipse cx="31" cy="0" rx="2.5" ry="7" fill="#fda4af"/>
+      </g>
       <g class="antenna"><line x1="22" y1="4" x2="22" y2="10" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/><circle cx="22" cy="3" r="2.5" fill="#60a5fa"/></g>
       <rect x="6" y="10" width="32" height="24" rx="7" fill="url(#g9)"/>
       <rect x="10" y="14" width="24" height="12" rx="4" fill="white" opacity="0.2"/>
@@ -452,13 +473,27 @@
       <rect x="24" y="16" width="7" height="8" rx="3.5" fill="white"/>
       <circle class="pupil-l" cx="16.5" cy="20" r="2.2" fill="#1e293b"/>
       <circle class="pupil-r" cx="27.5" cy="20" r="2.2" fill="#1e293b"/>
-      <g transform="translate(38, 26)">
+      <!-- Basket with potential chick -->
+      <g class="easter-basket" transform="translate(38, 26)">
         <path d="M0,6 Q1,14 7,14 Q13,14 14,6" fill="#d97706"/>
         <path d="M0,6 L14,6" stroke="#b45309" stroke-width="1"/>
         <path d="M2,6 Q7,-2 12,6" fill="none" stroke="#b45309" stroke-width="1.5"/>
         <ellipse cx="4" cy="7" rx="2" ry="2.5" fill="#fecdd3"/>
         <ellipse cx="8" cy="6.5" rx="2" ry="2.5" fill="#bfdbfe"/>
         <ellipse cx="11" cy="7.5" rx="1.8" ry="2.2" fill="#d9f99d"/>
+        <line x1="3" y1="7" x2="5" y2="7" stroke="#f9a8d4" stroke-width="0.5"/>
+        <line x1="7" y1="6.5" x2="9" y2="6.5" stroke="#93c5fd" stroke-width="0.5"/>
+        <!-- Chick (hidden) -->
+        <g class="easter-chick" style="display:none;">
+          <path d="M6,2 L5,4 L6.5,3.5 L7,4.5 L8,3 L9,4.5" fill="#d9f99d"/>
+          <circle cx="7.5" cy="0.5" r="2.5" fill="#fbbf24"/>
+          <circle cx="7.5" cy="-2" r="1.8" fill="#fbbf24"/>
+          <circle cx="6.8" cy="-2.2" r="0.4" fill="#1e293b"/>
+          <circle cx="8.2" cy="-2.2" r="0.4" fill="#1e293b"/>
+          <path d="M7.5,-1.5 L6.5,-1 L7.5,-0.5" fill="#f97316"/>
+          <circle cx="6" cy="-1.2" r="0.5" fill="#fca5a5" opacity="0.5"/>
+          <circle cx="9" cy="-1.2" r="0.5" fill="#fca5a5" opacity="0.5"/>
+        </g>
       </g>
       <rect x="2" y="18" width="4" height="8" rx="2" fill="#93c5fd"/>
       <rect x="38" y="18" width="4" height="8" rx="2" fill="#93c5fd"/>
@@ -467,8 +502,8 @@
       <rect x="26" y="34" width="4" height="4" rx="1" fill="#93c5fd"/>
     </svg>
     <h3>Easter 🐰</h3>
-    <p>Bunny ears + basket</p>
-    <span class="hint">Click: emotion | Dbl: speech</span>
+    <p class="easter-desc">Click to party!</p>
+    <span class="hint">Click: party on/off</span>
   </div>
 
   <!-- Love emotion -->
@@ -501,6 +536,7 @@ let birthdayPartyOn = false;
 let newYearPartyOn = false;
 let halloweenPartyOn = false;
 let sep1PartyOn = false;
+let easterPartyOn = false;
 
 function playJingleBells() {
   try {
@@ -601,6 +637,90 @@ function toggleHalloweenParty(card) {
     if (pumpkin) pumpkin.classList.remove('pumpkin-glow');
     if (desc) desc.textContent = 'Click for spooky!';
     svg.querySelectorAll('.scared-eye').forEach(e => e.remove());
+    if (pupilL) pupilL.style.display = '';
+    if (pupilR) pupilR.style.display = '';
+  }
+}
+
+function playEasterBells() {
+  try {
+    const ctx = new AudioContext();
+    const notes = [
+      { freq: 523, start: 0, dur: 0.3, type: 'sine' },
+      { freq: 659, start: 0.25, dur: 0.3, type: 'sine' },
+      { freq: 784, start: 0.5, dur: 0.3, type: 'sine' },
+      { freq: 1047, start: 0.75, dur: 0.5, type: 'sine' },
+      { freq: 784, start: 1.4, dur: 0.25, type: 'sine' },
+      { freq: 659, start: 1.6, dur: 0.25, type: 'sine' },
+      { freq: 784, start: 1.8, dur: 0.25, type: 'sine' },
+      { freq: 1047, start: 2.0, dur: 0.5, type: 'sine' },
+      { freq: 1319, start: 2.6, dur: 0.15, type: 'triangle' },
+      { freq: 1568, start: 2.8, dur: 0.15, type: 'triangle' },
+      { freq: 2093, start: 3.0, dur: 0.4, type: 'triangle' },
+    ];
+    for (const n of notes) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = n.type;
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = n.freq;
+      const vol = n.freq >= 1300 ? 0.03 : 0.06;
+      gain.gain.setValueAtTime(vol, ctx.currentTime + n.start);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + n.start + n.dur);
+      osc.start(ctx.currentTime + n.start);
+      osc.stop(ctx.currentTime + n.start + n.dur + 0.05);
+    }
+  } catch(e) {}
+}
+
+function toggleEasterParty(card) {
+  easterPartyOn = !easterPartyOn;
+  const svg = card.querySelector('.easter-svg');
+  const ears = card.querySelector('.easter-ears');
+  const eggs = card.querySelector('.easter-eggs');
+  const basket = card.querySelector('.easter-basket');
+  const chick = card.querySelector('.easter-chick');
+  const desc = card.querySelector('.easter-desc');
+  const pupilL = svg.querySelector('.pupil-l');
+  const pupilR = svg.querySelector('.pupil-r');
+
+  if (easterPartyOn) {
+    playEasterBells();
+    card.classList.add('easter-party-border');
+    svg.classList.add('robot-dancing');
+    ears.classList.add('bunny-wiggle');
+    eggs.style.display = '';
+    basket.classList.add('basket-shake');
+    basket.removeAttribute('transform');
+    if (chick) { chick.style.display = ''; chick.classList.add('chick-pop'); }
+    if (desc) desc.textContent = 'Party! Click to stop';
+
+    // Heart eyes
+    svg.querySelectorAll('.emo-text').forEach(e => e.remove());
+    if (pupilL) pupilL.style.display = 'none';
+    if (pupilR) pupilR.style.display = 'none';
+    const ns = 'http://www.w3.org/2000/svg';
+    const makeEmo = (x, shape, color) => {
+      const t = document.createElementNS(ns, 'text');
+      t.setAttribute('x', x); t.setAttribute('y', '21');
+      t.setAttribute('text-anchor', 'middle'); t.setAttribute('dominant-baseline', 'central');
+      t.setAttribute('fill', color); t.setAttribute('font-size', '7');
+      t.classList.add('emo-text', 'robot-emotion'); t.style.pointerEvents = 'none';
+      t.textContent = shape;
+      return t;
+    };
+    svg.appendChild(makeEmo('16.5', '\u2764', '#f43f5e'));
+    svg.appendChild(makeEmo('27.5', '\u2764', '#f43f5e'));
+  } else {
+    card.classList.remove('easter-party-border');
+    svg.classList.remove('robot-dancing');
+    ears.classList.remove('bunny-wiggle');
+    eggs.style.display = 'none';
+    basket.classList.remove('basket-shake');
+    basket.setAttribute('transform', 'translate(38, 26)');
+    if (chick) { chick.style.display = 'none'; chick.classList.remove('chick-pop'); }
+    if (desc) desc.textContent = 'Click to party!';
+    svg.querySelectorAll('.emo-text').forEach(e => e.remove());
     if (pupilL) pupilL.style.display = '';
     if (pupilR) pupilR.style.display = '';
   }

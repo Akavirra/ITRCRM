@@ -475,6 +475,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const [newYearParty, setNewYearParty] = useState(false);
   const [halloweenParty, setHalloweenParty] = useState(false);
   const [sep1Party, setSep1Party] = useState(false);
+  const [easterParty, setEasterParty] = useState(false);
   const lastMoveRef = useRef(Date.now());
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -724,6 +725,42 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     } catch { }
   }, []);
 
+  // Easter bells melody (cheerful church bells + spring chime)
+  const playEasterBells = useCallback(() => {
+    try {
+      const ctx = new AudioContext();
+      const notes = [
+        // Bell chime pattern — ascending joyful
+        { freq: 523, start: 0, dur: 0.3, type: 'sine' as OscillatorType },
+        { freq: 659, start: 0.25, dur: 0.3, type: 'sine' as OscillatorType },
+        { freq: 784, start: 0.5, dur: 0.3, type: 'sine' as OscillatorType },
+        { freq: 1047, start: 0.75, dur: 0.5, type: 'sine' as OscillatorType },
+        // Pause + repeat lower
+        { freq: 784, start: 1.4, dur: 0.25, type: 'sine' as OscillatorType },
+        { freq: 659, start: 1.6, dur: 0.25, type: 'sine' as OscillatorType },
+        { freq: 784, start: 1.8, dur: 0.25, type: 'sine' as OscillatorType },
+        { freq: 1047, start: 2.0, dur: 0.5, type: 'sine' as OscillatorType },
+        // Sparkle high notes
+        { freq: 1319, start: 2.6, dur: 0.15, type: 'triangle' as OscillatorType },
+        { freq: 1568, start: 2.8, dur: 0.15, type: 'triangle' as OscillatorType },
+        { freq: 2093, start: 3.0, dur: 0.4, type: 'triangle' as OscillatorType },
+      ];
+      for (const n of notes) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = n.type;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = n.freq;
+        const vol = n.freq >= 1300 ? 0.03 : 0.06;
+        gain.gain.setValueAtTime(vol, ctx.currentTime + n.start);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + n.start + n.dur);
+        osc.start(ctx.currentTime + n.start);
+        osc.stop(ctx.currentTime + n.start + n.dur + 0.05);
+      }
+    } catch { }
+  }, []);
+
   const handleRobotClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -783,10 +820,18 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       });
       return;
     }
+    // Easter: toggle party mode
+    if (isEaster) {
+      setEasterParty(prev => {
+        if (!prev) playEasterBells();
+        return !prev;
+      });
+      return;
+    }
     const emotion = emotions[Math.floor(Math.random() * emotions.length)];
     setRobotEmotion(emotion.name);
     setTimeout(() => setRobotEmotion(null), 1200);
-  }, [isSleeping, isNight, nightLampOn, isNewYear, playJingleBells, hasBirthday, playHappyBirthday, isHalloween, playHalloweenMelody, isSep1, playSchoolBell]);
+  }, [isSleeping, isNight, nightLampOn, isNewYear, playJingleBells, hasBirthday, playHappyBirthday, isHalloween, playHalloweenMelody, isSep1, playSchoolBell, isEaster, playEasterBells]);
 
   // Double click = beep + speech bubble
   const bubbles = ['Біп-боп!', 'Привіт! 👋', 'Я робот! 🤖', 'Працюємо! 💪', '01100001'];
@@ -876,7 +921,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     );
     // Easter — bunny ears (antenna stays)
     if (isEaster) return (
-      <g>
+      <g className={easterParty ? 'bunny-wiggle' : ''}>
         <ellipse cx="13" cy="0" rx="4" ry="10" fill="#fecdd3" />
         <ellipse cx="13" cy="0" rx="2.5" ry="7" fill="#fda4af" />
         <ellipse cx="31" cy="0" rx="4" ry="10" fill="#fecdd3" />
@@ -939,7 +984,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     );
     if (isEaster) return (
       // Easter basket
-      <g transform="translate(38, 26)">
+      <g transform={easterParty ? undefined : 'translate(38, 26)'} className={easterParty ? 'basket-shake' : ''}>
         {/* Basket */}
         <path d="M0,6 Q1,14 7,14 Q13,14 14,6" fill="#d97706" />
         <path d="M0,6 L14,6" stroke="#b45309" strokeWidth="1" />
@@ -952,6 +997,25 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         {/* Egg patterns */}
         <line x1="3" y1="7" x2="5" y2="7" stroke="#f9a8d4" strokeWidth="0.5" />
         <line x1="7" y1="6.5" x2="9" y2="6.5" stroke="#93c5fd" strokeWidth="0.5" />
+        {/* Chick hatching from egg */}
+        {easterParty && (
+          <g className="chick-pop">
+            {/* Cracked shell halves */}
+            <path d="M6,2 L5,4 L6.5,3.5 L7,4.5 L8,3 L9,4.5" fill="#d9f99d" />
+            {/* Chick body */}
+            <circle cx="7.5" cy="0.5" r="2.5" fill="#fbbf24" />
+            {/* Chick head */}
+            <circle cx="7.5" cy="-2" r="1.8" fill="#fbbf24" />
+            {/* Eyes */}
+            <circle cx="6.8" cy="-2.2" r="0.4" fill="#1e293b" />
+            <circle cx="8.2" cy="-2.2" r="0.4" fill="#1e293b" />
+            {/* Beak */}
+            <path d="M7.5,-1.5 L6.5,-1 L7.5,-0.5" fill="#f97316" />
+            {/* Blush */}
+            <circle cx="6" cy="-1.2" r="0.5" fill="#fca5a5" opacity="0.5" />
+            <circle cx="9" cy="-1.2" r="0.5" fill="#fca5a5" opacity="0.5" />
+          </g>
+        )}
       </g>
     );
     if (isHalloween) return (
@@ -1116,6 +1180,14 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             .pumpkin-glow { filter: drop-shadow(0 0 4px #fbbf24) drop-shadow(0 0 8px #f97316); }
             @keyframes bookFall { 0% { transform: translateY(-14px) rotate(0deg); opacity: 0; } 10% { opacity: 1; } 85% { opacity: 0.8; } 100% { transform: translateY(44px) rotate(var(--br, 180deg)); opacity: 0; } }
             .book-fall { animation: bookFall 3.5s ease-in infinite; }
+            @keyframes bunnyWiggle { 0%,100% { transform: rotate(0deg) scaleY(1); } 20% { transform: rotate(-6deg) scaleY(0.95); } 40% { transform: rotate(6deg) scaleY(1.05); } 60% { transform: rotate(-4deg) scaleY(0.97); } 80% { transform: rotate(4deg) scaleY(1.03); } }
+            .bunny-wiggle { animation: bunnyWiggle 0.7s ease-in-out infinite; transform-origin: 22px 10px; }
+            @keyframes eggBounce { 0% { transform: translateY(0); } 40% { transform: translateY(var(--ey, -8px)); } 60% { transform: translateY(var(--ey, -8px)); } 100% { transform: translateY(0); } }
+            .egg-bounce { animation: eggBounce 1.2s ease-in-out infinite; }
+            @keyframes chickPop { 0% { transform: scale(0) translateY(4px); opacity: 0; } 30% { transform: scale(1.3) translateY(-2px); opacity: 1; } 50% { transform: scale(0.9) translateY(0); } 70% { transform: scale(1.1) translateY(-1px); } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+            .chick-pop { animation: chickPop 0.8s ease forwards; }
+            @keyframes basketShake { 0%,100% { transform: translate(38px,26px) rotate(0deg); } 25% { transform: translate(38px,26px) rotate(-3deg); } 75% { transform: translate(38px,26px) rotate(3deg); } }
+            .basket-shake { animation: basketShake 0.4s ease-in-out infinite; }
           `}} />
           <TransitionLink
             href="/dashboard"
@@ -1132,7 +1204,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
               {/* Speech bubble */}
               {speechBubble && <div className="robot-speech">{speechBubble}</div>}
               {/* Robot icon */}
-              <svg className={`logo-icon${birthdayParty || newYearParty || sep1Party ? ' robot-dancing' : ''}${halloweenParty ? ' robot-scared' : ''}`} width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
+              <svg className={`logo-icon${birthdayParty || newYearParty || sep1Party || easterParty ? ' robot-dancing' : ''}${halloweenParty ? ' robot-scared' : ''}`} width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
                 <defs>
                   <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44">
                     <stop offset="0%" stopColor={isNight && !nightLampOn ? '#1e3a5f' : '#3b82f6'} />
@@ -1202,8 +1274,15 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     <path d="M25.5,19.5 Q27.5,22 29.5,19.5" stroke="#1e293b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
                   </>
                 )}
+                {/* Easter party eyes — love hearts */}
+                {easterParty && !robotEmotion && (
+                  <g className="robot-emotion">
+                    <text x="16.5" y="21" textAnchor="middle" dominantBaseline="central" fill="#f43f5e" fontSize="7" style={{ pointerEvents: 'none' }}>❤</text>
+                    <text x="27.5" y="21" textAnchor="middle" dominantBaseline="central" fill="#f43f5e" fontSize="7" style={{ pointerEvents: 'none' }}>❤</text>
+                  </g>
+                )}
                 {/* Pupils — follow mouse (not when sleeping) */}
-                {!robotEmotion && !isSleeping && !halloweenParty && !sep1Party && (
+                {!robotEmotion && !isSleeping && !halloweenParty && !sep1Party && !easterParty && (
                   <>
                     <circle
                       cx={16.5 + eyeOffset.x}
@@ -1415,6 +1494,27 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                           <rect x="1" y="0.5" width="5" height="4" rx="0.3" fill={b.pages} />
                           {/* Spine */}
                           <line x1="0.5" y1="0.3" x2="0.5" y2="4.7" stroke={b.color} strokeWidth="0.8" />
+                        </g>
+                      </g>
+                    ))}
+                  </g>
+                )}
+                {/* Easter party effects — bouncing eggs */}
+                {easterParty && (
+                  <g>
+                    {[
+                      { x: -4, y: 30, color: '#fecdd3', stripe: '#f9a8d4', delay: 0, ey: -10 },
+                      { x: 8, y: -8, color: '#bfdbfe', stripe: '#93c5fd', delay: 0.3, ey: -6 },
+                      { x: 36, y: -6, color: '#d9f99d', stripe: '#86efac', delay: 0.6, ey: -8 },
+                      { x: 48, y: 28, color: '#fde68a', stripe: '#fbbf24', delay: 0.2, ey: -12 },
+                      { x: -2, y: 10, color: '#c4b5fd', stripe: '#a78bfa', delay: 0.8, ey: -7 },
+                      { x: 46, y: 12, color: '#fbcfe8', stripe: '#f472b6', delay: 0.5, ey: -9 },
+                    ].map((egg, i) => (
+                      <g key={i} className="egg-bounce" style={{ animationDelay: `${egg.delay}s`, '--ey': `${egg.ey}px` } as React.CSSProperties}>
+                        <g transform={`translate(${egg.x}, ${egg.y})`}>
+                          <ellipse cx="0" cy="0" rx="3" ry="3.8" fill={egg.color} />
+                          <line x1="-2" y1="0" x2="2" y2="0" stroke={egg.stripe} strokeWidth="0.8" />
+                          <line x1="-1.5" y1="1.5" x2="1.5" y2="1.5" stroke={egg.stripe} strokeWidth="0.6" />
                         </g>
                       </g>
                     ))}
