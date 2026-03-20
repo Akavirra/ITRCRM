@@ -67,9 +67,45 @@ function formatDate(dateStr: string) {
   return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
 }
 
+// ── Minimal markdown renderer ─────────────────────────────────────────────────
+
+function renderMarkdown(text: string): string {
+  const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return text.split('\n').map(line => {
+    // Headings
+    const h = line.match(/^(#{1,3})\s+(.*)$/);
+    if (h) {
+      const level = h[1].length;
+      const sizes = ['1.25rem', '1.1rem', '0.95rem'];
+      return `<div style="font-weight:700;font-size:${sizes[level-1]};margin:0.5em 0 0.25em">${esc(h[2])}</div>`;
+    }
+    // Unordered list
+    if (/^[-*]\s+/.test(line)) {
+      return `<div style="padding-left:1.25em;position:relative"><span style="position:absolute;left:0.25em">•</span>${inlineFormat(esc(line.replace(/^[-*]\s+/, '')))}</div>`;
+    }
+    // Ordered list
+    const ol = line.match(/^(\d+)[.)]\s+(.*)$/);
+    if (ol) {
+      return `<div style="padding-left:1.25em;position:relative"><span style="position:absolute;left:0">${ol[1]}.</span>${inlineFormat(esc(ol[2]))}</div>`;
+    }
+    // Empty line
+    if (!line.trim()) return '<div style="height:0.5em"></div>';
+    // Normal paragraph
+    return `<div>${inlineFormat(esc(line))}</div>`;
+  }).join('');
+}
+
+function inlineFormat(html: string): string {
+  return html
+    .replace(/`([^`]+)`/g, '<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:0.85em;color:#e11d48">$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/_(.+?)_/g, '<em>$1</em>');
+}
+
 // ── Note list item ────────────────────────────────────────────────────────────
 
-function NoteListItem({ note, selected, onClick }: { note: Note; selected: boolean; onClick: () => void }) {
+function NoteListItem({ note, selected, onClick, bulkMode, bulkSelected, onBulkToggle }: { note: Note; selected: boolean; onClick: () => void; bulkMode?: boolean; bulkSelected?: boolean; onBulkToggle?: () => void }) {
   const done = note.tasks.filter(t => t.done).length;
   const total = note.tasks.length;
   const hasTasks = total > 0;
@@ -100,7 +136,18 @@ function NoteListItem({ note, selected, onClick }: { note: Note; selected: boole
       onMouseLeave={e => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        {hasTasks
+        {bulkMode ? (
+          <span
+            onClick={e => { e.stopPropagation(); onBulkToggle?.(); }}
+            style={{
+              width: 14, height: 14, borderRadius: 4, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: `2px solid ${bulkSelected ? '#2563eb' : '#d1d5db'}`,
+              background: bulkSelected ? '#2563eb' : 'transparent',
+            }}
+          >
+            {bulkSelected && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          </span>
+        ) : hasTasks
           ? <CheckSquare size={12} color={selected ? '#2563eb' : '#94a3b8'} style={{ flexShrink: 0 }} />
           : <FileText    size={12} color={selected ? '#2563eb' : '#94a3b8'} style={{ flexShrink: 0 }} />
         }
@@ -221,6 +268,12 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const [sidebarW, setSidebarW] = useState(240);
   const sidebarResizing = useRef(false);
   const sidebarOrigin   = useRef({ mx: 0, w: 240 });
+  const [mdPreview, setMdPreview] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkIds, setBulkIds]   = useState<Set<number>>(new Set());
+  const undoStack = useRef<{ noteId: number; prev: Partial<Note> }[]>([]);
+  const [undoToast, setUndoToast] = useState(false);
+  const [copiedToast, setCopiedToast] = useState(false);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pos, setPos]   = useState({ x: -1, y: -1 });
@@ -331,6 +384,10 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const updateNote = useCallback((id: number, patch: Partial<Note>, save = true) => {
     setNotes(prev => prev.map(n => {
       if (n.id !== id) return n;
+      // Push previous state to undo stack (keep last 15)
+      const snapshot: Partial<Note> = {};
+      for (const key of Object.keys(patch) as (keyof Note)[]) { (snapshot as Record<string, unknown>)[key] = n[key]; }
+      undoStack.current = [...undoStack.current.slice(-14), { noteId: id, prev: snapshot }];
       const updated: Note = { ...n, ...patch, updated_at: new Date().toISOString() };
       if (save) scheduleSave(updated);
       return updated;
@@ -343,6 +400,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   useEffect(() => {
     setShowTaskSection(selectedNote ? selectedNote.tasks.length > 0 : false);
     setForceShowText(false);
+    setMdPreview(false);
     // Reset textarea height on note change + autofocus title
     setTimeout(() => {
       if (textareaRef.current) autoResizeTextarea(textareaRef.current);
@@ -479,9 +537,22 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const doneTasks  = selectedNote?.tasks.filter(t => t.done).length ?? 0;
   const totalTasks = selectedNote?.tasks.length ?? 0;
 
+  const performUndo = useCallback(() => {
+    const entry = undoStack.current.pop();
+    if (!entry) return;
+    setNotes(prev => prev.map(n => {
+      if (n.id !== entry.noteId) return n;
+      const restored = { ...n, ...entry.prev, updated_at: new Date().toISOString() };
+      scheduleSave(restored);
+      return restored;
+    }));
+    setUndoToast(true);
+    setTimeout(() => setUndoToast(false), 1500);
+  }, [scheduleSave]);
+
   // Keyboard shortcuts + arrow nav
-  const shortcutRef = useRef({ createNote, onClose, filtered, selectedId, setSelectedId, setNewTaskText });
-  useEffect(() => { shortcutRef.current = { createNote, onClose, filtered, selectedId, setSelectedId, setNewTaskText }; });
+  const shortcutRef = useRef({ createNote, onClose, filtered, selectedId, setSelectedId, setNewTaskText, performUndo });
+  useEffect(() => { shortcutRef.current = { createNote, onClose, filtered, selectedId, setSelectedId, setNewTaskText, performUndo }; });
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -506,6 +577,11 @@ export default function NotesModal({ isOpen, onClose }: Props) {
       if (e.key === 'n') { e.preventDefault(); shortcutRef.current.createNote('note'); }
       if (e.key === 't') { e.preventDefault(); shortcutRef.current.createNote('todo'); }
       if (e.key === 'w') { e.preventDefault(); shortcutRef.current.onClose(); }
+      if (e.key === 'z') {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return; // let native undo work
+        e.preventDefault(); shortcutRef.current.performUndo();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -562,6 +638,13 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             </svg>
           </button>
         </div>
+
+        {/* Toasts */}
+        {(undoToast || copiedToast) && (
+          <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', background: '#1e293b', color: '#fff', padding: '6px 16px', borderRadius: 8, fontSize: '0.75rem', fontWeight: 600, zIndex: 20, opacity: 0.9, pointerEvents: 'none' }}>
+            {undoToast ? 'Скасовано (Ctrl+Z)' : 'Скопійовано'}
+          </div>
+        )}
 
         {/* Resize handle */}
         <div
@@ -746,6 +829,45 @@ export default function NotesModal({ isOpen, onClose }: Props) {
               </div>
             )}
 
+            {/* Bulk mode toolbar */}
+            {bulkMode && (
+              <div style={{ padding: '0.5rem 0.875rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, background: '#eff6ff' }}>
+                <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#2563eb', flex: 1 }}>
+                  {bulkIds.size > 0 ? `Обрано: ${bulkIds.size}` : 'Оберіть нотатки'}
+                </span>
+                {bulkIds.size > 0 && (
+                  <>
+                    <button
+                      onClick={async () => {
+                        for (const id of bulkIds) { updateNote(id, { is_archived: true }, true); }
+                        setBulkIds(new Set()); setBulkMode(false); setSelectedId(null);
+                      }}
+                      style={{ fontSize: '0.625rem', fontWeight: 700, padding: '3px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', background: '#fef3c7', color: '#d97706' }}
+                    >
+                      Архів
+                    </button>
+                    <button
+                      onClick={async () => {
+                        for (const id of bulkIds) { await fetch(`/api/notes/${id}`, { method: 'DELETE' }); }
+                        setNotes(prev => prev.filter(n => !bulkIds.has(n.id)));
+                        if (bulkIds.has(selectedId ?? 0)) setSelectedId(null);
+                        setBulkIds(new Set()); setBulkMode(false);
+                      }}
+                      style={{ fontSize: '0.625rem', fontWeight: 700, padding: '3px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', background: '#fee2e2', color: '#ef4444' }}
+                    >
+                      Видалити
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => { setBulkMode(false); setBulkIds(new Set()); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: '#94a3b8' }}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+
             {/* Note list + footer */}
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -765,7 +887,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                         <Pin size={10} /> Закріплені
                       </div>
                       {pinned.map(n => (
-                        <NoteListItem key={n.id} note={n} selected={selectedId === n.id} onClick={() => { setSelectedId(n.id); setNewTaskText(''); }} />
+                        <NoteListItem key={n.id} note={n} selected={selectedId === n.id} onClick={() => { if (bulkMode) { setBulkIds(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; }); } else { setSelectedId(n.id); setNewTaskText(''); } }} bulkMode={bulkMode} bulkSelected={bulkIds.has(n.id)} onBulkToggle={() => setBulkIds(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; })} />
                       ))}
                     </>
                   )}
@@ -775,16 +897,28 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     </div>
                   )}
                   {rest.map(n => (
-                    <NoteListItem key={n.id} note={n} selected={selectedId === n.id} onClick={() => { setSelectedId(n.id); setNewTaskText(''); }} />
+                    <NoteListItem key={n.id} note={n} selected={selectedId === n.id} onClick={() => { if (bulkMode) { setBulkIds(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; }); } else { setSelectedId(n.id); setNewTaskText(''); } }} bulkMode={bulkMode} bulkSelected={bulkIds.has(n.id)} onBulkToggle={() => setBulkIds(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; })} />
                   ))}
                 </>
               )}
             </div>
-            {/* Footer counter */}
+            {/* Footer counter + bulk toggle */}
             {!loading && filtered.length > 0 && (
-              <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #f1f5f9', fontSize: '0.6875rem', color: '#94a3b8', textAlign: 'center', flexShrink: 0 }}>
-                {filtered.length} {filtered.length === 1 ? 'нотатка' : filtered.length < 5 ? 'нотатки' : 'нотаток'}
-                {pinned.length > 0 && ` · ${pinned.length} закріп.`}
+              <div style={{ padding: '0.375rem 1rem', borderTop: '1px solid #f1f5f9', fontSize: '0.6875rem', color: '#94a3b8', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <span>
+                  {filtered.length} {filtered.length === 1 ? 'нотатка' : filtered.length < 5 ? 'нотатки' : 'нотаток'}
+                  {pinned.length > 0 && ` · ${pinned.length} закріп.`}
+                </span>
+                {!bulkMode && filtered.length > 1 && (
+                  <button
+                    onClick={() => setBulkMode(true)}
+                    style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 5, cursor: 'pointer', padding: '1px 6px', fontSize: '0.625rem', color: '#94a3b8', transition: 'all 0.12s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.color = '#2563eb'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#94a3b8'; }}
+                  >
+                    Виділити
+                  </button>
+                )}
               </div>
             )}
             </div>
@@ -948,6 +1082,20 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
                   <div style={{ flex: 1 }} />
 
+                  {/* Markdown preview toggle */}
+                  <ActionBtn
+                    title={mdPreview ? 'Редагувати' : 'Попередній перегляд'}
+                    active={mdPreview}
+                    activeColor="#8b5cf6"
+                    hoverColor="#8b5cf6"
+                    hoverBg="#f5f3ff"
+                    onClick={() => setMdPreview(v => !v)}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </ActionBtn>
+
                   {/* Toggle task section */}
                   <ActionBtn
                     title={showTaskSection ? 'Сховати список' : 'Додати список завдань'}
@@ -970,6 +1118,29 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     onClick={() => updateNote(selectedNote.id, { is_pinned: !selectedNote.is_pinned })}
                   >
                     <Pin size={15} strokeWidth={2} />
+                  </ActionBtn>
+
+                  <ActionBtn
+                    title="Копіювати текст"
+                    hoverColor="#2563eb"
+                    hoverBg="#eff6ff"
+                    onClick={() => {
+                      const parts: string[] = [];
+                      if (selectedNote.title) parts.push(`# ${selectedNote.title}`);
+                      if (selectedNote.content.trim()) parts.push(selectedNote.content.trim());
+                      if (selectedNote.tasks.length > 0) {
+                        parts.push(selectedNote.tasks.map(t => `${t.done ? '- [x]' : '- [ ]'} ${t.text}`).join('\n'));
+                      }
+                      navigator.clipboard.writeText(parts.join('\n\n')).then(() => {
+                        setCopiedToast(true);
+                        setTimeout(() => setCopiedToast(false), 1500);
+                      });
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                      <rect x="8" y="2" width="8" height="4" rx="1"/>
+                    </svg>
                   </ActionBtn>
 
                   <ActionBtn
@@ -1037,8 +1208,19 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                   return (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden' }}>
 
-                  {/* Text area — auto-height, hidden when list is full-screen */}
+                  {/* Text area / markdown preview */}
                   {!tasksFull && (
+                  mdPreview && selectedNote.content.trim() ? (
+                    <div
+                      onClick={() => setMdPreview(false)}
+                      style={{
+                        padding: showTaskSection ? '1.25rem 1.5rem 0.75rem' : '1.25rem 1.5rem',
+                        fontSize: '0.9375rem', lineHeight: 1.8, color: '#374151',
+                        cursor: 'text', minHeight: 56,
+                      }}
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(selectedNote.content) }}
+                    />
+                  ) : (
                   <textarea
                     ref={textareaRef}
                     value={selectedNote.content}
@@ -1046,7 +1228,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                       updateNote(selectedNote.id, { content: e.target.value });
                       autoResizeTextarea(e.currentTarget);
                     }}
-                    placeholder="Починай писати..."
+                    placeholder="Починай писати... (підтримує **bold**, *italic*, # заголовки, - списки)"
                     rows={1}
                     style={{
                       width: '100%', border: 'none', outline: 'none', resize: 'none',
@@ -1054,9 +1236,9 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                       fontSize: '0.9375rem', lineHeight: 1.8, color: '#374151',
                       background: 'transparent', fontFamily: 'inherit', userSelect: 'text',
                       overflow: 'hidden', minHeight: 56, boxSizing: 'border-box',
-                    }}
+                    }
                   />
-                  )}
+                  ))}
 
                   {/* Task section — shown when toggled or tasks exist */}
                   {showTaskSection && (
