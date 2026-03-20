@@ -473,6 +473,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const [nightLampOn, setNightLampOn] = useState(false);
   const [birthdayParty, setBirthdayParty] = useState(false);
   const [newYearParty, setNewYearParty] = useState(false);
+  const [halloweenParty, setHalloweenParty] = useState(false);
   const lastMoveRef = useRef(Date.now());
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -650,6 +651,41 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     } catch { }
   }, []);
 
+  // Spooky Halloween melody (descending minor + tritone)
+  const playHalloweenMelody = useCallback(() => {
+    try {
+      const ctx = new AudioContext();
+      const notes = [
+        { freq: 330, start: 0, dur: 0.3 },     // E4
+        { freq: 311, start: 0.35, dur: 0.3 },   // Eb4
+        { freq: 330, start: 0.7, dur: 0.3 },    // E4
+        { freq: 247, start: 1.05, dur: 0.4 },   // B3
+        { freq: 311, start: 1.5, dur: 0.3 },    // Eb4
+        { freq: 330, start: 1.85, dur: 0.3 },   // E4
+        { freq: 247, start: 2.2, dur: 0.15 },   // B3
+        { freq: 262, start: 2.4, dur: 0.15 },   // C4
+        { freq: 247, start: 2.6, dur: 0.4 },    // B3
+        // Low spooky ending
+        { freq: 165, start: 3.1, dur: 0.25 },   // E3
+        { freq: 175, start: 3.4, dur: 0.25 },   // F3
+        { freq: 233, start: 3.7, dur: 0.5 },    // Bb3 (tritone)
+        { freq: 165, start: 4.3, dur: 0.7 },    // E3 final
+      ];
+      for (const n of notes) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = n.freq;
+        gain.gain.setValueAtTime(0.04, ctx.currentTime + n.start);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + n.start + n.dur);
+        osc.start(ctx.currentTime + n.start);
+        osc.stop(ctx.currentTime + n.start + n.dur + 0.05);
+      }
+    } catch { }
+  }, []);
+
   const handleRobotClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -693,10 +729,23 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       });
       return;
     }
+    // Halloween: toggle spooky mode
+    if (isHalloween) {
+      setHalloweenParty(prev => {
+        if (!prev) {
+          playHalloweenMelody();
+          setRobotEmotion('surprise');
+        } else {
+          setRobotEmotion(null);
+        }
+        return !prev;
+      });
+      return;
+    }
     const emotion = emotions[Math.floor(Math.random() * emotions.length)];
     setRobotEmotion(emotion.name);
     setTimeout(() => setRobotEmotion(null), 1200);
-  }, [isSleeping, isNight, nightLampOn, isNewYear, playJingleBells, hasBirthday, playHappyBirthday]);
+  }, [isSleeping, isNight, nightLampOn, isNewYear, playJingleBells, hasBirthday, playHappyBirthday, isHalloween, playHalloweenMelody]);
 
   // Double click = beep + speech bubble
   const bubbles = ['Біп-боп!', 'Привіт! 👋', 'Я робот! 🤖', 'Працюємо! 💪', '01100001'];
@@ -865,14 +914,25 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       </g>
     );
     if (isHalloween) return (
-      // Pumpkin
-      <g transform="translate(38, 26)">
+      // Pumpkin — scary glow when party
+      <g transform="translate(38, 26)" className={halloweenParty ? 'pumpkin-glow' : ''}>
         <ellipse cx="6" cy="7" rx="7" ry="6" fill="#f97316" />
         <rect x="5" y="-1" width="2" height="4" rx="0.8" fill="#65a30d" />
-        {/* Face */}
-        <path d="M2,5 L4,7 L2,7" fill="#1e293b" />
-        <path d="M8,7 L10,5 L10,7" fill="#1e293b" />
-        <path d="M3,9 Q6,12 9,9" stroke="#1e293b" strokeWidth="0.8" fill="none" />
+        {halloweenParty ? (
+          <>
+            {/* Scary face — angry eyes + evil grin */}
+            <path d="M1,4 L3,6 L5,4" fill="#fbbf24" />
+            <path d="M7,4 L9,6 L11,4" fill="#fbbf24" />
+            <path d="M2,9 L3,8 L4.5,10 L6,8 L7.5,10 L9,8 L10,9" stroke="#fbbf24" strokeWidth="0.7" fill="none" />
+          </>
+        ) : (
+          <>
+            {/* Normal cute face */}
+            <path d="M2,5 L4,7 L2,7" fill="#1e293b" />
+            <path d="M8,7 L10,5 L10,7" fill="#1e293b" />
+            <path d="M3,9 Q6,12 9,9" stroke="#1e293b" strokeWidth="0.8" fill="none" />
+          </>
+        )}
       </g>
     );
     return null;
@@ -1008,6 +1068,11 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             .santa-sleigh { animation: santaFly 4s linear infinite; }
             @keyframes snowfall { 0% { transform: translateY(-10px); opacity: 0.8; } 100% { transform: translateY(42px); opacity: 0; } }
             .snowflake { animation: snowfall 2s linear infinite; }
+            @keyframes scaredShake { 0%,100% { transform: translateX(0); } 10% { transform: translateX(-2px) rotate(-2deg); } 20% { transform: translateX(2px) rotate(2deg); } 30% { transform: translateX(-2px); } 40% { transform: translateX(2px); } 50% { transform: translateX(-1px) rotate(-1deg); } 60% { transform: translateX(1px) rotate(1deg); } 70% { transform: translateX(-1px); } 80% { transform: translateX(1px); } }
+            .robot-scared { animation: scaredShake 0.6s ease-in-out infinite; }
+            @keyframes ghostFloat { 0% { transform: translate(0,0) scale(0.8); opacity: 0; } 20% { opacity: 0.7; } 50% { transform: translate(var(--gx,5px), var(--gy,-10px)) scale(1); opacity: 0.6; } 80% { opacity: 0.4; } 100% { transform: translate(var(--gx2,10px), var(--gy2,-18px)) scale(0.7); opacity: 0; } }
+            .ghost-float { animation: ghostFloat 3s ease-in-out infinite; }
+            .pumpkin-glow { filter: drop-shadow(0 0 4px #fbbf24) drop-shadow(0 0 8px #f97316); }
           `}} />
           <TransitionLink
             href="/dashboard"
@@ -1024,7 +1089,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
               {/* Speech bubble */}
               {speechBubble && <div className="robot-speech">{speechBubble}</div>}
               {/* Robot icon */}
-              <svg className={`logo-icon${birthdayParty || newYearParty ? ' robot-dancing' : ''}`} width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
+              <svg className={`logo-icon${birthdayParty || newYearParty ? ' robot-dancing' : ''}${halloweenParty ? ' robot-scared' : ''}`} width="52" height="52" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
                 <defs>
                   <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44">
                     <stop offset="0%" stopColor={isNight && !nightLampOn ? '#1e3a5f' : '#3b82f6'} />
@@ -1237,6 +1302,34 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                         style={{ animationDelay: `${s.d}s` }}
                       />
                     ))}
+                  </g>
+                )}
+                {/* Halloween party effects — ghosts */}
+                {halloweenParty && (
+                  <g>
+                    {/* Ghost 1 — left */}
+                    <g className="ghost-float" style={{ '--gx': '-8px', '--gy': '-12px', '--gx2': '-12px', '--gy2': '-20px' } as React.CSSProperties}>
+                      <path d="M-6,8 Q-6,0 -2,0 Q2,0 2,8 L1,6 L0,8 L-1,6 L-2,8 L-3,6 L-4,8 L-5,6 Z" fill="white" opacity="0.8" />
+                      <circle cx="-3" cy="3" r="1" fill="#1e293b" />
+                      <circle cx="0" cy="3" r="1" fill="#1e293b" />
+                      <ellipse cx="-1.5" cy="5.5" rx="1.5" ry="1" fill="#1e293b" />
+                    </g>
+                    {/* Ghost 2 — right */}
+                    <g className="ghost-float" style={{ '--gx': '6px', '--gy': '-14px', '--gx2': '10px', '--gy2': '-22px', animationDelay: '1s' } as React.CSSProperties}>
+                      <g transform="translate(46, 4)">
+                        <path d="M-3,8 Q-3,1 1,1 Q5,1 5,8 L4,6 L3,8 L2,6 L1,8 L0,6 L-1,8 L-2,6 Z" fill="white" opacity="0.7" />
+                        <circle cx="0" cy="3.5" r="0.8" fill="#1e293b" />
+                        <circle cx="2.5" cy="3.5" r="0.8" fill="#1e293b" />
+                      </g>
+                    </g>
+                    {/* Ghost 3 — top */}
+                    <g className="ghost-float" style={{ '--gx': '3px', '--gy': '-10px', '--gx2': '-3px', '--gy2': '-16px', animationDelay: '1.8s' } as React.CSSProperties}>
+                      <g transform="translate(10, -8) scale(0.7)">
+                        <path d="M-3,8 Q-3,1 1,1 Q5,1 5,8 L4,6 L3,8 L2,6 L1,8 L0,6 L-1,8 L-2,6 Z" fill="white" opacity="0.6" />
+                        <circle cx="0" cy="3.5" r="0.8" fill="#1e293b" />
+                        <circle cx="2.5" cy="3.5" r="0.8" fill="#1e293b" />
+                      </g>
+                    </g>
                   </g>
                 )}
                 {/* Ears / connectors */}
