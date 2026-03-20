@@ -732,12 +732,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     // Halloween: toggle spooky mode
     if (isHalloween) {
       setHalloweenParty(prev => {
-        if (!prev) {
-          playHalloweenMelody();
-          setRobotEmotion('surprise');
-        } else {
-          setRobotEmotion(null);
-        }
+        if (!prev) playHalloweenMelody();
         return !prev;
       });
       return;
@@ -1140,8 +1135,18 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     <line x1="25" y1="20" x2="30" y2="20" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
                   </>
                 )}
+                {/* Halloween scared eyes — small fixed black pupils */}
+                {halloweenParty && !robotEmotion && (
+                  <>
+                    <circle cx="16.5" cy="19" r="1.3" fill="#1e293b" />
+                    <circle cx="27.5" cy="19" r="1.3" fill="#1e293b" />
+                    {/* Raised eyebrows — scared look */}
+                    <line x1="14" y1="15.5" x2="19" y2="16.5" stroke="#1e293b" strokeWidth="1" strokeLinecap="round" />
+                    <line x1="25" y1="16.5" x2="30" y2="15.5" stroke="#1e293b" strokeWidth="1" strokeLinecap="round" />
+                  </>
+                )}
                 {/* Pupils — follow mouse (not when sleeping) */}
-                {!robotEmotion && !isSleeping && (
+                {!robotEmotion && !isSleeping && !halloweenParty && (
                   <>
                     <circle
                       cx={16.5 + eyeOffset.x}
