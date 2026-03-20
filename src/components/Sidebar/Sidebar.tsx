@@ -230,7 +230,7 @@ function SidebarInfoWidget() {
         }
       `}} />
       <div style={{
-        padding: '14px 16px',
+        padding: '14px 16px 10px',
         borderRadius: '20px',
         background: widgetTheme.bg,
         backdropFilter: 'blur(12px)',
@@ -238,13 +238,13 @@ function SidebarInfoWidget() {
         boxShadow: `${widgetTheme.shadow}, inset 0 0 0 1px ${widgetTheme.borderColor}`,
         border: 'none',
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: 'column',
+        gap: '6px',
         transition: 'background 1s ease, box-shadow 1s ease',
-        gap: '8px',
       }}>
-        {/* Left side: Time & Date */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+        {/* Top row: Time + Weather */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Time */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '2px' }}>
             <span style={{ fontSize: '32px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
               {h}<span style={{ opacity: 0.3, margin: '0 1px' }}>:</span>{m}
@@ -253,72 +253,74 @@ function SidebarInfoWidget() {
               {s}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
-            <span style={{ fontSize: '12px', fontWeight: '500', color: '#3b82f6', letterSpacing: '0.01em', lineHeight: 1 }}>
-              {dayName}
-            </span>
-            <span style={{ fontSize: '10px', color: '#cbd5e1', lineHeight: 1 }}>•</span>
+
+          {/* Weather */}
+          {weather && (
             <button
-              onClick={() => {
-                if (!calOpen) { setCalYear(todayY); setCalMonth(todayM); }
-                setCalOpen(o => !o);
-              }}
+              className="weather-btn-hover"
+              ref={weatherBtnRef}
+              onClick={handleWeatherClick}
               style={{
-                fontSize: '11px',
-                color: calOpen ? '#3b82f6' : '#64748b',
-                fontWeight: '400',
-                background: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: weatherOpen ? 'rgba(255, 255, 255, 0.6)' : 'transparent',
                 border: 'none',
-                padding: 0,
-                lineHeight: 1,
                 cursor: 'pointer',
-                transition: 'color 0.2s',
+                padding: '6px 8px',
+                margin: '-6px -8px',
+                borderRadius: '12px',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                opacity: weatherOpen ? 1 : 0.85,
+                flexShrink: 0,
               }}
-              onMouseOver={e => { if (!calOpen) (e.currentTarget.style.color = '#0f172a'); }}
-              onMouseOut={e => { if (!calOpen) (e.currentTarget.style.color = '#64748b'); }}
+              onMouseOver={e => { 
+                e.currentTarget.style.opacity = '1'; 
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)';
+                e.currentTarget.style.transform = 'scale(1.02)';
+              }}
+              onMouseOut={e => { 
+                e.currentTarget.style.opacity = weatherOpen ? '1' : '0.85'; 
+                e.currentTarget.style.background = weatherOpen ? 'rgba(255, 255, 255, 0.6)' : 'transparent';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
             >
-              {dateStr}
+              <span className="weather-icon-anim" style={{ fontSize: '18px', lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code)}</span>
+              <span style={{ fontSize: '18px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                {weather.temp}°
+              </span>
             </button>
-          </div>
+          )}
         </div>
 
-        {/* Right side: Weather */}
-        {weather && (
+        {/* Bottom row: Day + Date */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '12px', fontWeight: '500', color: '#3b82f6', letterSpacing: '0.01em', lineHeight: 1 }}>
+            {dayName}
+          </span>
+          <span style={{ fontSize: '10px', color: '#cbd5e1', lineHeight: 1 }}>•</span>
           <button
-            className="weather-btn-hover"
-            ref={weatherBtnRef}
-            onClick={handleWeatherClick}
+            onClick={() => {
+              if (!calOpen) { setCalYear(todayY); setCalMonth(todayM); }
+              setCalOpen(o => !o);
+            }}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: weatherOpen ? 'rgba(255, 255, 255, 0.6)' : 'transparent',
+              fontSize: '11px',
+              color: calOpen ? '#3b82f6' : '#64748b',
+              fontWeight: '400',
+              background: 'none',
               border: 'none',
+              padding: 0,
+              lineHeight: 1,
               cursor: 'pointer',
-              padding: '8px 10px',
-              margin: '-8px -16px -8px 0',
-              borderRadius: '14px',
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              opacity: weatherOpen ? 1 : 0.85,
-              flexShrink: 0,
+              transition: 'color 0.2s',
             }}
-            onMouseOver={e => { 
-              e.currentTarget.style.opacity = '1'; 
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)';
-              e.currentTarget.style.transform = 'scale(1.02)';
-            }}
-            onMouseOut={e => { 
-              e.currentTarget.style.opacity = weatherOpen ? '1' : '0.85'; 
-              e.currentTarget.style.background = weatherOpen ? 'rgba(255, 255, 255, 0.6)' : 'transparent';
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
+            onMouseOver={e => { if (!calOpen) (e.currentTarget.style.color = '#0f172a'); }}
+            onMouseOut={e => { if (!calOpen) (e.currentTarget.style.color = '#64748b'); }}
           >
-            <span className="weather-icon-anim" style={{ fontSize: '20px', lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code)}</span>
-            <span style={{ fontSize: '20px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-              {weather.temp}°
-            </span>
+            {dateStr}
           </button>
-        )}
+        </div>
       </div>
 
       {/* Calendar popover */}
