@@ -1158,7 +1158,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     ))}
                   </div>
 
-                  <div style={{ width: 1, height: 18, background: '#e2e8f0', flexShrink: 0, margin: '0 4px' }} />
+
 
                   {/* Reminder */}
                   {(() => {
@@ -1175,9 +1175,9 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                             </button>
                           </span>
                         ) : (
-                          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', padding: '3px 9px', borderRadius: 20, border: '1px dashed #d1d5db', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.15s' }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLSpanElement).style.borderColor = '#93c5fd'; (e.currentTarget as HTMLSpanElement).style.color = '#2563eb'; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLSpanElement).style.borderColor = '#d1d5db'; (e.currentTarget as HTMLSpanElement).style.color = '#94a3b8'; }}
+                          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#5f6368', background: '#f1f3f4', padding: '4px 12px', borderRadius: 24, border: '1px solid transparent', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLSpanElement).style.background = '#e8eaed'; (e.currentTarget as HTMLSpanElement).style.color = '#202124'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLSpanElement).style.background = '#f1f3f4'; (e.currentTarget as HTMLSpanElement).style.color = '#5f6368'; }}
                           >
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                             нагадати
@@ -1209,9 +1209,9 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                             </button>
                           </span>
                         ) : (
-                          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', padding: '3px 9px', borderRadius: 20, border: '1px dashed #d1d5db', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLSpanElement).style.borderColor = '#86efac'; (e.currentTarget as HTMLSpanElement).style.color = '#16a34a'; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLSpanElement).style.borderColor = '#d1d5db'; (e.currentTarget as HTMLSpanElement).style.color = '#94a3b8'; }}
+                          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#5f6368', background: '#f1f3f4', padding: '4px 12px', borderRadius: 24, border: '1px solid transparent', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLSpanElement).style.background = '#e8eaed'; (e.currentTarget as HTMLSpanElement).style.color = '#202124'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLSpanElement).style.background = '#f1f3f4'; (e.currentTarget as HTMLSpanElement).style.color = '#5f6368'; }}
                           >
                             + дедлайн
                           </span>
@@ -1254,7 +1254,6 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     <CheckSquare size={15} strokeWidth={2} />
                   </ActionBtn>
 
-                  <div style={{ width: 1, height: 18, background: '#e2e8f0', flexShrink: 0, margin: '0 2px' }} />
 
                   {/* Icon buttons */}
                   <ActionBtn
@@ -1417,11 +1416,11 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
                           <button
                             onClick={() => setForceShowText(true)}
-                            style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: 20, cursor: 'pointer', padding: '2px 10px', fontSize: '0.6875rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.15s' }}
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.color = '#2563eb'; }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#94a3b8'; }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f3f4', border: 'none', borderRadius: 24, cursor: 'pointer', padding: '6px 14px', fontSize: '0.8125rem', fontWeight: 500, color: '#5f6368', transition: 'all 0.2s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#e8eaed'; e.currentTarget.style.color = '#202124'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#f1f3f4'; e.currentTarget.style.color = '#5f6368'; }}
                           >
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             Додати текст
                           </button>
                         </div>
@@ -1645,12 +1644,12 @@ function TagsRow({ tags, onAdd, onRemove, bg }: { tags: string[]; onAdd: (t: str
   };
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.625rem 2.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: bg, alignItems: 'center', minHeight: 40 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0.25rem 2.5rem', background: bg, alignItems: 'center', minHeight: 36 }}>
       {tags.map(tag => (
-        <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 9px', borderRadius: 20, background: '#e0e7ff', fontSize: '0.6875rem', fontWeight: 600, color: '#3730a3' }}>
+        <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 12px', borderRadius: 24, background: '#e8f0fe', fontSize: '0.75rem', fontWeight: 500, color: '#1a73e8' }}>
           #{tag}
-          <button onClick={() => onRemove(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#818cf8', lineHeight: 1 }}>
-            <X size={10} />
+          <button onClick={() => onRemove(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#1a73e8', lineHeight: 1, opacity: 0.7 }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}>
+            <X size={12} />
           </button>
         </span>
       ))}
@@ -1663,16 +1662,16 @@ function TagsRow({ tags, onAdd, onRemove, bg }: { tags: string[]; onAdd: (t: str
           onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setAdding(false); setInput(''); } }}
           placeholder="мітка..."
           autoFocus
-          style={{ border: 'none', borderBottom: '1.5px solid #3b82f6', background: 'transparent', outline: 'none', fontSize: '0.6875rem', width: 70, color: '#374151', userSelect: 'text' }}
+          style={{ border: 'none', background: '#e8eaed', padding: '2px 10px', borderRadius: 16, outline: 'none', fontSize: '0.75rem', width: 80, color: '#202124', userSelect: 'text' }}
         />
       ) : (
         <button
           onClick={() => { setAdding(true); setTimeout(() => inputRef.current?.focus(), 0); }}
-          style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: 20, cursor: 'pointer', padding: '2px 9px', fontSize: '0.6875rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.15s' }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#a5b4fc'; e.currentTarget.style.color = '#4f46e5'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#94a3b8'; }}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f3f4', border: 'none', borderRadius: 24, cursor: 'pointer', padding: '4px 12px', fontSize: '0.75rem', fontWeight: 500, color: '#5f6368', transition: 'all 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#e8eaed'; e.currentTarget.style.color = '#202124'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#f1f3f4'; e.currentTarget.style.color = '#5f6368'; }}
         >
-          <Plus size={9} strokeWidth={2.5} /> тег
+          <Plus size={10} strokeWidth={2.5} /> тег
         </button>
       )}
     </div>
@@ -1784,26 +1783,26 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
   const matchedGroups = q ? groups.filter(g => g.title.toLowerCase().includes(q)).slice(0, 15) : groups.slice(0, 10);
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0.5rem 2.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: bg, alignItems: 'center', minHeight: 36 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0.25rem 2.5rem 0.5rem', background: bg, alignItems: 'center', minHeight: 36 }}>
       {/* Linked student badge */}
       {studentId && studentName && (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 9px', borderRadius: 20, background: '#eff6ff', fontSize: '0.6875rem', fontWeight: 600, color: '#2563eb' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 12px', borderRadius: 24, background: '#e8f0fe', fontSize: '0.75rem', fontWeight: 500, color: '#1a73e8' }}>
           <a href={`/students/${studentId}`} style={{ color: 'inherit', textDecoration: 'none' }} title="Відкрити картку учня"
             onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'none'; }}
           >👤 {studentName}</a>
-          <button onClick={() => onChangeStudent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#93c5fd', lineHeight: 1 }}><X size={10} /></button>
+          <button onClick={() => onChangeStudent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#1a73e8', lineHeight: 1, opacity: 0.7 }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}><X size={12} /></button>
         </span>
       )}
 
       {/* Linked group badge */}
       {groupId && groupTitle && (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 9px', borderRadius: 20, background: '#f0fdf4', fontSize: '0.6875rem', fontWeight: 600, color: '#16a34a' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 12px', borderRadius: 24, background: '#e6f4ea', fontSize: '0.75rem', fontWeight: 500, color: '#137333' }}>
           <a href={`/groups/${groupId}`} style={{ color: 'inherit', textDecoration: 'none' }} title="Відкрити групу"
             onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'none'; }}
           >👥 {groupTitle}</a>
-          <button onClick={() => onChangeGroup(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#86efac', lineHeight: 1 }}><X size={10} /></button>
+          <button onClick={() => onChangeGroup(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#137333', lineHeight: 1, opacity: 0.7 }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}><X size={12} /></button>
         </span>
       )}
 
@@ -1812,9 +1811,9 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
         <div ref={containerRef} style={{ position: 'relative' }}>
           <button
             onClick={() => { setOpen(v => !v); setQuery(''); setTimeout(() => inputRef.current?.focus(), 0); }}
-            style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: 20, cursor: 'pointer', padding: '2px 9px', fontSize: '0.6875rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.color = '#2563eb'; }}
-            onMouseLeave={e => { if (!open) { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#94a3b8'; } }}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f3f4', border: 'none', borderRadius: 24, cursor: 'pointer', padding: '4px 12px', fontSize: '0.75rem', fontWeight: 500, color: '#5f6368', transition: 'all 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#e8eaed'; e.currentTarget.style.color = '#202124'; }}
+            onMouseLeave={e => { if (!open) { e.currentTarget.style.background = '#f1f3f4'; e.currentTarget.style.color = '#5f6368'; } }}
           >
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             {!hasLinks ? "Прив'язати" : 'Ще'}
