@@ -109,15 +109,46 @@ const checkIsTelegramWebView = (): boolean => {
 };
 
 const INIT_DATA_KEY = 'tg_init_data';
+const INIT_DATA_LS_KEY = 'tg_init_data_ls';
+const INIT_DATA_TS_KEY = 'tg_init_data_ts';
+const INIT_DATA_TTL = 24 * 60 * 60 * 1000; // 24 hours (matches server auth_date validation)
 
-// Save initData to sessionStorage for cross-navigation persistence
+// Save initData to both sessionStorage and localStorage for cross-navigation persistence
 const saveInitData = (data: string) => {
   try { sessionStorage.setItem(INIT_DATA_KEY, data); } catch {}
+  try {
+    localStorage.setItem(INIT_DATA_LS_KEY, data);
+    localStorage.setItem(INIT_DATA_TS_KEY, Date.now().toString());
+  } catch {}
 };
 
-// Read initData from sessionStorage (fallback for client-side navigation)
+// Read initData from sessionStorage first, then localStorage (with TTL check)
 const getSavedInitData = (): string | null => {
-  try { return sessionStorage.getItem(INIT_DATA_KEY); } catch { return null; }
+  // Try sessionStorage first (same tab, fastest)
+  try {
+    const sessionData = sessionStorage.getItem(INIT_DATA_KEY);
+    if (sessionData) return sessionData;
+  } catch {}
+
+  // Fallback to localStorage with TTL check
+  try {
+    const lsData = localStorage.getItem(INIT_DATA_LS_KEY);
+    const lsTs = localStorage.getItem(INIT_DATA_TS_KEY);
+    if (lsData && lsTs) {
+      const age = Date.now() - parseInt(lsTs, 10);
+      if (age < INIT_DATA_TTL) {
+        // Re-save to sessionStorage for faster access
+        try { sessionStorage.setItem(INIT_DATA_KEY, lsData); } catch {}
+        return lsData;
+      } else {
+        // Expired — clean up
+        localStorage.removeItem(INIT_DATA_LS_KEY);
+        localStorage.removeItem(INIT_DATA_TS_KEY);
+      }
+    }
+  } catch {}
+
+  return null;
 };
 
 // Parse initData from URL

@@ -770,10 +770,6 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     // Night mode: toggle lamp
     if (isNight) {
       setNightLampOn(prev => !prev);
-      if (!nightLampOn) {
-        setRobotEmotion('annoyed');
-        setTimeout(() => setRobotEmotion(null), 1500);
-      }
       return;
     }
     // New Year: toggle party mode
@@ -849,19 +845,6 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     const cx = side === 'l' ? 16.5 : 27.5;
     const cy = 20;
     if (em.name === 'wink' && side === 'l') return null;
-    // Annoyed — angled eyebrows + small pupils
-    if (em.name === 'annoyed') {
-      const x1 = side === 'l' ? 13.5 : 24.5;
-      const x2 = side === 'l' ? 19.5 : 30.5;
-      const y1 = side === 'l' ? 16 : 17;
-      const y2 = side === 'l' ? 17 : 16;
-      return (
-        <g style={{ pointerEvents: 'none' }}>
-          <circle cx={cx} cy={cy} r="1.5" fill="#64748b" />
-          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
-        </g>
-      );
-    }
     return (
       <text
         x={cx}
@@ -1285,10 +1268,10 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     <circle
                       cx={16.5 + eyeOffset.x}
                       cy={20 + eyeOffset.y}
-                      r="2.2"
+                      r={isNight && nightLampOn ? "1.5" : "2.2"}
                       fill={getEyeFill()}
                       style={{
-                        transition: 'cx 0.08s ease, cy 0.08s ease',
+                        transition: 'cx 0.08s ease, cy 0.08s ease, r 0.3s ease',
                         transform: isBlinking ? 'scaleY(0.1)' : 'scaleY(1)',
                         transformOrigin: '16.5px 20px',
                       }}
@@ -1296,14 +1279,20 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     <circle
                       cx={27.5 + eyeOffset.x}
                       cy={20 + eyeOffset.y}
-                      r="2.2"
+                      r={isNight && nightLampOn ? "1.5" : "2.2"}
                       fill={getEyeFill()}
                       style={{
-                        transition: 'cx 0.08s ease, cy 0.08s ease',
+                        transition: 'cx 0.08s ease, cy 0.08s ease, r 0.3s ease',
                         transform: isBlinking ? 'scaleY(0.1)' : 'scaleY(1)',
                         transformOrigin: '27.5px 20px',
                       }}
                     />
+                    {isNight && nightLampOn && (
+                      <g className="robot-emotion" style={{ pointerEvents: 'none' }}>
+                        <line x1="13.5" y1="16" x2="19.5" y2="17" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
+                        <line x1="24.5" y1="17" x2="30.5" y2="16" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
+                      </g>
+                    )}
                   </>
                 )}
                 {/* Emotion overlay */}
