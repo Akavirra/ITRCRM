@@ -11,6 +11,7 @@ interface Teacher {
   role: string;
   phone: string | null;
   email: string | null;
+  photo_url: string | null;
   created_at: string;
 }
 
@@ -182,18 +183,35 @@ export default function TeacherProfilePage() {
 
       {/* Profile Card */}
       <div className="tg-card" style={{ textAlign: 'center', padding: 'var(--space-xl)' }}>
-        <div
-          className="tg-avatar"
-          style={{
-            width: '100px',
-            height: '100px',
-            fontSize: '36px',
-            margin: '0 auto var(--space-lg)',
-            background: 'linear-gradient(135deg, var(--tg-primary-bg), var(--tg-link-color))',
-          }}
-        >
-          {teacher?.name?.split(' ').map(n => n[0]).join('') || '?'}
-        </div>
+        {teacher?.photo_url ? (
+          <img
+            src={teacher.photo_url}
+            alt={teacher.name}
+            style={{
+              width: '100px',
+              height: '100px',
+              borderRadius: '50%',
+              objectFit: 'cover',
+              margin: '0 auto var(--space-lg)',
+              display: 'block',
+              border: '3px solid var(--tg-border)',
+              boxShadow: 'var(--shadow-md)',
+            }}
+          />
+        ) : (
+          <div
+            className="tg-avatar"
+            style={{
+              width: '100px',
+              height: '100px',
+              fontSize: '36px',
+              margin: '0 auto var(--space-lg)',
+              background: 'linear-gradient(135deg, var(--tg-primary-bg), var(--tg-link-color))',
+            }}
+          >
+            {teacher?.name?.split(' ').map(n => n[0]).join('') || '?'}
+          </div>
+        )}
 
         <h2 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--tg-text-color)' }}>
           {teacher?.name || 'Невідомо'}
