@@ -564,6 +564,8 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const emotions = [
     { name: 'love', eyeShape: '❤', color: '#f43f5e' },
     { name: 'star', eyeShape: '★', color: '#eab308' },
+    { name: 'angry', eyeShape: '🔥', color: '#ef4444' },
+    { name: 'dance', eyeShape: '✨', color: '#a855f7' },
   ];
 
   const playBeep = useCallback(() => {
