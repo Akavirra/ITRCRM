@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { TelegramWebAppProvider, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import TeacherAppNavbar from '@/components/TeacherAppNavbar';
+import RoleToggle from '@/components/RoleToggle';
 
 // Inner component that uses the context
 function TeacherAppContent({ children }: { children: ReactNode }) {
@@ -60,7 +61,10 @@ function TeacherAppContent({ children }: { children: ReactNode }) {
 
   return (
     <div className="teacher-app-layout has-navbar">
-      <main>{children}</main>
+      <main>
+        <RoleToggle currentRole="teacher" />
+        {children}
+      </main>
       <TeacherAppNavbar />
       <style jsx global>{globalStyles}</style>
     </div>

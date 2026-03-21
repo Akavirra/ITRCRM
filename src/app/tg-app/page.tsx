@@ -36,6 +36,9 @@ function RoleSwitcher() {
         if (adminUser) setAdminName(adminUser.name || '');
         if (teacherUser) setTeacherName(teacherUser.name || '');
 
+        // Save detected roles for the toggle component
+        try { localStorage.setItem('tg_app_roles', JSON.stringify(detectedRoles)); } catch {}
+
         // If only one role — redirect immediately
         if (detectedRoles.length === 1) {
           if (initData) saveInitData(initData);

@@ -3,6 +3,7 @@
 import { ReactNode, useEffect } from 'react';
 import { TelegramWebAppProvider, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import AdminAppNavbar from '@/components/AdminAppNavbar';
+import RoleToggle from '@/components/RoleToggle';
 
 function AdminAppContent({ children }: { children: ReactNode }) {
   const { isLoading, colorScheme } = useTelegramWebApp();
@@ -58,7 +59,10 @@ function AdminAppContent({ children }: { children: ReactNode }) {
 
   return (
     <div className="admin-app-layout has-navbar">
-      <main>{children}</main>
+      <main>
+        <RoleToggle currentRole="admin" />
+        {children}
+      </main>
       <AdminAppNavbar />
       <style jsx global>{sharedStyles}</style>
     </div>

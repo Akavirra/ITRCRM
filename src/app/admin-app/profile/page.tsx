@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useTelegramInitData, saveInitData } from '@/components/TelegramWebAppProvider';
+import { useTelegramInitData } from '@/components/TelegramWebAppProvider';
 
 interface AdminProfile {
   id: number;
@@ -43,7 +42,6 @@ function resizeImage(file: File): Promise<string> {
 }
 
 export default function AdminProfilePage() {
-  const router = useRouter();
   const { initData, isLoading: initLoading } = useTelegramInitData();
   const [admin, setAdmin] = useState<AdminProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -309,37 +307,6 @@ export default function AdminProfilePage() {
             </button>
           </div>
         )}
-      </div>
-
-      {/* Role Switcher */}
-      <div style={{ marginTop: '24px' }}>
-        <button
-          onClick={() => {
-            if (initData) saveInitData(initData);
-            localStorage.removeItem('tg_app_role');
-            router.push('/tg-app');
-          }}
-          style={{
-            width: '100%',
-            background: 'var(--tg-surface)',
-            border: '1.5px solid var(--tg-border)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '16px 20px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            transition: 'all 0.2s ease',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
-          <span style={{ fontSize: '24px' }}>🔄</span>
-          <div style={{ textAlign: 'left', flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--tg-text-color)' }}>Змінити роль</div>
-            <div style={{ fontSize: '12px', color: 'var(--tg-text-secondary)', marginTop: '2px' }}>Перейти до вибору режиму</div>
-          </div>
-          <span style={{ fontSize: '16px', color: 'var(--tg-hint-color)' }}>›</span>
-        </button>
       </div>
 
       <div style={{ textAlign: 'center', padding: 'var(--space-lg)', color: 'var(--tg-hint-color)', fontSize: '12px' }}>
