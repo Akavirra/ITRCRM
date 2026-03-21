@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { saveInitData, useTelegramInitData } from '@/components/TelegramWebAppProvider';
 
+const ROLES_KEY = 'tg_app_roles';
+
 interface RoleToggleProps {
   currentRole: 'admin' | 'teacher';
 }
@@ -14,14 +16,34 @@ export default function RoleToggle({ currentRole }: RoleToggleProps) {
   const [hasBothRoles, setHasBothRoles] = useState(false);
 
   useEffect(() => {
+    // 1. Check localStorage cache first
     try {
-      const raw = localStorage.getItem('tg_app_roles');
+      const raw = localStorage.getItem(ROLES_KEY);
       if (raw) {
         const roles = JSON.parse(raw) as string[];
-        setHasBothRoles(roles.includes('admin') && roles.includes('teacher'));
+        if (roles.includes('admin') && roles.includes('teacher')) {
+          setHasBothRoles(true);
+          return;
+        }
       }
     } catch {}
-  }, []);
+
+    // 2. No cached roles — fetch from API (only if we have initData)
+    if (!initData) return;
+
+    fetch('/api/tg-app/auth', {
+      headers: { 'X-Telegram-Init-Data': initData },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data?.roles) return;
+        try { localStorage.setItem(ROLES_KEY, JSON.stringify(data.roles)); } catch {}
+        if (data.roles.includes('admin') && data.roles.includes('teacher')) {
+          setHasBothRoles(true);
+        }
+      })
+      .catch(() => {});
+  }, [initData]);
 
   if (!hasBothRoles) return null;
 
