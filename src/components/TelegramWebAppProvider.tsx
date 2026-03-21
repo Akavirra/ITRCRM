@@ -201,8 +201,15 @@ const loadTelegramScript = (): Promise<void> => {
 
     const existingScript = document.querySelector('script[src*="telegram-web-app"]');
     if (existingScript) {
-      existingScript.addEventListener('load', () => resolve());
-      existingScript.addEventListener('error', () => resolve()); // Resolve even on error
+      // If script element already exists, it might have already loaded
+      // (adding 'load' listener to an already-loaded script won't fire).
+      // Use a short timeout as a fallback to prevent hanging forever.
+      let resolved = false;
+      const done = () => { if (!resolved) { resolved = true; resolve(); } };
+      existingScript.addEventListener('load', done);
+      existingScript.addEventListener('error', done);
+      // Fallback: resolve after 1s even if events don't fire (script already loaded)
+      setTimeout(done, 1000);
       return;
     }
 
@@ -287,7 +294,19 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
       return;
     }
 
-    // Try to load script and get Telegram
+    // Check saved data BEFORE loading script — script loading can hang
+    // if the script element already exists in DOM from a previous mount
+    // (adding 'load' listener to an already-loaded script never fires)
+    const savedData = getSavedInitData();
+    if (savedData) {
+      setInitData(savedData);
+      setIsInWebView(true);
+      setIsReady(true);
+      setIsLoading(false);
+      return;
+    }
+
+    // Try to load script and get Telegram (only if no saved data)
     await loadTelegramScript();
 
     const tg2 = win.Telegram?.WebApp;
@@ -301,16 +320,6 @@ export function TelegramWebAppProvider({ children }: TelegramWebAppProviderProps
       if (tg2.initDataUnsafe?.user) setUser(tg2.initDataUnsafe.user);
       tg2.ready();
       tg2.expand();
-      setIsReady(true);
-      setIsLoading(false);
-      return;
-    }
-
-    // Fallback: check sessionStorage (survives client-side navigation)
-    const savedData = getSavedInitData();
-    if (savedData) {
-      setInitData(savedData);
-      setIsInWebView(true);
       setIsReady(true);
       setIsLoading(false);
       return;
