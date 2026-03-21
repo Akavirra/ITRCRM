@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
+import { BookOpenIcon, ClipboardIcon, UsersIcon, ChevronDownIcon, AlertTriangleIcon } from '@/components/Icons';
 
 interface Student {
   id: number;
@@ -129,7 +130,7 @@ export default function TeacherGroupsPage() {
     return (
       <div style={{ padding: '20px' }}>
         <div className="tg-error">
-          <p className="tg-error-title">⚠️ Помилка</p>
+          <p className="tg-error-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><AlertTriangleIcon size={18} /> Помилка</p>
           <p className="tg-error-text">{error}</p>
         </div>
       </div>
@@ -140,7 +141,7 @@ export default function TeacherGroupsPage() {
     <div>
       {/* Header */}
       <div className="tg-header">
-        <h1 className="tg-header-title">📚 Мої групи</h1>
+        <h1 className="tg-header-title">Мої групи</h1>
         <p className="tg-header-subtitle">
           {data?.groups.length || 0} груп • {data?.stats.total_students || 0} учнів
         </p>
@@ -149,7 +150,7 @@ export default function TeacherGroupsPage() {
       {/* Groups List */}
       {data?.groups.length === 0 ? (
         <div className="tg-empty">
-          <div className="tg-empty-icon">📋</div>
+          <div className="tg-empty-icon"><ClipboardIcon size={40} /></div>
           <p>У вас поки що немає груп</p>
         </div>
       ) : (
@@ -190,23 +191,22 @@ export default function TeacherGroupsPage() {
                       {group.group_title}
                     </h3>
                   </div>
-                  <div style={{ 
-                    fontSize: '20px', 
+                  <div style={{
                     transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                     transition: 'transform 0.2s',
                     color: 'var(--tg-text-secondary)'
                   }}>
-                    ▼
+                    <ChevronDownIcon size={20} />
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--tg-text-secondary)', fontSize: '13px' }}>
-                    <span>📚</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--tg-text-secondary)', fontSize: '13px' }}>
+                    <BookOpenIcon size={14} />
                     <span>{group.course_title}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--tg-text-secondary)', fontSize: '13px' }}>
-                    <span>👥</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--tg-text-secondary)', fontSize: '13px' }}>
+                    <UsersIcon size={14} />
                     <span>{group.student_count} учнів</span>
                   </div>
                 </div>
@@ -259,7 +259,7 @@ export default function TeacherGroupsPage() {
                                 {student.full_name}
                               </div>
                               <div style={{ fontSize: '12px', color: 'var(--tg-text-secondary)' }}>
-                                🎂 {getAge(student.birth_date)}
+                                {getAge(student.birth_date)}
                               </div>
                             </div>
                           </div>

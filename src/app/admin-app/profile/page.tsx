@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTelegramInitData } from '@/components/TelegramWebAppProvider';
+import { CameraIcon, LoaderIcon, EditIcon } from '@/components/Icons';
 
 interface AdminProfile {
   id: number;
@@ -191,7 +192,7 @@ export default function AdminProfilePage() {
               cursor: 'pointer', fontSize: '14px',
             }}
           >
-            {photoLoading ? '⏳' : '📷'}
+            {photoLoading ? <LoaderIcon size={14} /> : <CameraIcon size={14} />}
           </button>
         </div>
 
@@ -207,14 +208,14 @@ export default function AdminProfilePage() {
               onClick={() => { setPhotoMenu(false); fileInputRef.current?.click(); }}
               style={{ background: 'none', border: 'none', color: 'var(--tg-text-color)', cursor: 'pointer', padding: '10px 16px', borderRadius: 'var(--radius-md)', textAlign: 'left', fontSize: '14px' }}
             >
-              📤 {admin.photo_url ? 'Змінити фото' : 'Завантажити фото'}
+              {admin.photo_url ? 'Змінити фото' : 'Завантажити фото'}
             </button>
             {admin.photo_url && (
               <button
                 onClick={() => { setPhotoMenu(false); setConfirmDelete(true); }}
                 style={{ background: 'none', border: 'none', color: 'var(--tg-danger)', cursor: 'pointer', padding: '10px 16px', borderRadius: 'var(--radius-md)', textAlign: 'left', fontSize: '14px' }}
               >
-                🗑️ Видалити фото
+                Видалити фото
               </button>
             )}
             <button
@@ -303,7 +304,7 @@ export default function AdminProfilePage() {
               onClick={() => setEditing(true)}
               style={{ width: '100%', marginTop: '8px' }}
             >
-              ✏️ Редагувати профіль
+              Редагувати профіль
             </button>
           </div>
         )}

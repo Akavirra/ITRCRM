@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTelegramInitData } from '@/components/TelegramWebAppProvider';
+import { GiftIcon, CheckCircleIcon, BellIcon } from '@/components/Icons';
 
 interface Notification {
   id: number;
@@ -13,9 +14,9 @@ interface Notification {
   is_read: boolean;
 }
 
-const TYPE_ICON: Record<string, string> = {
-  birthday: '🎂',
-  lesson_done: '✅',
+const TYPE_ICON: Record<string, React.FC<{ size?: number; color?: string }>> = {
+  birthday: GiftIcon,
+  lesson_done: CheckCircleIcon,
 };
 
 function timeAgo(dateStr: string): string {
@@ -170,7 +171,7 @@ export default function AdminNotificationsPage() {
 
       {notifications.length === 0 ? (
         <div className="tg-empty">
-          <div className="tg-empty-icon">🔔</div>
+          <div className="tg-empty-icon"><BellIcon size={40} /></div>
           <div>Сповіщень немає</div>
         </div>
       ) : (
@@ -187,8 +188,8 @@ export default function AdminNotificationsPage() {
             }}
           >
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-              <span style={{ fontSize: '22px', flexShrink: 0 }}>
-                {TYPE_ICON[n.type] || '🔔'}
+              <span style={{ flexShrink: 0, color: n.type === 'birthday' ? 'var(--tg-warning)' : 'var(--tg-success)' }}>
+                {(() => { const Icon = TYPE_ICON[n.type] || BellIcon; return <Icon size={22} />; })()}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>

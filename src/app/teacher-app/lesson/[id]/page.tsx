@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv, formatDateTimeKyiv } from '@/lib/date-utils';
+import {
+  CheckCircleIcon, ClipboardIcon, ClockIcon, RefreshIcon, UsersIcon,
+  BookOpenIcon, AlertTriangleIcon, FileTextIcon, EditIcon, SaveIcon,
+  ArrowLeftIcon
+} from '@/components/Icons';
 
 interface Lesson {
   id: number;
@@ -307,8 +312,8 @@ export default function LessonDetailPage() {
         <p style={{ color: 'var(--tg-text-color)', marginBottom: 'var(--space-md)', fontSize: '15px' }}>
           {error || 'Заняття не знайдено'}
         </p>
-        <button onClick={() => router.push('/teacher-app')} className="tg-button">
-          ← Назад
+        <button onClick={() => router.push('/teacher-app')} className="tg-button" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 auto' }}>
+          <ArrowLeftIcon size={16} /> Назад
         </button>
       </div>
     );
@@ -334,38 +339,38 @@ export default function LessonDetailPage() {
               marginBottom: 'var(--space-sm)'
             }}
           >
-            ← До розкладу
+            <ArrowLeftIcon size={14} /> До розкладу
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
             <span style={{ fontSize: '14px', color: 'var(--tg-text-secondary)' }}>
               {formatDate(lesson.lesson_date)}
             </span>
             <span className={`tg-badge ${lesson.status === 'done' ? 'tg-badge-done' : 'tg-badge-scheduled'}`}>
-              {lesson.status === 'done' ? '✅ Проведено' : '📋 Заплановано'}
+              {lesson.status === 'done' ? 'Проведено' : 'Заплановано'}
             </span>
           </div>
         </div>
       </div>
 
-      <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: 'var(--space-md)', color: 'var(--tg-text-color)', letterSpacing: '-0.02em' }}>
-        🕐 {formatTime(lesson.start_datetime)} - {formatTime(lesson.end_datetime)}
+      <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: 'var(--space-md)', color: 'var(--tg-text-color)', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <ClockIcon size={22} /> {formatTime(lesson.start_datetime)} - {formatTime(lesson.end_datetime)}
       </h1>
       {lesson.is_makeup ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-xs)' }}>
-          <span style={{ fontSize: '15px', color: 'var(--tg-text-color)', fontWeight: 600 }}>
-            🔄 Відпрацювання
+          <span style={{ fontSize: '15px', color: 'var(--tg-text-color)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <RefreshIcon size={16} /> Відпрацювання
           </span>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-            <span style={{ fontSize: '15px', color: 'var(--tg-text-color)', fontWeight: 500 }}>
-              👥 {lesson.group_title}
+            <span style={{ fontSize: '15px', color: 'var(--tg-text-color)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <UsersIcon size={16} /> {lesson.group_title}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-            <span style={{ fontSize: '13px', color: 'var(--tg-text-secondary)' }}>
-              📚 {lesson.course_title}
+            <span style={{ fontSize: '13px', color: 'var(--tg-text-secondary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <BookOpenIcon size={14} /> {lesson.course_title}
             </span>
           </div>
         </div>
@@ -382,20 +387,20 @@ export default function LessonDetailPage() {
           fontSize: '14px',
           border: '1px solid #ffeeba'
         }}>
-          ⚠️ Це заняття з минулого дня. Редагування теми, приміток та відвідуваності недоступне.
+          Це заняття з минулого дня. Редагування теми, приміток та відвідуваності недоступне.
         </div>
       )}
 
       {/* Topic - hidden for makeup lessons */}
       {!lesson.is_makeup && (<div style={{ marginBottom: 'var(--space-xl)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
-          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)' }}>📝 Тема заняття</span>
+          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}><FileTextIcon size={16} /> Тема заняття</span>
           {!editingTopic && !isPastLesson && (
             <button 
               onClick={() => setEditingTopic(true)}
               style={{ fontSize: '13px', color: 'var(--tg-link-color)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
             >
-              ✏️ Редагувати
+              Редагувати
             </button>
           )}
         </div>
@@ -410,7 +415,7 @@ export default function LessonDetailPage() {
             />
             <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
               <button onClick={saveLessonDetails} disabled={saving} className="tg-button" style={{ flex: 1 }}>
-                {saving ? 'Збереження...' : '💾 Зберегти'}
+                {saving ? 'Збереження...' : 'Зберегти'}
               </button>
               <button 
                 onClick={() => {
@@ -440,13 +445,13 @@ export default function LessonDetailPage() {
       {/* Notes */}
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
-          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)' }}>📋 Нотатка</span>
+          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}><ClipboardIcon size={16} /> Нотатка</span>
           {!editingNotes && !isPastLesson && (
             <button 
               onClick={() => setEditingNotes(true)}
               style={{ fontSize: '13px', color: 'var(--tg-link-color)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
             >
-              ✏️ Редагувати
+              Редагувати
             </button>
           )}
         </div>
@@ -462,7 +467,7 @@ export default function LessonDetailPage() {
             />
             <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
               <button onClick={saveLessonDetails} disabled={saving} className="tg-button" style={{ flex: 1 }}>
-                {saving ? 'Збереження...' : '💾 Зберегти'}
+                {saving ? 'Збереження...' : 'Зберегти'}
               </button>
               <button 
                 onClick={() => {
@@ -485,7 +490,7 @@ export default function LessonDetailPage() {
       {/* Students attendance */}
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <h2 style={{ fontSize: '17px', fontWeight: 600, marginBottom: 'var(--space-md)', color: 'var(--tg-text-color)' }}>
-          👥 Відвідуваність ({students.length} студентів)
+          Відвідуваність ({students.length})
         </h2>
         
         {students.length === 0 ? (
@@ -539,10 +544,10 @@ export default function LessonDetailPage() {
                       <strong>Відпрацьовує:</strong> {formatDate(student.original_lesson_date)}
                     </div>
                     {student.original_course_title && (
-                      <div style={{ marginBottom: '2px' }}>📚 {student.original_course_title}</div>
+                      <div style={{ marginBottom: '2px' }}>{student.original_course_title}</div>
                     )}
                     {student.original_lesson_topic ? (
-                      <div>📝 {student.original_lesson_topic}</div>
+                      <div>{student.original_lesson_topic}</div>
                     ) : (
                       <div style={{ fontStyle: 'italic' }}>Тема не вказана</div>
                     )}
@@ -562,7 +567,7 @@ export default function LessonDetailPage() {
       {/* Report info - shown only after lesson is completed */}
       {lesson.reported_at && (
         <div className="tg-success-message" style={{ marginBottom: 'var(--space-lg)' }}>
-          ✅ <strong>Дані збережено:</strong><br/>
+          <CheckCircleIcon size={16} /> <strong>Дані збережено:</strong><br/>
           {formatDateTimeKyiv(lesson.reported_at)}
           {lesson.reported_via === 'telegram' && ' через Telegram'}
           {lesson.reported_by_name && <><br/>Викладач: {lesson.reported_by_name}</>}

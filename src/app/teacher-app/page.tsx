@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv } from '@/lib/date-utils';
+import { AlertTriangleIcon, CalendarIcon, UsersIcon, FileTextIcon, CheckCircleIcon, RefreshIcon } from '@/components/Icons';
 
 interface Teacher {
   id: number;
@@ -223,8 +224,8 @@ export default function TeacherAppPage() {
     return (
       <div style={{ padding: '20px' }}>
         <div className="tg-error">
-          <p className="tg-error-title">
-            ⚠️ Помилка відкриття
+          <p className="tg-error-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangleIcon size={18} /> Помилка відкриття
           </p>
           <p className="tg-error-text">
             {!isInWebView 
@@ -238,11 +239,11 @@ export default function TeacherAppPage() {
               <ol style={{ paddingLeft: '20px', margin: 0 }}>
                 <li style={{ marginBottom: '6px' }}>Відкрийте Telegram додаток на телефоні або комп'ютері</li>
                 <li style={{ marginBottom: '6px' }}>Знайдіть свій бот (@your_bot)</li>
-                <li style={{ marginBottom: '6px' }}>Натисніть кнопку "📋 Кабінет викладача" в меню бота</li>
+                <li style={{ marginBottom: '6px' }}>Натисніть кнопку &quot;Кабінет викладача&quot; в меню бота</li>
                 <li>Або відкрийте через кнопку в повідомленні про нагадування</li>
               </ol>
               <p style={{ marginTop: '12px', fontSize: '13px', opacity: 0.8 }}>
-                ❌ Не копіюйте посилання в браузер — воно працює тільки в Telegram!
+                Не копіюйте посилання в браузер — воно працює тільки в Telegram!
               </p>
             </div>
           )}
@@ -256,7 +257,7 @@ export default function TeacherAppPage() {
               width: '100%'
             }}
           >
-            🔄 Оновити
+            Оновити
           </button>
         </div>
         
@@ -294,7 +295,7 @@ export default function TeacherAppPage() {
       {/* Header */}
       <div className="tg-header">
         <h1 className="tg-header-title">
-          👋 Вітаю, {teacher?.name}
+          Вітаю, {teacher?.name}
         </h1>
         <p className="tg-header-subtitle">Розклад занять на цей тиждень</p>
       </div>
@@ -359,7 +360,7 @@ export default function TeacherAppPage() {
       <div>
         {dayLessons.length === 0 ? (
           <div className="tg-empty">
-            <div className="tg-empty-icon">📅</div>
+            <div className="tg-empty-icon"><CalendarIcon size={40} /></div>
             <p>Немає занять на цей день</p>
             {lessons.length > 0 && (
               <p style={{ fontSize: '12px', marginTop: '8px', color: 'var(--tg-text-secondary)' }}>
@@ -387,7 +388,7 @@ export default function TeacherAppPage() {
 
               <div style={{ marginBottom: '6px' }}>
                 <span className="tg-lesson-group">
-                  {lesson.is_makeup ? '🔄 Відпрацювання' : (lesson.group_title || 'Індивідуальне заняття')}
+                  {lesson.is_makeup ? 'Відпрацювання' : (lesson.group_title || 'Індивідуальне заняття')}
                 </span>
               </div>
 
@@ -395,20 +396,20 @@ export default function TeacherAppPage() {
                 <span className="tg-lesson-course">
                   {lesson.is_makeup ? '' : (lesson.course_title || 'Без курсу')}
                 </span>
-                <span style={{ fontSize: '13px', color: 'var(--tg-text-secondary)' }}>
-                  👥 {lesson.student_count} студентів
+                <span style={{ fontSize: '13px', color: 'var(--tg-text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <UsersIcon size={14} /> {lesson.student_count}
                 </span>
               </div>
 
               {lesson.topic && (
-                <div className="tg-lesson-topic">
-                  📝 {lesson.topic}
+                <div className="tg-lesson-topic" style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                  <FileTextIcon size={14} style={{ marginTop: '2px' }} /> {lesson.topic}
                 </div>
               )}
 
               {lesson.reported_at && (
                 <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--tg-success)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  ✅ Звіт від {formatDateKyiv(lesson.reported_at)}
+                  <CheckCircleIcon size={14} /> Звіт від {formatDateKyiv(lesson.reported_at)}
                 </div>
               )}
             </div>

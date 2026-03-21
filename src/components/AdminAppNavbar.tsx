@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { CalendarIcon, BellIcon, UserIcon } from '@/components/Icons';
 
 interface AdminAppNavbarProps {
   unreadCount?: number;
@@ -14,20 +15,20 @@ export default function AdminAppNavbar({ unreadCount = 0 }: AdminAppNavbarProps)
     {
       href: '/admin-app',
       label: 'Розклад',
-      icon: '📅',
+      icon: CalendarIcon,
       active: pathname === '/admin-app',
     },
     {
       href: '/admin-app/notifications',
       label: 'Сповіщення',
-      icon: '🔔',
+      icon: BellIcon,
       active: pathname === '/admin-app/notifications',
       badge: unreadCount > 0 ? unreadCount : 0,
     },
     {
       href: '/admin-app/profile',
       label: 'Профіль',
-      icon: '👤',
+      icon: UserIcon,
       active: pathname === '/admin-app/profile',
     },
   ];
@@ -74,7 +75,6 @@ export default function AdminAppNavbar({ unreadCount = 0 }: AdminAppNavbarProps)
         }
 
         .admin-navbar-icon {
-          font-size: 20px;
           margin-bottom: 4px;
           position: relative;
         }
@@ -107,21 +107,24 @@ export default function AdminAppNavbar({ unreadCount = 0 }: AdminAppNavbarProps)
       `}</style>
 
       <nav className="admin-navbar">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`admin-navbar-item ${item.active ? 'active' : ''}`}
-          >
-            <span className="admin-navbar-icon">
-              {item.icon}
-              {item.badge ? (
-                <span className="admin-navbar-badge">{item.badge > 9 ? '9+' : item.badge}</span>
-              ) : null}
-            </span>
-            <span className="admin-navbar-label">{item.label}</span>
-          </Link>
-        ))}
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`admin-navbar-item ${item.active ? 'active' : ''}`}
+            >
+              <span className="admin-navbar-icon">
+                <Icon size={22} />
+                {item.badge ? (
+                  <span className="admin-navbar-badge">{item.badge > 9 ? '9+' : item.badge}</span>
+                ) : null}
+              </span>
+              <span className="admin-navbar-label">{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
     </>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTelegramInitData } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv } from '@/lib/date-utils';
+import { CalendarIcon, UserIcon, UsersIcon, FileTextIcon } from '@/components/Icons';
 
 interface Lesson {
   id: number;
@@ -199,7 +200,7 @@ export default function AdminAppSchedulePage() {
       {/* Lessons */}
       {displayedLessons.length === 0 ? (
         <div className="tg-empty">
-          <div className="tg-empty-icon">📅</div>
+          <div className="tg-empty-icon"><CalendarIcon size={40} /></div>
           <div>Занять немає</div>
         </div>
       ) : (
@@ -239,16 +240,22 @@ export default function AdminAppSchedulePage() {
                 )}
               </div>
               {lesson.teacher_name && (
-                <div className="tg-lesson-course">👤 {lesson.teacher_name}</div>
+                <div className="tg-lesson-course" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <UserIcon size={13} /> {lesson.teacher_name}
+                </div>
               )}
-              <div className="tg-lesson-course">
-                👥 {lesson.student_count} учн.
+              <div className="tg-lesson-course" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <UsersIcon size={13} /> {lesson.student_count} учн.
                 {view === 'week' && (
-                  <span style={{ marginLeft: '8px' }}>📅 {formatDateKyiv(lesson.lesson_date)}</span>
+                  <span style={{ marginLeft: '8px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                    <CalendarIcon size={12} /> {formatDateKyiv(lesson.lesson_date)}
+                  </span>
                 )}
               </div>
               {lesson.topic && (
-                <div className="tg-lesson-topic">📝 {lesson.topic}</div>
+                <div className="tg-lesson-topic" style={{ display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                  <FileTextIcon size={13} style={{ marginTop: '1px' }} /> {lesson.topic}
+                </div>
               )}
             </div>
           );

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { CalendarIcon, BookOpenIcon, UserIcon } from '@/components/Icons';
 
 interface NavbarProps {
   teacherName?: string;
@@ -14,19 +15,19 @@ export default function TeacherAppNavbar({ teacherName }: NavbarProps) {
     {
       href: '/teacher-app',
       label: 'Розклад',
-      icon: '📅',
+      icon: CalendarIcon,
       active: pathname === '/teacher-app',
     },
     {
       href: '/teacher-app/groups',
       label: 'Групи',
-      icon: '📚',
+      icon: BookOpenIcon,
       active: pathname === '/teacher-app/groups',
     },
     {
       href: '/teacher-app/profile',
       label: 'Профіль',
-      icon: '👤',
+      icon: UserIcon,
       active: pathname === '/teacher-app/profile',
     },
   ];
@@ -72,7 +73,6 @@ export default function TeacherAppNavbar({ teacherName }: NavbarProps) {
         }
 
         .teacher-navbar-icon {
-          font-size: 20px;
           margin-bottom: 4px;
         }
 
@@ -88,16 +88,19 @@ export default function TeacherAppNavbar({ teacherName }: NavbarProps) {
       `}</style>
 
       <nav className="teacher-navbar">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`teacher-navbar-item ${item.active ? 'active' : ''}`}
-          >
-            <span className="teacher-navbar-icon">{item.icon}</span>
-            <span className="teacher-navbar-label">{item.label}</span>
-          </Link>
-        ))}
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`teacher-navbar-item ${item.active ? 'active' : ''}`}
+            >
+              <span className="teacher-navbar-icon"><Icon size={22} /></span>
+              <span className="teacher-navbar-label">{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
     </>
   );

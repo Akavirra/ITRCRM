@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { TelegramWebAppProvider, useTelegramInitData, saveInitData } from '@/components/TelegramWebAppProvider';
+import { CpuIcon, ShieldIcon, BookOpenIcon, XCircleIcon } from '@/components/Icons';
 
 const ROLE_KEY = 'tg_app_role';
 
@@ -88,7 +89,7 @@ function RoleSwitcher() {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', padding: '24px', background: '#f8fafc' }}>
         <div style={{ background: '#fef2f2', border: '1px solid #ef4444', borderRadius: '14px', padding: '24px', textAlign: 'center', maxWidth: '320px' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>🚫</div>
+          <div style={{ marginBottom: '12px', color: '#ef4444' }}><XCircleIcon size={36} /></div>
           <div style={{ fontWeight: 600, color: '#ef4444', fontSize: '16px', marginBottom: '8px' }}>Доступ заборонено</div>
           <div style={{ color: '#9ca3af', fontSize: '14px' }}>{error}</div>
         </div>
@@ -103,7 +104,7 @@ function RoleSwitcher() {
       minHeight: '100vh', padding: '32px', background: '#f8fafc',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
     }}>
-      <div style={{ fontSize: '40px', marginBottom: '16px' }}>🤖</div>
+      <div style={{ marginBottom: '16px', color: '#3b82f6' }}><CpuIcon size={44} /></div>
       <div style={{ fontSize: '22px', fontWeight: 700, color: '#1e293b', marginBottom: '8px' }}>IT Robotics CRM</div>
       <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '40px' }}>Оберіть режим входу</div>
 
@@ -118,7 +119,7 @@ function RoleSwitcher() {
               boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
             }}
           >
-            <div style={{ fontSize: '24px', marginBottom: '8px' }}>🛡️</div>
+            <div style={{ marginBottom: '8px' }}><ShieldIcon size={26} color="white" /></div>
             <div style={{ fontWeight: 700, fontSize: '16px', marginBottom: '4px' }}>Адміністратор</div>
             {adminName && <div style={{ fontSize: '13px', opacity: 0.85 }}>{adminName}</div>}
             <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>Розклад, сповіщення, профіль</div>
@@ -135,7 +136,7 @@ function RoleSwitcher() {
               boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
             }}
           >
-            <div style={{ fontSize: '24px', marginBottom: '8px' }}>📚</div>
+            <div style={{ marginBottom: '8px' }}><BookOpenIcon size={26} color="white" /></div>
             <div style={{ fontWeight: 700, fontSize: '16px', marginBottom: '4px' }}>Викладач</div>
             {teacherName && <div style={{ fontSize: '13px', opacity: 0.85 }}>{teacherName}</div>}
             <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>Мої групи, розклад, заняття</div>

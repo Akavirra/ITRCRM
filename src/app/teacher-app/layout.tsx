@@ -658,7 +658,6 @@ const globalStyles = `
   }
 
   .teacher-navbar-icon {
-    font-size: 20px;
     margin-bottom: 4px;
   }
 

@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useTelegramInitData } from '@/components/TelegramWebAppProvider';
+import {
+  UserIcon, BarChartIcon, BookOpenIcon, DollarIcon, SparklesIcon,
+  InboxIcon, PhoneIcon, SendIcon, SmartphoneIcon, MailIcon, InfoIcon,
+  CalendarIcon, CameraIcon, LoaderIcon, UploadIcon, TrashIcon, AlertTriangleIcon,
+  ChevronDownIcon, ChevronRightIcon
+} from '@/components/Icons';
 
 interface Teacher {
   id: number;
@@ -232,7 +238,7 @@ export default function TeacherProfilePage() {
     return (
       <div style={{ padding: '20px' }}>
         <div className="tg-error">
-          <p className="tg-error-title">⚠️ Помилка</p>
+          <p className="tg-error-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><AlertTriangleIcon size={18} /> Помилка</p>
           <p className="tg-error-text">{error}</p>
         </div>
       </div>
@@ -245,7 +251,7 @@ export default function TeacherProfilePage() {
     <div>
       {/* Header */}
       <div className="tg-header">
-        <h1 className="tg-header-title">👤 Профіль</h1>
+        <h1 className="tg-header-title">Профіль</h1>
         <p className="tg-header-subtitle">Інформація про викладача</p>
       </div>
 
@@ -306,7 +312,7 @@ export default function TeacherProfilePage() {
               transition: 'opacity 0.2s',
             }}
           >
-            {photoLoading ? '⏳' : '📷'}
+            {photoLoading ? <LoaderIcon size={14} /> : <CameraIcon size={14} />}
           </button>
         </div>
 
@@ -326,7 +332,7 @@ export default function TeacherProfilePage() {
                 fontWeight: 500,
               }}
             >
-              📤 {teacher?.photo_url ? 'Замінити фото' : 'Завантажити фото'}
+              {teacher?.photo_url ? 'Замінити фото' : 'Завантажити фото'}
             </button>
             {teacher?.photo_url && (
               <button
@@ -342,7 +348,7 @@ export default function TeacherProfilePage() {
                   fontWeight: 500,
                 }}
               >
-                🗑️ Видалити фото
+                Видалити фото
               </button>
             )}
             <button
@@ -459,7 +465,7 @@ export default function TeacherProfilePage() {
 
       {/* ── Monthly Stats Section ── */}
       <div className="tg-section">
-        <h3 className="tg-section-title">📊 Статистика місяця</h3>
+        <h3 className="tg-section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><BarChartIcon size={18} /> Статистика місяця</h3>
 
         {/* Month Navigator */}
         <div style={{
@@ -546,7 +552,7 @@ export default function TeacherProfilePage() {
                 textAlign: 'center',
                 boxShadow: 'var(--shadow-sm)',
               }}>
-                <div style={{ fontSize: '26px', marginBottom: '6px' }}>📚</div>
+                <div style={{ marginBottom: '6px', color: 'var(--tg-link-color)' }}><BookOpenIcon size={22} /></div>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--tg-link-color)', lineHeight: 1 }}>
                   {monthStats?.lessons_count ?? 0}
                 </div>
@@ -564,7 +570,7 @@ export default function TeacherProfilePage() {
                 textAlign: 'center',
                 boxShadow: 'var(--shadow-sm)',
               }}>
-                <div style={{ fontSize: '26px', marginBottom: '6px' }}>👤</div>
+                <div style={{ marginBottom: '6px', color: 'var(--tg-link-color)' }}><UserIcon size={22} /></div>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--tg-link-color)', lineHeight: 1 }}>
                   {monthStats?.students_count ?? 0}
                 </div>
@@ -582,7 +588,7 @@ export default function TeacherProfilePage() {
                 textAlign: 'center',
                 boxShadow: 'var(--shadow-sm)',
               }}>
-                <div style={{ fontSize: '26px', marginBottom: '6px' }}>💰</div>
+                <div style={{ marginBottom: '6px', color: 'var(--tg-success)' }}><DollarIcon size={22} /></div>
                 <div style={{
                   fontSize: monthStats && monthStats.salary >= 10000 ? '17px' : '22px',
                   fontWeight: 700,
@@ -609,8 +615,8 @@ export default function TeacherProfilePage() {
                 justifyContent: 'space-between',
                 alignItems: 'center',
               }}>
-                <span style={{ fontSize: '13px', color: 'var(--tg-warning)', fontWeight: 500 }}>
-                  ✨ Додаткові нарахування
+                <span style={{ fontSize: '13px', color: 'var(--tg-warning)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <SparklesIcon size={14} /> Додаткові нарахування
                 </span>
                 <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--tg-warning)' }}>
                   +{formatMoney(monthStats.extras_total)}
@@ -641,7 +647,7 @@ export default function TeacherProfilePage() {
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  <span style={{ fontSize: '12px' }}>{showLessons ? '▲' : '▼'}</span>
+                  <ChevronDownIcon size={14} style={{ transform: showLessons ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
                   <span>{showLessons ? 'Сховати заняття' : `Деталі занять (${monthStats.lessons_count})`}</span>
                 </button>
 
@@ -699,7 +705,7 @@ export default function TeacherProfilePage() {
                           <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--tg-success)' }}>
                             {formatMoney(lesson.salary)}
                           </span>
-                          <span style={{ fontSize: '16px', color: 'var(--tg-hint-color)' }}>›</span>
+                          <ChevronRightIcon size={16} color="var(--tg-hint-color)" />
                         </div>
                       </Link>
                     ))}
@@ -720,7 +726,7 @@ export default function TeacherProfilePage() {
                         }}
                       >
                         <span style={{ fontSize: '13px', color: 'var(--tg-text-color)' }}>
-                          ✨ {item.description}
+                          {item.description}
                         </span>
                         <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--tg-warning)' }}>
                           +{formatMoney(item.amount)}
@@ -751,7 +757,7 @@ export default function TeacherProfilePage() {
               </div>
             ) : (
               <div className="tg-empty">
-                <div className="tg-empty-icon">📭</div>
+                <div className="tg-empty-icon"><InboxIcon size={40} /></div>
                 <p>Немає проведених занять за {MONTH_NAMES_GENITIVE[statsMonth - 1].toLowerCase()} {statsYear}</p>
               </div>
             )}
@@ -761,10 +767,10 @@ export default function TeacherProfilePage() {
 
       {/* Contact Information */}
       <div className="tg-section">
-        <h3 className="tg-section-title">📞 Контактна інформація</h3>
+        <h3 className="tg-section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><PhoneIcon size={18} /> Контактна інформація</h3>
         <div className="tg-card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', borderBottom: '1px solid var(--tg-border)' }}>
-            <div style={{ fontSize: '20px' }}>✈️</div>
+            <div style={{ color: 'var(--tg-link-color)' }}><SendIcon size={20} /></div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '12px', color: 'var(--tg-text-secondary)', marginBottom: '2px' }}>Telegram</div>
               <div style={{ fontSize: '14px', fontWeight: 500 }}>
@@ -773,7 +779,7 @@ export default function TeacherProfilePage() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', borderBottom: '1px solid var(--tg-border)' }}>
-            <div style={{ fontSize: '20px' }}>📱</div>
+            <div style={{ color: 'var(--tg-link-color)' }}><SmartphoneIcon size={20} /></div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '12px', color: 'var(--tg-text-secondary)', marginBottom: '2px' }}>Телефон</div>
               <div style={{ fontSize: '14px', fontWeight: 500 }}>
@@ -782,7 +788,7 @@ export default function TeacherProfilePage() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0' }}>
-            <div style={{ fontSize: '20px' }}>📧</div>
+            <div style={{ color: 'var(--tg-link-color)' }}><MailIcon size={20} /></div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '12px', color: 'var(--tg-text-secondary)', marginBottom: '2px' }}>Email</div>
               <div style={{ fontSize: '14px', fontWeight: 500 }}>
@@ -795,10 +801,10 @@ export default function TeacherProfilePage() {
 
       {/* Account Info */}
       <div className="tg-section">
-        <h3 className="tg-section-title">ℹ️ Інформація про акаунт</h3>
+        <h3 className="tg-section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><InfoIcon size={18} /> Інформація про акаунт</h3>
         <div className="tg-card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0' }}>
-            <div style={{ fontSize: '20px' }}>📅</div>
+            <div style={{ color: 'var(--tg-link-color)' }}><CalendarIcon size={20} /></div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '12px', color: 'var(--tg-text-secondary)', marginBottom: '2px' }}>Дата реєстрації</div>
               <div style={{ fontSize: '14px', fontWeight: 500 }}>
