@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { TelegramWebAppProvider, useTelegramInitData } from '@/components/TelegramWebAppProvider';
+import { TelegramWebAppProvider, useTelegramInitData, saveInitData } from '@/components/TelegramWebAppProvider';
 
 const ROLE_KEY = 'tg_app_role';
 
@@ -38,6 +38,7 @@ function RoleSwitcher() {
 
         // If only one role — redirect immediately
         if (detectedRoles.length === 1) {
+          if (initData) saveInitData(initData);
           const dest = detectedRoles[0] === 'admin' ? '/admin-app' : '/teacher-app';
           router.replace(dest);
           return;
@@ -47,6 +48,7 @@ function RoleSwitcher() {
         if (detectedRoles.length > 1) {
           const saved = localStorage.getItem(ROLE_KEY);
           if (saved === 'admin' || saved === 'teacher') {
+            if (initData) saveInitData(initData);
             router.replace(saved === 'admin' ? '/admin-app' : '/teacher-app');
             return;
           }
@@ -63,6 +65,9 @@ function RoleSwitcher() {
   }, [initData, isLoading, router]);
 
   const choose = (role: 'admin' | 'teacher') => {
+    // Explicitly re-save initData before cross-route-group navigation
+    // (some WebViews like TDesktop may lose sessionStorage between route groups)
+    if (initData) saveInitData(initData);
     localStorage.setItem(ROLE_KEY, role);
     router.push(role === 'admin' ? '/admin-app' : '/teacher-app');
   };

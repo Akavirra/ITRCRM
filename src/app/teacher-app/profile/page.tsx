@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTelegramInitData } from '@/components/TelegramWebAppProvider';
+import { useTelegramInitData, saveInitData } from '@/components/TelegramWebAppProvider';
 
 interface Teacher {
   id: number;
@@ -817,6 +817,7 @@ export default function TeacherProfilePage() {
       <div style={{ marginTop: '24px' }}>
         <button
           onClick={() => {
+            if (initData) saveInitData(initData);
             localStorage.removeItem('tg_app_role');
             router.push('/tg-app');
           }}

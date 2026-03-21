@@ -89,23 +89,27 @@ const TelegramWebAppContext = createContext<TelegramWebAppContextType | null>(nu
 // Check if running in Telegram WebView
 const checkIsTelegramWebView = (): boolean => {
   if (typeof window === 'undefined') return false;
-  
+
   const userAgent = navigator.userAgent.toLowerCase();
-  
+
   // Check for Telegram-related user agents
   const telegramPatterns = [
     /telegram/i,
     /webview/i,
     /tdesktop/i,
   ];
-  
+
   // Also check for Telegram-specific URL parameters
   const urlParams = new URLSearchParams(window.location.search);
-  const hasTelegramParams = urlParams.has('tgWebAppData') || 
+  const hasTelegramParams = urlParams.has('tgWebAppData') ||
                             urlParams.has('tgWebAppVersion') ||
                             urlParams.has('tgwa_data');
-  
-  return telegramPatterns.some(pattern => pattern.test(userAgent)) || hasTelegramParams;
+
+  // Also check if we have saved initData (means we were in TG recently,
+  // even if UA doesn't match — e.g. Telegram Desktop on Windows)
+  const hasSavedData = getSavedInitData() !== null;
+
+  return telegramPatterns.some(pattern => pattern.test(userAgent)) || hasTelegramParams || hasSavedData;
 };
 
 const INIT_DATA_KEY = 'tg_init_data';
@@ -114,7 +118,8 @@ const INIT_DATA_TS_KEY = 'tg_init_data_ts';
 const INIT_DATA_TTL = 24 * 60 * 60 * 1000; // 24 hours (matches server auth_date validation)
 
 // Save initData to both sessionStorage and localStorage for cross-navigation persistence
-const saveInitData = (data: string) => {
+// Exported so callers can explicitly save before cross-route-group navigation
+export const saveInitData = (data: string) => {
   try { sessionStorage.setItem(INIT_DATA_KEY, data); } catch {}
   try {
     localStorage.setItem(INIT_DATA_LS_KEY, data);
