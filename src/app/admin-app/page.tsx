@@ -58,7 +58,7 @@ export default function AdminAppSchedulePage() {
       setToday(data.today || '');
       setWeekStart(data.weekStart || '');
       setWeekEnd(data.weekEnd || '');
-      if (!selectedDate) setSelectedDate(data.today || '');
+      setSelectedDate(data.today || '');
     } catch {
       setError('Не вдалося завантажити розклад');
     } finally {
@@ -86,10 +86,10 @@ export default function AdminAppSchedulePage() {
     return dates;
   })();
 
-  const formatDayLabel = (dateStr: string) => {
+  const getDayParts = (dateStr: string) => {
     const d = new Date(dateStr + 'T00:00:00');
     const days = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-    return `${days[d.getDay()]}, ${d.getDate()}`;
+    return { dayName: days[d.getDay()], dateNum: d.getDate() };
   };
 
   const getDateKey = (d: string) => (d || '').slice(0, 10);
@@ -177,6 +177,7 @@ export default function AdminAppSchedulePage() {
       {view === 'week' && (
         <div className="tg-day-selector">
           {weekDates.map(date => {
+            const { dayName, dateNum } = getDayParts(date);
             const count = lessons.filter(l => getDateKey(l.lesson_date) === date).length;
             return (
               <button
@@ -184,12 +185,11 @@ export default function AdminAppSchedulePage() {
                 className={`tg-day-btn ${selectedDate === date ? 'active' : ''}`}
                 onClick={() => setSelectedDate(date)}
               >
-                <div style={{ fontSize: '11px', fontWeight: 600 }}>{formatDayLabel(date)}</div>
-                {date === today && <div className="tg-day-btn-today">Сьогодні</div>}
+                <div className="tg-day-name">{dayName}</div>
+                <div className="tg-day-num">{dateNum}</div>
+                {date === today && <div className="tg-day-dot"></div>}
                 {count > 0 && (
-                  <div style={{ fontSize: '11px', marginTop: '2px', opacity: 0.7 }}>
-                    {count} зан.
-                  </div>
+                  <div className="tg-day-count">{count}</div>
                 )}
               </button>
             );

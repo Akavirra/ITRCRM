@@ -69,13 +69,11 @@ export default function TeacherAppPage() {
     return dates;
   };
 
-  // Format date for display
-  const formatDate = (dateStr: string): string => {
-    const date = new Date(dateStr);
+  // Format date parts for display
+  const getDayParts = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
     const days = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-    const day = days[date.getDay()];
-    const dateNum = date.getDate();
-    return `${day}, ${dateNum}`;
+    return { dayName: days[date.getDay()], dateNum: date.getDate() };
   };
 
   // Check if date is today
@@ -168,11 +166,9 @@ export default function TeacherAppPage() {
       setTeacher(data.teacher);
       setLessons(data.lessons);
       
-      // Set selected date to today or first lesson date
+      // Always default to today
       const today = new Date().toISOString().split('T')[0];
-      // Extract date part from lesson_date (format: "2026-02-23T20:00:00.000Z")
-      const hasLessonsToday = data.lessons.some(l => (l.lesson_date || '').slice(0, 10) === today);
-      setSelectedDate(hasLessonsToday ? today : data.weekStart);
+      setSelectedDate(today);
       
       setLoading(false);
     };
@@ -300,56 +296,24 @@ export default function TeacherAppPage() {
         <p className="tg-header-subtitle">Розклад занять на цей тиждень</p>
       </div>
 
-      {/* Day Selector - Grid for all days visible */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(7, 1fr)', 
-        gap: 'var(--space-xs)', 
-        marginBottom: 'var(--space-lg)'
-      }}>
+      {/* Day Selector */}
+      <div className="tg-day-selector">
         {weekDates.map(date => {
+          const { dayName, dateNum } = getDayParts(date);
           const dayLessonsCount = lessons.filter(l => (l.lesson_date || '').slice(0, 10) === date).length;
+          const active = selectedDate === date;
+          const todayDate = isToday(date);
           return (
             <button
               key={date}
+              className={`tg-day-btn ${active ? 'active' : ''}`}
               onClick={() => setSelectedDate(date)}
-              style={{
-                padding: '12px 4px',
-                minHeight: '70px',
-                borderRadius: 'var(--radius-md)',
-                background: selectedDate === date ? 'var(--tg-button-color)' : 'var(--tg-surface)',
-                color: selectedDate === date ? 'var(--tg-button-text-color)' : 'var(--tg-text-color)',
-                fontSize: '12px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                border: selectedDate === date ? 'none' : '1px solid var(--tg-border)',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '2px',
-                position: 'relative'
-              }}
             >
+              <div className="tg-day-name">{dayName}</div>
+              <div className="tg-day-num">{dateNum}</div>
+              {todayDate && <div className="tg-day-dot"></div>}
               {dayLessonsCount > 0 && (
-                <div style={{ 
-                  position: 'absolute', 
-                  top: '6px', 
-                  right: '6px',
-                  background: selectedDate === date ? 'rgba(255,255,255,0.3)' : 'var(--tg-primary-bg)',
-                  color: selectedDate === date ? 'white' : 'var(--tg-link-color)',
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  padding: '2px 5px',
-                  borderRadius: 'var(--radius-full)'
-                }}>
-                  {dayLessonsCount}
-                </div>
-              )}
-              <div style={{ fontWeight: 600 }}>{formatDate(date)}</div>
-              {isToday(date) && (
-                <div style={{ fontSize: '9px', opacity: 0.8, textTransform: 'uppercase' }}>Сьогодні</div>
+                <div className="tg-day-count">{dayLessonsCount}</div>
               )}
             </button>
           );

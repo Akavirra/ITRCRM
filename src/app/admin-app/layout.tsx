@@ -224,29 +224,24 @@ const sharedStyles = `
   /* Day selector */
   .tg-day-selector {
     display: flex;
-    gap: var(--space-sm);
-    overflow-x: auto;
-    padding-bottom: var(--space-md);
+    gap: 6px;
     margin-bottom: var(--space-lg);
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .tg-day-selector::-webkit-scrollbar {
-    display: none;
   }
 
   .tg-day-btn {
-    flex-shrink: 0;
     flex: 1;
-    padding: 10px 8px;
+    padding: 8px 4px 10px;
     border-radius: var(--radius-lg);
     background: var(--tg-surface);
     border: 1px solid var(--tg-border);
     cursor: pointer;
     text-align: center;
-    min-width: 0;
     transition: all 0.2s ease;
     color: var(--tg-text-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
   }
 
   .tg-day-btn:hover {
@@ -260,12 +255,35 @@ const sharedStyles = `
     box-shadow: var(--shadow-md);
   }
 
-  .tg-day-btn-today {
-    font-size: 9px;
+  .tg-day-name {
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0.7;
     text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .tg-day-num {
+    font-size: 18px;
     font-weight: 600;
-    letter-spacing: 0.03em;
-    opacity: 0.8;
+    line-height: 1.2;
+  }
+
+  .tg-day-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--tg-link-color);
+  }
+
+  .tg-day-btn.active .tg-day-dot {
+    background: var(--tg-button-text-color);
+  }
+
+  .tg-day-count {
+    font-size: 10px;
+    font-weight: 600;
+    opacity: 0.6;
   }
 
   /* Lesson card details */
