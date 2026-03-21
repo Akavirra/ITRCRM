@@ -73,16 +73,20 @@ export async function GET(request: NextRequest) {
 
     const lessons = await query(
       `SELECT
-        l.id, l.public_id, l.group_id, l.course_id, l.lesson_date,
+        l.id, l.public_id, l.group_id, l.course_id,
+        TO_CHAR(l.lesson_date, 'YYYY-MM-DD') as lesson_date,
         l.start_datetime, l.end_datetime, l.status, l.topic, l.notes,
         COALESCE(l.is_makeup, FALSE) as is_makeup,
+        COALESCE(l.is_trial, FALSE) as is_trial,
         g.title as group_title,
         c.title as course_title,
         u.name as teacher_name,
-        COALESCE(
-          (SELECT COUNT(*) FROM student_groups sg WHERE sg.group_id = g.id AND sg.is_active = TRUE),
-          (SELECT COUNT(*) FROM attendance a WHERE a.lesson_id = l.id)
-        ) as student_count
+        CASE
+          WHEN l.group_id IS NOT NULL THEN
+            (SELECT COUNT(*)::int FROM student_groups sg WHERE sg.group_id = l.group_id AND sg.is_active = TRUE)
+          ELSE
+            (SELECT COUNT(*)::int FROM attendance a WHERE a.lesson_id = l.id)
+        END as student_count
        FROM lessons l
        LEFT JOIN groups g ON l.group_id = g.id
        LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id

@@ -18,6 +18,7 @@ interface Lesson {
   teacher_name: string | null;
   student_count: number;
   is_makeup: boolean;
+  is_trial: boolean;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -90,8 +91,10 @@ export default function AdminAppSchedulePage() {
     return `${days[d.getDay()]}, ${d.getDate()}`;
   };
 
+  const getDateKey = (d: string) => (d || '').slice(0, 10);
+
   const displayedLessons = view === 'week'
-    ? lessons.filter(l => l.lesson_date.startsWith(selectedDate))
+    ? lessons.filter(l => getDateKey(l.lesson_date) === selectedDate)
     : lessons;
 
   if (initLoading) {
@@ -173,7 +176,7 @@ export default function AdminAppSchedulePage() {
       {view === 'week' && (
         <div className="tg-day-selector">
           {weekDates.map(date => {
-            const count = lessons.filter(l => l.lesson_date.startsWith(date)).length;
+            const count = lessons.filter(l => getDateKey(l.lesson_date) === date).length;
             return (
               <button
                 key={date}
@@ -200,39 +203,57 @@ export default function AdminAppSchedulePage() {
           <div>Занять немає</div>
         </div>
       ) : (
-        displayedLessons.map(lesson => (
-          <div key={lesson.id} className="tg-lesson-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-              <div className="tg-lesson-time">
-                {formatTimeKyiv(lesson.start_datetime)} – {formatTimeKyiv(lesson.end_datetime)}
-              </div>
-              <span className={`tg-badge ${STATUS_BADGE[lesson.status] || 'tg-badge-info'}`}>
-                {STATUS_LABELS[lesson.status] || lesson.status}
-              </span>
-            </div>
-            <div className="tg-lesson-group">
-              {lesson.group_title || lesson.course_title || 'Індивідуальне'}
-              {lesson.is_makeup && (
-                <span className="tg-badge tg-badge-warning" style={{ marginLeft: '8px', fontSize: '11px' }}>
-                  Відпрацювання
+        displayedLessons.map(lesson => {
+          const isIndividual = !lesson.group_id;
+          return (
+            <div key={lesson.id} className="tg-lesson-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div className="tg-lesson-time">
+                  {formatTimeKyiv(lesson.start_datetime)} – {formatTimeKyiv(lesson.end_datetime)}
+                </div>
+                <span className={`tg-badge ${STATUS_BADGE[lesson.status] || 'tg-badge-info'}`}>
+                  {STATUS_LABELS[lesson.status] || lesson.status}
                 </span>
+              </div>
+              <div className="tg-lesson-group">
+                {lesson.group_title || lesson.course_title || 'Без назви'}
+              </div>
+              {/* Lesson type badges */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                <span className="tg-badge" style={{
+                  background: isIndividual ? '#f5f3ff' : 'var(--tg-primary-bg)',
+                  color: isIndividual ? '#7c3aed' : 'var(--tg-link-color)',
+                  fontSize: '11px',
+                }}>
+                  {isIndividual ? 'Індивідуальне' : 'Групове'}
+                </span>
+                {lesson.is_makeup && (
+                  <span className="tg-badge tg-badge-warning" style={{ fontSize: '11px' }}>
+                    Відпрацювання
+                  </span>
+                )}
+                {lesson.is_trial && (
+                  <span className="tg-badge" style={{ background: '#fdf4ff', color: '#a855f7', fontSize: '11px' }}>
+                    Пробне
+                  </span>
+                )}
+              </div>
+              {lesson.teacher_name && (
+                <div className="tg-lesson-course">👤 {lesson.teacher_name}</div>
+              )}
+              <div className="tg-lesson-course">
+                👥 {lesson.student_count} учн.
+                {view === 'week' && (
+                  <span style={{ marginLeft: '8px' }}>📅 {formatDateKyiv(lesson.lesson_date)}</span>
+                )}
+              </div>
+              {lesson.topic && (
+                <div className="tg-lesson-topic">📝 {lesson.topic}</div>
               )}
             </div>
-            {lesson.teacher_name && (
-              <div className="tg-lesson-course">👤 {lesson.teacher_name}</div>
-            )}
-            <div className="tg-lesson-course">
-              👥 {lesson.student_count} учн.
-              {view === 'week' && (
-                <span style={{ marginLeft: '8px' }}>📅 {formatDateKyiv(lesson.lesson_date + 'T00:00:00')}</span>
-              )}
-            </div>
-            {lesson.topic && (
-              <div className="tg-lesson-topic">📝 {lesson.topic}</div>
-            )}
-          </div>
-        ))
-      )}
+          );
+        }))
+      }
     </div>
   );
 }

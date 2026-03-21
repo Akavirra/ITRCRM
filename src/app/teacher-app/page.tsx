@@ -170,7 +170,7 @@ export default function TeacherAppPage() {
       // Set selected date to today or first lesson date
       const today = new Date().toISOString().split('T')[0];
       // Extract date part from lesson_date (format: "2026-02-23T20:00:00.000Z")
-      const hasLessonsToday = data.lessons.some(l => l.lesson_date.split('T')[0] === today);
+      const hasLessonsToday = data.lessons.some(l => (l.lesson_date || '').slice(0, 10) === today);
       setSelectedDate(hasLessonsToday ? today : data.weekStart);
       
       setLoading(false);
@@ -180,7 +180,7 @@ export default function TeacherAppPage() {
   }, [initData, initLoading, initError, isInWebView, retryCount]);
 
   // Filter lessons for selected date (extract date part from ISO datetime)
-  const dayLessons = lessons.filter(l => l.lesson_date.split('T')[0] === selectedDate);
+  const dayLessons = lessons.filter(l => (l.lesson_date || '').slice(0, 10) === selectedDate);
 
   // Format time from datetime - use proper timezone handling
   const formatTime = (datetime: string): string => {
@@ -307,7 +307,7 @@ export default function TeacherAppPage() {
         marginBottom: 'var(--space-lg)'
       }}>
         {weekDates.map(date => {
-          const dayLessonsCount = lessons.filter(l => l.lesson_date.split('T')[0] === date).length;
+          const dayLessonsCount = lessons.filter(l => (l.lesson_date || '').slice(0, 10) === date).length;
           return (
             <button
               key={date}

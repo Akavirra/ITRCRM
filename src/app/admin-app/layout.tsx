@@ -220,6 +220,81 @@ const sharedStyles = `
   .tg-hint { color: var(--tg-hint-color); font-size: 13px; line-height: 1.5; }
   .tg-section { margin-bottom: var(--space-xl); }
   .tg-section-title { font-size: 18px; font-weight: 600; color: var(--tg-text-color); margin-bottom: var(--space-md); }
+
+  /* Day selector */
+  .tg-day-selector {
+    display: flex;
+    gap: var(--space-sm);
+    overflow-x: auto;
+    padding-bottom: var(--space-md);
+    margin-bottom: var(--space-lg);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tg-day-selector::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tg-day-btn {
+    flex-shrink: 0;
+    flex: 1;
+    padding: 10px 8px;
+    border-radius: var(--radius-lg);
+    background: var(--tg-surface);
+    border: 1px solid var(--tg-border);
+    cursor: pointer;
+    text-align: center;
+    min-width: 0;
+    transition: all 0.2s ease;
+    color: var(--tg-text-color);
+  }
+
+  .tg-day-btn:hover {
+    border-color: var(--tg-link-color);
+  }
+
+  .tg-day-btn.active {
+    background: var(--tg-button-color);
+    color: var(--tg-button-text-color);
+    border-color: var(--tg-button-color);
+    box-shadow: var(--shadow-md);
+  }
+
+  .tg-day-btn-today {
+    font-size: 9px;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    opacity: 0.8;
+  }
+
+  /* Lesson card details */
+  .tg-lesson-time {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--tg-text-color);
+    margin-bottom: var(--space-sm);
+  }
+
+  .tg-lesson-group {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--tg-text-color);
+    margin-bottom: var(--space-xs);
+  }
+
+  .tg-lesson-course {
+    font-size: 13px;
+    color: var(--tg-text-secondary);
+  }
+
+  .tg-lesson-topic {
+    font-size: 13px;
+    color: var(--tg-text-color);
+    margin-top: var(--space-sm);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--tg-border);
+  }
 `;
 
 export default function AdminAppLayout({ children }: { children: ReactNode }) {
