@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
         OR (l.group_id IS NULL AND l.teacher_id = $1)
       )
       AND l.lesson_date BETWEEN $2 AND $3
-      ORDER BY l.lesson_date, l.start_datetime`,
+      ORDER BY lesson_date, l.start_datetime`,
       [teacher.id, startStr, endStr]
     );
 
