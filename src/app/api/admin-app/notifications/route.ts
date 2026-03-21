@@ -54,9 +54,15 @@ export async function GET(request: NextRequest) {
   const admin = await getAdmin(v.telegramId);
   if (!admin) return NextResponse.json({ error: 'Адміна не знайдено' }, { status: 404 });
 
-  const notifications = await getNotificationsForUser(admin.id, 50);
+  // Lightweight mode: only return unread count (for navbar badge polling)
+  const countOnly = request.nextUrl.searchParams.get('count') === 'true';
   const unreadCount = await getUnreadCountForUser(admin.id);
 
+  if (countOnly) {
+    return NextResponse.json({ unreadCount });
+  }
+
+  const notifications = await getNotificationsForUser(admin.id, 50);
   return NextResponse.json({ notifications, unreadCount });
 }
 

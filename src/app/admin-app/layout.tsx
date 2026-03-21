@@ -1,12 +1,35 @@
 'use client';
 
-import { ReactNode, useEffect } from 'react';
-import { TelegramWebAppProvider, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
+import { TelegramWebAppProvider, useTelegramWebApp, useTelegramInitData } from '@/components/TelegramWebAppProvider';
 import AdminAppNavbar from '@/components/AdminAppNavbar';
 import RoleToggle from '@/components/RoleToggle';
 
 function AdminAppContent({ children }: { children: ReactNode }) {
   const { isLoading, colorScheme } = useTelegramWebApp();
+  const { initData, isLoading: initLoading } = useTelegramInitData();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!initData) return;
+    try {
+      const res = await fetch('/api/admin-app/notifications?count=true', {
+        headers: { 'X-Telegram-Init-Data': initData },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch { /* ignore */ }
+  }, [initData]);
+
+  useEffect(() => {
+    if (!initLoading && initData) {
+      fetchUnreadCount();
+      const interval = setInterval(fetchUnreadCount, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [initData, initLoading, fetchUnreadCount]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -63,7 +86,7 @@ function AdminAppContent({ children }: { children: ReactNode }) {
         <RoleToggle currentRole="admin" />
         {children}
       </main>
-      <AdminAppNavbar />
+      <AdminAppNavbar unreadCount={unreadCount} />
       <style jsx global>{sharedStyles}</style>
     </div>
   );
