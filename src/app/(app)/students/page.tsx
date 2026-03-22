@@ -213,6 +213,7 @@ export default function StudentsPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const firstNameInputRef = useRef<HTMLInputElement>(null);
+  const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
   const [user, setUser] = useState<User | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -315,6 +316,12 @@ export default function StudentsPage() {
   };
 
   useEffect(() => {
+    // Load saved view mode
+    const savedViewMode = localStorage.getItem('studentsViewMode');
+    if (savedViewMode === 'compact' || savedViewMode === 'detailed') {
+      setViewMode(savedViewMode);
+    }
+
     const fetchData = async () => {
       try {
         const authRes = await fetch('/api/auth/me');
@@ -1208,6 +1215,39 @@ export default function StudentsPage() {
               </button>
             </div>
             
+            <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '0.5rem', padding: '0.25rem', alignItems: 'center' }}>
+              <button
+                onClick={() => { setViewMode('detailed'); localStorage.setItem('studentsViewMode', 'detailed'); }}
+                style={{
+                  padding: '0.375rem 0.625rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer',
+                  backgroundColor: viewMode === 'detailed' ? 'white' : 'transparent',
+                  color: viewMode === 'detailed' ? '#4f46e5' : '#64748b',
+                  boxShadow: viewMode === 'detailed' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  fontWeight: viewMode === 'detailed' ? 600 : 500, fontSize: '0.75rem', transition: 'all 0.15s',
+                  display: 'flex', alignItems: 'center', gap: '0.375rem'
+                }}
+                title="Детальний вигляд"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                Детально
+              </button>
+              <button
+                onClick={() => { setViewMode('compact'); localStorage.setItem('studentsViewMode', 'compact'); }}
+                style={{
+                  padding: '0.375rem 0.625rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer',
+                  backgroundColor: viewMode === 'compact' ? 'white' : 'transparent',
+                  color: viewMode === 'compact' ? '#4f46e5' : '#64748b',
+                  boxShadow: viewMode === 'compact' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  fontWeight: viewMode === 'compact' ? 600 : 500, fontSize: '0.75rem', transition: 'all 0.15s',
+                  display: 'flex', alignItems: 'center', gap: '0.375rem'
+                }}
+                title="Мінімалістичний вигляд"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                Компактно
+              </button>
+            </div>
+            
             {user.role === 'admin' && (
               <button className="btn btn-primary" onClick={handleCreate}>
                 + {t('modals.newStudent')}
@@ -1220,8 +1260,10 @@ export default function StudentsPage() {
           {filteredStudents.length > 0 ? (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-              gap: '1.25rem',
+              gridTemplateColumns: viewMode === 'detailed' 
+                ? 'repeat(auto-fill, minmax(360px, 1fr))' 
+                : 'repeat(auto-fill, minmax(250px, 1fr))',
+              gap: viewMode === 'detailed' ? '1.25rem' : '0.875rem',
               alignItems: 'start',
             }}>
               {filteredStudents.map((student) => {
@@ -1235,6 +1277,114 @@ export default function StudentsPage() {
                   ? student.notes!.substring(0, MAX_NOTE_LENGTH) + '...'
                   : student.notes;
                 
+                if (viewMode === 'compact') {
+                  return (
+                    <div
+                      key={student.id}
+                      className="student-card-hover"
+                      style={{
+                        backgroundColor: 'white',
+                        borderRadius: '0.75rem',
+                        border: '1px solid #f0f0f5',
+                        padding: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                        cursor: 'pointer',
+                      }}
+                      onClick={(e) => {
+                        // Avoid triggering modal if clicking on phone/copy button
+                        if ((e.target as HTMLElement).closest('.copy-phone-btn')) return;
+                        openStudentModal(student.id, student.full_name);
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)';
+                        e.currentTarget.style.borderColor = '#e0e7ff';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.03)';
+                        e.currentTarget.style.borderColor = '#f0f0f5';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      {/* Avatar */}
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <div
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            overflow: 'hidden',
+                            backgroundColor: student.photo ? 'transparent' : 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1.5px solid #e0e7ff',
+                          }}
+                        >
+                          {student.photo ? (
+                            <img src={student.photo} alt={student.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#6366f1' }}>{firstLetter}</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Info String */}
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                          <span style={{
+                            fontFamily: 'monospace', fontSize: '0.625rem', color: '#64748b', 
+                            backgroundColor: '#f8fafc', padding: '0.125rem 0.25rem', borderRadius: '0.25rem'
+                          }}>
+                            {student.public_id}
+                          </span>
+                          <span style={{
+                            fontWeight: 600, fontSize: '0.875rem', color: '#1e293b',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                          }}>
+                            {student.full_name}
+                          </span>
+                        </div>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          {age !== null && (
+                            <span style={{ fontSize: '0.6875rem', color: '#6366f1', display: 'flex', alignItems: 'center', gap: '0.125rem', fontWeight: 500 }}>
+                              {formatAge(student.birth_date)}
+                            </span>
+                          )}
+                          
+                          {student.phone && age !== null && <span style={{ color: '#cbd5e1', fontSize: '0.6875rem' }}>•</span>}
+                          
+                          {student.phone && (
+                            <span
+                              className="copy-phone-btn"
+                              onClick={(e) => { e.stopPropagation(); copyPhone(student.phone, 'main'); }}
+                              style={{ 
+                                fontSize: '0.75rem', color: copiedField === `main-${student.phone}` ? '#10b981' : '#64748b',
+                                display: 'flex', alignItems: 'center', gap: '0.1875rem', cursor: 'pointer', transition: 'color 0.15s',
+                                fontWeight: 500, fontVariantNumeric: 'tabular-nums'
+                              }}
+                              onMouseEnter={(e) => { if (copiedField !== `main-${student.phone}`) e.currentTarget.style.color = '#4f46e5'; }}
+                              onMouseLeave={(e) => { if (copiedField !== `main-${student.phone}`) e.currentTarget.style.color = '#64748b'; }}
+                            >
+                              {copiedField === `main-${student.phone}` ? (
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                              ) : (
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                              )}
+                              {student.phone}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={student.id}
