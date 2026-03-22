@@ -164,6 +164,27 @@ export default function StudentModalsManager() {
   // Copy state
   const [copiedField, setCopiedField] = useState<{ studentId: number; field: string } | null>(null);
 
+  // Payments section state (per student)
+  const [paymentsSectionOpen, setPaymentsSectionOpen] = useState<Record<number, boolean>>({});
+  const [paymentsData, setPaymentsData] = useState<Record<number, {
+    groups: Array<{
+      group_id: number;
+      group_title: string;
+      lessons_count: number;
+      effective_price: number;
+      expected_amount: number;
+      total_paid: number;
+      debt: number;
+    }>;
+    individual: {
+      lessons_paid: number;
+      lessons_used: number;
+      lessons_remaining: number;
+    } | null;
+  }>>({});
+  const [paymentsLoading, setPaymentsLoading] = useState<Record<number, boolean>>({});
+  const [paymentsMonth, setPaymentsMonth] = useState<Record<number, string>>({});
+
   // Stats section state (per student)
   const [statsSectionOpen, setStatsSectionOpen] = useState<Record<number, boolean>>({});
   const [statsMonthMap, setStatsMonthMap] = useState<Record<number, string>>({});
@@ -218,6 +239,76 @@ export default function StudentModalsManager() {
 
   const handleUpdateSize = (studentId: number, size: { width: number; height: number }) => {
     updateModalState(studentId, { size });
+  };
+
+  // ── Payments helpers ───────────────────────────────────────────────────────
+
+  const loadStudentPayments = async (studentId: number, month?: string) => {
+    const m = month || paymentsMonth[studentId] || new Date().toISOString().substring(0, 7) + '-01';
+    setPaymentsLoading(prev => ({ ...prev, [studentId]: true }));
+    try {
+      // Get student's groups to fetch payment status per group
+      const student = studentData[studentId];
+      const groupPayments: Array<{
+        group_id: number; group_title: string;
+        lessons_count: number; effective_price: number;
+        expected_amount: number; total_paid: number; debt: number;
+      }> = [];
+
+      if (student?.groups) {
+        for (const g of student.groups) {
+          const res = await fetch(`/api/groups/${g.id}/payments?month=${m}`);
+          if (res.ok) {
+            const json = await res.json();
+            const ps = (json.paymentStatus || []).find((p: { student_id: number }) => p.student_id === studentId);
+            if (ps) {
+              groupPayments.push({
+                group_id: g.id,
+                group_title: g.title,
+                lessons_count: ps.lessons_count,
+                effective_price: ps.effective_price,
+                expected_amount: ps.expected_amount,
+                total_paid: ps.total_paid,
+                debt: ps.debt,
+              });
+            }
+          }
+        }
+      }
+
+      // Individual balance
+      let individual = null;
+      try {
+        const indRes = await fetch(`/api/students/${studentId}/individual-payments`);
+        if (indRes.ok) {
+          const indJson = await indRes.json();
+          if (indJson.balance) {
+            individual = indJson.balance;
+          }
+        }
+      } catch { /* ignore */ }
+
+      setPaymentsData(prev => ({ ...prev, [studentId]: { groups: groupPayments, individual } }));
+    } catch {
+      console.error('Error loading student payments');
+    } finally {
+      setPaymentsLoading(prev => ({ ...prev, [studentId]: false }));
+    }
+  };
+
+  const togglePaymentsSection = (studentId: number) => {
+    const isOpen = paymentsSectionOpen[studentId] || false;
+    setPaymentsSectionOpen(prev => ({ ...prev, [studentId]: !isOpen }));
+    if (!isOpen && !paymentsData[studentId] && !paymentsLoading[studentId]) {
+      const m = new Date().toISOString().substring(0, 7) + '-01';
+      setPaymentsMonth(prev => ({ ...prev, [studentId]: m }));
+      loadStudentPayments(studentId, m);
+    }
+  };
+
+  const handlePaymentsMonthChange = (studentId: number, month: string) => {
+    setPaymentsMonth(prev => ({ ...prev, [studentId]: month }));
+    loadStudentPayments(studentId, month);
   };
 
   // ── Stats helpers ─────────────────────────────────────────────────────────
@@ -806,6 +897,107 @@ export default function StudentModalsManager() {
                     )
                   )}
                 </div>
+                {/* ── Payments section ─────────────────────────────────────── */}
+                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
+                  <button
+                    onClick={() => togglePaymentsSection(student.id)}
+                    style={{ display: 'flex', alignItems: 'center', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '0.125rem 0', gap: '0.5rem' }}
+                  >
+                    <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', flex: 1, textAlign: 'left' }}>
+                      Оплати
+                    </span>
+                    <span style={{ fontSize: '0.6875rem', color: '#94a3b8' }}>{paymentsSectionOpen[student.id] ? '▲ Згорнути' : '▼ Розгорнути'}</span>
+                  </button>
+
+                  {paymentsSectionOpen[student.id] && (
+                    <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {/* Month picker */}
+                      <select
+                        value={paymentsMonth[student.id] || new Date().toISOString().substring(0, 7) + '-01'}
+                        onChange={(e) => handlePaymentsMonthChange(student.id, e.target.value)}
+                        style={{ width: '100%', padding: '0.375rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                      >
+                        {(() => {
+                          const opts: { value: string; label: string }[] = [];
+                          const now = new Date();
+                          for (let i = -6; i <= 1; i++) {
+                            const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                            const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+                            const label = `${MONTHS_UK[d.getMonth()]} ${d.getFullYear()}`;
+                            opts.push({ value, label });
+                          }
+                          return opts.map(o => <option key={o.value} value={o.value}>{o.label}</option>);
+                        })()}
+                      </select>
+
+                      {paymentsLoading[student.id] ? (
+                        <div style={{ textAlign: 'center', color: '#6b7280', padding: '0.5rem', fontSize: '0.8125rem' }}>Завантаження...</div>
+                      ) : paymentsData[student.id] ? (
+                        <>
+                          {/* Group payments */}
+                          {paymentsData[student.id].groups.length > 0 ? (
+                            paymentsData[student.id].groups.map(gp => (
+                              <div key={gp.group_id} style={{
+                                padding: '0.625rem',
+                                borderRadius: '0.375rem',
+                                backgroundColor: gp.debt > 0 ? '#fef2f2' : '#ecfdf5',
+                                border: `1px solid ${gp.debt > 0 ? '#fecaca' : '#a7f3d0'}`,
+                              }}>
+                                <div style={{ fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+                                  <button
+                                    onClick={() => openGroupModal(gp.group_id, gp.group_title)}
+                                    style={{ background: 'none', border: 'none', padding: 0, color: '#3b82f6', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 500, textDecoration: 'underline' }}
+                                  >
+                                    {gp.group_title}
+                                  </button>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.75rem', color: '#6b7280' }}>
+                                  <span>{gp.lessons_count} зан. × {gp.effective_price} ₴</span>
+                                  <span>= {gp.expected_amount} ₴</span>
+                                  <span>Опл: <b style={{ color: '#22c55e' }}>{gp.total_paid} ₴</b></span>
+                                  {gp.debt > 0 ? (
+                                    <span style={{ color: '#ef4444', fontWeight: 600 }}>Борг: {gp.debt} ₴</span>
+                                  ) : (
+                                    <span style={{ color: '#22c55e', fontWeight: 600 }}>Оплачено</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div style={{ fontSize: '0.8125rem', color: '#9ca3af', textAlign: 'center', padding: '0.25rem' }}>
+                              Немає групових оплат за цей місяць
+                            </div>
+                          )}
+
+                          {/* Individual balance */}
+                          {paymentsData[student.id].individual && (
+                            <div style={{
+                              padding: '0.625rem',
+                              borderRadius: '0.375rem',
+                              backgroundColor: '#f0f9ff',
+                              border: '1px solid #bae6fd',
+                            }}>
+                              <div style={{ fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem', color: '#0369a1' }}>
+                                Індивідуальні заняття
+                              </div>
+                              <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                                <span>Оплачено: <b>{paymentsData[student.id].individual!.lessons_paid}</b></span>
+                                <span>Використано: <b>{paymentsData[student.id].individual!.lessons_used}</b></span>
+                                <span style={{
+                                  fontWeight: 600,
+                                  color: paymentsData[student.id].individual!.lessons_remaining < 0 ? '#ef4444' : '#22c55e',
+                                }}>
+                                  Залишок: {paymentsData[student.id].individual!.lessons_remaining}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+
                 {/* ── Stats section ──────────────────────────────────────────── */}
                 <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
                   <button

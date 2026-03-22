@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       birth_date,
       photo || undefined,
       school?.trim(),
-      discount?.trim(),
+      discount != null ? parseInt(discount, 10) || 0 : undefined,
       parent_relation?.trim(),
       parent2_name?.trim(),
       parent2_relation?.trim(),

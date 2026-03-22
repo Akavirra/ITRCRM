@@ -39,59 +39,88 @@ export async function getPaymentsForGroupMonth(
   );
 }
 
-// Get payment status for all students in a group for a month
-export async function getPaymentStatusForGroupMonth(
-  groupId: number,
-  month: string
-): Promise<Array<{
+export interface StudentPaymentStatus {
   student_id: number;
   student_name: string;
   student_phone: string | null;
   parent_name: string | null;
   parent_phone: string | null;
-  monthly_price: number;
+  discount_percent: number;
+  lesson_price: number;
+  effective_price: number;
+  lessons_count: number;
+  expected_amount: number;
   total_paid: number;
   debt: number;
   payments: Payment[];
-}>> {
-  // Get group's monthly price
-  const group = await get<{ monthly_price: number }>(
-    `SELECT monthly_price FROM groups WHERE id = $1`,
-    [groupId]
+}
+
+// Get lesson price from system_settings
+export async function getLessonPrice(): Promise<number> {
+  const setting = await get<{ value: string }>(
+    `SELECT value FROM system_settings WHERE key = 'lesson_price'`
   );
-  
-  const monthlyPrice = group?.monthly_price || 0;
-  
-  // Get all students in the group with their payments
+  return parseInt(setting?.value || '300', 10);
+}
+
+// Get payment status for all students in a group for a month
+export async function getPaymentStatusForGroupMonth(
+  groupId: number,
+  month: string
+): Promise<StudentPaymentStatus[]> {
+  const lessonPrice = await getLessonPrice();
+
+  // Count done lessons for this group in the given month
+  const monthStr = month.substring(0, 7); // 'YYYY-MM'
+  const lessonCountResult = await get<{ cnt: number }>(
+    `SELECT COUNT(*) as cnt FROM lessons
+     WHERE group_id = $1 AND status = 'done' AND TO_CHAR(lesson_date, 'YYYY-MM') = $2`,
+    [groupId, monthStr]
+  );
+  const lessonsCount = lessonCountResult?.cnt || 0;
+
+  // Get all students in the group with discount
   const students = await all<{
     student_id: number;
     student_name: string;
     student_phone: string | null;
     parent_name: string | null;
     parent_phone: string | null;
+    discount: number | null;
   }>(
     `SELECT s.id as student_id, s.full_name as student_name, s.phone as student_phone,
-            s.parent_name, s.parent_phone
+            s.parent_name, s.parent_phone, COALESCE(s.discount, 0) as discount
      FROM students s
      JOIN student_groups sg ON s.id = sg.student_id
      WHERE sg.group_id = $1 AND sg.is_active = TRUE AND s.is_active = TRUE
      ORDER BY s.full_name`,
     [groupId]
   );
-  
+
   return await Promise.all(students.map(async student => {
     const payments = await all<Payment>(
       `SELECT * FROM payments WHERE student_id = $1 AND group_id = $2 AND month = $3`,
       [student.student_id, groupId, month]
     );
-    
+
+    const discountPercent = student.discount || 0;
+    const effectivePrice = Math.round(lessonPrice * (1 - discountPercent / 100));
+    const expectedAmount = lessonsCount * effectivePrice;
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    
+
     return {
-      ...student,
-      monthly_price: monthlyPrice,
+      student_id: student.student_id,
+      student_name: student.student_name,
+      student_phone: student.student_phone,
+      parent_name: student.parent_name,
+      parent_phone: student.parent_phone,
+      discount_percent: discountPercent,
+      lesson_price: lessonPrice,
+      effective_price: effectivePrice,
+      lessons_count: lessonsCount,
+      expected_amount: expectedAmount,
       total_paid: totalPaid,
-      debt: Math.max(0, monthlyPrice - totalPaid),
+      debt: Math.max(0, expectedAmount - totalPaid),
       payments
     };
   }));

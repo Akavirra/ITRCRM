@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 const DEFAULTS: Record<string, string> = {
   teacher_salary_group: '75',
   teacher_salary_individual: '100',
+  lesson_price: '300',
 };
 
 export async function GET(request: NextRequest) {
@@ -36,7 +37,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Невірний формат' }, { status: 400 });
   }
 
-  const allowed = ['teacher_salary_group', 'teacher_salary_individual'];
+  const allowed = ['teacher_salary_group', 'teacher_salary_individual', 'lesson_price'];
   for (const key of allowed) {
     if (key in body) {
       const val = parseFloat(body[key]);

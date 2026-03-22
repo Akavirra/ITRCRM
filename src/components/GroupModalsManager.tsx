@@ -35,6 +35,45 @@ interface AvailableStudent {
   public_id: string;
 }
 
+interface StudentPaymentStatus {
+  student_id: number;
+  student_name: string;
+  discount_percent: number;
+  lesson_price: number;
+  effective_price: number;
+  lessons_count: number;
+  expected_amount: number;
+  total_paid: number;
+  debt: number;
+}
+
+interface PaymentFormData {
+  student_id: number;
+  student_name: string;
+  amount: string;
+  method: 'cash' | 'account';
+  note: string;
+  paid_at: string;
+  debt: number;
+}
+
+const MONTH_NAMES = [
+  'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
+  'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'
+];
+
+function getMonthOptions(): { value: string; label: string }[] {
+  const options: { value: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = -6; i <= 1; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    const label = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+    options.push({ value, label });
+  }
+  return options;
+}
+
 function getDayName(day: number): string {
   const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
   return days[day - 1] || '';
@@ -58,6 +97,19 @@ export default function GroupModalsManager() {
   const [loadingAvailableStudents, setLoadingAvailableStudents] = useState<Record<number, boolean>>({});
   const [addingStudents, setAddingStudents] = useState<Set<number>>(new Set());
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Tab state per modal
+  const [activeTab, setActiveTab] = useState<Record<number, 'info' | 'payments'>>({});
+  // Payment data per modal
+  const [paymentData, setPaymentData] = useState<Record<number, StudentPaymentStatus[]>>({});
+  const [loadingPayments, setLoadingPayments] = useState<Record<number, boolean>>({});
+  const [paymentMonth, setPaymentMonth] = useState<Record<number, string>>({});
+  // Inline payment form
+  const [paymentForm, setPaymentForm] = useState<Record<number, PaymentFormData | null>>({});
+  const [savingPayment, setSavingPayment] = useState<Record<number, boolean>>({});
+  const [paymentError, setPaymentError] = useState<Record<number, string>>({});
+
+  const monthOptions = getMonthOptions();
 
   useEffect(() => {
     setIsHydrated(true);
@@ -191,6 +243,91 @@ export default function GroupModalsManager() {
     }
   };
 
+  const loadPaymentData = async (groupId: number, month?: string) => {
+    const m = month || paymentMonth[groupId] || new Date().toISOString().substring(0, 7) + '-01';
+    setLoadingPayments(prev => ({ ...prev, [groupId]: true }));
+    try {
+      const res = await fetch(`/api/groups/${groupId}/payments?month=${m}`);
+      if (res.ok) {
+        const json = await res.json();
+        setPaymentData(prev => ({ ...prev, [groupId]: json.paymentStatus || [] }));
+      }
+    } catch (error) {
+      console.error('Error loading payment data:', error);
+    } finally {
+      setLoadingPayments(prev => ({ ...prev, [groupId]: false }));
+    }
+  };
+
+  const handleTabChange = (groupId: number, tab: 'info' | 'payments') => {
+    setActiveTab(prev => ({ ...prev, [groupId]: tab }));
+    if (tab === 'payments' && !paymentData[groupId]) {
+      const m = new Date().toISOString().substring(0, 7) + '-01';
+      setPaymentMonth(prev => ({ ...prev, [groupId]: m }));
+      loadPaymentData(groupId, m);
+    }
+  };
+
+  const handlePaymentMonthChange = (groupId: number, month: string) => {
+    setPaymentMonth(prev => ({ ...prev, [groupId]: month }));
+    loadPaymentData(groupId, month);
+  };
+
+  const openPaymentForm = (groupId: number, ps: StudentPaymentStatus) => {
+    setPaymentForm(prev => ({ ...prev, [groupId]: {
+      student_id: ps.student_id,
+      student_name: ps.student_name,
+      amount: String(ps.debt),
+      method: 'cash',
+      note: '',
+      paid_at: new Date().toISOString().split('T')[0],
+      debt: ps.debt,
+    }}));
+    setPaymentError(prev => ({ ...prev, [groupId]: '' }));
+  };
+
+  const handleSavePayment = async (groupId: number) => {
+    const form = paymentForm[groupId];
+    if (!form) return;
+
+    const amount = parseFloat(form.amount);
+    if (isNaN(amount) || amount <= 0) {
+      setPaymentError(prev => ({ ...prev, [groupId]: 'Введіть коректну суму' }));
+      return;
+    }
+
+    setSavingPayment(prev => ({ ...prev, [groupId]: true }));
+    setPaymentError(prev => ({ ...prev, [groupId]: '' }));
+
+    try {
+      const month = paymentMonth[groupId] || new Date().toISOString().substring(0, 7) + '-01';
+      const res = await fetch(`/api/groups/${groupId}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: form.student_id,
+          month,
+          amount,
+          method: form.method,
+          note: form.note || undefined,
+          paid_at: form.paid_at ? new Date(form.paid_at).toISOString() : undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        setPaymentError(prev => ({ ...prev, [groupId]: err.error || 'Помилка збереження' }));
+      } else {
+        setPaymentForm(prev => ({ ...prev, [groupId]: null }));
+        loadPaymentData(groupId, month);
+      }
+    } catch {
+      setPaymentError(prev => ({ ...prev, [groupId]: 'Помилка мережі' }));
+    } finally {
+      setSavingPayment(prev => ({ ...prev, [groupId]: false }));
+    }
+  };
+
   const openAddStudentModal = async (groupId: number) => {
     setShowAddStudentModal(groupId);
     setSearchQuery('');
@@ -236,6 +373,35 @@ export default function GroupModalsManager() {
               </div>
             ) : group ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* Tabs */}
+                <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '0' }}>
+                  {(['info', 'payments'] as const).map(t => {
+                    const isActive = (activeTab[modal.id] || 'info') === t;
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => handleTabChange(modal.id, t)}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: isActive ? '600' : '400',
+                          color: isActive ? '#1f2937' : '#6b7280',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
+                          cursor: 'pointer',
+                          marginBottom: '-1px',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        {t === 'info' ? 'Інфо' : 'Оплати'}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Info Tab */}
+                {(activeTab[modal.id] || 'info') === 'info' && (<>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span className={`badge ${group.is_active ? 'badge-success' : 'badge-gray'}`}>
                     {group.is_active ? 'Активна' : 'Неактивна'}
@@ -374,6 +540,123 @@ export default function GroupModalsManager() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Нотатки</span>
                     <p style={{ margin: 0, fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.5 }}>{group.notes}</p>
+                  </div>
+                )}
+                </>)}
+
+                {/* Payments Tab */}
+                {activeTab[modal.id] === 'payments' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {/* Month selector */}
+                    <select
+                      className="form-input"
+                      value={paymentMonth[modal.id] || new Date().toISOString().substring(0, 7) + '-01'}
+                      onChange={(e) => handlePaymentMonthChange(modal.id, e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}
+                    >
+                      {monthOptions.map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+
+                    {loadingPayments[modal.id] ? (
+                      <div style={{ textAlign: 'center', color: '#6b7280', padding: '1rem' }}>Завантаження...</div>
+                    ) : (paymentData[modal.id] || []).length === 0 ? (
+                      <div style={{ textAlign: 'center', color: '#6b7280', padding: '1rem' }}>Немає даних за цей місяць</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {(paymentData[modal.id] || []).map(ps => (
+                          <div key={ps.student_id} style={{
+                            padding: '0.75rem',
+                            backgroundColor: ps.debt > 0 ? '#fef2f2' : '#ecfdf5',
+                            borderRadius: '0.5rem',
+                            border: `1px solid ${ps.debt > 0 ? '#fecaca' : '#a7f3d0'}`,
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
+                              <button
+                                onClick={() => openStudentModal(ps.student_id, ps.student_name)}
+                                style={{ background: 'none', border: 'none', padding: 0, color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, textDecoration: 'underline', textAlign: 'left' }}
+                              >
+                                {ps.student_name}
+                              </button>
+                              {ps.debt > 0 && (
+                                <button
+                                  onClick={() => openPaymentForm(modal.id, ps)}
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '0.25rem', cursor: 'pointer' }}
+                                >
+                                  + Оплата
+                                </button>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.75rem', color: '#6b7280' }}>
+                              <span>{ps.lessons_count} зан.</span>
+                              <span>{ps.effective_price} ₴/зан</span>
+                              {ps.discount_percent > 0 && <span className="badge badge-info" style={{ fontSize: '0.625rem', padding: '0.125rem 0.375rem' }}>-{ps.discount_percent}%</span>}
+                              <span>До сплати: <b>{ps.expected_amount} ₴</b></span>
+                              <span>Опл: <b style={{ color: '#22c55e' }}>{ps.total_paid} ₴</b></span>
+                              {ps.debt > 0 && <span style={{ color: '#ef4444', fontWeight: 600 }}>Борг: {ps.debt} ₴</span>}
+                              {ps.debt === 0 && <span style={{ color: '#22c55e', fontWeight: 600 }}>Оплачено</span>}
+                            </div>
+
+                            {/* Inline payment form for this student */}
+                            {paymentForm[modal.id]?.student_id === ps.student_id && (
+                              <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: 'white', borderRadius: '0.375rem', border: '1px solid #e5e7eb' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                                  <input
+                                    type="number"
+                                    placeholder="Сума"
+                                    value={paymentForm[modal.id]?.amount || ''}
+                                    onChange={(e) => setPaymentForm(prev => ({ ...prev, [modal.id]: { ...prev[modal.id]!, amount: e.target.value } }))}
+                                    style={{ flex: '1', minWidth: '80px', padding: '0.375rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: '0.25rem' }}
+                                  />
+                                  <select
+                                    value={paymentForm[modal.id]?.method || 'cash'}
+                                    onChange={(e) => setPaymentForm(prev => ({ ...prev, [modal.id]: { ...prev[modal.id]!, method: e.target.value as 'cash' | 'account' } }))}
+                                    style={{ padding: '0.375rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: '0.25rem' }}
+                                  >
+                                    <option value="cash">Готівка</option>
+                                    <option value="account">Безготівково</option>
+                                  </select>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                  <input
+                                    type="date"
+                                    value={paymentForm[modal.id]?.paid_at || ''}
+                                    onChange={(e) => setPaymentForm(prev => ({ ...prev, [modal.id]: { ...prev[modal.id]!, paid_at: e.target.value } }))}
+                                    style={{ flex: '1', padding: '0.375rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: '0.25rem' }}
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder="Примітка"
+                                    value={paymentForm[modal.id]?.note || ''}
+                                    onChange={(e) => setPaymentForm(prev => ({ ...prev, [modal.id]: { ...prev[modal.id]!, note: e.target.value } }))}
+                                    style={{ flex: '1', padding: '0.375rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: '0.25rem' }}
+                                  />
+                                </div>
+                                {paymentError[modal.id] && (
+                                  <div style={{ fontSize: '0.75rem', color: '#dc2626', marginBottom: '0.375rem' }}>{paymentError[modal.id]}</div>
+                                )}
+                                <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'flex-end' }}>
+                                  <button
+                                    onClick={() => setPaymentForm(prev => ({ ...prev, [modal.id]: null }))}
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '0.25rem', cursor: 'pointer' }}
+                                  >
+                                    Скасувати
+                                  </button>
+                                  <button
+                                    onClick={() => handleSavePayment(modal.id)}
+                                    disabled={savingPayment[modal.id]}
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#22c55e', color: 'white', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', opacity: savingPayment[modal.id] ? 0.7 : 1 }}
+                                  >
+                                    {savingPayment[modal.id] ? 'Зберігаю...' : 'Зберегти'}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

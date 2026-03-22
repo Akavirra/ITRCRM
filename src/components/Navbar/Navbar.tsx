@@ -155,7 +155,7 @@ const Navbar: React.FC<NavbarProps> = ({
     weatherCity: 'Kyiv',
   });
   const [saved, setSaved] = useState(false);
-  const [salarySettings, setSalarySettings] = useState({ teacher_salary_group: '75', teacher_salary_individual: '100' });
+  const [salarySettings, setSalarySettings] = useState({ teacher_salary_group: '75', teacher_salary_individual: '100', lesson_price: '300' });
   const [salarySaving, setSalarySaving] = useState(false);
   const [sysUsers, setSysUsers] = useState<{ id: number; name: string; email: string; role: string; is_active: boolean; is_owner: boolean; created_at: string }[]>([]);
   const [currentUserIsOwner, setCurrentUserIsOwner] = useState(false);
@@ -297,6 +297,7 @@ const Navbar: React.FC<NavbarProps> = ({
         body: JSON.stringify({
           teacher_salary_group: parseFloat(salarySettings.teacher_salary_group) || 75,
           teacher_salary_individual: parseFloat(salarySettings.teacher_salary_individual) || 100,
+          lesson_price: parseInt(salarySettings.lesson_price) || 300,
         }),
       });
       setSaved(true);
@@ -446,6 +447,7 @@ const Navbar: React.FC<NavbarProps> = ({
         if (d) setSalarySettings({
           teacher_salary_group: String(d.teacher_salary_group ?? 75),
           teacher_salary_individual: String(d.teacher_salary_individual ?? 100),
+          lesson_price: String(d.lesson_price ?? 300),
         });
       })
       .catch(() => {});
@@ -1114,8 +1116,25 @@ const Navbar: React.FC<NavbarProps> = ({
                       <DollarSign size={14} />
                       Зарплата викладачів
                     </h3>
-                    <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '1.25rem' }}>
-                      Ставка за <b>1 дитину</b> на одному занятті
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label className="form-label">Ціна за заняття для учнів (₴)</label>
+                      <div style={{ maxWidth: '200px' }}>
+                        <input
+                          type="number"
+                          className="form-input"
+                          min={0}
+                          step={1}
+                          value={salarySettings.lesson_price}
+                          onChange={e => setSalarySettings(prev => ({ ...prev, lesson_price: e.target.value }))}
+                        />
+                      </div>
+                      <span className="form-hint">Ціна за 1 заняття для учня (без знижки). Борг = кількість проведених занять × ціна × (1 − знижка%)</span>
+                    </div>
+
+                    <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', marginBottom: '1.25rem' }} />
+
+                    <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.5rem', fontWeight: 600 }}>
+                      Ставка викладача за 1 дитину на занятті
                     </p>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', maxWidth: '400px', marginBottom: '1.25rem' }}>
