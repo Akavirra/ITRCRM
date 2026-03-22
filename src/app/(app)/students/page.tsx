@@ -1215,36 +1215,34 @@ export default function StudentsPage() {
               </button>
             </div>
             
-            <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '0.5rem', padding: '0.25rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '0.5rem', padding: '0.25rem', alignItems: 'center', gap: '0.125rem' }}>
               <button
                 onClick={() => { setViewMode('detailed'); localStorage.setItem('studentsViewMode', 'detailed'); }}
                 style={{
-                  padding: '0.375rem 0.625rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer',
+                  padding: '0', width: '32px', height: '32px', borderRadius: '0.375rem', border: 'none', cursor: 'pointer',
                   backgroundColor: viewMode === 'detailed' ? 'white' : 'transparent',
                   color: viewMode === 'detailed' ? '#4f46e5' : '#64748b',
                   boxShadow: viewMode === 'detailed' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  fontWeight: viewMode === 'detailed' ? 600 : 500, fontSize: '0.75rem', transition: 'all 0.15s',
-                  display: 'flex', alignItems: 'center', gap: '0.375rem'
+                  transition: 'all 0.15s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}
                 title="Детальний вигляд"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                Детально
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
               </button>
               <button
                 onClick={() => { setViewMode('compact'); localStorage.setItem('studentsViewMode', 'compact'); }}
                 style={{
-                  padding: '0.375rem 0.625rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer',
+                  padding: '0', width: '32px', height: '32px', borderRadius: '0.375rem', border: 'none', cursor: 'pointer',
                   backgroundColor: viewMode === 'compact' ? 'white' : 'transparent',
                   color: viewMode === 'compact' ? '#4f46e5' : '#64748b',
                   boxShadow: viewMode === 'compact' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  fontWeight: viewMode === 'compact' ? 600 : 500, fontSize: '0.75rem', transition: 'all 0.15s',
-                  display: 'flex', alignItems: 'center', gap: '0.375rem'
+                  transition: 'all 0.15s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}
                 title="Мінімалістичний вигляд"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-                Компактно
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
               </button>
             </div>
             
