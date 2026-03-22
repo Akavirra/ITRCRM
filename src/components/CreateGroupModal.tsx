@@ -45,17 +45,14 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
   const [newGroupTeacherId, setNewGroupTeacherId] = useState('');
   const [newGroupWeeklyDay, setNewGroupWeeklyDay] = useState('');
   const [newGroupStartTime, setNewGroupStartTime] = useState('');
-  const [newGroupStatus, setNewGroupStatus] = useState('active');
   const [newGroupNote, setNewGroupNote] = useState('');
-  const [newGroupPhotosFolderUrl, setNewGroupPhotosFolderUrl] = useState('');
   const [newGroupStartDate, setNewGroupStartDate] = useState('');
   
   // Students State
   const [selectedStudents, setSelectedStudents] = useState<AvailableStudent[]>([]);
+  const [allStudents, setAllStudents] = useState<AvailableStudent[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [availableStudents, setAvailableStudents] = useState<AvailableStudent[]>([]);
-  const [searchingStudents, setSearchingStudents] = useState(false);
-  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +86,12 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
       const coursesRes = await fetch('/api/courses');
       const coursesData = await coursesRes.json();
       setCourses(coursesData.courses || []);
+
+      const studentsRes = await fetch('/api/students');
+      if (studentsRes.ok) {
+        const studentsData = await studentsRes.json();
+        setAllStudents(studentsData.students || []);
+      }
     } catch (err) {
       console.error('Failed to fetch modal data:', err);
     }
@@ -107,41 +110,16 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
     }
   }, [newGroupCourseId, newGroupWeeklyDay, newGroupStartTime, courses]);
 
-  // Handle student search
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    
-    if (!query.trim()) {
-      setAvailableStudents([]);
-      setSearchingStudents(false);
-      return;
-    }
-
-    setSearchingStudents(true);
-    searchDebounceRef.current = setTimeout(async () => {
-      try {
-        const params = new URLSearchParams({ search: query });
-        const res = await fetch(`/api/students?${params}`);
-        if (res.ok) {
-          const data = await res.json();
-          // Filter out already selected students
-          const selectedSet = new Set(selectedStudents.map(s => s.id));
-          const filtered = (data.students || []).filter((s: AvailableStudent) => !selectedSet.has(s.id));
-          setAvailableStudents(filtered);
-        }
-      } catch (err) {
-        console.error('Student search failed:', err);
-      } finally {
-        setSearchingStudents(false);
-      }
-    }, 300);
-  };
+  const filteredStudents = allStudents.filter(s => {
+    if (selectedStudents.some(selected => selected.id === s.id)) return false;
+    if (!searchQuery.trim()) return true;
+    return s.full_name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const handleAddStudent = (student: AvailableStudent) => {
     setSelectedStudents(prev => [...prev, student]);
-    setAvailableStudents(prev => prev.filter(s => s.id !== student.id));
     setSearchQuery('');
+    setIsDropdownOpen(false);
   };
 
   const handleRemoveStudent = (studentId: number) => {
@@ -153,13 +131,11 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
     setNewGroupTeacherId('');
     setNewGroupWeeklyDay('');
     setNewGroupStartTime('');
-    setNewGroupStatus('active');
     setNewGroupNote('');
-    setNewGroupPhotosFolderUrl('');
     setError(null);
     setTitlePreview('');
     setSearchQuery('');
-    setAvailableStudents([]);
+    setIsDropdownOpen(false);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -175,14 +151,6 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
     const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
     if (!timeRegex.test(newGroupStartTime)) return setError(uk.validation.invalidTime);
 
-    if (newGroupPhotosFolderUrl) {
-      try {
-        new URL(newGroupPhotosFolderUrl);
-      } catch {
-        return setError(uk.validation.invalidUrl);
-      }
-    }
-
     setSaving(true);
     try {
       const studentIds = selectedStudents.map(s => s.id);
@@ -195,9 +163,9 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
           teacher_id: parseInt(newGroupTeacherId),
           weekly_day: parseInt(newGroupWeeklyDay),
           start_time: newGroupStartTime,
-          status: newGroupStatus,
+          status: 'active', // Hardcoded as requested
           note: newGroupNote || null,
-          photos_folder_url: newGroupPhotosFolderUrl || null,
+          photos_folder_url: null, // Hardcoded as requested
           start_date: newGroupStartDate || null,
           student_ids: studentIds // <-- We'll read this in the API
         }),
@@ -320,39 +288,20 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1.25rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#374151', fontSize: '0.9rem' }}>
-                  {uk.forms.teacher} <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <select
-                  className="form-input"
-                  value={newGroupTeacherId}
-                  onChange={(e) => setNewGroupTeacherId(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '0.625rem 0.875rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.9rem', backgroundColor: '#fff' }}
-                >
-                  <option value="">{uk.forms.selectTeacher}</option>
-                  {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#374151', fontSize: '0.9rem' }}>
-                  {uk.common.status} <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <select
-                  className="form-input"
-                  value={newGroupStatus}
-                  onChange={(e) => setNewGroupStatus(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '0.625rem 0.875rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.9rem', backgroundColor: '#fff' }}
-                >
-                  <option value="active">{uk.groupStatus.active}</option>
-                  <option value="graduate">{uk.groupStatus.graduate}</option>
-                  <option value="inactive">{uk.groupStatus.inactive}</option>
-                </select>
-              </div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#374151', fontSize: '0.9rem' }}>
+                {uk.forms.teacher} <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <select
+                className="form-input"
+                value={newGroupTeacherId}
+                onChange={(e) => setNewGroupTeacherId(e.target.value)}
+                required
+                style={{ width: '100%', padding: '0.625rem 0.875rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.9rem', backgroundColor: '#fff' }}
+              >
+                <option value="">{uk.forms.selectTeacher}</option>
+                {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
+              </select>
             </div>
 
             <div style={{ marginBottom: '1.25rem' }}>
@@ -403,39 +352,46 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
               <div style={{ position: 'relative' }}>
                 <input
                   type="text"
-                  placeholder="Пошук учня за ім'ям..."
+                  placeholder="Пошук або вибір учня..."
                   value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setIsDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsDropdownOpen(true)}
                   style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem' }}
                 />
-                
-                {searchingStudents && (
-                  <div style={{ position: 'absolute', right: '0.75rem', top: '0.625rem', width: '16px', height: '16px', border: '2px solid #e5e7eb', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                )}
 
                 {/* Dropdown Results */}
-                {searchQuery.trim() !== '' && availableStudents.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.25rem', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 10, maxHeight: '200px', overflowY: 'auto' }}>
-                    {availableStudents.map(student => (
-                      <button
-                        key={student.id}
-                        type="button"
-                        onClick={() => handleAddStudent(student)}
-                        style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', border: 'none', borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', cursor: 'pointer', textAlign: 'left' }}
-                      >
-                        <div>
-                          <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>{student.full_name}</span>
-                          <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: '#6b7280', fontFamily: 'monospace' }}>#{student.public_id}</span>
+                {isDropdownOpen && (
+                  <>
+                    <div 
+                      style={{ position: 'fixed', inset: 0, zIndex: 9 }} 
+                      onClick={() => setIsDropdownOpen(false)}
+                    />
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.25rem', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 10, maxHeight: '200px', overflowY: 'auto' }}>
+                      {filteredStudents.length > 0 ? (
+                        filteredStudents.map(student => (
+                          <button
+                            key={student.id}
+                            type="button"
+                            onClick={() => handleAddStudent(student)}
+                            style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', border: 'none', borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', cursor: 'pointer', textAlign: 'left' }}
+                          >
+                            <div>
+                              <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>{student.full_name}</span>
+                              <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: '#6b7280', fontFamily: 'monospace' }}>#{student.public_id}</span>
+                            </div>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          </button>
+                        ))
+                      ) : (
+                        <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                          Учнів не знайдено (або всі додані)
                         </div>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {searchQuery.trim() !== '' && availableStudents.length === 0 && !searchingStudents && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.25rem', padding: '0.5rem 0.75rem', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '0.875rem', color: '#6b7280', zIndex: 10 }}>
-                    Учнів не знайдено (або вони вже додані)
-                  </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -451,20 +407,6 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
                 rows={2}
                 placeholder={uk.common.note}
                 style={{ width: '100%', padding: '0.625rem 0.875rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.9rem', backgroundColor: '#fff', resize: 'vertical', minHeight: '60px' }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '0.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#374151', fontSize: '0.9rem' }}>
-                {uk.forms.photosFolderUrl}
-              </label>
-              <input
-                type="url"
-                className="form-input"
-                value={newGroupPhotosFolderUrl}
-                onChange={(e) => setNewGroupPhotosFolderUrl(e.target.value)}
-                placeholder={uk.forms.photosFolderPlaceholder}
-                style={{ width: '100%', padding: '0.625rem 0.875rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.9rem', backgroundColor: '#fff' }}
               />
             </div>
           </div>
