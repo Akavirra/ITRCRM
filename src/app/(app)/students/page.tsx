@@ -1295,9 +1295,9 @@ export default function StudentsPage() {
                         cursor: 'pointer',
                       }}
                       onClick={(e) => {
-                        // Avoid triggering modal if clicking on phone/copy button
+                        // Avoid triggering navigation if clicking on phone/copy button
                         if ((e.target as HTMLElement).closest('.copy-phone-btn')) return;
-                        openStudentModal(student.id, student.full_name);
+                        router.push(`/students/${student.id}`);
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)';
