@@ -9,6 +9,7 @@ import Portal from '@/components/Portal';
 import { t } from '@/i18n/t';
 import { formatDateKyiv } from '@/lib/date-utils';
 import PageLoading from '@/components/PageLoading';
+import CreateGroupModal from '@/components/CreateGroupModal';
 
 interface User {
   id: number;
@@ -298,6 +299,41 @@ export default function StudentsPage() {
   
   // Note expansion state - track which notes are expanded
   const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
+
+  // Bulk selection state
+  const [selectedStudents, setSelectedStudents] = useState<Set<number>>(new Set());
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+
+  const toggleStudentSelection = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedStudents(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedStudents(new Set());
+  const handleSelectAll = () => {
+    if (selectedStudents.size === filteredStudents.length && filteredStudents.length > 0) {
+      clearSelection();
+    } else {
+      setSelectedStudents(new Set(filteredStudents.map(s => s.id)));
+    }
+  };
+
+  const selectedStudentsData = students
+    .filter(s => selectedStudents.has(s.id))
+    .map(s => ({
+      id: s.id,
+      full_name: s.full_name,
+      public_id: s.public_id
+    }));
+
+  const openBulkCreateGroup = () => {
+    setShowCreateGroupModal(true);
+  };
   
   // Sorting state
   const [sortBy, setSortBy] = useState<'name' | 'created_at'>('name');
@@ -1308,6 +1344,24 @@ export default function StudentsPage() {
                         e.currentTarget.style.transform = 'translateY(0)';
                       }}
                     >
+                      {/* Bulk Selection Checkbox Area */}
+                      <div 
+                        style={{ display: 'flex', alignItems: 'center', paddingRight: '0.25rem' }}
+                        onClick={(e) => toggleStudentSelection(student.id, e)}
+                      >
+                        <div style={{
+                          width: '20px', height: '20px', borderRadius: '4px',
+                          border: `2px solid ${selectedStudents.has(student.id) ? '#4f46e5' : '#d1d5db'}`,
+                          backgroundColor: selectedStudents.has(student.id) ? '#4f46e5' : 'white',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'all 0.15s'
+                        }}>
+                          {selectedStudents.has(student.id) && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          )}
+                        </div>
+                      </div>
+
                       {/* Avatar */}
                       <div style={{ position: 'relative', flexShrink: 0 }}>
                         <div
@@ -1419,6 +1473,20 @@ export default function StudentsPage() {
                       backgroundColor: '#fafbff',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div 
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '20px', height: '20px', borderRadius: '4px', cursor: 'pointer',
+                            border: `2px solid ${selectedStudents.has(student.id) ? '#4f46e5' : '#d1d5db'}`,
+                            backgroundColor: selectedStudents.has(student.id) ? '#4f46e5' : 'white',
+                            transition: 'all 0.15s'
+                          }}
+                          onClick={(e) => toggleStudentSelection(student.id, e)}
+                        >
+                          {selectedStudents.has(student.id) && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          )}
+                        </div>
                         <span style={{
                           fontFamily: 'monospace',
                           fontSize: '0.6875rem',
@@ -2769,6 +2837,101 @@ export default function StudentsPage() {
           {toast.message}
         </div>
       )};
+      {/* Floating Action Bar for Bulk Selection */}
+      <div style={{
+        position: 'fixed',
+        bottom: selectedStudents.size > 0 ? '2rem' : '-5rem',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        backgroundColor: '#1e293b',
+        color: 'white',
+        padding: '0.75rem 1.5rem',
+        borderRadius: '9999px',
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '1.5rem',
+        transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        zIndex: 50,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{
+            backgroundColor: '#4f46e5',
+            color: 'white',
+            width: '24px',
+            height: '24px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+          }}>
+            {selectedStudents.size}
+          </div>
+          <span style={{ fontWeight: 500, fontSize: '0.9375rem' }}>обрано</span>
+        </div>
+        
+        <div style={{ width: '1px', height: '20px', backgroundColor: '#475569' }} />
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button
+            onClick={openBulkCreateGroup}
+            style={{
+              backgroundColor: 'white',
+              color: '#0f172a',
+              border: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: '9999px',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              transition: 'backgroundColor 0.15s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Сформувати групу
+          </button>
+          
+          <button
+            onClick={clearSelection}
+            style={{
+              backgroundColor: 'transparent',
+              color: '#94a3b8',
+              border: 'none',
+              padding: '0.5rem',
+              borderRadius: '50%',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#334155'; e.currentTarget.style.color = 'white'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#94a3b8'; }}
+            title="Скасувати вибір"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </div>
+
+      <CreateGroupModal
+        isOpen={showCreateGroupModal}
+        onClose={() => setShowCreateGroupModal(false)}
+        initialStudents={selectedStudentsData as any}
+        onSuccess={() => {
+          setShowCreateGroupModal(false);
+          clearSelection();
+          setToast({ message: 'Групу успішно створено!', type: 'success' });
+          setTimeout(() => setToast(null), 3000);
+        }}
+      />
     </Layout>
   );
 }

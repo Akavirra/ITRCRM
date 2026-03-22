@@ -8,12 +8,15 @@ import {
   validateTime, 
   validateUrl,
   generateGroupTitle,
+  addStudentToGroup,
   VALIDATION_ERRORS,
   type GroupStatus,
   type CreateGroupInput,
 } from '@/lib/groups';
 import { getCourseById } from '@/lib/courses';
-import { addGroupHistoryEntry } from '@/lib/group-history';
+import { addGroupHistoryEntry, formatStudentAddedDescription } from '@/lib/group-history';
+import { safeAddStudentHistoryEntry, formatGroupJoinedDescription } from '@/lib/student-history';
+import { get } from '@/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,6 +119,7 @@ export async function POST(request: NextRequest) {
       note,
       photos_folder_url,
       timezone,
+      student_ids,
     } = body;
     
     // Validate required fields
@@ -214,6 +218,40 @@ export async function POST(request: NextRequest) {
       user.id,
       user.name
     );
+    
+    // Add students to the group if provided
+    if (Array.isArray(student_ids) && student_ids.length > 0) {
+      const joinDate = start_date || new Date().toISOString().split('T')[0];
+      
+      for (const studentId of student_ids) {
+        try {
+          await addStudentToGroup(studentId, result.id, joinDate);
+          
+          // Get student name for history
+          const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [studentId]);
+          if (student) {
+            await addGroupHistoryEntry(
+              result.id,
+              'student_added',
+              formatStudentAddedDescription(student.full_name),
+              user.id,
+              user.name
+            );
+          }
+          
+          await safeAddStudentHistoryEntry(
+            studentId, 
+            'group_joined', 
+            formatGroupJoinedDescription(title), 
+            user.id, 
+            user.name
+          );
+        } catch (studentErr) {
+          console.error(`Failed to add student ${studentId} to group ${result.id}:`, studentErr);
+          // Continue with other students even if one fails
+        }
+      }
+    }
     
     return NextResponse.json({
       id: result.id,
