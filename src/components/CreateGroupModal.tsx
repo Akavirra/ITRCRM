@@ -58,16 +58,21 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
   const [error, setError] = useState<string | null>(null);
   const [titlePreview, setTitlePreview] = useState('');
 
+  // Use ref to avoid infinite re-render loop when initialStudents changes reference
+  const initialStudentsRef = useRef(initialStudents);
+  initialStudentsRef.current = initialStudents;
+
   // Initial load
   useEffect(() => {
     if (isOpen) {
-      setSelectedStudents([...initialStudents]);
+      setSelectedStudents([...initialStudentsRef.current]);
       resetForm();
       const today = new Date().toISOString().split('T')[0];
       setNewGroupStartDate(today);
       fetchData();
     }
-  }, [isOpen, initialStudents]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const fetchData = async () => {
     try {
