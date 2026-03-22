@@ -63,11 +63,13 @@ export function computeStudyStatus(groupsCount: number): StudyStatus {
 export async function getStudents(includeInactive: boolean = false): Promise<Student[]> {
   const sql = includeInactive
     ? `SELECT students.*, 
-        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0 
+        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
+             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL)
              THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students ORDER BY full_name`
     : `SELECT students.*, 
-        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0 
+        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
+             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL)
              THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students WHERE is_active = TRUE ORDER BY full_name`;
   
@@ -78,13 +80,17 @@ export async function getStudents(includeInactive: boolean = false): Promise<Stu
 export async function getStudentsWithGroupCount(includeInactive: boolean = false): Promise<Array<Student & { groups_count: number }>> {
   const sql = includeInactive
     ? `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count,
-        CASE WHEN COUNT(DISTINCT sg.id) > 0 THEN 'studying' ELSE 'not_studying' END as study_status
+        CASE WHEN COUNT(DISTINCT sg.id) > 0
+             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = s.id AND l2.group_id IS NULL)
+             THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students s
        LEFT JOIN student_groups sg ON s.id = sg.student_id AND sg.is_active = TRUE
        GROUP BY s.id
        ORDER BY s.full_name`
     : `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count,
-        CASE WHEN COUNT(DISTINCT sg.id) > 0 THEN 'studying' ELSE 'not_studying' END as study_status
+        CASE WHEN COUNT(DISTINCT sg.id) > 0
+             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = s.id AND l2.group_id IS NULL)
+             THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students s
        LEFT JOIN student_groups sg ON s.id = sg.student_id AND sg.is_active = TRUE
        WHERE s.is_active = TRUE
@@ -98,7 +104,8 @@ export async function getStudentsWithGroupCount(includeInactive: boolean = false
 export async function getStudentById(id: number): Promise<Student | null> {
   const student = await get<Student>(
     `SELECT students.*, 
-      CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0 
+      CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
+           OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL)
            THEN 'studying' ELSE 'not_studying' END as study_status
      FROM students WHERE students.id = $1`, 
     [id]
@@ -360,14 +367,18 @@ export async function searchStudents(query: string, includeInactive: boolean = f
   const limitClause = limit ? `LIMIT ${limit}` : '';
   const sql = includeInactive
     ? `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count,
-        CASE WHEN COUNT(DISTINCT sg.id) > 0 THEN 'studying' ELSE 'not_studying' END as study_status
+        CASE WHEN COUNT(DISTINCT sg.id) > 0
+             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = s.id AND l2.group_id IS NULL)
+             THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students s
        LEFT JOIN student_groups sg ON s.id = sg.student_id AND sg.is_active = TRUE
        WHERE s.full_name ILIKE $1 OR s.phone ILIKE $2 OR s.parent_name ILIKE $3 OR s.parent_phone ILIKE $4
        GROUP BY s.id
        ORDER BY s.full_name ${limitClause}`
     : `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count,
-        CASE WHEN COUNT(DISTINCT sg.id) > 0 THEN 'studying' ELSE 'not_studying' END as study_status
+        CASE WHEN COUNT(DISTINCT sg.id) > 0
+             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = s.id AND l2.group_id IS NULL)
+             THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students s
        LEFT JOIN student_groups sg ON s.id = sg.student_id AND sg.is_active = TRUE
        WHERE s.is_active = TRUE AND (s.full_name ILIKE $1 OR s.phone ILIKE $2 OR s.parent_name ILIKE $3 OR s.parent_phone ILIKE $4)
@@ -381,7 +392,8 @@ export async function searchStudents(query: string, includeInactive: boolean = f
 export async function quickSearchStudents(query: string, limit: number = 10): Promise<Student[]> {
   const searchTerm = `%${query}%`;
   const sql = `SELECT students.*, 
-                CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0 
+                CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
+                     OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL)
                      THEN 'studying' ELSE 'not_studying' END as study_status
                FROM students 
                 WHERE is_active = TRUE AND (full_name ILIKE $1 OR phone ILIKE $2)
@@ -493,6 +505,7 @@ export async function getStudentsWithDebt(month: string): Promise<StudentWithDeb
     `SELECT
       s.id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
       CASE WHEN (SELECT COUNT(*) FROM student_groups sg2 WHERE sg2.student_id = s.id AND sg2.is_active = TRUE) > 0
+           OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = s.id AND l2.group_id IS NULL)
            THEN 'studying' ELSE 'not_studying' END as study_status,
       COALESCE(s.discount::INTEGER, 0) as discount,
       g.id as group_id, g.title as group_title,
@@ -546,11 +559,13 @@ export async function getStudentsWithGroups(includeInactive: boolean = false): P
   // First get all students with study_status computed
   const studentsSql = includeInactive
     ? `SELECT students.*, 
-        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0 
+        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
+             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL)
              THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students ORDER BY full_name`
     : `SELECT students.*, 
-        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0 
+        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
+             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL)
              THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students WHERE is_active = TRUE ORDER BY full_name`;
   
@@ -581,13 +596,15 @@ export async function searchStudentsWithGroups(query: string, includeInactive: b
   const searchTerm = `%${query}%`;
   const studentsSql = includeInactive
     ? `SELECT students.*, 
-        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0 
+        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
+             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL)
              THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students
        WHERE full_name ILIKE $1 OR phone ILIKE $2 OR parent_name ILIKE $3 OR parent_phone ILIKE $4
        ORDER BY full_name`
     : `SELECT students.*, 
-        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0 
+        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
+             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL)
              THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students
        WHERE is_active = TRUE AND (full_name ILIKE $1 OR phone ILIKE $2 OR parent_name ILIKE $3 OR parent_phone ILIKE $4)

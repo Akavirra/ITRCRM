@@ -3,6 +3,7 @@ import { query, queryOne } from '@/db/neon';
 import crypto from 'crypto';
 import { logLessonChange, checkAndAutoCancelLesson } from '@/lib/lessons';
 import { safeCreateLessonDoneNotification } from '@/lib/notifications';
+import { useIndividualLesson } from '@/lib/individual-payments';
 
 export const dynamic = 'force-dynamic';
 
@@ -301,6 +302,21 @@ export async function POST(
           [teacher.id, lessonId]
         );
         await safeCreateLessonDoneNotification(lessonId, teacher.name);
+
+        // Deduct from individual balance for individual lessons
+        const lessonForBalance = await queryOne(
+          `SELECT group_id FROM lessons WHERE id = $1`,
+          [lessonId]
+        ) as { group_id: number | null } | null;
+        if (lessonForBalance && lessonForBalance.group_id === null) {
+          const presentRows = await query(
+            `SELECT student_id FROM attendance WHERE lesson_id = $1 AND status = 'present'`,
+            [lessonId]
+          );
+          for (const ps of presentRows.rows) {
+            await useIndividualLesson(ps.student_id);
+          }
+        }
       }
     }
 

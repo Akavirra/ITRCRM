@@ -6,6 +6,7 @@ import { fromZonedTime } from 'date-fns-tz';
 import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/group-history';
 import { formatDateTimeKyiv, formatTimeKyiv } from '@/lib/date-utils';
 import { logLessonChange, getLessonChangeHistory } from '@/lib/lessons';
+import { useIndividualLesson } from '@/lib/individual-payments';
 
 export const dynamic = 'force-dynamic';
 
@@ -284,15 +285,26 @@ export async function PATCH(
         return NextResponse.json({ error: 'Невірний статус' }, { status: 400 });
       }
       
-      // Add history entry when lesson is marked as done (only for group lessons)
-      if (status === 'done' && lesson.status !== 'done' && lesson.group_id) {
-        await addGroupHistoryEntry(
-          lesson.group_id,
-          'lesson_conducted',
-          formatLessonConductedDescription(lesson.lesson_date, lesson.topic),
-          user.id,
-          user.name
-        );
+      // Add history entry when lesson is marked as done
+      if (status === 'done' && lesson.status !== 'done') {
+        if (lesson.group_id) {
+          await addGroupHistoryEntry(
+            lesson.group_id,
+            'lesson_conducted',
+            formatLessonConductedDescription(lesson.lesson_date, lesson.topic),
+            user.id,
+            user.name
+          );
+        } else {
+          // Individual lesson: deduct from balance for each present student
+          const presentStudents = await all<{ student_id: number }>(
+            `SELECT student_id FROM attendance WHERE lesson_id = $1 AND status = 'present'`,
+            [lessonId]
+          );
+          for (const ps of presentStudents) {
+            await useIndividualLesson(ps.student_id);
+          }
+        }
       }
       
       updates.push(`status = $${queryParams.length + 1}`);
