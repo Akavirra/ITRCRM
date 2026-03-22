@@ -50,9 +50,11 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
   
   // Students State
   const [selectedStudents, setSelectedStudents] = useState<AvailableStudent[]>([]);
-  const [allStudents, setAllStudents] = useState<AvailableStudent[]>([]);
+  const [dropdownStudents, setDropdownStudents] = useState<AvailableStudent[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [searchingStudents, setSearchingStudents] = useState(false);
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,14 +93,49 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
       const coursesRes = await fetch('/api/courses');
       const coursesData = await coursesRes.json();
       setCourses(coursesData.courses || []);
-
-      const studentsRes = await fetch('/api/students');
-      if (studentsRes.ok) {
-        const studentsData = await studentsRes.json();
-        setAllStudents(studentsData.students || []);
-      }
     } catch (err) {
       console.error('Failed to fetch modal data:', err);
+    }
+  };
+
+  // Fetch students from API (initial load or search)
+  const fetchStudents = async (query: string = '') => {
+    setSearchingStudents(true);
+    try {
+      const params = new URLSearchParams();
+      if (query.trim()) {
+        params.set('search', query.trim());
+      }
+      params.set('limit', '30');
+      const res = await fetch(`/api/students?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        const selectedIds = new Set(selectedStudents.map(s => s.id));
+        const filtered = (data.students || []).filter((s: AvailableStudent) => !selectedIds.has(s.id));
+        setDropdownStudents(filtered);
+      }
+    } catch (err) {
+      console.error('Student search failed:', err);
+    } finally {
+      setSearchingStudents(false);
+    }
+  };
+
+  // Handle search input change with debounce
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setIsDropdownOpen(true);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      fetchStudents(query);
+    }, 300);
+  };
+
+  // Handle dropdown open (load initial students)
+  const handleDropdownOpen = () => {
+    if (!isDropdownOpen) {
+      setIsDropdownOpen(true);
+      fetchStudents(searchQuery);
     }
   };
 
@@ -115,16 +152,10 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
     }
   }, [newGroupCourseId, newGroupWeeklyDay, newGroupStartTime, courses]);
 
-  const filteredStudents = allStudents.filter(s => {
-    if (selectedStudents.some(selected => selected.id === s.id)) return false;
-    if (!searchQuery.trim()) return true;
-    return s.full_name.toLowerCase().includes(searchQuery.toLowerCase());
-  });
-
   const handleAddStudent = (student: AvailableStudent) => {
     setSelectedStudents(prev => [...prev, student]);
+    setDropdownStudents(prev => prev.filter(s => s.id !== student.id));
     setSearchQuery('');
-    setIsDropdownOpen(false);
   };
 
   const handleRemoveStudent = (studentId: number) => {
@@ -140,7 +171,9 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
     setError(null);
     setTitlePreview('');
     setSearchQuery('');
+    setDropdownStudents([]);
     setIsDropdownOpen(false);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -355,17 +388,19 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
 
               {/* Search to add more */}
               <div style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  placeholder="Пошук або вибір учня..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setIsDropdownOpen(true);
-                  }}
-                  onFocus={() => setIsDropdownOpen(true)}
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem' }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    placeholder="Пошук або вибір учня..."
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onFocus={handleDropdownOpen}
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem' }}
+                  />
+                  {searchingStudents && (
+                    <div style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', border: '2px solid #e5e7eb', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  )}
+                </div>
 
                 {/* Dropdown Results */}
                 {isDropdownOpen && (
@@ -375,8 +410,12 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
                       onClick={() => setIsDropdownOpen(false)}
                     />
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.25rem', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 10, maxHeight: '200px', overflowY: 'auto' }}>
-                      {filteredStudents.length > 0 ? (
-                        filteredStudents.map(student => (
+                      {searchingStudents && dropdownStudents.length === 0 ? (
+                        <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280', textAlign: 'center' }}>
+                          Пошук...
+                        </div>
+                      ) : dropdownStudents.length > 0 ? (
+                        dropdownStudents.map(student => (
                           <button
                             key={student.id}
                             type="button"
