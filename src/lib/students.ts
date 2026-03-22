@@ -15,7 +15,7 @@ export interface Student {
   birth_date: string | null;
   photo: string | null;
   school: string | null;
-  discount: string | null;
+  discount: number | null;
   parent_relation: string | null;
   parent2_name: string | null;
   parent2_relation: string | null;
@@ -39,7 +39,10 @@ export interface StudentWithGroups extends Student {
 export interface StudentWithDebt extends Student {
   group_id: number;
   group_title: string;
-  monthly_price: number;
+  lessons_count: number;
+  lesson_price: number;
+  discount_percent: number;
+  expected_amount: number;
   month: string;
   paid_amount: number;
   debt: number;
@@ -149,7 +152,7 @@ export async function createStudent(
   birthDate?: string,
   photo?: string,
   school?: string,
-  discount?: string,
+  discount?: number | null,
   parentRelation?: string,
   parent2Name?: string,
   parent2Relation?: string,
@@ -159,7 +162,7 @@ export async function createStudent(
   const publicId = await generateUniquePublicId('student', isPublicIdUnique);
   const result = await run(
     `INSERT INTO students (public_id, full_name, phone, email, parent_name, parent_phone, notes, birth_date, photo, school, discount, parent_relation, parent2_name, parent2_relation, interested_courses, source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
-    [publicId, fullName, phone || null, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount || null, parentRelation || null, parent2Name || null, parent2Relation || null, interestedCourses || null, source || null]
+    [publicId, fullName, phone || null, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount != null ? discount : null, parentRelation || null, parent2Name || null, parent2Relation || null, interestedCourses || null, source || null]
   );
 
   return { id: Number(result[0]?.id || 0), public_id: publicId };
@@ -177,7 +180,7 @@ export async function updateStudent(
   birthDate?: string,
   photo?: string,
   school?: string,
-  discount?: string,
+  discount?: number | null,
   parentRelation?: string,
   parent2Name?: string,
   parent2Relation?: string,
@@ -186,7 +189,7 @@ export async function updateStudent(
 ): Promise<void> {
   await run(
     `UPDATE students SET full_name = $1, phone = $2, email = $3, parent_name = $4, parent_phone = $5, notes = $6, birth_date = $7, photo = $8, school = $9, discount = $10, parent_relation = $11, parent2_name = $12, parent2_relation = $13, interested_courses = $14, source = $15, updated_at = NOW() WHERE id = $16`,
-    [fullName, phone || null, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount || null, parentRelation || null, parent2Name || null, parent2Relation || null, interestedCourses || null, source || null, id]
+    [fullName, phone || null, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount != null ? discount : null, parentRelation || null, parent2Name || null, parent2Relation || null, interestedCourses || null, source || null, id]
   );
 }
 
@@ -463,50 +466,72 @@ export async function getStudentPaymentHistory(
 
 // Get students with debt for a specific month
 export async function getStudentsWithDebt(month: string): Promise<StudentWithDebt[]> {
-  // Get all active student-group combinations with their monthly price
-  // and subtract payments made for that month
-  const sql = `SELECT 
-    s.id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
-    CASE WHEN (SELECT COUNT(*) FROM student_groups sg WHERE sg.student_id = s.id AND sg.is_active = TRUE) > 0 
-         THEN 'studying' ELSE 'not_studying' END as study_status,
-    g.id as group_id, g.title as group_title, g.monthly_price,
-    $1 as month,
-    COALESCE(SUM(p.amount), 0) as paid_amount,
-    g.monthly_price - COALESCE(SUM(p.amount), 0) as debt
-   FROM student_groups sg
-   JOIN students s ON sg.student_id = s.id
-   JOIN groups g ON sg.group_id = g.id
-   LEFT JOIN payments p ON p.student_id = s.id AND p.group_id = g.id AND p.month = $1
-   WHERE sg.is_active = TRUE AND s.is_active = TRUE AND g.is_active = TRUE
-   GROUP BY s.id, g.id
-   HAVING g.monthly_price - COALESCE(SUM(p.amount), 0) > 0
-   ORDER BY debt DESC, s.full_name`;
-  
-  return await all<StudentWithDebt>(sql, [month]);
+  // Get lesson_price from system_settings
+  const setting = await get<{ value: string }>(
+    `SELECT value FROM system_settings WHERE key = 'lesson_price'`
+  );
+  const lessonPrice = parseInt(setting?.value || '300', 10);
+
+  // Get all active student-group combinations with lesson counts for the month
+  const rows = await all<{
+    id: number;
+    full_name: string;
+    phone: string | null;
+    parent_name: string | null;
+    parent_phone: string | null;
+    notes: string | null;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+    study_status: StudyStatus;
+    discount: number | null;
+    group_id: number;
+    group_title: string;
+    lessons_count: number;
+    paid_amount: number;
+  }>(
+    `SELECT
+      s.id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
+      CASE WHEN (SELECT COUNT(*) FROM student_groups sg2 WHERE sg2.student_id = s.id AND sg2.is_active = TRUE) > 0
+           THEN 'studying' ELSE 'not_studying' END as study_status,
+      COALESCE(s.discount, 0) as discount,
+      g.id as group_id, g.title as group_title,
+      (SELECT COUNT(*) FROM lessons l WHERE l.group_id = g.id AND l.status = 'done'
+        AND TO_CHAR(l.lesson_date, 'YYYY-MM') = $2) as lessons_count,
+      COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.student_id = s.id AND p.group_id = g.id AND p.month = $1), 0) as paid_amount
+     FROM student_groups sg
+     JOIN students s ON sg.student_id = s.id
+     JOIN groups g ON sg.group_id = g.id
+     WHERE sg.is_active = TRUE AND s.is_active = TRUE AND g.is_active = TRUE
+     ORDER BY s.full_name`,
+    [month, month.substring(0, 7)]
+  );
+
+  return rows
+    .map(row => {
+      const discountPercent = row.discount || 0;
+      const effectivePrice = Math.round(lessonPrice * (1 - discountPercent / 100));
+      const expectedAmount = row.lessons_count * effectivePrice;
+      const debt = Math.max(0, expectedAmount - row.paid_amount);
+      return {
+        ...row,
+        lesson_price: lessonPrice,
+        discount_percent: discountPercent,
+        expected_amount: expectedAmount,
+        month,
+        debt,
+      } as StudentWithDebt;
+    })
+    .filter(r => r.debt > 0)
+    .sort((a, b) => b.debt - a.debt);
 }
 
 // Get total debt for current month
 export async function getTotalDebtForMonth(month: string): Promise<{ total_debt: number; students_count: number }> {
-  const result = await get<{ total_debt: number; students_count: number }>(
-    `SELECT 
-      SUM(debt) as total_debt,
-      COUNT(DISTINCT student_id) as students_count
-     FROM (
-       SELECT 
-         s.id as student_id,
-         g.monthly_price - COALESCE(SUM(p.amount), 0) as debt
-       FROM student_groups sg
-       JOIN students s ON sg.student_id = s.id
-       JOIN groups g ON sg.group_id = g.id
-       LEFT JOIN payments p ON p.student_id = s.id AND p.group_id = g.id AND p.month = $1
-       WHERE sg.is_active = TRUE AND s.is_active = TRUE AND g.is_active = TRUE
-       GROUP BY s.id, g.id
-       HAVING g.monthly_price - COALESCE(SUM(p.amount), 0) > 0
-     )`,
-    [month]
-  );
-  
-  return result || { total_debt: 0, students_count: 0 };
+  const debtors = await getStudentsWithDebt(month);
+  const uniqueStudents = new Set(debtors.map(d => d.id));
+  const totalDebt = debtors.reduce((sum, d) => sum + d.debt, 0);
+  return { total_debt: totalDebt, students_count: uniqueStudents.size };
 }
 
 // Get students with their groups for cards display

@@ -6,6 +6,7 @@ import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/gr
 import { logLessonChange, checkAndAutoCancelLesson } from '@/lib/lessons';
 import { safeAddStudentHistoryEntry, formatAttendanceDescription, StudentHistoryActionType } from '@/lib/student-history';
 import { safeCreateLessonDoneNotification } from '@/lib/notifications';
+import { useIndividualLesson } from '@/lib/individual-payments';
 
 export const dynamic = 'force-dynamic';
 
@@ -180,6 +181,29 @@ export async function POST(
               );
 
               await safeCreateLessonDoneNotification(lessonId, user.name);
+            }
+          }
+
+          // Individual lesson: mark as done and deduct from balance
+          if (!cancelled && lessonInfo.group_id === null) {
+            const indCounts = await get<{ total: number; recorded: number }>(
+              `SELECT
+                (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1) as total,
+                (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
+              [lessonId]
+            );
+
+            if (indCounts && indCounts.total > 0 && indCounts.recorded >= indCounts.total) {
+              await run(`UPDATE lessons SET status = 'done', updated_at = NOW() WHERE id = $1`, [lessonId]);
+
+              // Deduct from individual balance for each present student
+              const presentStudents = await all<{ student_id: number }>(
+                `SELECT student_id FROM attendance WHERE lesson_id = $1 AND status = 'present'`,
+                [lessonId]
+              );
+              for (const ps of presentStudents) {
+                await useIndividualLesson(ps.student_id);
+              }
             }
           }
         }
