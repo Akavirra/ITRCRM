@@ -21,26 +21,31 @@ export async function GET(request: NextRequest) {
   const lessonPrice = await getLessonPrice();
 
   // Individual balances - students with negative balance (used > paid)
-  const individualStudents = await all<{
-    id: number;
-    full_name: string;
-    phone: string | null;
-    parent_name: string | null;
-    parent_phone: string | null;
-  }>(
-    `SELECT DISTINCT s.id, s.full_name, s.phone, s.parent_name, s.parent_phone
-     FROM students s
-     JOIN individual_balances ib ON s.id = ib.student_id
-     WHERE ib.lessons_used > ib.lessons_paid AND s.is_active = TRUE
-     ORDER BY s.full_name`
-  );
+  let individualDebtors: Array<{ id: number; full_name: string; phone: string | null; parent_name: string | null; parent_phone: string | null; balance: { lessons_paid: number; lessons_used: number; lessons_remaining: number } }> = [];
+  try {
+    const individualStudents = await all<{
+      id: number;
+      full_name: string;
+      phone: string | null;
+      parent_name: string | null;
+      parent_phone: string | null;
+    }>(
+      `SELECT DISTINCT s.id, s.full_name, s.phone, s.parent_name, s.parent_phone
+       FROM students s
+       JOIN individual_balances ib ON s.id = ib.student_id
+       WHERE ib.lessons_used > ib.lessons_paid AND s.is_active = TRUE
+       ORDER BY s.full_name`
+    );
 
-  const individualDebtors = await Promise.all(
-    individualStudents.map(async (s) => {
-      const balance = await getIndividualBalance(s.id);
-      return { ...s, balance };
-    })
-  );
+    individualDebtors = await Promise.all(
+      individualStudents.map(async (s) => {
+        const balance = await getIndividualBalance(s.id);
+        return { ...s, balance };
+      })
+    );
+  } catch {
+    // individual_balances table may not exist yet (migration not run)
+  }
 
   // Total payments collected this month (group)
   const collected = await import('@/lib/payments').then(m =>

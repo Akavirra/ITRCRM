@@ -494,7 +494,7 @@ export async function getStudentsWithDebt(month: string): Promise<StudentWithDeb
       s.id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
       CASE WHEN (SELECT COUNT(*) FROM student_groups sg2 WHERE sg2.student_id = s.id AND sg2.is_active = TRUE) > 0
            THEN 'studying' ELSE 'not_studying' END as study_status,
-      COALESCE(s.discount, 0) as discount,
+      COALESCE(s.discount::INTEGER, 0) as discount,
       g.id as group_id, g.title as group_title,
       (SELECT COUNT(*) FROM lessons l WHERE l.group_id = g.id AND l.status = 'done'
         AND TO_CHAR(l.lesson_date, 'YYYY-MM') = $2) as lessons_count,

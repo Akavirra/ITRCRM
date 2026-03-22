@@ -119,7 +119,7 @@ export async function calculateIndividualAmount(
 ): Promise<{ lesson_price: number; discount_percent: number; effective_price: number; total: number }> {
   const lessonPrice = await getLessonPrice();
   const student = await get<{ discount: number | null }>(
-    `SELECT COALESCE(discount, 0) as discount FROM students WHERE id = $1`,
+    `SELECT COALESCE(discount::INTEGER, 0) as discount FROM students WHERE id = $1`,
     [studentId]
   );
   const discountPercent = student?.discount || 0;

@@ -89,7 +89,7 @@ export async function getPaymentStatusForGroupMonth(
     discount: number | null;
   }>(
     `SELECT s.id as student_id, s.full_name as student_name, s.phone as student_phone,
-            s.parent_name, s.parent_phone, COALESCE(s.discount, 0) as discount
+            s.parent_name, s.parent_phone, COALESCE(s.discount::INTEGER, 0) as discount
      FROM students s
      JOIN student_groups sg ON s.id = sg.student_id
      WHERE sg.group_id = $1 AND sg.is_active = TRUE AND s.is_active = TRUE
