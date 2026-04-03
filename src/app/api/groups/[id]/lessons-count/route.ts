@@ -29,7 +29,7 @@ export async function GET(
   const rows = await all<{ month: string; cnt: number }>(
     `SELECT TO_CHAR(lesson_date, 'YYYY-MM') as month, COUNT(*) as cnt
      FROM lessons
-     WHERE group_id = $1 AND TO_CHAR(lesson_date, 'YYYY-MM') = ANY($2)
+     WHERE group_id = $1 AND status != 'canceled' AND TO_CHAR(lesson_date, 'YYYY-MM') = ANY($2)
      GROUP BY TO_CHAR(lesson_date, 'YYYY-MM')`,
     [groupId, months]
   );

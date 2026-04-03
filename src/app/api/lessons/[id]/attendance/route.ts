@@ -7,6 +7,7 @@ import { logLessonChange, checkAndAutoCancelLesson } from '@/lib/lessons';
 import { safeAddStudentHistoryEntry, formatAttendanceDescription, StudentHistoryActionType } from '@/lib/student-history';
 import { safeCreateLessonDoneNotification } from '@/lib/notifications';
 import { useIndividualLesson } from '@/lib/individual-payments';
+import { getPaymentStatusForLesson } from '@/lib/payments';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,8 +54,15 @@ export async function GET(
   }
 
   const attendance = await getAttendanceForLessonWithStudents(lessonId);
-  
-  return NextResponse.json({ attendance });
+  const paymentMap = await getPaymentStatusForLesson(lessonId);
+
+  const enrichedAttendance = attendance.map(record => ({
+    ...record,
+    payment_status: paymentMap.get(record.student_id)?.status ?? null,
+    payment_label: paymentMap.get(record.student_id)?.label ?? null,
+  }));
+
+  return NextResponse.json({ attendance: enrichedAttendance });
 }
 
 // POST /api/lessons/[id]/attendance - Set attendance

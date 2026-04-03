@@ -70,11 +70,11 @@ export async function getPaymentStatusForGroupMonth(
 ): Promise<StudentPaymentStatus[]> {
   const lessonPrice = await getLessonPrice();
 
-  // Count done lessons for this group in the given month
+  // Count all non-canceled lessons for this group in the given month
   const monthStr = month.substring(0, 7); // 'YYYY-MM'
   const lessonCountResult = await get<{ cnt: number }>(
     `SELECT COUNT(*) as cnt FROM lessons
-     WHERE group_id = $1 AND status = 'done' AND TO_CHAR(lesson_date, 'YYYY-MM') = $2`,
+     WHERE group_id = $1 AND status != 'canceled' AND TO_CHAR(lesson_date, 'YYYY-MM') = $2`,
     [groupId, monthStr]
   );
   const lessonsCount = lessonCountResult?.cnt || 0;
@@ -274,4 +274,93 @@ export async function getPaymentsForExport(
   sql += ` ORDER BY p.month DESC, s.full_name`;
   
   return await all<PaymentWithDetails>(sql, params);
+}
+
+// Payment status for a specific lesson (per student)
+export interface LessonPaymentInfo {
+  status: 'paid' | 'partial' | 'unpaid';
+  label: string;
+}
+
+export async function getPaymentStatusForLesson(
+  lessonId: number
+): Promise<Map<number, LessonPaymentInfo>> {
+  const result = new Map<number, LessonPaymentInfo>();
+
+  const lesson = await get<{ group_id: number | null; month_str: string }>(
+    `SELECT group_id, TO_CHAR(lesson_date, 'YYYY-MM') as month_str FROM lessons WHERE id = $1`,
+    [lessonId]
+  );
+  if (!lesson) return result;
+
+  const lessonPrice = await getLessonPrice();
+
+  if (lesson.group_id) {
+    // Group lesson: check monthly payment status per student
+    const rows = await all<{
+      student_id: number;
+      discount: number;
+      lessons_in_month: number;
+      total_paid: number;
+    }>(
+      `SELECT sg.student_id,
+        COALESCE(s.discount::INTEGER, 0) as discount,
+        (SELECT COUNT(*) FROM lessons l2
+         WHERE l2.group_id = $1 AND TO_CHAR(l2.lesson_date, 'YYYY-MM') = $2
+           AND l2.status != 'canceled') as lessons_in_month,
+        COALESCE((SELECT SUM(p.amount) FROM payments p
+         WHERE p.student_id = sg.student_id AND p.group_id = $1
+           AND TO_CHAR(p.month, 'YYYY-MM') = $2), 0) as total_paid
+       FROM student_groups sg
+       JOIN students s ON sg.student_id = s.id
+       WHERE sg.group_id = $1 AND sg.is_active = TRUE AND s.is_active = TRUE`,
+      [lesson.group_id, lesson.month_str]
+    );
+
+    for (const row of rows) {
+      const effectivePrice = Math.round(lessonPrice * (1 - row.discount / 100));
+      const expected = row.lessons_in_month * effectivePrice;
+      let status: LessonPaymentInfo['status'];
+      let label: string;
+
+      if (expected === 0 || row.total_paid >= expected) {
+        status = 'paid';
+        label = 'Оплачено';
+      } else if (row.total_paid > 0) {
+        status = 'partial';
+        label = 'Частково';
+      } else {
+        status = 'unpaid';
+        label = 'Не оплачено';
+      }
+      result.set(row.student_id, { status, label });
+    }
+  } else {
+    // Individual lesson: check balance
+    let rows: Array<{ student_id: number; lessons_paid: number; lessons_used: number }> = [];
+    try {
+      rows = await all<{ student_id: number; lessons_paid: number; lessons_used: number }>(
+        `SELECT a.student_id,
+          COALESCE(ib.lessons_paid, 0) as lessons_paid,
+          COALESCE(ib.lessons_used, 0) as lessons_used
+         FROM attendance a
+         LEFT JOIN individual_balances ib ON a.student_id = ib.student_id
+         WHERE a.lesson_id = $1`,
+        [lessonId]
+      );
+    } catch {
+      // individual_balances may not exist yet
+    }
+
+    for (const row of rows) {
+      const remaining = row.lessons_paid - row.lessons_used;
+      if (remaining > 0) {
+        result.set(row.student_id, { status: 'paid', label: 'Оплачено' });
+      } else {
+        result.set(row.student_id, { status: 'unpaid', label: 'Не оплачено' });
+      }
+    }
+  }
+
+  return result;
 }

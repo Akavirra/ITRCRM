@@ -23,6 +23,8 @@ interface AttendanceRecord {
   status: 'present' | 'absent' | 'makeup_planned' | 'makeup_done' | null;
   comment: string | null;
   makeup_lesson_id: number | null;
+  payment_status: 'paid' | 'partial' | 'unpaid' | null;
+  payment_label: string | null;
 }
 
 interface LessonData {
@@ -1714,6 +1716,16 @@ export default function LessonModalsManager() {
                             >
                               {att.student_name}
                             </button>
+                            {att.payment_status === 'unpaid' && (
+                              <span style={{ padding: '1px 5px', borderRadius: 4, backgroundColor: '#fee2e2', color: '#dc2626', fontSize: '0.5625rem', fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                                Не оплачено
+                              </span>
+                            )}
+                            {att.payment_status === 'partial' && (
+                              <span style={{ padding: '1px 5px', borderRadius: 4, backgroundColor: '#fef9c3', color: '#a16207', fontSize: '0.5625rem', fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                                Частково
+                              </span>
+                            )}
                             {att.status === 'makeup_done' && (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                 <span style={{ padding: '1px 6px', borderRadius: 4, backgroundColor: '#fef9c3', color: '#a16207', fontSize: '0.6875rem', fontWeight: 600 }}>
