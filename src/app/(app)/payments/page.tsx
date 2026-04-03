@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { useGroupModals } from '@/components/GroupModalsContext';
@@ -67,20 +67,33 @@ interface OverviewData {
   };
 }
 
-// Payment form modal
-interface PaymentForm {
-  student_id: number;
-  student_name: string;
+// Student search result
+interface StudentSearchResult {
+  id: number;
+  full_name: string;
+}
+
+// Student payment info from API
+interface StudentPaymentInfo {
+  student: { id: number; full_name: string; discount_percent: number };
+  lesson_price: number;
+  effective_price: number;
+  groups: Array<{ group_id: number; group_title: string }>;
+  has_individual: boolean;
+  individual_balance: IndividualBalance | null;
+}
+
+// Payment line — one row in the payment console
+interface PaymentLine {
+  id: string; // unique key for React
+  target_type: 'group' | 'individual';
   group_id: number | null;
   group_title: string;
-  type: 'group' | 'individual';
-  amount: string;
-  lessons_count: string;
-  method: 'cash' | 'account';
-  note: string;
-  paid_at: string;
-  month: string;
-  debt: number;
+  pay_mode: 'months' | 'lessons'; // pay by month(s) or by lesson count
+  months: string[]; // selected months (YYYY-MM-01 format)
+  lessons_count: number;
+  amount: string; // manual override or auto-calculated
+  auto_amount: number; // system-calculated amount
 }
 
 const MONTH_NAMES = [
@@ -118,11 +131,19 @@ export default function PaymentsPage() {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'group' | 'individual'>('group');
 
-  // Payment modal
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentForm, setPaymentForm] = useState<PaymentForm | null>(null);
+  // Payment console modal
+  const [showPaymentConsole, setShowPaymentConsole] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [studentResults, setStudentResults] = useState<StudentSearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<StudentPaymentInfo | null>(null);
+  const [paymentLines, setPaymentLines] = useState<PaymentLine[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'account'>('cash');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentNote, setPaymentNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const monthOptions = getMonthOptions();
 
@@ -192,112 +213,247 @@ export default function PaymentsPage() {
     return true;
   });
 
-  const openPaymentForm = (debtor: StudentDebt) => {
-    setPaymentForm({
-      student_id: debtor.id,
-      student_name: debtor.full_name,
-      group_id: debtor.group_id,
-      group_title: debtor.group_title,
-      type: 'group',
-      amount: String(debtor.debt),
-      lessons_count: '',
-      method: 'cash',
-      note: '',
-      paid_at: new Date().toISOString().split('T')[0],
-      month,
-      debt: debtor.debt,
-    });
-    setSaveError('');
-    setShowPaymentModal(true);
+  // Search students for payment console
+  const searchStudents = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setStudentResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const res = await fetch(`/api/students?search=${encodeURIComponent(query)}&limit=8`);
+      if (res.ok) {
+        const json = await res.json();
+        setStudentResults((json.students || []).map((s: { id: number; full_name: string }) => ({
+          id: s.id,
+          full_name: s.full_name,
+        })));
+      }
+    } catch { /* ignore */ } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  const handleStudentSearchChange = (value: string) => {
+    setStudentSearch(value);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => searchStudents(value), 300);
   };
 
-  const openIndividualPaymentForm = (debtor: IndividualDebtor) => {
-    setPaymentForm({
-      student_id: debtor.id,
-      student_name: debtor.full_name,
-      group_id: null,
-      group_title: '',
-      type: 'individual',
-      amount: '',
-      lessons_count: '1',
-      method: 'cash',
-      note: '',
-      paid_at: new Date().toISOString().split('T')[0],
-      month,
-      debt: Math.abs(debtor.balance.lessons_remaining) * (data?.lesson_price || 300),
-    });
-    setSaveError('');
-    setShowPaymentModal(true);
+  // Select student → load their payment info
+  const selectStudent = async (studentId: number) => {
+    setStudentResults([]);
+    setSearchLoading(true);
+    try {
+      const res = await fetch(`/api/students/${studentId}/payment-info`);
+      if (res.ok) {
+        const info: StudentPaymentInfo = await res.json();
+        setSelectedStudent(info);
+        setStudentSearch(info.student.full_name);
+        // Auto-add payment lines for each group
+        const lines: PaymentLine[] = info.groups.map((g, i) => ({
+          id: `group-${g.group_id}-${i}`,
+          target_type: 'group' as const,
+          group_id: g.group_id,
+          group_title: g.group_title,
+          pay_mode: 'months' as const,
+          months: [month],
+          lessons_count: 1,
+          amount: '',
+          auto_amount: 0,
+        }));
+        if (info.has_individual) {
+          lines.push({
+            id: 'individual-0',
+            target_type: 'individual',
+            group_id: null,
+            group_title: 'Індивідуальні',
+            pay_mode: 'lessons',
+            months: [],
+            lessons_count: 1,
+            amount: '',
+            auto_amount: info.effective_price,
+          });
+        }
+        setPaymentLines(lines);
+      }
+    } catch { /* ignore */ } finally {
+      setSearchLoading(false);
+    }
   };
 
-  const handleSavePayment = async () => {
-    if (!paymentForm) return;
+  // Open console fresh
+  const openPaymentConsole = () => {
+    setStudentSearch('');
+    setStudentResults([]);
+    setSelectedStudent(null);
+    setPaymentLines([]);
+    setPaymentMethod('cash');
+    setPaymentDate(new Date().toISOString().split('T')[0]);
+    setPaymentNote('');
+    setSaveError('');
+    setShowPaymentConsole(true);
+  };
+
+  // Open console pre-filled for a group debtor
+  const openPaymentForDebtor = (debtor: StudentDebt) => {
+    openPaymentConsole();
+    // Pre-select this student
+    setTimeout(() => selectStudent(debtor.id), 0);
+  };
+
+  // Open console pre-filled for individual debtor
+  const openPaymentForIndividual = (debtor: IndividualDebtor) => {
+    openPaymentConsole();
+    setTimeout(() => selectStudent(debtor.id), 0);
+  };
+
+  // Update a payment line
+  const updateLine = (lineId: string, updates: Partial<PaymentLine>) => {
+    setPaymentLines(prev => prev.map(l => l.id === lineId ? { ...l, ...updates } : l));
+  };
+
+  // Toggle month in a line
+  const toggleMonth = (lineId: string, monthVal: string) => {
+    setPaymentLines(prev => prev.map(l => {
+      if (l.id !== lineId) return l;
+      const months = l.months.includes(monthVal)
+        ? l.months.filter(m => m !== monthVal)
+        : [...l.months, monthVal].sort();
+      return { ...l, months };
+    }));
+  };
+
+  // Remove a payment line
+  const removeLine = (lineId: string) => {
+    setPaymentLines(prev => prev.filter(l => l.id !== lineId));
+  };
+
+  // Calculate line amount
+  const getLineAmount = (line: PaymentLine): number => {
+    if (line.amount) {
+      const parsed = parseFloat(line.amount);
+      if (!isNaN(parsed)) return parsed;
+    }
+    if (!selectedStudent) return 0;
+    const price = selectedStudent.effective_price;
+    if (line.target_type === 'individual') {
+      return line.lessons_count * price;
+    }
+    // Group: months × assumed lessons (use lesson price as a proxy — admin can override)
+    // For advance payments, amount is per-month × effective_price
+    // But we don't know future lesson count yet, so just show months × price placeholder
+    if (line.pay_mode === 'months') {
+      // We don't have exact future lesson count, so let admin set amount manually
+      // Auto-amount = 0 means "to be specified"
+      return 0;
+    }
+    return line.lessons_count * price;
+  };
+
+  // Total amount across all lines
+  const getTotalAmount = (): number => {
+    return paymentLines.reduce((sum, line) => {
+      const amt = line.amount ? parseFloat(line.amount) : getLineAmount(line);
+      return sum + (isNaN(amt) ? 0 : amt);
+    }, 0);
+  };
+
+  // Save all payment lines
+  const handleSavePayments = async () => {
+    if (!selectedStudent || paymentLines.length === 0) return;
+
+    // Validate: each active line must have an amount
+    for (const line of paymentLines) {
+      const amt = line.amount ? parseFloat(line.amount) : getLineAmount(line);
+      if (isNaN(amt) || amt <= 0) {
+        setSaveError(`Вкажіть суму для "${line.group_title}"`);
+        return;
+      }
+      if (line.target_type === 'group' && line.pay_mode === 'months' && line.months.length === 0) {
+        setSaveError(`Оберіть місяць для "${line.group_title}"`);
+        return;
+      }
+      if (line.pay_mode === 'lessons' && line.lessons_count <= 0) {
+        setSaveError(`Вкажіть кількість занять для "${line.group_title}"`);
+        return;
+      }
+    }
+
     setSaving(true);
     setSaveError('');
 
     try {
-      if (paymentForm.type === 'group') {
-        const amount = parseFloat(paymentForm.amount);
-        if (isNaN(amount) || amount <= 0) {
-          setSaveError('Введіть коректну суму');
-          setSaving(false);
-          return;
-        }
+      for (const line of paymentLines) {
+        const amt = line.amount ? parseFloat(line.amount) : getLineAmount(line);
 
-        const res = await fetch(`/api/groups/${paymentForm.group_id}/payments`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            student_id: paymentForm.student_id,
-            month: paymentForm.month,
-            amount,
-            method: paymentForm.method,
-            note: paymentForm.note || undefined,
-            paid_at: paymentForm.paid_at ? new Date(paymentForm.paid_at).toISOString() : undefined,
-          }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json();
-          setSaveError(err.error || 'Помилка збереження');
-          setSaving(false);
-          return;
-        }
-      } else {
-        // Individual payment
-        const lessonsCount = parseInt(paymentForm.lessons_count);
-        if (isNaN(lessonsCount) || lessonsCount <= 0) {
-          setSaveError('Введіть кількість занять');
-          setSaving(false);
-          return;
-        }
-
-        const body: Record<string, unknown> = {
-          lessons_count: lessonsCount,
-          method: paymentForm.method,
-          note: paymentForm.note || undefined,
-          paid_at: paymentForm.paid_at ? new Date(paymentForm.paid_at).toISOString() : undefined,
-        };
-        if (paymentForm.amount) {
-          body.amount = parseFloat(paymentForm.amount);
-        }
-
-        const res = await fetch(`/api/students/${paymentForm.student_id}/individual-payments`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          const err = await res.json();
-          setSaveError(err.error || 'Помилка збереження');
-          setSaving(false);
-          return;
+        if (line.target_type === 'group' && line.group_id) {
+          if (line.pay_mode === 'months') {
+            // Create one payment per month
+            const perMonthAmount = Math.round(amt / line.months.length);
+            for (const m of line.months) {
+              const res = await fetch(`/api/groups/${line.group_id}/payments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  student_id: selectedStudent.student.id,
+                  month: m,
+                  amount: perMonthAmount,
+                  method: paymentMethod,
+                  note: paymentNote || undefined,
+                  paid_at: paymentDate ? new Date(paymentDate).toISOString() : undefined,
+                }),
+              });
+              if (!res.ok) {
+                const err = await res.json();
+                setSaveError(err.error || 'Помилка збереження групової оплати');
+                setSaving(false);
+                return;
+              }
+            }
+          } else {
+            // Pay by lessons count for group — save as current month payment
+            const res = await fetch(`/api/groups/${line.group_id}/payments`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                student_id: selectedStudent.student.id,
+                month: month,
+                amount: amt,
+                method: paymentMethod,
+                note: paymentNote ? `${paymentNote} (${line.lessons_count} зан.)` : `${line.lessons_count} зан.`,
+                paid_at: paymentDate ? new Date(paymentDate).toISOString() : undefined,
+              }),
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              setSaveError(err.error || 'Помилка збереження');
+              setSaving(false);
+              return;
+            }
+          }
+        } else if (line.target_type === 'individual') {
+          const res = await fetch(`/api/students/${selectedStudent.student.id}/individual-payments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lessons_count: line.lessons_count,
+              amount: amt,
+              method: paymentMethod,
+              note: paymentNote || undefined,
+              paid_at: paymentDate ? new Date(paymentDate).toISOString() : undefined,
+            }),
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            setSaveError(err.error || 'Помилка збереження індивідуальної оплати');
+            setSaving(false);
+            return;
+          }
         }
       }
 
-      setShowPaymentModal(false);
-      setPaymentForm(null);
+      setShowPaymentConsole(false);
       fetchData();
     } catch {
       setSaveError('Помилка мережі');
@@ -427,6 +583,15 @@ export default function PaymentsPage() {
       {/* Filters */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+          {/* + Payment button */}
+          <button
+            className="btn btn-primary"
+            onClick={openPaymentConsole}
+            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: '600' }}
+          >
+            + Внести оплату
+          </button>
+
           {/* Month picker */}
           <select
             className="form-input"
@@ -579,7 +744,7 @@ export default function PaymentsPage() {
                         {d.debt > 0 && (
                           <button
                             className="btn btn-primary btn-sm"
-                            onClick={() => openPaymentForm(d)}
+                            onClick={() => openPaymentForDebtor(d)}
                             style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
                           >
                             + Оплата
@@ -650,7 +815,7 @@ export default function PaymentsPage() {
                       <td style={{ textAlign: 'right' }}>
                         <button
                           className="btn btn-primary btn-sm"
-                          onClick={() => openIndividualPaymentForm(d)}
+                          onClick={() => openPaymentForIndividual(d)}
                           style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
                         >
                           + Оплата
@@ -700,117 +865,346 @@ export default function PaymentsPage() {
         </div>
       )}
 
-      {/* Payment modal */}
-      {showPaymentModal && paymentForm && (
+      {/* Payment Console Modal */}
+      {showPaymentConsole && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
           alignItems: 'center', justifyContent: 'center', zIndex: 1000,
         }}
-        onClick={() => setShowPaymentModal(false)}
+        onClick={() => setShowPaymentConsole(false)}
         >
           <div
             style={{
               backgroundColor: 'white', borderRadius: '0.75rem',
-              padding: '1.5rem', width: '100%', maxWidth: '440px',
+              padding: '1.5rem', width: '100%', maxWidth: '640px',
+              maxHeight: '90vh', overflowY: 'auto',
               boxShadow: '0 20px 60px -15px rgba(0,0,0,0.3)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem', fontWeight: '600' }}>
-              {paymentForm.type === 'group' ? 'Внести оплату (групова)' : 'Внести оплату (індивідуальна)'}
+            <h3 style={{ margin: '0 0 1.25rem', fontSize: '1.25rem', fontWeight: '600' }}>
+              Консоль оплат
             </h3>
 
-            <div style={{ marginBottom: '0.75rem' }}>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Учень</div>
-              <div style={{ fontWeight: '500' }}>{paymentForm.student_name}</div>
-            </div>
-
-            {paymentForm.type === 'group' && (
-              <div style={{ marginBottom: '0.75rem' }}>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Група</div>
-                <div style={{ fontWeight: '500' }}>{paymentForm.group_title}</div>
-              </div>
-            )}
-
-            {paymentForm.type === 'group' && (
-              <div style={{ marginBottom: '0.75rem' }}>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Борг</div>
-                <div style={{ fontWeight: '600', color: '#ef4444' }}>{paymentForm.debt} ₴</div>
-              </div>
-            )}
-
-            {paymentForm.type === 'individual' && (
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem' }}>
-                  Кількість занять
-                </label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={paymentForm.lessons_count}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, lessons_count: e.target.value })}
-                  min="1"
-                  style={{ width: '100%' }}
-                />
-              </div>
-            )}
-
-            <div style={{ marginBottom: '0.75rem' }}>
-              <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem' }}>
-                Сума (₴)
-              </label>
-              <input
-                type="number"
-                className="form-input"
-                value={paymentForm.amount}
-                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                placeholder={paymentForm.type === 'individual' ? 'Авто (з урахуванням знижки)' : ''}
-                style={{ width: '100%' }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '0.75rem' }}>
-              <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem' }}>
-                Спосіб оплати
-              </label>
-              <select
-                className="form-input"
-                value={paymentForm.method}
-                onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value as 'cash' | 'account' })}
-                style={{ width: '100%' }}
-              >
-                <option value="cash">Готівка</option>
-                <option value="account">Безготівково</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '0.75rem' }}>
-              <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem' }}>
-                Дата оплати
-              </label>
-              <input
-                type="date"
-                className="form-input"
-                value={paymentForm.paid_at}
-                onChange={(e) => setPaymentForm({ ...paymentForm, paid_at: e.target.value })}
-                style={{ width: '100%' }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem' }}>
-                Примітка
+            {/* Step 1: Student search */}
+            <div style={{ marginBottom: '1rem', position: 'relative' }}>
+              <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem', fontWeight: '500' }}>
+                Учень
               </label>
               <input
                 type="text"
                 className="form-input"
-                value={paymentForm.note}
-                onChange={(e) => setPaymentForm({ ...paymentForm, note: e.target.value })}
-                placeholder="Необов'язково"
+                value={studentSearch}
+                onChange={(e) => {
+                  handleStudentSearchChange(e.target.value);
+                  if (selectedStudent) {
+                    setSelectedStudent(null);
+                    setPaymentLines([]);
+                  }
+                }}
+                placeholder="Пошук за ім'ям..."
                 style={{ width: '100%' }}
+                autoFocus
               />
+              {searchLoading && !selectedStudent && (
+                <div style={{ position: 'absolute', right: '12px', top: '32px', fontSize: '0.75rem', color: '#9ca3af' }}>
+                  ...
+                </div>
+              )}
+              {/* Dropdown results */}
+              {studentResults.length > 0 && !selectedStudent && (
+                <div style={{
+                  position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 10,
+                  backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '0.375rem',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto',
+                }}>
+                  {studentResults.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => selectStudent(s.id)}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left',
+                        padding: '0.5rem 0.75rem', border: 'none', background: 'none',
+                        cursor: 'pointer', fontSize: '0.875rem',
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#f3f4f6')}
+                      onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      {s.full_name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Step 2: Student info + payment lines */}
+            {selectedStudent && (
+              <>
+                {/* Student info bar */}
+                <div style={{
+                  padding: '0.75rem 1rem', marginBottom: '1rem',
+                  backgroundColor: '#f9fafb', borderRadius: '0.5rem', border: '1px solid #e5e7eb',
+                  display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.875rem',
+                }}>
+                  <div>
+                    <span style={{ color: '#6b7280' }}>Ціна/заняття: </span>
+                    <strong>{selectedStudent.lesson_price} ₴</strong>
+                  </div>
+                  {selectedStudent.student.discount_percent > 0 && (
+                    <>
+                      <div>
+                        <span style={{ color: '#6b7280' }}>Знижка: </span>
+                        <strong style={{ color: '#f59e0b' }}>{selectedStudent.student.discount_percent}%</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#6b7280' }}>Зі знижкою: </span>
+                        <strong style={{ color: '#22c55e' }}>{selectedStudent.effective_price} ₴</strong>
+                      </div>
+                    </>
+                  )}
+                  {selectedStudent.individual_balance && (
+                    <div>
+                      <span style={{ color: '#6b7280' }}>Інд. баланс: </span>
+                      <strong style={{ color: selectedStudent.individual_balance.lessons_remaining < 0 ? '#ef4444' : '#22c55e' }}>
+                        {selectedStudent.individual_balance.lessons_remaining} зан.
+                      </strong>
+                    </div>
+                  )}
+                </div>
+
+                {/* Payment lines */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', color: '#374151' }}>
+                    Позиції оплати
+                  </div>
+
+                  {paymentLines.map((line) => (
+                    <div key={line.id} style={{
+                      padding: '0.75rem', marginBottom: '0.5rem',
+                      border: '1px solid #e5e7eb', borderRadius: '0.5rem',
+                      backgroundColor: '#fafafa',
+                    }}>
+                      {/* Line header */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.875rem', flex: 1 }}>
+                          {line.target_type === 'group' ? line.group_title : 'Індивідуальні заняття'}
+                        </strong>
+                        <button
+                          onClick={() => removeLine(line.id)}
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: '#9ca3af', fontSize: '1.125rem', padding: '0',
+                          }}
+                          title="Видалити"
+                        >
+                          &times;
+                        </button>
+                      </div>
+
+                      {/* Pay mode toggle */}
+                      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.5rem' }}>
+                        <button
+                          onClick={() => updateLine(line.id, { pay_mode: 'months', lessons_count: 1 })}
+                          style={{
+                            padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '0.25rem',
+                            border: line.pay_mode === 'months' ? '1px solid #374151' : '1px solid #d1d5db',
+                            backgroundColor: line.pay_mode === 'months' ? '#374151' : 'white',
+                            color: line.pay_mode === 'months' ? 'white' : '#374151',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          За місяць
+                        </button>
+                        <button
+                          onClick={() => updateLine(line.id, { pay_mode: 'lessons', months: [] })}
+                          style={{
+                            padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '0.25rem',
+                            border: line.pay_mode === 'lessons' ? '1px solid #374151' : '1px solid #d1d5db',
+                            backgroundColor: line.pay_mode === 'lessons' ? '#374151' : 'white',
+                            color: line.pay_mode === 'lessons' ? 'white' : '#374151',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          За кількістю занять
+                        </button>
+                      </div>
+
+                      {/* Month selection */}
+                      {line.pay_mode === 'months' && (
+                        <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                          {monthOptions.map(o => (
+                            <button
+                              key={o.value}
+                              onClick={() => toggleMonth(line.id, o.value)}
+                              style={{
+                                padding: '0.2rem 0.4rem', fontSize: '0.7rem', borderRadius: '0.25rem',
+                                border: line.months.includes(o.value) ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                                backgroundColor: line.months.includes(o.value) ? '#dbeafe' : 'white',
+                                color: line.months.includes(o.value) ? '#1d4ed8' : '#6b7280',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {o.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Lessons count */}
+                      {line.pay_mode === 'lessons' && (
+                        <div style={{ marginBottom: '0.5rem' }}>
+                          <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.125rem' }}>
+                            Кількість занять
+                          </label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={line.lessons_count}
+                            onChange={(e) => updateLine(line.id, { lessons_count: parseInt(e.target.value) || 0 })}
+                            min="1"
+                            style={{ width: '100px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                          />
+                          {line.pay_mode === 'lessons' && line.lessons_count > 0 && (
+                            <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                              = {line.lessons_count * selectedStudent.effective_price} ₴
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Amount override */}
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.125rem' }}>
+                          Сума (₴) {line.pay_mode === 'lessons' && !line.amount ? '(авто)' : ''}
+                        </label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={line.amount}
+                          onChange={(e) => updateLine(line.id, { amount: e.target.value })}
+                          placeholder={line.pay_mode === 'lessons'
+                            ? String(line.lessons_count * selectedStudent.effective_price)
+                            : 'Введіть суму'
+                          }
+                          style={{ width: '140px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Add line buttons */}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {selectedStudent.groups
+                      .filter(g => !paymentLines.some(l => l.target_type === 'group' && l.group_id === g.group_id))
+                      .map(g => (
+                        <button
+                          key={g.group_id}
+                          onClick={() => setPaymentLines(prev => [...prev, {
+                            id: `group-${g.group_id}-${Date.now()}`,
+                            target_type: 'group',
+                            group_id: g.group_id,
+                            group_title: g.group_title,
+                            pay_mode: 'months',
+                            months: [month],
+                            lessons_count: 1,
+                            amount: '',
+                            auto_amount: 0,
+                          }])}
+                          style={{
+                            padding: '0.25rem 0.5rem', fontSize: '0.75rem',
+                            border: '1px dashed #d1d5db', borderRadius: '0.25rem',
+                            backgroundColor: 'white', cursor: 'pointer', color: '#6b7280',
+                          }}
+                        >
+                          + {g.group_title}
+                        </button>
+                      ))
+                    }
+                    {selectedStudent.has_individual && !paymentLines.some(l => l.target_type === 'individual') && (
+                      <button
+                        onClick={() => setPaymentLines(prev => [...prev, {
+                          id: `individual-${Date.now()}`,
+                          target_type: 'individual',
+                          group_id: null,
+                          group_title: 'Індивідуальні',
+                          pay_mode: 'lessons',
+                          months: [],
+                          lessons_count: 1,
+                          amount: '',
+                          auto_amount: selectedStudent.effective_price,
+                        }])}
+                        style={{
+                          padding: '0.25rem 0.5rem', fontSize: '0.75rem',
+                          border: '1px dashed #d1d5db', borderRadius: '0.25rem',
+                          backgroundColor: 'white', cursor: 'pointer', color: '#6b7280',
+                        }}
+                      >
+                        + Індивідуальні
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Common fields: method, date, note */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem' }}>
+                      Спосіб оплати
+                    </label>
+                    <select
+                      className="form-input"
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'account')}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="cash">Готівка</option>
+                      <option value="account">Безготівково</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem' }}>
+                      Дата оплати
+                    </label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={paymentDate}
+                      onChange={(e) => setPaymentDate(e.target.value)}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem' }}>
+                    Примітка
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={paymentNote}
+                    onChange={(e) => setPaymentNote(e.target.value)}
+                    placeholder="Необов'язково"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                {/* Total */}
+                {paymentLines.length > 0 && (
+                  <div style={{
+                    padding: '0.75rem 1rem', marginBottom: '1rem',
+                    backgroundColor: '#f0fdf4', borderRadius: '0.5rem', border: '1px solid #bbf7d0',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}>
+                    <span style={{ fontSize: '0.875rem', color: '#374151' }}>Загальна сума:</span>
+                    <strong style={{ fontSize: '1.25rem', color: '#16a34a' }}>
+                      {getTotalAmount()} ₴
+                    </strong>
+                  </div>
+                )}
+              </>
+            )}
 
             {saveError && (
               <div style={{
@@ -825,18 +1219,20 @@ export default function PaymentsPage() {
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button
                 className="btn btn-secondary"
-                onClick={() => setShowPaymentModal(false)}
+                onClick={() => setShowPaymentConsole(false)}
                 disabled={saving}
               >
                 Скасувати
               </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleSavePayment}
-                disabled={saving}
-              >
-                {saving ? 'Збереження...' : 'Зберегти'}
-              </button>
+              {selectedStudent && paymentLines.length > 0 && (
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSavePayments}
+                  disabled={saving}
+                >
+                  {saving ? 'Збереження...' : `Зберегти (${getTotalAmount()} ₴)`}
+                </button>
+              )}
             </div>
           </div>
         </div>
