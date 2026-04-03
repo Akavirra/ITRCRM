@@ -144,6 +144,8 @@ export default function PaymentsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // lesson counts per group per month: { "groupId:YYYY-MM": count }
+  const [lessonCounts, setLessonCounts] = useState<Record<string, number>>({});
 
   const monthOptions = getMonthOptions();
 
@@ -240,10 +242,30 @@ export default function PaymentsPage() {
     searchTimeoutRef.current = setTimeout(() => searchStudents(value), 300);
   };
 
+  // Fetch lesson counts for a group and set of months
+  const fetchLessonCounts = useCallback(async (groupId: number, months: string[]) => {
+    if (months.length === 0) return;
+    const monthKeys = months.map(m => m.substring(0, 7)); // YYYY-MM
+    try {
+      const res = await fetch(`/api/groups/${groupId}/lessons-count?months=${monthKeys.join(',')}`);
+      if (res.ok) {
+        const json = await res.json();
+        setLessonCounts(prev => {
+          const next = { ...prev };
+          for (const [m, cnt] of Object.entries(json.counts as Record<string, number>)) {
+            next[`${groupId}:${m}`] = cnt;
+          }
+          return next;
+        });
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   // Select student → load their payment info
   const selectStudent = async (studentId: number) => {
     setStudentResults([]);
     setSearchLoading(true);
+    setLessonCounts({});
     try {
       const res = await fetch(`/api/students/${studentId}/payment-info`);
       if (res.ok) {
@@ -276,6 +298,10 @@ export default function PaymentsPage() {
           });
         }
         setPaymentLines(lines);
+        // Fetch lesson counts for all groups for the current month
+        for (const g of info.groups) {
+          fetchLessonCounts(g.group_id, [month]);
+        }
       }
     } catch { /* ignore */ } finally {
       setSearchLoading(false);
@@ -320,6 +346,13 @@ export default function PaymentsPage() {
       const months = l.months.includes(monthVal)
         ? l.months.filter(m => m !== monthVal)
         : [...l.months, monthVal].sort();
+      // Fetch lesson count if adding a new month for a group
+      if (!l.months.includes(monthVal) && l.group_id) {
+        const key = `${l.group_id}:${monthVal.substring(0, 7)}`;
+        if (!(key in lessonCounts)) {
+          fetchLessonCounts(l.group_id, [monthVal]);
+        }
+      }
       return { ...l, months };
     }));
   };
@@ -327,6 +360,17 @@ export default function PaymentsPage() {
   // Remove a payment line
   const removeLine = (lineId: string) => {
     setPaymentLines(prev => prev.filter(l => l.id !== lineId));
+  };
+
+  // Get total lesson count for a group line across selected months
+  const getLineLessonsCount = (line: PaymentLine): number => {
+    if (!line.group_id || line.months.length === 0) return 0;
+    let total = 0;
+    for (const m of line.months) {
+      const key = `${line.group_id}:${m.substring(0, 7)}`;
+      total += lessonCounts[key] || 0;
+    }
+    return total;
   };
 
   // Calculate line amount
@@ -340,13 +384,10 @@ export default function PaymentsPage() {
     if (line.target_type === 'individual') {
       return line.lessons_count * price;
     }
-    // Group: months × assumed lessons (use lesson price as a proxy — admin can override)
-    // For advance payments, amount is per-month × effective_price
-    // But we don't know future lesson count yet, so just show months × price placeholder
     if (line.pay_mode === 'months') {
-      // We don't have exact future lesson count, so let admin set amount manually
-      // Auto-amount = 0 means "to be specified"
-      return 0;
+      // Auto-calculate: lessons in selected months × effective price
+      const totalLessons = getLineLessonsCount(line);
+      return totalLessons * price;
     }
     return line.lessons_count * price;
   };
@@ -1032,23 +1073,43 @@ export default function PaymentsPage() {
 
                       {/* Month selection */}
                       {line.pay_mode === 'months' && (
-                        <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-                          {monthOptions.map(o => (
-                            <button
-                              key={o.value}
-                              onClick={() => toggleMonth(line.id, o.value)}
-                              style={{
-                                padding: '0.2rem 0.4rem', fontSize: '0.7rem', borderRadius: '0.25rem',
-                                border: line.months.includes(o.value) ? '1px solid #3b82f6' : '1px solid #d1d5db',
-                                backgroundColor: line.months.includes(o.value) ? '#dbeafe' : 'white',
-                                color: line.months.includes(o.value) ? '#1d4ed8' : '#6b7280',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {o.label}
-                            </button>
-                          ))}
-                        </div>
+                        <>
+                          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                            {monthOptions.map(o => (
+                              <button
+                                key={o.value}
+                                onClick={() => toggleMonth(line.id, o.value)}
+                                style={{
+                                  padding: '0.2rem 0.4rem', fontSize: '0.7rem', borderRadius: '0.25rem',
+                                  border: line.months.includes(o.value) ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                                  backgroundColor: line.months.includes(o.value) ? '#dbeafe' : 'white',
+                                  color: line.months.includes(o.value) ? '#1d4ed8' : '#6b7280',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {o.label}
+                              </button>
+                            ))}
+                          </div>
+                          {/* Lesson count info for selected months */}
+                          {line.group_id && line.months.length > 0 && (
+                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+                              {(() => {
+                                const totalLessons = getLineLessonsCount(line);
+                                const autoAmount = totalLessons * selectedStudent.effective_price;
+                                return totalLessons > 0 ? (
+                                  <span>
+                                    Занять: <strong style={{ color: '#374151' }}>{totalLessons}</strong>
+                                    {' '}&times;{' '}{selectedStudent.effective_price} ₴
+                                    {' '}={' '}<strong style={{ color: '#16a34a' }}>{autoAmount} ₴</strong>
+                                  </span>
+                                ) : (
+                                  <span style={{ color: '#f59e0b' }}>Завантаження кількості занять...</span>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </>
                       )}
 
                       {/* Lessons count */}
@@ -1065,7 +1126,7 @@ export default function PaymentsPage() {
                             min="1"
                             style={{ width: '100px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
                           />
-                          {line.pay_mode === 'lessons' && line.lessons_count > 0 && (
+                          {line.lessons_count > 0 && (
                             <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
                               = {line.lessons_count * selectedStudent.effective_price} ₴
                             </span>
@@ -1076,17 +1137,14 @@ export default function PaymentsPage() {
                       {/* Amount override */}
                       <div>
                         <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.125rem' }}>
-                          Сума (₴) {line.pay_mode === 'lessons' && !line.amount ? '(авто)' : ''}
+                          Сума (₴) {!line.amount ? '(авто)' : ''}
                         </label>
                         <input
                           type="number"
                           className="form-input"
                           value={line.amount}
                           onChange={(e) => updateLine(line.id, { amount: e.target.value })}
-                          placeholder={line.pay_mode === 'lessons'
-                            ? String(line.lessons_count * selectedStudent.effective_price)
-                            : 'Введіть суму'
-                          }
+                          placeholder={String(getLineAmount({ ...line, amount: '' }))}
                           style={{ width: '140px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
                         />
                       </div>
