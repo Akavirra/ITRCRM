@@ -1095,6 +1095,10 @@ export default function PaymentsPage() {
                           {line.group_id && line.months.length > 0 && (
                             <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>
                               {(() => {
+                                const allLoaded = line.months.every(m => `${line.group_id}:${m.substring(0, 7)}` in lessonCounts);
+                                if (!allLoaded) {
+                                  return <span style={{ color: '#f59e0b' }}>Завантаження кількості занять...</span>;
+                                }
                                 const totalLessons = getLineLessonsCount(line);
                                 const autoAmount = totalLessons * selectedStudent.effective_price;
                                 return totalLessons > 0 ? (
@@ -1104,7 +1108,7 @@ export default function PaymentsPage() {
                                     {' '}={' '}<strong style={{ color: '#16a34a' }}>{autoAmount} ₴</strong>
                                   </span>
                                 ) : (
-                                  <span style={{ color: '#f59e0b' }}>Завантаження кількості занять...</span>
+                                  <span style={{ color: '#9ca3af' }}>Занять за обрані місяці: 0</span>
                                 );
                               })()}
                             </div>
