@@ -163,6 +163,8 @@ export default function PaymentsPage() {
   // lesson counts per group per month: { "groupId:YYYY-MM": count }
   const [lessonCounts, setLessonCounts] = useState<Record<string, number>>({});
   const [consoleTab, setConsoleTab] = useState<'group' | 'individual'>('group');
+  const [groupPayMonth, setGroupPayMonth] = useState('');
+  const [groupPayAmount, setGroupPayAmount] = useState('');
 
   // Payment history
   const [historyPayments, setHistoryPayments] = useState<PaymentHistoryRecord[]>([]);
@@ -327,29 +329,27 @@ export default function PaymentsPage() {
     } catch { /* ignore */ }
   }, []);
 
+  // Fetch lesson counts for all groups for a given month
+  const fetchAllGroupLessonCounts = useCallback(async (groups: Array<{ group_id: number; group_title: string }>, payMonth: string) => {
+    for (const g of groups) {
+      fetchLessonCounts(g.group_id, [payMonth]);
+    }
+  }, [fetchLessonCounts]);
+
   // Select student → load their payment info
   const selectStudent = async (studentId: number) => {
     setStudentResults([]);
     setSearchLoading(true);
     setLessonCounts({});
+    setGroupPayAmount('');
     try {
       const res = await fetch(`/api/students/${studentId}/payment-info`);
       if (res.ok) {
         const info: StudentPaymentInfo = await res.json();
         setSelectedStudent(info);
         setStudentSearch(info.student.full_name);
-        // Auto-add payment lines for each group
-        const lines: PaymentLine[] = info.groups.map((g, i) => ({
-          id: `group-${g.group_id}-${i}`,
-          target_type: 'group' as const,
-          group_id: g.group_id,
-          group_title: g.group_title,
-          pay_mode: 'months' as const,
-          months: [month],
-          lessons_count: 1,
-          amount: '',
-          auto_amount: 0,
-        }));
+        // Auto-add individual line if student has individual lessons
+        const lines: PaymentLine[] = [];
         if (info.has_individual) {
           lines.push({
             id: 'individual-0',
@@ -364,13 +364,36 @@ export default function PaymentsPage() {
           });
         }
         setPaymentLines(lines);
-        // Fetch lesson counts for all groups for the current month
-        for (const g of info.groups) {
-          fetchLessonCounts(g.group_id, [month]);
-        }
+        // Fetch lesson counts for all groups for the pay month
+        fetchAllGroupLessonCounts(info.groups, groupPayMonth || month);
       }
     } catch { /* ignore */ } finally {
       setSearchLoading(false);
+    }
+  };
+
+  // Group breakdown for the simplified payment mode
+  const getGroupBreakdown = () => {
+    if (!selectedStudent) return [];
+    const payMonthKey = (groupPayMonth || month).substring(0, 7);
+    return selectedStudent.groups.map(g => {
+      const key = `${g.group_id}:${payMonthKey}`;
+      const lessons = lessonCounts[key] ?? null; // null = still loading
+      const expected = lessons !== null ? lessons * selectedStudent.effective_price : null;
+      return { group_id: g.group_id, group_title: g.group_title, lessons, expected };
+    });
+  };
+
+  const groupBreakdown = selectedStudent ? getGroupBreakdown() : [];
+  const allGroupsLoaded = groupBreakdown.every(g => g.lessons !== null);
+  const totalExpected = allGroupsLoaded ? groupBreakdown.reduce((s, g) => s + (g.expected || 0), 0) : 0;
+
+  // Handle month change in console
+  const handleGroupPayMonthChange = (newMonth: string) => {
+    setGroupPayMonth(newMonth);
+    setGroupPayAmount('');
+    if (selectedStudent) {
+      fetchAllGroupLessonCounts(selectedStudent.groups, newMonth);
     }
   };
 
@@ -385,6 +408,8 @@ export default function PaymentsPage() {
     setPaymentNote('');
     setSaveError('');
     setConsoleTab('group');
+    setGroupPayMonth(month);
+    setGroupPayAmount('');
     setShowPaymentConsole(true);
   };
 
@@ -406,87 +431,42 @@ export default function PaymentsPage() {
     setPaymentLines(prev => prev.map(l => l.id === lineId ? { ...l, ...updates } : l));
   };
 
-  // Toggle month in a line
-  const toggleMonth = (lineId: string, monthVal: string) => {
-    setPaymentLines(prev => prev.map(l => {
-      if (l.id !== lineId) return l;
-      const months = l.months.includes(monthVal)
-        ? l.months.filter(m => m !== monthVal)
-        : [...l.months, monthVal].sort();
-      // Fetch lesson count if adding a new month for a group
-      if (!l.months.includes(monthVal) && l.group_id) {
-        const key = `${l.group_id}:${monthVal.substring(0, 7)}`;
-        if (!(key in lessonCounts)) {
-          fetchLessonCounts(l.group_id, [monthVal]);
-        }
-      }
-      return { ...l, months };
-    }));
-  };
 
-  // Remove a payment line
-  const removeLine = (lineId: string) => {
-    setPaymentLines(prev => prev.filter(l => l.id !== lineId));
-  };
 
-  // Get total lesson count for a group line across selected months
-  const getLineLessonsCount = (line: PaymentLine): number => {
-    if (!line.group_id || line.months.length === 0) return 0;
+  // Get total save amount (group + individual)
+  const getSaveTotal = (): number => {
     let total = 0;
-    for (const m of line.months) {
-      const key = `${line.group_id}:${m.substring(0, 7)}`;
-      total += lessonCounts[key] || 0;
+    // Group amount
+    const groupAmt = parseFloat(groupPayAmount);
+    if (!isNaN(groupAmt) && groupAmt > 0) total += groupAmt;
+    // Individual lines
+    for (const line of paymentLines.filter(l => l.target_type === 'individual')) {
+      const amt = line.amount ? parseFloat(line.amount) : line.lessons_count * (selectedStudent?.effective_price || 0);
+      if (!isNaN(amt) && amt > 0) total += amt;
     }
     return total;
   };
 
-  // Calculate line amount
-  const getLineAmount = (line: PaymentLine): number => {
-    if (line.amount) {
-      const parsed = parseFloat(line.amount);
-      if (!isNaN(parsed)) return parsed;
-    }
-    if (!selectedStudent) return 0;
-    const price = selectedStudent.effective_price;
-    if (line.target_type === 'individual') {
-      return line.lessons_count * price;
-    }
-    if (line.pay_mode === 'months') {
-      // Auto-calculate: lessons in selected months × effective price
-      const totalLessons = getLineLessonsCount(line);
-      return totalLessons * price;
-    }
-    return line.lessons_count * price;
-  };
-
-  // Total amount across all lines
-  const getTotalAmount = (): number => {
-    return paymentLines.reduce((sum, line) => {
-      const amt = line.amount ? parseFloat(line.amount) : getLineAmount(line);
-      return sum + (isNaN(amt) ? 0 : amt);
-    }, 0);
-  };
-
-  // Save all payment lines
+  // Save all payments
   const handleSavePayments = async () => {
-    if (!selectedStudent || paymentLines.length === 0) return;
+    if (!selectedStudent) return;
 
-    // Validate: skip lines with 0 auto-amount (no lessons), but check non-zero lines are valid
-    const activeLines = paymentLines.filter(line => {
-      const amt = line.amount ? parseFloat(line.amount) : getLineAmount(line);
+    const groupAmt = parseFloat(groupPayAmount);
+    const hasGroupPayment = !isNaN(groupAmt) && groupAmt > 0 && allGroupsLoaded && totalExpected > 0;
+    const individualLines = paymentLines.filter(l => l.target_type === 'individual');
+    const hasIndividual = individualLines.some(l => {
+      const amt = l.amount ? parseFloat(l.amount) : l.lessons_count * selectedStudent.effective_price;
       return !isNaN(amt) && amt > 0;
     });
-    if (activeLines.length === 0) {
-      setSaveError('Немає позицій з сумою більше 0');
+
+    if (!hasGroupPayment && !hasIndividual) {
+      setSaveError('Вкажіть суму для оплати');
       return;
     }
-    for (const line of activeLines) {
-      if (line.target_type === 'group' && line.pay_mode === 'months' && line.months.length === 0) {
-        setSaveError(`Оберіть місяць для "${line.group_title}"`);
-        return;
-      }
-      if (line.pay_mode === 'lessons' && line.lessons_count <= 0) {
-        setSaveError(`Вкажіть кількість занять для "${line.group_title}"`);
+
+    for (const line of individualLines) {
+      if (line.lessons_count <= 0) {
+        setSaveError('Вкажіть кількість занять для індивідуальних');
         return;
       }
     }
@@ -495,61 +475,26 @@ export default function PaymentsPage() {
     setSaveError('');
 
     try {
-      for (const line of activeLines) {
-        const amt = line.amount ? parseFloat(line.amount) : getLineAmount(line);
+      // Save group payments — distribute proportionally
+      if (hasGroupPayment) {
+        const groupsWithLessons = groupBreakdown.filter(g => (g.expected || 0) > 0);
+        let remaining = groupAmt;
+        for (let i = 0; i < groupsWithLessons.length; i++) {
+          const g = groupsWithLessons[i];
+          // Last group gets remainder to avoid rounding issues
+          const share = i < groupsWithLessons.length - 1
+            ? Math.round(groupAmt * ((g.expected || 0) / totalExpected))
+            : remaining;
+          remaining -= share;
+          if (share <= 0) continue;
 
-        if (line.target_type === 'group' && line.group_id) {
-          if (line.pay_mode === 'months') {
-            // Create one payment per month
-            const perMonthAmount = Math.round(amt / line.months.length);
-            for (const m of line.months) {
-              const res = await fetch(`/api/groups/${line.group_id}/payments`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  student_id: selectedStudent.student.id,
-                  month: m,
-                  amount: perMonthAmount,
-                  method: paymentMethod,
-                  note: paymentNote || undefined,
-                  paid_at: paymentDate ? new Date(paymentDate).toISOString() : undefined,
-                }),
-              });
-              if (!res.ok) {
-                const err = await res.json();
-                setSaveError(err.error || 'Помилка збереження групової оплати');
-                setSaving(false);
-                return;
-              }
-            }
-          } else {
-            // Pay by lessons count for group — save as current month payment
-            const res = await fetch(`/api/groups/${line.group_id}/payments`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                student_id: selectedStudent.student.id,
-                month: month,
-                amount: amt,
-                method: paymentMethod,
-                note: paymentNote ? `${paymentNote} (${line.lessons_count} зан.)` : `${line.lessons_count} зан.`,
-                paid_at: paymentDate ? new Date(paymentDate).toISOString() : undefined,
-              }),
-            });
-            if (!res.ok) {
-              const err = await res.json();
-              setSaveError(err.error || 'Помилка збереження');
-              setSaving(false);
-              return;
-            }
-          }
-        } else if (line.target_type === 'individual') {
-          const res = await fetch(`/api/students/${selectedStudent.student.id}/individual-payments`, {
+          const res = await fetch(`/api/groups/${g.group_id}/payments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              lessons_count: line.lessons_count,
-              amount: amt,
+              student_id: selectedStudent.student.id,
+              month: groupPayMonth || month,
+              amount: share,
               method: paymentMethod,
               note: paymentNote || undefined,
               paid_at: paymentDate ? new Date(paymentDate).toISOString() : undefined,
@@ -557,10 +502,33 @@ export default function PaymentsPage() {
           });
           if (!res.ok) {
             const err = await res.json();
-            setSaveError(err.error || 'Помилка збереження індивідуальної оплати');
+            setSaveError(err.error || 'Помилка збереження групової оплати');
             setSaving(false);
             return;
           }
+        }
+      }
+
+      // Save individual payments
+      for (const line of individualLines) {
+        const amt = line.amount ? parseFloat(line.amount) : line.lessons_count * selectedStudent.effective_price;
+        if (isNaN(amt) || amt <= 0) continue;
+        const res = await fetch(`/api/students/${selectedStudent.student.id}/individual-payments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lessons_count: line.lessons_count,
+            amount: amt,
+            method: paymentMethod,
+            note: paymentNote || undefined,
+            paid_at: paymentDate ? new Date(paymentDate).toISOString() : undefined,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          setSaveError(err.error || 'Помилка збереження індивідуальної оплати');
+          setSaving(false);
+          return;
         }
       }
 
@@ -1355,140 +1323,169 @@ export default function PaymentsPage() {
                   )}
                 </div>
 
-                {/* Payment lines with tabs */}
-                <div style={{ marginBottom: '1rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                      Позиції оплати
-                    </span>
-                    <div style={{ display: 'flex', gap: '0.25rem', marginLeft: 'auto' }}>
-                      <button
-                        onClick={() => setConsoleTab('group')}
-                        style={{
-                          padding: '0.25rem 0.625rem', fontSize: '0.75rem', borderRadius: '0.25rem',
-                          border: consoleTab === 'group' ? '1px solid #374151' : '1px solid #d1d5db',
-                          backgroundColor: consoleTab === 'group' ? '#374151' : 'white',
-                          color: consoleTab === 'group' ? 'white' : '#6b7280',
-                          cursor: 'pointer', fontWeight: consoleTab === 'group' ? '600' : '400',
-                        }}
+                {/* Tabs: Group / Individual */}
+                <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1rem' }}>
+                  <button
+                    onClick={() => setConsoleTab('group')}
+                    style={{
+                      padding: '0.375rem 0.75rem', fontSize: '0.8125rem', borderRadius: '0.25rem',
+                      border: consoleTab === 'group' ? '1px solid #374151' : '1px solid #d1d5db',
+                      backgroundColor: consoleTab === 'group' ? '#374151' : 'white',
+                      color: consoleTab === 'group' ? 'white' : '#6b7280',
+                      cursor: 'pointer', fontWeight: consoleTab === 'group' ? '600' : '400',
+                    }}
+                  >
+                    Групові
+                  </button>
+                  {selectedStudent.has_individual && (
+                    <button
+                      onClick={() => setConsoleTab('individual')}
+                      style={{
+                        padding: '0.375rem 0.75rem', fontSize: '0.8125rem', borderRadius: '0.25rem',
+                        border: consoleTab === 'individual' ? '1px solid #374151' : '1px solid #d1d5db',
+                        backgroundColor: consoleTab === 'individual' ? '#374151' : 'white',
+                        color: consoleTab === 'individual' ? 'white' : '#6b7280',
+                        cursor: 'pointer', fontWeight: consoleTab === 'individual' ? '600' : '400',
+                      }}
+                    >
+                      Індивідуальні
+                    </button>
+                  )}
+                </div>
+
+                {/* GROUP TAB — simplified: month → breakdown → amount */}
+                {consoleTab === 'group' && selectedStudent.groups.length > 0 && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    {/* Month selector */}
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'block', marginBottom: '0.25rem', fontWeight: '500' }}>
+                        Місяць оплати
+                      </label>
+                      <select
+                        className="form-input"
+                        value={groupPayMonth}
+                        onChange={(e) => handleGroupPayMonthChange(e.target.value)}
+                        style={{ width: '200px', fontSize: '0.875rem' }}
                       >
-                        Групові {paymentLines.filter(l => l.target_type === 'group').length > 0 && `(${paymentLines.filter(l => l.target_type === 'group').length})`}
-                      </button>
-                      {selectedStudent.has_individual && (
+                        {monthOptions.map(o => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Auto breakdown table */}
+                    <div style={{
+                      border: '1px solid #e5e7eb', borderRadius: '0.5rem', overflow: 'hidden', marginBottom: '0.75rem',
+                    }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f9fafb' }}>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: '500', color: '#6b7280' }}>Група</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: '500', color: '#6b7280', width: '70px' }}>Занять</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: '500', color: '#6b7280', width: '100px' }}>До сплати</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {groupBreakdown.map((g, idx) => (
+                            <tr key={g.group_id} style={{ borderTop: idx > 0 ? '1px solid #f3f4f6' : undefined }}>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>{g.group_title}</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                                {g.lessons === null ? <span style={{ color: '#f59e0b' }}>...</span> : g.lessons}
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: '500' }}>
+                                {g.expected === null ? '...' : `${g.expected} ₴`}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        {allGroupsLoaded && (
+                          <tfoot>
+                            <tr style={{ borderTop: '1px solid #e5e7eb', backgroundColor: '#f0fdf4' }}>
+                              <td style={{ padding: '0.5rem 0.75rem', fontWeight: '600' }}>Разом</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: '600' }}>
+                                {groupBreakdown.reduce((s, g) => s + (g.lessons || 0), 0)}
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: '600', color: '#16a34a' }}>
+                                {totalExpected} ₴
+                              </td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+
+                    {/* Distribution preview if amount differs */}
+                    {(() => {
+                      const enteredAmt = parseFloat(groupPayAmount);
+                      if (!allGroupsLoaded || isNaN(enteredAmt) || enteredAmt <= 0 || enteredAmt === totalExpected || totalExpected === 0) return null;
+                      const groupsWithLessons = groupBreakdown.filter(g => (g.expected || 0) > 0);
+                      let remaining = enteredAmt;
+                      const dist = groupsWithLessons.map((g, i) => {
+                        const share = i < groupsWithLessons.length - 1
+                          ? Math.round(enteredAmt * ((g.expected || 0) / totalExpected))
+                          : remaining;
+                        remaining -= share;
+                        return { title: g.group_title, share };
+                      });
+                      return (
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem', padding: '0.5rem 0.75rem', backgroundColor: '#fffbeb', borderRadius: '0.375rem', border: '1px solid #fde68a' }}>
+                          <div style={{ fontWeight: '500', marginBottom: '0.25rem', color: '#92400e' }}>
+                            Розподіл {enteredAmt} ₴ по групах:
+                          </div>
+                          {dist.map(d => (
+                            <div key={d.title}>{d.title}: <strong>{d.share} ₴</strong></div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Amount field */}
+                    <div>
+                      <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'block', marginBottom: '0.25rem', fontWeight: '500' }}>
+                        Сума оплати (₴)
+                      </label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={groupPayAmount}
+                        onChange={(e) => setGroupPayAmount(e.target.value)}
+                        placeholder={allGroupsLoaded ? String(totalExpected) : '...'}
+                        style={{ width: '160px', fontSize: '0.875rem' }}
+                      />
+                      {allGroupsLoaded && totalExpected > 0 && !groupPayAmount && (
                         <button
-                          onClick={() => setConsoleTab('individual')}
+                          onClick={() => setGroupPayAmount(String(totalExpected))}
                           style={{
-                            padding: '0.25rem 0.625rem', fontSize: '0.75rem', borderRadius: '0.25rem',
-                            border: consoleTab === 'individual' ? '1px solid #374151' : '1px solid #d1d5db',
-                            backgroundColor: consoleTab === 'individual' ? '#374151' : 'white',
-                            color: consoleTab === 'individual' ? 'white' : '#6b7280',
-                            cursor: 'pointer', fontWeight: consoleTab === 'individual' ? '600' : '400',
+                            marginLeft: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.75rem',
+                            border: '1px solid #d1d5db', borderRadius: '0.25rem',
+                            backgroundColor: 'white', cursor: 'pointer', color: '#374151',
                           }}
                         >
-                          Індивідуальні {paymentLines.some(l => l.target_type === 'individual') && '(1)'}
+                          Вставити {totalExpected} ₴
                         </button>
                       )}
                     </div>
                   </div>
+                )}
 
-                  {paymentLines.filter(l => l.target_type === consoleTab).map((line) => (
-                    <div key={line.id} style={{
-                      padding: '0.75rem', marginBottom: '0.5rem',
-                      border: '1px solid #e5e7eb', borderRadius: '0.5rem',
-                      backgroundColor: '#fafafa',
-                    }}>
-                      {/* Line header */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <strong style={{ fontSize: '0.875rem', flex: 1 }}>
-                          {line.target_type === 'group' ? line.group_title : 'Індивідуальні заняття'}
+                {consoleTab === 'group' && selectedStudent.groups.length === 0 && (
+                  <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                    Учень не входить в жодну групу
+                  </div>
+                )}
+
+                {/* INDIVIDUAL TAB */}
+                {consoleTab === 'individual' && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    {paymentLines.filter(l => l.target_type === 'individual').map((line) => (
+                      <div key={line.id} style={{
+                        padding: '0.75rem', marginBottom: '0.5rem',
+                        border: '1px solid #e5e7eb', borderRadius: '0.5rem',
+                        backgroundColor: '#fafafa',
+                      }}>
+                        <strong style={{ fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem' }}>
+                          Індивідуальні заняття
                         </strong>
-                        <button
-                          onClick={() => removeLine(line.id)}
-                          style={{
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            color: '#9ca3af', fontSize: '1.125rem', padding: '0',
-                          }}
-                          title="Видалити"
-                        >
-                          &times;
-                        </button>
-                      </div>
-
-                      {/* Pay mode toggle */}
-                      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.5rem' }}>
-                        <button
-                          onClick={() => updateLine(line.id, { pay_mode: 'months', lessons_count: 1 })}
-                          style={{
-                            padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '0.25rem',
-                            border: line.pay_mode === 'months' ? '1px solid #374151' : '1px solid #d1d5db',
-                            backgroundColor: line.pay_mode === 'months' ? '#374151' : 'white',
-                            color: line.pay_mode === 'months' ? 'white' : '#374151',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          За місяць
-                        </button>
-                        <button
-                          onClick={() => updateLine(line.id, { pay_mode: 'lessons', months: [] })}
-                          style={{
-                            padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '0.25rem',
-                            border: line.pay_mode === 'lessons' ? '1px solid #374151' : '1px solid #d1d5db',
-                            backgroundColor: line.pay_mode === 'lessons' ? '#374151' : 'white',
-                            color: line.pay_mode === 'lessons' ? 'white' : '#374151',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          За кількістю занять
-                        </button>
-                      </div>
-
-                      {/* Month selection */}
-                      {line.pay_mode === 'months' && (
-                        <>
-                          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-                            {monthOptions.map(o => (
-                              <button
-                                key={o.value}
-                                onClick={() => toggleMonth(line.id, o.value)}
-                                style={{
-                                  padding: '0.2rem 0.4rem', fontSize: '0.7rem', borderRadius: '0.25rem',
-                                  border: line.months.includes(o.value) ? '1px solid #3b82f6' : '1px solid #d1d5db',
-                                  backgroundColor: line.months.includes(o.value) ? '#dbeafe' : 'white',
-                                  color: line.months.includes(o.value) ? '#1d4ed8' : '#6b7280',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                {o.label}
-                              </button>
-                            ))}
-                          </div>
-                          {/* Lesson count info for selected months */}
-                          {line.group_id && line.months.length > 0 && (
-                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>
-                              {(() => {
-                                const allLoaded = line.months.every(m => `${line.group_id}:${m.substring(0, 7)}` in lessonCounts);
-                                if (!allLoaded) {
-                                  return <span style={{ color: '#f59e0b' }}>Завантаження кількості занять...</span>;
-                                }
-                                const totalLessons = getLineLessonsCount(line);
-                                const autoAmount = totalLessons * selectedStudent.effective_price;
-                                return totalLessons > 0 ? (
-                                  <span>
-                                    Занять: <strong style={{ color: '#374151' }}>{totalLessons}</strong>
-                                    {' '}&times;{' '}{selectedStudent.effective_price} ₴
-                                    {' '}={' '}<strong style={{ color: '#16a34a' }}>{autoAmount} ₴</strong>
-                                  </span>
-                                ) : (
-                                  <span style={{ color: '#9ca3af' }}>Занять за обрані місяці: 0</span>
-                                );
-                              })()}
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      {/* Lessons count */}
-                      {line.pay_mode === 'lessons' && (
                         <div style={{ marginBottom: '0.5rem' }}>
                           <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.125rem' }}>
                             Кількість занять
@@ -1507,54 +1504,22 @@ export default function PaymentsPage() {
                             </span>
                           )}
                         </div>
-                      )}
-
-                      {/* Amount override */}
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.125rem' }}>
-                          Сума (₴) {!line.amount ? '(авто)' : ''}
-                        </label>
-                        <input
-                          type="number"
-                          className="form-input"
-                          value={line.amount}
-                          onChange={(e) => updateLine(line.id, { amount: e.target.value })}
-                          placeholder={String(getLineAmount({ ...line, amount: '' }))}
-                          style={{ width: '140px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
-                        />
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.125rem' }}>
+                            Сума (₴)
+                          </label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={line.amount}
+                            onChange={(e) => updateLine(line.id, { amount: e.target.value })}
+                            placeholder={String(line.lessons_count * selectedStudent.effective_price)}
+                            style={{ width: '140px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
-
-                  {/* Add line buttons */}
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {consoleTab === 'group' && selectedStudent.groups
-                      .filter(g => !paymentLines.some(l => l.target_type === 'group' && l.group_id === g.group_id))
-                      .map(g => (
-                        <button
-                          key={g.group_id}
-                          onClick={() => setPaymentLines(prev => [...prev, {
-                            id: `group-${g.group_id}-${Date.now()}`,
-                            target_type: 'group',
-                            group_id: g.group_id,
-                            group_title: g.group_title,
-                            pay_mode: 'months',
-                            months: [month],
-                            lessons_count: 1,
-                            amount: '',
-                            auto_amount: 0,
-                          }])}
-                          style={{
-                            padding: '0.25rem 0.5rem', fontSize: '0.75rem',
-                            border: '1px dashed #d1d5db', borderRadius: '0.25rem',
-                            backgroundColor: 'white', cursor: 'pointer', color: '#6b7280',
-                          }}
-                        >
-                          + {g.group_title}
-                        </button>
-                      ))
-                    }
-                    {consoleTab === 'individual' && selectedStudent.has_individual && !paymentLines.some(l => l.target_type === 'individual') && (
+                    ))}
+                    {selectedStudent.has_individual && !paymentLines.some(l => l.target_type === 'individual') && (
                       <button
                         onClick={() => setPaymentLines(prev => [...prev, {
                           id: `individual-${Date.now()}`,
@@ -1568,16 +1533,21 @@ export default function PaymentsPage() {
                           auto_amount: selectedStudent.effective_price,
                         }])}
                         style={{
-                          padding: '0.25rem 0.5rem', fontSize: '0.75rem',
+                          padding: '0.375rem 0.75rem', fontSize: '0.8125rem',
                           border: '1px dashed #d1d5db', borderRadius: '0.25rem',
                           backgroundColor: 'white', cursor: 'pointer', color: '#6b7280',
                         }}
                       >
-                        + Індивідуальні
+                        + Додати індивідуальну оплату
                       </button>
                     )}
+                    {!selectedStudent.has_individual && (
+                      <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
+                        Учень не має індивідуальних занять
+                      </div>
+                    )}
                   </div>
-                </div>
+                )}
 
                 {/* Common fields: method, date, note */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
@@ -1624,7 +1594,7 @@ export default function PaymentsPage() {
                 </div>
 
                 {/* Total */}
-                {paymentLines.length > 0 && (
+                {getSaveTotal() > 0 && (
                   <div style={{
                     padding: '0.75rem 1rem', marginBottom: '1rem',
                     backgroundColor: '#f0fdf4', borderRadius: '0.5rem', border: '1px solid #bbf7d0',
@@ -1632,7 +1602,7 @@ export default function PaymentsPage() {
                   }}>
                     <span style={{ fontSize: '0.875rem', color: '#374151' }}>Загальна сума:</span>
                     <strong style={{ fontSize: '1.25rem', color: '#16a34a' }}>
-                      {getTotalAmount()} ₴
+                      {getSaveTotal()} ₴
                     </strong>
                   </div>
                 )}
@@ -1657,13 +1627,13 @@ export default function PaymentsPage() {
               >
                 Скасувати
               </button>
-              {selectedStudent && paymentLines.length > 0 && (
+              {selectedStudent && getSaveTotal() > 0 && (
                 <button
                   className="btn btn-primary"
                   onClick={handleSavePayments}
                   disabled={saving}
                 >
-                  {saving ? 'Збереження...' : `Зберегти (${getTotalAmount()} ₴)`}
+                  {saving ? 'Збереження...' : `Зберегти (${getSaveTotal()} ₴)`}
                 </button>
               )}
             </div>
