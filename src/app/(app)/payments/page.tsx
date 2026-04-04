@@ -124,9 +124,8 @@ export default function PaymentsPage() {
   const [data, setData] = useState<OverviewData | null>(null);
   const [groups, setGroups] = useState<GroupOption[]>([]);
 
-  // Filters
-  const currentMonth = new Date().toISOString().substring(0, 7) + '-01';
-  const [month, setMonth] = useState(currentMonth);
+  // Filters — initialize with empty string to avoid hydration mismatch (server UTC vs client timezone)
+  const [month, setMonth] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'group' | 'individual'>('group');
@@ -139,7 +138,7 @@ export default function PaymentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<StudentPaymentInfo | null>(null);
   const [paymentLines, setPaymentLines] = useState<PaymentLine[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'account'>('cash');
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentDate, setPaymentDate] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -147,9 +146,19 @@ export default function PaymentsPage() {
   // lesson counts per group per month: { "groupId:YYYY-MM": count }
   const [lessonCounts, setLessonCounts] = useState<Record<string, number>>({});
 
-  const monthOptions = getMonthOptions();
+  const [monthOptions, setMonthOptions] = useState<{ value: string; label: string }[]>([]);
+
+  // Initialize date-dependent state on client only to avoid hydration mismatch
+  useEffect(() => {
+    const now = new Date();
+    const currentMonth = now.toISOString().substring(0, 7) + '-01';
+    setMonth(currentMonth);
+    setPaymentDate(now.toISOString().split('T')[0]);
+    setMonthOptions(getMonthOptions());
+  }, []);
 
   const fetchData = useCallback(async () => {
+    if (!month) return;
     try {
       const res = await fetch(`/api/payments/overview?month=${month}`);
       if (res.ok) {
