@@ -96,6 +96,23 @@ interface PaymentLine {
   auto_amount: number; // system-calculated amount
 }
 
+interface PaymentHistoryRecord {
+  id: number;
+  type: 'group' | 'individual';
+  student_id: number;
+  student_name: string;
+  group_id: number | null;
+  group_title: string | null;
+  month: string | null;
+  lessons_count: number | null;
+  amount: number;
+  method: string;
+  paid_at: string;
+  note: string | null;
+  created_by_name: string;
+  created_at: string;
+}
+
 const MONTH_NAMES = [
   'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
   'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'
@@ -145,6 +162,17 @@ export default function PaymentsPage() {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // lesson counts per group per month: { "groupId:YYYY-MM": count }
   const [lessonCounts, setLessonCounts] = useState<Record<string, number>>({});
+  const [consoleTab, setConsoleTab] = useState<'group' | 'individual'>('group');
+
+  // Payment history
+  const [historyPayments, setHistoryPayments] = useState<PaymentHistoryRecord[]>([]);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyMethodFilter, setHistoryMethodFilter] = useState('');
+  const [historyTypeFilter, setHistoryTypeFilter] = useState('');
+  const [historyPage, setHistoryPage] = useState(0);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentHistoryRecord | null>(null);
 
   const [monthOptions, setMonthOptions] = useState<{ value: string; label: string }[]>([]);
 
@@ -156,6 +184,29 @@ export default function PaymentsPage() {
     setPaymentDate(now.toISOString().split('T')[0]);
     setMonthOptions(getMonthOptions());
   }, []);
+
+  const HISTORY_LIMIT = 30;
+
+  const fetchHistory = useCallback(async (page = 0) => {
+    setHistoryLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (historySearch) params.set('search', historySearch);
+      if (historyMethodFilter) params.set('method', historyMethodFilter);
+      if (historyTypeFilter) params.set('type', historyTypeFilter);
+      params.set('limit', String(HISTORY_LIMIT));
+      params.set('offset', String(page * HISTORY_LIMIT));
+      const res = await fetch(`/api/payments/history?${params}`);
+      if (res.ok) {
+        const json = await res.json();
+        setHistoryPayments(json.payments);
+        setHistoryTotal(json.total);
+        setHistoryPage(page);
+      }
+    } catch { /* ignore */ } finally {
+      setHistoryLoading(false);
+    }
+  }, [historySearch, historyMethodFilter, historyTypeFilter]);
 
   const fetchData = useCallback(async () => {
     if (!month) return;
@@ -204,6 +255,12 @@ export default function PaymentsPage() {
       fetchData();
     }
   }, [user, fetchData]);
+
+  useEffect(() => {
+    if (user) {
+      fetchHistory(0);
+    }
+  }, [user, fetchHistory]);
 
   // Filter group debtors
   const filteredGroupDebtors = (data?.group_debts.debtors || []).filter(d => {
@@ -327,6 +384,7 @@ export default function PaymentsPage() {
     setPaymentDate(new Date().toISOString().split('T')[0]);
     setPaymentNote('');
     setSaveError('');
+    setConsoleTab('group');
     setShowPaymentConsole(true);
   };
 
@@ -508,6 +566,7 @@ export default function PaymentsPage() {
 
       setShowPaymentConsole(false);
       fetchData();
+      fetchHistory(0);
     } catch {
       setSaveError('Помилка мережі');
     } finally {
@@ -918,6 +977,276 @@ export default function PaymentsPage() {
         </div>
       )}
 
+      {/* Payment History */}
+      <div className="card" style={{ marginTop: '1.5rem' }}>
+        <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
+            Історія оплат
+          </h3>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="Пошук за ім'ям..."
+            value={historySearch}
+            onChange={(e) => setHistorySearch(e.target.value)}
+            style={{ width: '180px', padding: '0.375rem 0.75rem', fontSize: '0.8125rem', marginLeft: '0.5rem' }}
+          />
+          <select
+            className="form-input"
+            value={historyTypeFilter}
+            onChange={(e) => setHistoryTypeFilter(e.target.value)}
+            style={{ width: '140px', padding: '0.375rem 0.75rem', fontSize: '0.8125rem' }}
+          >
+            <option value="">Усі типи</option>
+            <option value="group">Групові</option>
+            <option value="individual">Індивідуальні</option>
+          </select>
+          <select
+            className="form-input"
+            value={historyMethodFilter}
+            onChange={(e) => setHistoryMethodFilter(e.target.value)}
+            style={{ width: '150px', padding: '0.375rem 0.75rem', fontSize: '0.8125rem' }}
+          >
+            <option value="">Усі способи</option>
+            <option value="cash">Готівка</option>
+            <option value="account">Безготівково</option>
+          </select>
+          <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: '#6b7280' }}>
+            {historyTotal} записів
+          </span>
+        </div>
+        <div className="table-container">
+          {historyLoading ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Завантаження...</div>
+          ) : historyPayments.length > 0 ? (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Учень</th>
+                  <th>Тип</th>
+                  <th>Група / Деталі</th>
+                  <th style={{ textAlign: 'right' }}>Сума</th>
+                  <th>Спосіб</th>
+                  <th style={{ textAlign: 'center', width: '60px' }}>Дії</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historyPayments.map(p => (
+                  <tr key={`${p.type}-${p.id}`}>
+                    <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+                      {new Date(p.paid_at).toLocaleDateString('uk-UA')}
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => openStudentModal(p.student_id, p.student_name)}
+                        style={{ background: 'none', border: 'none', padding: 0, color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline', textAlign: 'left' }}
+                      >
+                        {p.student_name}
+                      </button>
+                    </td>
+                    <td>
+                      <span style={{
+                        padding: '2px 8px', borderRadius: 4, fontSize: '0.6875rem', fontWeight: 600,
+                        backgroundColor: p.type === 'group' ? '#dbeafe' : '#f3e8ff',
+                        color: p.type === 'group' ? '#1d4ed8' : '#7c3aed',
+                      }}>
+                        {p.type === 'group' ? 'Групова' : 'Індивід.'}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: '0.8125rem' }}>
+                      {p.type === 'group' && p.group_title ? (
+                        <>
+                          <button
+                            onClick={() => p.group_id && openGroupModal(p.group_id, p.group_title!)}
+                            style={{ background: 'none', border: 'none', padding: 0, color: '#3b82f6', cursor: 'pointer', fontSize: '0.8125rem', textDecoration: 'underline', textAlign: 'left' }}
+                          >
+                            {p.group_title}
+                          </button>
+                          {p.month && <span style={{ color: '#9ca3af', marginLeft: '0.375rem' }}>({p.month.substring(0, 7)})</span>}
+                        </>
+                      ) : (
+                        <span style={{ color: '#6b7280' }}>{p.lessons_count} зан.</span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: '600', fontSize: '0.875rem' }}>
+                      {p.amount} ₴
+                    </td>
+                    <td>
+                      <span style={{
+                        padding: '2px 6px', borderRadius: 4, fontSize: '0.6875rem',
+                        backgroundColor: p.method === 'cash' ? '#dcfce7' : '#e0f2fe',
+                        color: p.method === 'cash' ? '#16a34a' : '#0284c7',
+                      }}>
+                        {p.method === 'cash' ? 'Готівка' : 'Безгот.'}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        onClick={() => setSelectedPayment(p)}
+                        style={{
+                          background: 'none', border: '1px solid #e5e7eb', borderRadius: '0.25rem',
+                          padding: '0.25rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', color: '#6b7280',
+                        }}
+                        title="Деталі"
+                      >
+                        👁
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+              Немає записів
+            </div>
+          )}
+        </div>
+        {/* Pagination */}
+        {historyTotal > HISTORY_LIMIT && (
+          <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', borderTop: '1px solid #e5e7eb' }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => fetchHistory(historyPage - 1)}
+              disabled={historyPage === 0}
+              style={{ fontSize: '0.8125rem' }}
+            >
+              ← Назад
+            </button>
+            <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+              {historyPage * HISTORY_LIMIT + 1}–{Math.min((historyPage + 1) * HISTORY_LIMIT, historyTotal)} з {historyTotal}
+            </span>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => fetchHistory(historyPage + 1)}
+              disabled={(historyPage + 1) * HISTORY_LIMIT >= historyTotal}
+              style={{ fontSize: '0.8125rem' }}
+            >
+              Далі →
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Payment Detail Modal */}
+      {selectedPayment && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+        }}
+        onClick={() => setSelectedPayment(null)}
+        >
+          <div
+            style={{
+              backgroundColor: 'white', borderRadius: '0.75rem',
+              padding: '1.5rem', width: '100%', maxWidth: '440px',
+              boxShadow: '0 20px 60px -15px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600' }}>
+                Деталі оплати
+              </h3>
+              <button
+                onClick={() => setSelectedPayment(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#9ca3af', padding: 0 }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', alignItems: 'start', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Тип:</span>
+                <span style={{
+                  display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, width: 'fit-content',
+                  backgroundColor: selectedPayment.type === 'group' ? '#dbeafe' : '#f3e8ff',
+                  color: selectedPayment.type === 'group' ? '#1d4ed8' : '#7c3aed',
+                }}>
+                  {selectedPayment.type === 'group' ? 'Групова' : 'Індивідуальна'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Учень:</span>
+                <button
+                  onClick={() => { setSelectedPayment(null); openStudentModal(selectedPayment.student_id, selectedPayment.student_name); }}
+                  style={{ background: 'none', border: 'none', padding: 0, color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', textAlign: 'left', fontSize: '0.875rem' }}
+                >
+                  {selectedPayment.student_name}
+                </button>
+              </div>
+              {selectedPayment.type === 'group' && selectedPayment.group_title && (
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                  <span style={{ color: '#6b7280' }}>Група:</span>
+                  <button
+                    onClick={() => { setSelectedPayment(null); selectedPayment.group_id && openGroupModal(selectedPayment.group_id, selectedPayment.group_title!); }}
+                    style={{ background: 'none', border: 'none', padding: 0, color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', textAlign: 'left', fontSize: '0.875rem' }}
+                  >
+                    {selectedPayment.group_title}
+                  </button>
+                </div>
+              )}
+              {selectedPayment.type === 'group' && selectedPayment.month && (
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                  <span style={{ color: '#6b7280' }}>Місяць:</span>
+                  <span>{selectedPayment.month.substring(0, 7)}</span>
+                </div>
+              )}
+              {selectedPayment.type === 'individual' && selectedPayment.lessons_count && (
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                  <span style={{ color: '#6b7280' }}>Занять:</span>
+                  <span>{selectedPayment.lessons_count}</span>
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Сума:</span>
+                <strong style={{ color: '#16a34a', fontSize: '1rem' }}>{selectedPayment.amount} ₴</strong>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Спосіб:</span>
+                <span style={{
+                  display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', width: 'fit-content',
+                  backgroundColor: selectedPayment.method === 'cash' ? '#dcfce7' : '#e0f2fe',
+                  color: selectedPayment.method === 'cash' ? '#16a34a' : '#0284c7',
+                }}>
+                  {selectedPayment.method === 'cash' ? 'Готівка' : 'Безготівково'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Дата оплати:</span>
+                <span>{new Date(selectedPayment.paid_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Створив:</span>
+                <span>{selectedPayment.created_by_name}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Створено:</span>
+                <span>{new Date(selectedPayment.created_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              {selectedPayment.note && (
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                  <span style={{ color: '#6b7280' }}>Примітка:</span>
+                  <span style={{ color: '#374151' }}>{selectedPayment.note}</span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setSelectedPayment(null)}
+              >
+                Закрити
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Payment Console Modal */}
       {showPaymentConsole && (
         <div style={{
@@ -1026,13 +1355,43 @@ export default function PaymentsPage() {
                   )}
                 </div>
 
-                {/* Payment lines */}
+                {/* Payment lines with tabs */}
                 <div style={{ marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', color: '#374151' }}>
-                    Позиції оплати
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
+                      Позиції оплати
+                    </span>
+                    <div style={{ display: 'flex', gap: '0.25rem', marginLeft: 'auto' }}>
+                      <button
+                        onClick={() => setConsoleTab('group')}
+                        style={{
+                          padding: '0.25rem 0.625rem', fontSize: '0.75rem', borderRadius: '0.25rem',
+                          border: consoleTab === 'group' ? '1px solid #374151' : '1px solid #d1d5db',
+                          backgroundColor: consoleTab === 'group' ? '#374151' : 'white',
+                          color: consoleTab === 'group' ? 'white' : '#6b7280',
+                          cursor: 'pointer', fontWeight: consoleTab === 'group' ? '600' : '400',
+                        }}
+                      >
+                        Групові {paymentLines.filter(l => l.target_type === 'group').length > 0 && `(${paymentLines.filter(l => l.target_type === 'group').length})`}
+                      </button>
+                      {selectedStudent.has_individual && (
+                        <button
+                          onClick={() => setConsoleTab('individual')}
+                          style={{
+                            padding: '0.25rem 0.625rem', fontSize: '0.75rem', borderRadius: '0.25rem',
+                            border: consoleTab === 'individual' ? '1px solid #374151' : '1px solid #d1d5db',
+                            backgroundColor: consoleTab === 'individual' ? '#374151' : 'white',
+                            color: consoleTab === 'individual' ? 'white' : '#6b7280',
+                            cursor: 'pointer', fontWeight: consoleTab === 'individual' ? '600' : '400',
+                          }}
+                        >
+                          Індивідуальні {paymentLines.some(l => l.target_type === 'individual') && '(1)'}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  {paymentLines.map((line) => (
+                  {paymentLines.filter(l => l.target_type === consoleTab).map((line) => (
                     <div key={line.id} style={{
                       padding: '0.75rem', marginBottom: '0.5rem',
                       border: '1px solid #e5e7eb', borderRadius: '0.5rem',
@@ -1169,7 +1528,7 @@ export default function PaymentsPage() {
 
                   {/* Add line buttons */}
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {selectedStudent.groups
+                    {consoleTab === 'group' && selectedStudent.groups
                       .filter(g => !paymentLines.some(l => l.target_type === 'group' && l.group_id === g.group_id))
                       .map(g => (
                         <button
@@ -1195,7 +1554,7 @@ export default function PaymentsPage() {
                         </button>
                       ))
                     }
-                    {selectedStudent.has_individual && !paymentLines.some(l => l.target_type === 'individual') && (
+                    {consoleTab === 'individual' && selectedStudent.has_individual && !paymentLines.some(l => l.target_type === 'individual') && (
                       <button
                         onClick={() => setPaymentLines(prev => [...prev, {
                           id: `individual-${Date.now()}`,
