@@ -413,13 +413,16 @@ export default function PaymentsPage() {
   const handleSavePayments = async () => {
     if (!selectedStudent || paymentLines.length === 0) return;
 
-    // Validate: each active line must have an amount
-    for (const line of paymentLines) {
+    // Validate: skip lines with 0 auto-amount (no lessons), but check non-zero lines are valid
+    const activeLines = paymentLines.filter(line => {
       const amt = line.amount ? parseFloat(line.amount) : getLineAmount(line);
-      if (isNaN(amt) || amt <= 0) {
-        setSaveError(`Вкажіть суму для "${line.group_title}"`);
-        return;
-      }
+      return !isNaN(amt) && amt > 0;
+    });
+    if (activeLines.length === 0) {
+      setSaveError('Немає позицій з сумою більше 0');
+      return;
+    }
+    for (const line of activeLines) {
       if (line.target_type === 'group' && line.pay_mode === 'months' && line.months.length === 0) {
         setSaveError(`Оберіть місяць для "${line.group_title}"`);
         return;
@@ -434,7 +437,7 @@ export default function PaymentsPage() {
     setSaveError('');
 
     try {
-      for (const line of paymentLines) {
+      for (const line of activeLines) {
         const amt = line.amount ? parseFloat(line.amount) : getLineAmount(line);
 
         if (line.target_type === 'group' && line.group_id) {
