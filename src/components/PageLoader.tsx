@@ -19,7 +19,7 @@ export const PageLoader = ({ isLoading }: PageLoaderProps) => {
             duration: 0.2, 
             ease: 'easeOut' 
           }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50"
+          className="fixed top-[64px] left-0 right-0 bottom-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50"
         >
           <div className="flex flex-col items-center gap-5">
             {/* Logo/Brand */}
