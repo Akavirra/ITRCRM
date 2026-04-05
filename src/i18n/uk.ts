@@ -51,9 +51,9 @@ export const uk = {
     name: 'ITRobotics',
     schoolName: 'Школа робототехніки та програмування',
     subtitle: 'Панель керування',
-    loginSubtitle: 'Панель керування школою',
+    loginSubtitle: 'Увійдіть в обліковий запис',
     welcomeBack: 'З поверненням',
-    enterPassword: 'Введіть пароль для входу',
+    enterPassword: 'Введіть пароль',
   },
 
   // Actions

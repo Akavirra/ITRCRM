@@ -18,6 +18,18 @@ function getDicebearUrl(name: string): string {
   return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(seed || name)}`;
 }
 
+// Google-style colored brand letters
+function BrandName() {
+  const letters = 'ITRobotics';
+  return (
+    <div className={styles.brandRow}>
+      {letters.split('').map((ch, i) => (
+        <span key={i} className={styles.brandLetter}>{ch}</span>
+      ))}
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -99,15 +111,16 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (step === 'password') {
-      passwordRef.current?.focus();
+      setTimeout(() => passwordRef.current?.focus(), 50);
     }
   }, [step]);
 
   return (
     <div className={styles.container}>
       <div className={styles.card}>
+        {/* Brand */}
         <div className={styles.logoArea}>
-          <h1 className={styles.appName}>{t('app.name')}</h1>
+          <BrandName />
           <div className={styles.schoolName}>{t('app.schoolName')}</div>
           <p className={styles.subtitle}>
             {step === 'email' ? t('app.loginSubtitle') : t('app.enterPassword')}
@@ -116,38 +129,47 @@ export default function LoginPage() {
 
         {/* Step 1: Email */}
         {step === 'email' && (
-          <form onSubmit={handleEmailSubmit} className={styles.form}>
+          <form onSubmit={handleEmailSubmit} className={styles.stepContent}>
             <div className={styles.inputGroup}>
-              <label className={styles.inputLabel} htmlFor="email">
-                {t('forms.email')}
-              </label>
               <input
                 id="email"
                 type="email"
-                className={styles.input}
+                className={styles.floatingInput}
                 value={email}
                 onChange={(e) => handleEmailChange(e.target.value)}
-                placeholder={t('forms.emailPlaceholder')}
+                placeholder=" "
                 autoComplete="email"
                 autoFocus
                 required
               />
+              <label htmlFor="email" className={styles.floatingLabel}>
+                {t('forms.email')}
+              </label>
             </div>
 
             {error && (
-              <div className={styles.errorMessage}>{error}</div>
+              <div className={styles.errorMessage}>
+                <svg className={styles.errorIcon} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                </svg>
+                {error}
+              </div>
             )}
 
-            <button type="submit" className={styles.submitBtn} disabled={!email}>
-              <span>{t('common.continue')}</span>
-            </button>
+            <div className={styles.buttonsRow}>
+              <div />
+              <button type="submit" className={styles.submitBtn} disabled={!email}>
+                <span>{t('common.continue')}</span>
+              </button>
+            </div>
           </form>
         )}
 
         {/* Step 2: Password */}
         {step === 'password' && (
-          <div>
-            {userPreview?.name && (
+          <div className={styles.stepContent}>
+            {/* User greeting or email chip */}
+            {userPreview?.name ? (
               <div className={styles.userGreeting}>
                 <div className={styles.userAvatar}>
                   <img
@@ -158,47 +180,75 @@ export default function LoginPage() {
                 <div className={styles.greetingName}>
                   {t('app.welcomeBack')}, {userPreview.name.split(' ')[0]}!
                 </div>
+                <button type="button" className={styles.emailChip} onClick={goBack}>
+                  <span className={styles.emailChipIcon}>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+                    </svg>
+                  </span>
+                  {email}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#5f6368">
+                    <path d="M7 10l5 5 5-5z" />
+                  </svg>
+                </button>
               </div>
+            ) : (
+              <button type="button" className={styles.emailChip} onClick={goBack} style={{ marginBottom: 20 }}>
+                <span className={styles.emailChipIcon}>
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+                  </svg>
+                </span>
+                {email}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#5f6368">
+                  <path d="M7 10l5 5 5-5z" />
+                </svg>
+              </button>
             )}
 
-            <form onSubmit={handlePasswordSubmit} className={styles.form}>
+            <form onSubmit={handlePasswordSubmit}>
               <div className={styles.inputGroup}>
-                <label className={styles.inputLabel} htmlFor="password">
-                  {t('forms.password')}
-                </label>
                 <input
                   ref={passwordRef}
                   id="password"
                   type="password"
-                  className={styles.input}
+                  className={styles.floatingInput}
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                  placeholder={t('forms.passwordPlaceholder')}
+                  placeholder=" "
                   autoComplete="current-password"
                   required
                 />
+                <label htmlFor="password" className={styles.floatingLabel}>
+                  {t('forms.password')}
+                </label>
               </div>
 
               {error && (
-                <div className={styles.errorMessage}>{error}</div>
+                <div className={styles.errorMessage}>
+                  <svg className={styles.errorIcon} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                  </svg>
+                  {error}
+                </div>
               )}
 
-              <button type="submit" className={styles.submitBtn} disabled={loading || !password}>
-                <span>
-                  {loading && <div className={styles.spinner} />}
-                  {loading ? t('common.loading') : t('actions.login')}
-                </span>
-              </button>
+              <div className={styles.buttonsRow}>
+                <div />
+                <button type="submit" className={styles.submitBtn} disabled={loading || !password}>
+                  <span>
+                    {loading && <div className={styles.spinner} />}
+                    {loading ? t('common.loading') : t('actions.login')}
+                  </span>
+                </button>
+              </div>
             </form>
-
-            <button type="button" className={styles.backLink} onClick={goBack}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m15 18-6-6 6-6" />
-              </svg>
-              {t('forms.email')}
-            </button>
           </div>
         )}
+
+        <div className={styles.footer}>
+          <span>ITRobotics CRM</span>
+        </div>
       </div>
     </div>
   );
