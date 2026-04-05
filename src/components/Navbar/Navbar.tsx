@@ -263,7 +263,7 @@ const Navbar: React.FC<NavbarProps> = ({
   // Keyboard shortcut for search (Ctrl+K)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
