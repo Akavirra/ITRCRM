@@ -10,35 +10,12 @@ interface UserPreview {
   photo_url: string | null;
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 function getDicebearUrl(name: string): string {
   let seed = '';
   try {
     seed = localStorage.getItem('itrobot-avatar-seed') || '';
   } catch {}
   return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(seed || name)}`;
-}
-
-function RobotIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="10" rx="2" />
-      <circle cx="12" cy="5" r="2" />
-      <path d="M12 7v4" />
-      <line x1="8" y1="16" x2="8" y2="16" strokeWidth="2.5" />
-      <line x1="16" y1="16" x2="16" y2="16" strokeWidth="2.5" />
-      <path d="M9 20v1" />
-      <path d="M15 20v1" />
-    </svg>
-  );
 }
 
 export default function LoginPage() {
@@ -52,7 +29,6 @@ export default function LoginPage() {
   const passwordRef = useRef<HTMLInputElement>(null);
   const lookupTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  // Lookup user by email with debounce
   const lookupUser = useCallback((emailValue: string) => {
     if (lookupTimer.current) clearTimeout(lookupTimer.current);
 
@@ -69,11 +45,7 @@ export default function LoginPage() {
           body: JSON.stringify({ email: emailValue }),
         });
         const data = await res.json();
-        if (data.user) {
-          setUserPreview(data.user);
-        } else {
-          setUserPreview(null);
-        }
+        setUserPreview(data.user || null);
       } catch {
         setUserPreview(null);
       }
@@ -90,7 +62,6 @@ export default function LoginPage() {
     e.preventDefault();
     if (!email) return;
     setStep('password');
-    setTimeout(() => passwordRef.current?.focus(), 100);
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -126,7 +97,6 @@ export default function LoginPage() {
     setError('');
   };
 
-  // Focus password on step change
   useEffect(() => {
     if (step === 'password') {
       passwordRef.current?.focus();
@@ -135,23 +105,13 @@ export default function LoginPage() {
 
   return (
     <div className={styles.container}>
-      {/* Decorative particles */}
-      <div className={styles.particle} />
-      <div className={styles.particle} />
-      <div className={styles.particle} />
-      <div className={styles.particle} />
-      <div className={styles.particle} />
-      <div className={styles.gridOverlay} />
-
       <div className={styles.card}>
-        {/* Logo & branding */}
         <div className={styles.logoArea}>
-          <div className={styles.logoIcon}>
-            <RobotIcon />
-          </div>
-          <div className={styles.schoolName}>{t('app.schoolName')}</div>
           <h1 className={styles.appName}>{t('app.name')}</h1>
-          <p className={styles.subtitle}>{t('app.loginSubtitle')}</p>
+          <div className={styles.schoolName}>{t('app.schoolName')}</div>
+          <p className={styles.subtitle}>
+            {step === 'email' ? t('app.loginSubtitle') : t('app.enterPassword')}
+          </p>
         </div>
 
         {/* Step 1: Email */}
@@ -161,105 +121,66 @@ export default function LoginPage() {
               <label className={styles.inputLabel} htmlFor="email">
                 {t('forms.email')}
               </label>
-              <div className={styles.inputWrapper}>
-                <input
-                  id="email"
-                  type="email"
-                  className={styles.input}
-                  value={email}
-                  onChange={(e) => handleEmailChange(e.target.value)}
-                  placeholder={t('forms.emailPlaceholder')}
-                  autoComplete="email"
-                  autoFocus
-                  required
-                />
-                <div className={styles.inputIcon}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="4" width="20" height="16" rx="2" />
-                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-                  </svg>
-                </div>
-              </div>
+              <input
+                id="email"
+                type="email"
+                className={styles.input}
+                value={email}
+                onChange={(e) => handleEmailChange(e.target.value)}
+                placeholder={t('forms.emailPlaceholder')}
+                autoComplete="email"
+                autoFocus
+                required
+              />
             </div>
 
             {error && (
-              <div className={styles.errorMessage}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                {error}
-              </div>
+              <div className={styles.errorMessage}>{error}</div>
             )}
 
             <button type="submit" className={styles.submitBtn} disabled={!email}>
-              <span>{t('common.continue') || 'Далі'}</span>
+              <span>{t('common.continue')}</span>
             </button>
           </form>
         )}
 
-        {/* Step 2: Password (with greeting) */}
+        {/* Step 2: Password */}
         {step === 'password' && (
           <div>
-            {/* User greeting */}
-            <div className={styles.userGreeting}>
-              {userPreview?.name && (
+            {userPreview?.name && (
+              <div className={styles.userGreeting}>
                 <div className={styles.userAvatar}>
                   <img
                     src={userPreview.photo_url || getDicebearUrl(userPreview.name)}
                     alt={userPreview.name}
                   />
                 </div>
-              )}
-
-              {userPreview?.name ? (
-                <>
-                  <div className={styles.greetingName}>
-                    {t('app.welcomeBack')}, {userPreview.name.split(' ')[0]}!
-                  </div>
-                  <div className={styles.greetingHint}>{t('app.enterPassword')}</div>
-                </>
-              ) : (
-                <div className={styles.greetingHint}>{t('app.enterPassword')}</div>
-              )}
-            </div>
+                <div className={styles.greetingName}>
+                  {t('app.welcomeBack')}, {userPreview.name.split(' ')[0]}!
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handlePasswordSubmit} className={styles.form}>
               <div className={styles.inputGroup}>
                 <label className={styles.inputLabel} htmlFor="password">
                   {t('forms.password')}
                 </label>
-                <div className={styles.inputWrapper}>
-                  <input
-                    ref={passwordRef}
-                    id="password"
-                    type="password"
-                    className={styles.input}
-                    value={password}
-                    onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                    placeholder={t('forms.passwordPlaceholder')}
-                    autoComplete="current-password"
-                    required
-                  />
-                  <div className={styles.inputIcon}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                    </svg>
-                  </div>
-                </div>
+                <input
+                  ref={passwordRef}
+                  id="password"
+                  type="password"
+                  className={styles.input}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                  placeholder={t('forms.passwordPlaceholder')}
+                  autoComplete="current-password"
+                  required
+                />
               </div>
 
               {error && (
-                <div className={styles.errorMessage}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  {error}
-                </div>
+                <div className={styles.errorMessage}>{error}</div>
               )}
 
               <button type="submit" className={styles.submitBtn} disabled={loading || !password}>
