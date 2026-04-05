@@ -27,6 +27,7 @@ import styles from './Navbar.module.css';
 import TransitionLink from '@/components/TransitionLink';
 import { useCalculator } from '@/components/CalculatorProvider';
 import { useNotes } from '@/components/NotesProvider';
+import GlobalSearch from '@/components/GlobalSearch/GlobalSearch';
 
 // ─── Notification types ───────────────────────────────────────────────────────
 
@@ -105,6 +106,7 @@ const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { calcOpen, toggleCalc } = useCalculator();
   const { notesOpen, toggleNotes } = useNotes();
   const [userPhotoUrl, setUserPhotoUrl] = useState<string | null>(null);
@@ -256,10 +258,7 @@ const Navbar: React.FC<NavbarProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement;
-        if (searchInput) {
-          searchInput.focus();
-        }
+        setSearchOpen(true);
       }
     };
 
@@ -482,19 +481,21 @@ const Navbar: React.FC<NavbarProps> = ({
 
           {/* Center section - Search */}
           <div className={styles.navbarCenter}>
-            <div className={styles.searchContainer}>
+            <button
+              className={styles.searchContainer}
+              onClick={() => setSearchOpen(true)}
+              type="button"
+            >
               <Search size={18} className={styles.searchIcon} />
-              <input
-                type="text"
-                className={styles.searchInput}
-                placeholder={t('search.placeholder') || 'Пошук по системі...'}
-              />
+              <span className={styles.searchPlaceholder}>
+                {t('search.placeholder') || 'Пошук по системі...'}
+              </span>
               <div className={styles.searchHint}>
                 <Keyboard size={10} />
                 <kbd>Ctrl</kbd>
                 <kbd>K</kbd>
               </div>
-            </div>
+            </button>
           </div>
 
           {/* Right section */}
@@ -755,6 +756,9 @@ const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
       </nav>
+
+      {/* Global Search Modal */}
+      <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* Settings Modal */}
       {settingsOpen && (
