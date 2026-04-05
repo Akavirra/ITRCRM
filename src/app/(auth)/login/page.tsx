@@ -18,18 +18,6 @@ function getDicebearUrl(name: string): string {
   return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(seed || name)}`;
 }
 
-// Google-style colored brand letters
-function BrandName() {
-  const letters = 'ITRobotics';
-  return (
-    <div className={styles.brandRow}>
-      {letters.split('').map((ch, i) => (
-        <span key={i} className={styles.brandLetter}>{ch}</span>
-      ))}
-    </div>
-  );
-}
-
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -120,12 +108,16 @@ export default function LoginPage() {
       <div className={styles.card}>
         {/* Brand */}
         <div className={styles.logoArea}>
-          <BrandName />
+          <div className={styles.brandMark}>IT</div>
+          <h1 className={styles.brandName}>ITRobotics</h1>
           <div className={styles.schoolName}>{t('app.schoolName')}</div>
-          <p className={styles.subtitle}>
-            {step === 'email' ? t('app.loginSubtitle') : t('app.enterPassword')}
-          </p>
         </div>
+
+        <div className={styles.divider} />
+
+        <p className={styles.subtitle}>
+          {step === 'email' ? t('app.loginSubtitle') : t('app.enterPassword')}
+        </p>
 
         {/* Step 1: Email */}
         {step === 'email' && (
@@ -149,26 +141,24 @@ export default function LoginPage() {
 
             {error && (
               <div className={styles.errorMessage}>
-                <svg className={styles.errorIcon} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                <svg className={styles.errorIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
                 {error}
               </div>
             )}
 
-            <div className={styles.buttonsRow}>
-              <div />
-              <button type="submit" className={styles.submitBtn} disabled={!email}>
-                <span>{t('common.continue')}</span>
-              </button>
-            </div>
+            <button type="submit" className={styles.submitBtn} disabled={!email}>
+              <span>{t('common.continue')}</span>
+            </button>
           </form>
         )}
 
         {/* Step 2: Password */}
         {step === 'password' && (
           <div className={styles.stepContent}>
-            {/* User greeting or email chip */}
             {userPreview?.name ? (
               <div className={styles.userGreeting}>
                 <div className={styles.userAvatar}>
@@ -177,33 +167,21 @@ export default function LoginPage() {
                     alt={userPreview.name}
                   />
                 </div>
-                <div className={styles.greetingName}>
-                  {t('app.welcomeBack')}, {userPreview.name.split(' ')[0]}!
+                <div>
+                  <div className={styles.greetingName}>
+                    {t('app.welcomeBack')}, {userPreview.name.split(' ')[0]}!
+                  </div>
+                  <button type="button" className={styles.emailLink} onClick={goBack}>
+                    {email}
+                  </button>
                 </div>
-                <button type="button" className={styles.emailChip} onClick={goBack}>
-                  <span className={styles.emailChipIcon}>
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-                    </svg>
-                  </span>
-                  {email}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#5f6368">
-                    <path d="M7 10l5 5 5-5z" />
-                  </svg>
-                </button>
               </div>
             ) : (
-              <button type="button" className={styles.emailChip} onClick={goBack} style={{ marginBottom: 20 }}>
-                <span className={styles.emailChipIcon}>
-                  <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-                  </svg>
-                </span>
-                {email}
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="#5f6368">
-                  <path d="M7 10l5 5 5-5z" />
-                </svg>
-              </button>
+              <div className={styles.emailRow}>
+                <button type="button" className={styles.emailLink} onClick={goBack}>
+                  ← {email}
+                </button>
+              </div>
             )}
 
             <form onSubmit={handlePasswordSubmit}>
@@ -226,29 +204,24 @@ export default function LoginPage() {
 
               {error && (
                 <div className={styles.errorMessage}>
-                  <svg className={styles.errorIcon} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                  <svg className={styles.errorIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
                   </svg>
                   {error}
                 </div>
               )}
 
-              <div className={styles.buttonsRow}>
-                <div />
-                <button type="submit" className={styles.submitBtn} disabled={loading || !password}>
-                  <span>
-                    {loading && <div className={styles.spinner} />}
-                    {loading ? t('common.loading') : t('actions.login')}
-                  </span>
-                </button>
-              </div>
+              <button type="submit" className={styles.submitBtn} disabled={loading || !password}>
+                <span>
+                  {loading && <div className={styles.spinner} />}
+                  {loading ? t('common.loading') : t('actions.login')}
+                </span>
+              </button>
             </form>
           </div>
         )}
-
-        <div className={styles.footer}>
-          <span>ITRobotics CRM</span>
-        </div>
       </div>
     </div>
   );
