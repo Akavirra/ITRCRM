@@ -76,14 +76,15 @@ export default function LoginPage() {
     <div className={styles.container}>
       <div className={styles.card}>
         <div className={styles.logoArea}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.svg" alt="ITRobotics" className={styles.logo} />
+          <h1 className={styles.brandName}>
+            <span className={styles.brandAccent}>IT</span>Robotics
+          </h1>
+          <div className={styles.schoolName}>{t('app.schoolName')}</div>
         </div>
 
-        <div className={styles.formArea}>
-          <p className={styles.subtitle}>
-            {step === 'email' ? t('app.loginSubtitle') : t('app.enterPassword')}
-          </p>
+        <p className={styles.subtitle}>
+          {step === 'email' ? t('app.loginSubtitle') : t('app.enterPassword')}
+        </p>
 
           {step === 'email' && (
             <form onSubmit={handleEmailSubmit} className={styles.stepContent}>
@@ -169,7 +170,6 @@ export default function LoginPage() {
               </form>
             </div>
           )}
-        </div>
       </div>
     </div>
   );

@@ -4,15 +4,16 @@
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: #eef2f7;
+  background: #f0f2f5;
 }
 
 .card {
   width: 100%;
   max-width: 380px;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px 32px 32px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
   animation: appear 0.35s ease;
 }
 
@@ -21,33 +22,40 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Top: logo on blue */
+/* Brand */
 .logoArea {
-  background: #3b5998;
-  padding: 32px 32px 28px;
   text-align: center;
+  margin-bottom: 28px;
 }
 
-.logo {
-  max-width: 240px;
-  height: auto;
+.brandName {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 4px;
+  letter-spacing: -0.5px;
 }
 
-/* Bottom: form on white */
-.formArea {
-  background: #fff;
-  padding: 28px 32px 32px;
+.brandAccent {
+  color: #3b82f6;
 }
 
+.schoolName {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+}
+
+/* Subtitle */
 .subtitle {
   font-size: 14px;
-  color: #7c8ba1;
+  color: #64748b;
   text-align: center;
   margin: 0 0 24px;
-  font-weight: 400;
 }
 
-/* Step animation */
+/* Step */
 .stepContent {
   animation: fadeUp 0.25s ease;
 }
@@ -66,7 +74,7 @@
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #4a5568;
+  color: #475569;
   margin-bottom: 6px;
 }
 
@@ -74,21 +82,22 @@
   width: 100%;
   padding: 10px 12px;
   font-size: 15px;
-  color: #1a202c;
-  background: #fff;
-  border: 1px solid #d2d9e5;
+  color: #1e293b;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .input::placeholder {
-  color: #a0aec0;
+  color: #94a3b8;
 }
 
 .input:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: #fff;
 }
 
 /* Error */
@@ -96,21 +105,18 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 14px;
-  color: #e53e3e;
+  margin-bottom: 12px;
+  color: #ef4444;
   font-size: 13px;
-  animation: fadeUp 0.2s ease;
 }
 
-.errorIcon {
-  flex-shrink: 0;
-}
+.errorIcon { flex-shrink: 0; }
 
 /* Button */
 .submitBtn {
   width: 100%;
   padding: 10px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   color: #fff;
   background: #3b82f6;
@@ -121,18 +127,9 @@
   transition: background 0.15s;
 }
 
-.submitBtn:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.submitBtn:active:not(:disabled) {
-  background: #1d4ed8;
-}
-
-.submitBtn:disabled {
-  background: #a5c4f7;
-  cursor: default;
-}
+.submitBtn:hover:not(:disabled) { background: #2563eb; }
+.submitBtn:active:not(:disabled) { background: #1d4ed8; }
+.submitBtn:disabled { background: #bfdbfe; cursor: default; }
 
 .submitBtn span {
   display: flex;
@@ -142,17 +139,15 @@
 }
 
 .spinner {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   border: 2px solid rgba(255,255,255,0.3);
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* Greeting */
 .userGreeting {
@@ -164,11 +159,11 @@
 }
 
 .userAvatar {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   overflow: hidden;
-  background: #eef2f7;
+  background: #f1f5f9;
   flex-shrink: 0;
 }
 
@@ -181,8 +176,7 @@
 .greetingName {
   font-size: 15px;
   font-weight: 600;
-  color: #1a202c;
-  margin-bottom: 1px;
+  color: #1e293b;
 }
 
 .emailLink {
@@ -194,16 +188,11 @@
   cursor: pointer;
 }
 
-.emailLink:hover {
-  text-decoration: underline;
-}
+.emailLink:hover { text-decoration: underline; }
 
-.emailRow {
-  margin-bottom: 16px;
-}
+.emailRow { margin-bottom: 16px; }
 
-@media (max-width: 480px) {
+@media (max-width: 440px) {
   .container { padding: 0; background: #fff; }
-  .card { border-radius: 0; box-shadow: none; max-width: 100%; }
-  .logoArea { border-radius: 0; }
+  .card { border-radius: 0; box-shadow: none; max-width: 100%; padding: 32px 24px 24px; }
 }
