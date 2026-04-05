@@ -169,7 +169,10 @@ export default function GlobalSearch({ query, inputFocused, onClose }: GlobalSea
                 <button
                   key={`${item.type}-${item.id}`}
                   className={`${styles.item} ${isActive ? styles.itemActive : ''}`}
-                  onClick={() => navigateToResult(item)}
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // Prevents the input from losing focus
+                    navigateToResult(item);
+                  }}
                   onMouseEnter={() => setActiveIndex(thisIndex)}
                 >
                   <div className={`${styles.itemIcon} ${styles[meta.iconClass] || ''}`}>
