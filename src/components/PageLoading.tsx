@@ -63,10 +63,10 @@ export const PageLoading = () => {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0,
+      position: 'fixed', top: 64, left: 0, right: 0, bottom: 0,
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      backgroundColor: '#fdfdfd', // Extremely clean, bright white background
+      backgroundColor: '#fdfdfd',
       zIndex: 1000,
     }}>
 
