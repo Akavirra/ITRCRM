@@ -1,21 +1,21 @@
-/* Container */
+/* Container — white background */
 .container {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: #111827;
+  background: #f5f7fa;
 }
 
-/* Card */
+/* Card — dark blue */
 .card {
   width: 100%;
   max-width: 420px;
-  background: #1c2333;
+  background: #2c3e6b;
   border-radius: 16px;
   padding: 40px 36px 32px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 24px rgba(44, 62, 107, 0.18);
   animation: cardAppear 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -43,13 +43,13 @@
 
 .divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
   margin: 24px 0;
 }
 
 .subtitle {
   font-size: 15px;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.65);
   font-weight: 400;
   margin: 0 0 24px;
   text-align: center;
@@ -78,7 +78,7 @@
   gap: 14px;
   margin-bottom: 24px;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   animation: greetAppear 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -99,7 +99,7 @@
   height: 48px;
   border-radius: 50%;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   flex-shrink: 0;
 }
 
@@ -112,7 +112,7 @@
 .greetingName {
   font-size: 15px;
   font-weight: 600;
-  color: #f1f5f9;
+  color: #fff;
   margin-bottom: 2px;
 }
 
@@ -120,7 +120,7 @@
 .emailLink {
   display: inline;
   font-size: 13px;
-  color: #60a5fa;
+  color: #93bbfd;
   cursor: pointer;
   background: none;
   border: none;
@@ -130,7 +130,7 @@
 }
 
 .emailLink:hover {
-  color: #93bbfd;
+  color: #bdd4fe;
   text-decoration: underline;
 }
 
@@ -148,18 +148,18 @@
   width: 100%;
   padding: 14px 14px 6px;
   font-size: 15px;
-  color: #f1f5f9;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.2s, background 0.2s;
-  caret-color: #60a5fa;
+  caret-color: #facc15;
 }
 
 .floatingInput:focus {
-  border-color: #60a5fa;
-  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(250, 204, 21, 0.5);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .floatingLabel {
@@ -168,7 +168,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 15px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.45);
   pointer-events: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   background: transparent;
@@ -179,15 +179,15 @@
   top: 8px;
   transform: translateY(0);
   font-size: 11px;
-  color: #60a5fa;
-  background: #1c2333;
+  color: #facc15;
+  background: #2c3e6b;
   padding: 0 4px;
   left: 10px;
 }
 
 .floatingInput:not(:focus):not(:placeholder-shown) ~ .floatingLabel {
-  color: #64748b;
-  background: #1c2333;
+  color: rgba(255, 255, 255, 0.45);
+  background: #2c3e6b;
   padding: 0 4px;
   left: 10px;
 }
@@ -199,7 +199,7 @@
   gap: 8px;
   padding: 10px 14px;
   margin-bottom: 16px;
-  background: rgba(220, 38, 38, 0.12);
+  background: rgba(220, 38, 38, 0.15);
   border-radius: 8px;
   color: #fca5a5;
   font-size: 13px;
@@ -222,8 +222,8 @@
   width: 100%;
   padding: 12px 24px;
   font-size: 15px;
-  font-weight: 500;
-  color: #111827;
+  font-weight: 600;
+  color: #1e3a5f;
   background: #facc15;
   border: none;
   border-radius: 10px;
@@ -233,7 +233,7 @@
 
 .submitBtn:hover:not(:disabled) {
   background: #fde047;
-  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.2);
+  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.25);
 }
 
 .submitBtn:active:not(:disabled) {
@@ -241,8 +241,8 @@
 }
 
 .submitBtn:disabled {
-  background: rgba(250, 204, 21, 0.3);
-  color: rgba(17, 24, 39, 0.5);
+  background: rgba(250, 204, 21, 0.25);
+  color: rgba(255, 255, 255, 0.35);
   cursor: default;
 }
 
@@ -257,8 +257,8 @@
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(17, 24, 39, 0.3);
-  border-top-color: #111827;
+  border: 2px solid rgba(30, 58, 95, 0.3);
+  border-top-color: #1e3a5f;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -270,17 +270,10 @@
 /* Responsive */
 @media (max-width: 480px) {
   .container {
-    padding: 0;
+    padding: 1rem;
   }
 
   .card {
-    border-radius: 0;
-    box-shadow: none;
     padding: 32px 24px 24px;
-    max-width: 100%;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
   }
 }
