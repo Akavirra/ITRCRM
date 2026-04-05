@@ -1716,6 +1716,11 @@ export default function LessonModalsManager() {
                             >
                               {att.student_name}
                             </button>
+                            {att.status !== 'makeup_done' && att.status !== 'makeup_planned' && att.payment_status === 'paid' && (
+                              <span style={{ padding: '1px 5px', borderRadius: 4, backgroundColor: '#dcfce7', color: '#16a34a', fontSize: '0.5625rem', fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                                Оплачено
+                              </span>
+                            )}
                             {att.status !== 'makeup_done' && att.status !== 'makeup_planned' && att.payment_status === 'unpaid' && (
                               <span style={{ padding: '1px 5px', borderRadius: 4, backgroundColor: '#fee2e2', color: '#dc2626', fontSize: '0.5625rem', fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
                                 Не оплачено
