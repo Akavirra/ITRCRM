@@ -25,7 +25,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [userPreview, setUserPreview] = useState<UserPreview | null>(null);
-  const [step, setStep] = useState<'email' | 'password'>('email');
+  const [step, setStep] = useState<'email' | 'password' | 'welcome'>('email');
   const passwordRef = useRef<HTMLInputElement>(null);
   const lookupTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -64,13 +64,40 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || t('auth.loginFailed')); setLoading(false); return; }
-      router.push('/dashboard');
+      setStep('welcome');
+      setTimeout(() => router.push('/dashboard'), 2200);
     } catch { setError(t('toasts.networkError')); setLoading(false); }
   };
 
   useEffect(() => {
     if (step === 'password') setTimeout(() => passwordRef.current?.focus(), 50);
   }, [step]);
+
+  const avatarSrc = userPreview?.photo_url || getDicebearUrl(userPreview?.name || email);
+  const firstName = userPreview?.name?.split(' ')[0] || '';
+
+  /* ── Welcome screen (after successful login) ── */
+  if (step === 'welcome') {
+    return (
+      <div className={`${styles.container} ${styles.welcomeContainer}`}>
+        <div className={styles.welcomeScreen}>
+          <div className={styles.welcomeAvatar}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={avatarSrc} alt={firstName || email} />
+          </div>
+          <div className={styles.welcomeText}>
+            <div className={styles.welcomeTitle}>
+              {firstName ? `${t('app.welcomeBack')}, ${firstName}!` : t('app.welcomeBack') + '!'}
+            </div>
+            <div className={styles.welcomeSubtitle}>{t('app.redirecting')}</div>
+          </div>
+          <div className={styles.welcomeProgress}>
+            <div className={styles.welcomeProgressBar} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -118,14 +145,12 @@ export default function LoginPage() {
             <div className={styles.stepContent}>
               <div className={styles.userGreeting}>
                 <div className={styles.userAvatar}>
-                  <img
-                    src={userPreview?.photo_url || getDicebearUrl(userPreview?.name || email)}
-                    alt={userPreview?.name || email}
-                  />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={avatarSrc} alt={userPreview?.name || email} />
                 </div>
                 <div>
                   {userPreview?.name && (
-                    <div className={styles.greetingName}>{t('app.welcomeBack')}, {userPreview.name.split(' ')[0]}!</div>
+                    <div className={styles.greetingName}>{t('app.welcomeBack')}, {firstName}!</div>
                   )}
                   <div className={styles.emailDisplay}>
                     {email}

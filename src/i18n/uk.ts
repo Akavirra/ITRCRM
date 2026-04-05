@@ -54,6 +54,7 @@ export const uk = {
     loginSubtitle: 'Увійдіть в обліковий запис',
     welcomeBack: 'З поверненням',
     enterPassword: 'Введіть пароль',
+    redirecting: 'Переходимо до системи...',
   },
 
   // Actions
