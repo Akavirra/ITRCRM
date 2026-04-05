@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { User, Users, BookOpen, GraduationCap, ArrowRight, SearchX } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import styles from './GlobalSearch.module.css';
 
 interface SearchResult {
@@ -29,7 +28,6 @@ const CATEGORY_META: Record<string, { label: string; icon: React.ReactNode; icon
 const CATEGORY_ORDER: string[] = ['student', 'group', 'course', 'teacher'];
 
 export default function GlobalSearch({ query, inputFocused, onClose }: GlobalSearchProps) {
-  const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,13 +96,10 @@ export default function GlobalSearch({ query, inputFocused, onClose }: GlobalSea
     const meta = CATEGORY_META[result.type];
     if (!meta) return;
     onClose();
-    router.push(meta.page);
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent(`itrobot-open-${result.type}`, {
-        detail: { id: result.id, publicId: result.public_id },
-      }));
-    }, 300);
-  }, [onClose, router]);
+    window.dispatchEvent(new CustomEvent(`itrobot-open-${result.type}`, {
+      detail: { id: result.id, publicId: result.public_id },
+    }));
+  }, [onClose]);
 
   // Keyboard navigation (called from parent)
   useEffect(() => {
