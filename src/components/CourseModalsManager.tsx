@@ -54,7 +54,7 @@ function formatTime(time: string): string {
 }
 
 export default function CourseModalsManager() {
-  const { openModals, updateModalState, closeCourseModal } = useCourseModals();
+  const { openModals, updateModalState, closeCourseModal, openCourseModal } = useCourseModals();
   const { openGroupModal } = useGroupModals();
   const { openStudentModal } = useStudentModals();
   const [courseData, setCourseData] = useState<Record<number, { course: CourseData; groups: CourseGroup[]; students: CourseStudent[] }>>({});
@@ -68,6 +68,16 @@ export default function CourseModalsManager() {
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  // Listen for open-course events dispatched from search or elsewhere
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { id } = (e as CustomEvent<{ id: number }>).detail;
+      if (id) openCourseModal(id, `Курс`);
+    };
+    window.addEventListener('itrobot-open-course', handler);
+    return () => window.removeEventListener('itrobot-open-course', handler);
+  }, [openCourseModal]);
 
   const loadCourseData = async (courseId: number) => {
     if (courseData[courseId] || loadingCourses[courseId]) return;

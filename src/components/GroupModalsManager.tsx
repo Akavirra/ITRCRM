@@ -86,7 +86,7 @@ function formatTime(time: string): string {
 }
 
 export default function GroupModalsManager() {
-  const { openModals, updateModalState, closeGroupModal } = useGroupModals();
+  const { openModals, updateModalState, closeGroupModal, openGroupModal } = useGroupModals();
   const { openStudentModal } = useStudentModals();
   const [groupData, setGroupData] = useState<Record<number, { group: GroupData; students: GroupStudent[] }>>({});
   const [loadingGroups, setLoadingGroups] = useState<Record<number, boolean>>({});
@@ -114,6 +114,16 @@ export default function GroupModalsManager() {
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  // Listen for open-group events dispatched from search or elsewhere
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { id } = (e as CustomEvent<{ id: number }>).detail;
+      if (id) openGroupModal(id, `Група`);
+    };
+    window.addEventListener('itrobot-open-group', handler);
+    return () => window.removeEventListener('itrobot-open-group', handler);
+  }, [openGroupModal]);
 
   const loadGroupData = async (groupId: number) => {
     if (groupData[groupId] || loadingGroups[groupId]) return;

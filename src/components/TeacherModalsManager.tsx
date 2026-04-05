@@ -106,7 +106,7 @@ function getStatusBadge(isActive: boolean) {
 }
 
 export default function TeacherModalsManager() {
-  const { openModals, updateModalState, closeTeacherModal } = useTeacherModals();
+  const { openModals, updateModalState, closeTeacherModal, openTeacherModal } = useTeacherModals();
   const { openGroupModal } = useGroupModals();
   const { openLessonModal } = useLessonModals();
   const [teacherData, setTeacherData] = useState<Record<number, TeacherWithGroups>>({});
@@ -135,6 +135,16 @@ export default function TeacherModalsManager() {
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  // Listen for open-teacher events dispatched from search or elsewhere
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { id } = (e as CustomEvent<{ id: number }>).detail;
+      if (id) openTeacherModal(id, `Профіль викладача`);
+    };
+    window.addEventListener('itrobot-open-teacher', handler);
+    return () => window.removeEventListener('itrobot-open-teacher', handler);
+  }, [openTeacherModal]);
 
   const loadTeacherData = async (teacherId: number) => {
     if (teacherData[teacherId] || loadingTeachers[teacherId]) return;

@@ -149,7 +149,7 @@ function getStatusBadge(status: 'studying' | 'not_studying') {
 }
 
 export default function StudentModalsManager() {
-  const { openModals, updateModalState, closeStudentModal } = useStudentModals();
+  const { openModals, updateModalState, closeStudentModal, openStudentModal } = useStudentModals();
   const { openGroupModal } = useGroupModals();
   const { openLessonModal } = useLessonModals();
   const [studentData, setStudentData] = useState<Record<number, StudentWithGroups>>({});
@@ -196,6 +196,16 @@ export default function StudentModalsManager() {
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  // Listen for open-student events dispatched from search or elsewhere
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { id } = (e as CustomEvent<{ id: number }>).detail;
+      if (id) openStudentModal(id, `Картка учня`);
+    };
+    window.addEventListener('itrobot-open-student', handler);
+    return () => window.removeEventListener('itrobot-open-student', handler);
+  }, [openStudentModal]);
 
   const loadStudentData = async (studentId: number) => {
     if (studentData[studentId] || loadingStudents[studentId]) return;
