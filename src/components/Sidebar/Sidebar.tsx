@@ -1539,7 +1539,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
               <TransitionLink
                 key={item.href}
                 href={item.href}
-                onClick={onClose}
+                onClick={isSmallScreen ? onClose : undefined}
                 style={navItemStyle(isActive)}
                 onMouseOver={(e) => {
                   if (!isActive) {
@@ -1568,7 +1568,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
             return (
               <TransitionLink
                 href={filesMenuItem.href}
-                onClick={onClose}
+                onClick={isSmallScreen ? onClose : undefined}
                 style={navItemStyle(isActive)}
                 onMouseOver={(e) => {
                   if (!isActive) {
@@ -1598,7 +1598,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
               <TransitionLink
                 key={item.href}
                 href={item.href}
-                onClick={onClose}
+                onClick={isSmallScreen ? onClose : undefined}
                 style={navItemStyle(isActive)}
                 onMouseOver={(e) => {
                   if (!isActive) {
