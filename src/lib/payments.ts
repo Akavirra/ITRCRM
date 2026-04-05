@@ -336,28 +336,22 @@ export async function getPaymentStatusForLesson(
       result.set(row.student_id, { status, label });
     }
   } else {
-    // Individual lesson: check balance
-    let rows: Array<{ student_id: number; lessons_paid: number; lessons_used: number }> = [];
-    try {
-      rows = await all<{ student_id: number; lessons_paid: number; lessons_used: number }>(
-        `SELECT a.student_id,
-          COALESCE(ib.lessons_paid, 0) as lessons_paid,
-          COALESCE(ib.lessons_used, 0) as lessons_used
-         FROM attendance a
-         LEFT JOIN individual_balances ib ON a.student_id = ib.student_id
-         WHERE a.lesson_id = $1`,
-        [lessonId]
-      );
-    } catch {
-      // individual_balances may not exist yet
-    }
+    // Individual lesson: check balance for each student in the attendance list
+    const attendanceStudents = await all<{ student_id: number }>(
+      `SELECT student_id FROM attendance WHERE lesson_id = $1`,
+      [lessonId]
+    );
 
-    for (const row of rows) {
-      const remaining = row.lessons_paid - row.lessons_used;
+    for (const { student_id } of attendanceStudents) {
+      const balance = await get<{ lessons_paid: number; lessons_used: number }>(
+        `SELECT lessons_paid, lessons_used FROM individual_balances WHERE student_id = $1`,
+        [student_id]
+      );
+      const remaining = balance ? balance.lessons_paid - balance.lessons_used : 0;
       if (remaining > 0) {
-        result.set(row.student_id, { status: 'paid', label: 'Оплачено' });
+        result.set(student_id, { status: 'paid', label: 'Оплачено' });
       } else {
-        result.set(row.student_id, { status: 'unpaid', label: 'Не оплачено' });
+        result.set(student_id, { status: 'unpaid', label: 'Не оплачено' });
       }
     }
   }
