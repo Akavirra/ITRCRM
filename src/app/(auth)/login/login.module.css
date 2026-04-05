@@ -5,17 +5,17 @@
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: #f5f7fa;
+  background: #111827;
 }
 
 /* Card */
 .card {
   width: 100%;
   max-width: 420px;
-  background: #fff;
+  background: #1c2333;
   border-radius: 16px;
   padding: 40px 36px 32px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
   animation: cardAppear 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -35,30 +35,21 @@
   text-align: center;
 }
 
-.logoWrap {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #1a1a2e;
-  border-radius: 14px;
-  padding: 20px 32px;
-}
-
 .logo {
   width: 100%;
-  max-width: 320px;
+  max-width: 280px;
   height: auto;
 }
 
 .divider {
   height: 1px;
-  background: #eef0f4;
+  background: rgba(255, 255, 255, 0.08);
   margin: 24px 0;
 }
 
 .subtitle {
   font-size: 15px;
-  color: #4a4d5e;
+  color: #94a3b8;
   font-weight: 400;
   margin: 0 0 24px;
   text-align: center;
@@ -87,7 +78,7 @@
   gap: 14px;
   margin-bottom: 24px;
   padding: 14px 16px;
-  background: #f8f9fb;
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   animation: greetAppear 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -108,7 +99,7 @@
   height: 48px;
   border-radius: 50%;
   overflow: hidden;
-  background: #eef0f4;
+  background: rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
 }
 
@@ -121,7 +112,7 @@
 .greetingName {
   font-size: 15px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: #f1f5f9;
   margin-bottom: 2px;
 }
 
@@ -129,7 +120,7 @@
 .emailLink {
   display: inline;
   font-size: 13px;
-  color: var(--primary, #3b82f6);
+  color: #60a5fa;
   cursor: pointer;
   background: none;
   border: none;
@@ -139,7 +130,7 @@
 }
 
 .emailLink:hover {
-  color: #2563eb;
+  color: #93bbfd;
   text-decoration: underline;
 }
 
@@ -157,18 +148,18 @@
   width: 100%;
   padding: 14px 14px 6px;
   font-size: 15px;
-  color: #1a1a2e;
-  background: #f8f9fb;
-  border: 1.5px solid #e4e6ee;
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.2s, background 0.2s;
-  caret-color: var(--primary, #3b82f6);
+  caret-color: #60a5fa;
 }
 
 .floatingInput:focus {
-  border-color: var(--primary, #3b82f6);
-  background: #fff;
+  border-color: #60a5fa;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .floatingLabel {
@@ -177,7 +168,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 15px;
-  color: #8b8fa3;
+  color: #64748b;
   pointer-events: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   background: transparent;
@@ -188,11 +179,17 @@
   top: 8px;
   transform: translateY(0);
   font-size: 11px;
-  color: var(--primary, #3b82f6);
+  color: #60a5fa;
+  background: #1c2333;
+  padding: 0 4px;
+  left: 10px;
 }
 
 .floatingInput:not(:focus):not(:placeholder-shown) ~ .floatingLabel {
-  color: #8b8fa3;
+  color: #64748b;
+  background: #1c2333;
+  padding: 0 4px;
+  left: 10px;
 }
 
 /* Error */
@@ -202,9 +199,9 @@
   gap: 8px;
   padding: 10px 14px;
   margin-bottom: 16px;
-  background: #fef2f2;
+  background: rgba(220, 38, 38, 0.12);
   border-radius: 8px;
-  color: #dc2626;
+  color: #fca5a5;
   font-size: 13px;
   line-height: 1.4;
   animation: errorAppear 0.25s ease;
@@ -226,8 +223,8 @@
   padding: 12px 24px;
   font-size: 15px;
   font-weight: 500;
-  color: #fff;
-  background: var(--primary, #3b82f6);
+  color: #111827;
+  background: #facc15;
   border: none;
   border-radius: 10px;
   cursor: pointer;
@@ -235,8 +232,8 @@
 }
 
 .submitBtn:hover:not(:disabled) {
-  background: #2563eb;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  background: #fde047;
+  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.2);
 }
 
 .submitBtn:active:not(:disabled) {
@@ -244,7 +241,8 @@
 }
 
 .submitBtn:disabled {
-  background: #c3d4f0;
+  background: rgba(250, 204, 21, 0.3);
+  color: rgba(17, 24, 39, 0.5);
   cursor: default;
 }
 
@@ -259,8 +257,8 @@
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #fff;
+  border: 2px solid rgba(17, 24, 39, 0.3);
+  border-top-color: #111827;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -273,7 +271,6 @@
 @media (max-width: 480px) {
   .container {
     padding: 0;
-    background: #fff;
   }
 
   .card {
@@ -281,5 +278,9 @@
     box-shadow: none;
     padding: 32px 24px 24px;
     max-width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 }

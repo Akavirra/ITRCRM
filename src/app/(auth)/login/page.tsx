@@ -108,10 +108,8 @@ export default function LoginPage() {
       <div className={styles.card}>
         {/* Brand */}
         <div className={styles.logoArea}>
-          <div className={styles.logoWrap}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="ITRobotics" className={styles.logo} />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="ITRobotics" className={styles.logo} />
         </div>
 
         <div className={styles.divider} />
