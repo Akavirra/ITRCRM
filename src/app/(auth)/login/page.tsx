@@ -116,25 +116,25 @@ export default function LoginPage() {
 
           {step === 'password' && (
             <div className={styles.stepContent}>
-              {userPreview?.name ? (
-                <div className={styles.userGreeting}>
-                  <div className={styles.userAvatar}>
-                    <img src={userPreview.photo_url || getDicebearUrl(userPreview.name)} alt={userPreview.name} />
-                  </div>
-                  <div>
+              <div className={styles.userGreeting}>
+                <div className={styles.userAvatar}>
+                  <img
+                    src={userPreview?.photo_url || getDicebearUrl(userPreview?.name || email)}
+                    alt={userPreview?.name || email}
+                  />
+                </div>
+                <div>
+                  {userPreview?.name && (
                     <div className={styles.greetingName}>{t('app.welcomeBack')}, {userPreview.name.split(' ')[0]}!</div>
-                    <button type="button" className={styles.emailLink} onClick={() => { setStep('email'); setPassword(''); setError(''); }}>
-                      {email}
+                  )}
+                  <div className={styles.emailDisplay}>
+                    {email}
+                    <button type="button" className={styles.changeBtn} onClick={() => { setStep('email'); setPassword(''); setError(''); }}>
+                      змінити
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className={styles.emailRow}>
-                  <button type="button" className={styles.emailLink} onClick={() => { setStep('email'); setPassword(''); setError(''); }}>
-                    ← {email}
-                  </button>
-                </div>
-              )}
+              </div>
 
               <form onSubmit={handlePasswordSubmit}>
                 <div className={styles.inputGroup}>
