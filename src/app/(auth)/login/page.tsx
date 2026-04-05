@@ -19,6 +19,14 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+function getDicebearUrl(name: string): string {
+  let seed = '';
+  try {
+    seed = localStorage.getItem('itrobot-avatar-seed') || '';
+  } catch {}
+  return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(seed || name)}`;
+}
+
 function RobotIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -196,18 +204,14 @@ export default function LoginPage() {
           <div>
             {/* User greeting */}
             <div className={styles.userGreeting}>
-              {userPreview?.photo_url ? (
+              {userPreview?.name && (
                 <div className={styles.userAvatar}>
                   <img
-                    src={userPreview.photo_url}
+                    src={userPreview.photo_url || getDicebearUrl(userPreview.name)}
                     alt={userPreview.name}
                   />
                 </div>
-              ) : userPreview?.name ? (
-                <div className={styles.avatarInitials}>
-                  {getInitials(userPreview.name)}
-                </div>
-              ) : null}
+              )}
 
               {userPreview?.name ? (
                 <>
