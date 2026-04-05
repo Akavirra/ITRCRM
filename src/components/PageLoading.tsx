@@ -49,9 +49,18 @@ const ICONS = [
 
 export const PageLoading = () => {
   const [index, setIndex] = useState(0);
+  const [sidebarWidth, setSidebarWidth] = useState(0);
 
   useEffect(() => {
-    // Elegant crossfade between tech aspects every 1.8 seconds
+    const update = () => {
+      setSidebarWidth(window.innerWidth >= 1025 ? 272 : 0);
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % ICONS.length);
     }, 1800);
@@ -63,7 +72,7 @@ export const PageLoading = () => {
 
   return (
     <div style={{
-      position: 'fixed', top: 64, left: 0, right: 0, bottom: 0,
+      position: 'fixed', top: 64, left: sidebarWidth, right: 0, bottom: 0,
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       backgroundColor: '#fdfdfd',
