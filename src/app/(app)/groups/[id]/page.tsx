@@ -2,19 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import { uk } from '@/i18n/uk';
 import { formatShortDateKyiv, formatDateKyiv } from '@/lib/date-utils';
 import { useStudentModals } from '@/components/StudentModalsContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
 import GroupHistoryPanel from '@/components/GroupHistoryPanel';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 interface Group {
   id: number;
@@ -110,7 +103,7 @@ export default function GroupDetailsPage() {
   const { openStudentModal } = useStudentModals();
   const { openLessonModal } = useLessonModals();
   
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
   const [group, setGroup] = useState<Group | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -197,14 +190,6 @@ export default function GroupDetailsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const authRes = await fetch('/api/auth/me');
-        if (!authRes.ok) {
-          router.push('/login');
-          return;
-        }
-        const authData = await authRes.json();
-        setUser(authData.user);
-
         const groupRes = await fetch(`/api/groups/${groupId}?withStudents=true`);
         if (!groupRes.ok) {
           router.push('/groups');
@@ -230,7 +215,7 @@ export default function GroupDetailsPage() {
           setRegisterLoading(false);
         }
         
-        if (authData.user.role === 'admin') {
+        if (user && user.role === 'admin') {
           const teachersRes = await fetch('/api/teachers?simple=true');
           const teachersData = await teachersRes.json();
           setTeachers(teachersData.teachers || []);
@@ -543,7 +528,7 @@ export default function GroupDetailsPage() {
 
   if (loading || !user) {
     return (
-      <Layout user={{ id: 0, name: '', email: '', role: 'teacher' }}>
+      <>
         <div style={{ maxWidth: '100%' }}>
 
           {/* Animated group icon */}
@@ -664,7 +649,7 @@ export default function GroupDetailsPage() {
 
           </div>
         </div>
-      </Layout>
+      </>
     );
   }
 
@@ -677,7 +662,7 @@ export default function GroupDetailsPage() {
     : '';
 
   return (
-    <Layout user={user}>
+    <>
       {/* Back Link */}
       <div style={{ marginBottom: '1.5rem' }}>
         <button
@@ -1569,7 +1554,6 @@ export default function GroupDetailsPage() {
           </div>
         </div>
       )}
-
-    </Layout>
+    </>
   );
 }

@@ -2,17 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useStudentModals } from '@/components/StudentModalsContext';
 import PageLoading from '@/components/PageLoading';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 interface GroupOption {
   id: number;
@@ -136,8 +129,7 @@ export default function PaymentsPage() {
   const { openGroupModal } = useGroupModals();
   const { openStudentModal } = useStudentModals();
 
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user } = useUser();
   const [data, setData] = useState<OverviewData | null>(null);
   const [groups, setGroups] = useState<GroupOption[]>([]);
 
@@ -231,14 +223,6 @@ export default function PaymentsPage() {
   useEffect(() => {
     const init = async () => {
       try {
-        const authRes = await fetch('/api/auth/me');
-        if (!authRes.ok) {
-          router.push('/login');
-          return;
-        }
-        const authData = await authRes.json();
-        setUser(authData.user);
-
         const [groupsRes] = await Promise.all([
           fetch('/api/groups'),
         ]);
@@ -249,8 +233,6 @@ export default function PaymentsPage() {
         })));
       } catch (error) {
         console.error('Failed to fetch:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -579,20 +561,13 @@ export default function PaymentsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <Layout user={{ id: 0, name: '', email: '', role: 'admin' }}>
-        <PageLoading />
-      </Layout>
-    );
-  }
 
   if (!user) return null;
 
   const currentMonthLabel = monthOptions.find(o => o.value === month)?.label || month;
 
   return (
-    <Layout user={user}>
+    <>
       {/* Stats cards */}
       <div style={{
         display: 'grid',
@@ -1794,6 +1769,6 @@ export default function PaymentsPage() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

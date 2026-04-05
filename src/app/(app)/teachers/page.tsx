@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import Portal from '@/components/Portal';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useTeacherModals } from '@/components/TeacherModalsContext';
@@ -10,13 +10,6 @@ import { useLessonModals } from '@/components/LessonModalsContext';
 import { t } from '@/i18n/t';
 import { formatDateKyiv } from '@/lib/date-utils';
 import PageLoading from '@/components/PageLoading';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 interface TeacherGroup {
   id: number;
@@ -126,7 +119,7 @@ interface GroupDetails {
 }
 
 export default function TeachersPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -217,17 +210,6 @@ export default function TeachersPage() {
   // Copy to clipboard state
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Check auth
-    fetch('/api/auth/me')
-      .then(res => res.json())
-      .then(data => {
-        if (data.user) {
-          setUser(data.user);
-        }
-      })
-      .catch(console.error);
-  }, []);
 
   useEffect(() => {
     loadTeachers();
@@ -648,16 +630,16 @@ export default function TeachersPage() {
 
   if (loading) {
     return (
-      <Layout user={{ id: 0, name: '', email: '', role: 'admin' }}>
+      <>
         <PageLoading />
-      </Layout>
+      </>
     );
   }
 
   if (!user) return null;
 
   return (
-    <Layout user={user}>
+    <>
       <div className="card">
         <div className="card-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
@@ -2289,6 +2271,6 @@ export default function TeachersPage() {
             </div>
           </div>
       )}
-    </Layout>
+    </>
   );
 }

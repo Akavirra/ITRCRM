@@ -2,16 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import { uk } from '@/i18n/uk';
 import PageLoading from '@/components/PageLoading';
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 interface Course {
   id: number;
@@ -43,7 +37,7 @@ export default function EditGroupPage() {
   const params = useParams();
   const groupId = params.id as string;
   
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
   const [group, setGroup] = useState<Group | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -65,17 +59,11 @@ export default function EditGroupPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const authRes = await fetch('/api/auth/me');
-        if (!authRes.ok) {
-          router.push('/login');
-          return;
-        }
-        const authData = await authRes.json();
-        setUser(authData.user);
+      if (!user) return;
 
+      try {
         // Only admin can edit groups
-        if (authData.user.role !== 'admin') {
+        if (user.role !== 'admin') {
           router.push('/groups');
           return;
         }
@@ -115,7 +103,7 @@ export default function EditGroupPage() {
     };
 
     fetchData();
-  }, [router, groupId]);
+  }, [router, groupId, user]);
 
   // Update title preview when form changes
   useEffect(() => {
@@ -176,14 +164,14 @@ export default function EditGroupPage() {
     }
   };
 
-  if (loading) {
+  if (loading && !user) {
     return <PageLoading />;
   }
 
   if (!user || user.role !== 'admin' || !group) return null;
 
   return (
-    <Layout user={user}>
+    <>
       <div className="card">
         <div className="card-header">
           <div>
@@ -369,6 +357,6 @@ export default function EditGroupPage() {
           </div>
         </form>
       </div>
-    </Layout>
+    </>
   );
 }

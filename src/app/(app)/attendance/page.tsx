@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
 import { useStudentModals } from '@/components/StudentModalsContext';
 import { useGroupModals } from '@/components/GroupModalsContext';
@@ -294,7 +294,7 @@ export default function AttendancePage() {
   const { openCourseModal } = useCourseModals();
   const { openTeacherModal } = useTeacherModals();
 
-  const [user,          setUser]          = useState<{ id:number; name:string; email:string; role:'admin'|'teacher' }|null>(null);
+  const { user } = useUser();
   const [year,          setYear]          = useState(now.getFullYear());
   const [month,         setMonth]         = useState(now.getMonth() + 1);
   const [viewMode,      setViewMode]      = useState<'grouped'|'summary'>('grouped');
@@ -338,11 +338,6 @@ export default function AttendancePage() {
   const suggestTimeout   = useRef<ReturnType<typeof setTimeout>>();
   const suggestBoxRef    = useRef<HTMLDivElement>(null);
 
-  // Auth
-  useEffect(() => {
-    fetch('/api/auth/me').then(r => { if (!r.ok) { router.push('/login'); return null; } return r.json(); })
-      .then(d => d && setUser(d.user));
-  }, [router]);
 
   // Load groups, courses & teachers
   useEffect(() => {
@@ -581,7 +576,7 @@ export default function AttendancePage() {
   if (!user) return null;
 
   return (
-    <Layout user={user}>
+    <>
       <div style={{ maxWidth: 1300, margin: '0 auto', padding: '2rem 1rem' }}>
 
         {/* ── Page header ── */}
@@ -868,7 +863,7 @@ export default function AttendancePage() {
         initialTab="makeup"
         initialAbsenceIds={makeupCreateAbsenceIds}
       />
-    </Layout>
+    </>
   );
 
   // ── Calendar view ────────────────────────────────────────────────────────

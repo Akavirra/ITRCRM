@@ -2,19 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import { t } from '@/i18n/t';
 import PageLoading from '@/components/PageLoading';
 import { uk } from '@/i18n/uk';
 
 type CategoryType = 'active' | 'graduate' | 'inactive';
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 interface Course {
   id: number;
@@ -69,7 +63,7 @@ export default function CourseDetailsPage() {
   const params = useParams();
   const courseId = params.id as string;
   
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
   const [course, setCourse] = useState<Course | null>(null);
   const [groups, setGroups] = useState<CourseGroup[]>([]);
   const [students, setStudents] = useState<CourseStudent[]>([]);
@@ -109,14 +103,6 @@ export default function CourseDetailsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const authRes = await fetch('/api/auth/me');
-        if (!authRes.ok) {
-          router.push('/login');
-          return;
-        }
-        const authData = await authRes.json();
-        setUser(authData.user);
-
         const courseRes = await fetch(`/api/courses/${courseId}`);
         if (courseRes.status === 404) {
           setNotFound(true);
@@ -481,7 +467,7 @@ export default function CourseDetailsPage() {
 
   if (notFound) {
     return (
-      <Layout user={user!}>
+      <>
         <div className="empty-state">
           <div className="empty-state-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -494,14 +480,14 @@ export default function CourseDetailsPage() {
             {t('nav.courses')}
           </button>
         </div>
-      </Layout>
+      </>
     );
   }
 
   if (!user || !course) return null;
 
   return (
-    <Layout user={user}>
+    <>
       {/* Breadcrumb */}
       <div style={{ marginBottom: '1.5rem' }}>
         <button
@@ -1471,6 +1457,6 @@ export default function CourseDetailsPage() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

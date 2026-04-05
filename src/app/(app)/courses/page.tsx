@@ -2,18 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import Portal from '@/components/Portal';
 import { t } from '@/i18n/t';
 import { useCourseModals } from '@/components/CourseModalsContext';
 import PageLoading from '@/components/PageLoading';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 interface Course {
   id: number;
@@ -40,7 +33,7 @@ interface CourseGroup {
 export default function CoursesPage() {
   const router = useRouter();
   const { openCourseModal } = useCourseModals();
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -77,14 +70,6 @@ export default function CoursesPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const authRes = await fetch('/api/auth/me');
-        if (!authRes.ok) {
-          router.push('/login');
-          return;
-        }
-        const authData = await authRes.json();
-        setUser(authData.user);
-
         const coursesRes = await fetch('/api/courses?withStats=true&includeInactive=true');
         const coursesData = await coursesRes.json();
         setCourses(coursesData.courses || []);
@@ -448,9 +433,9 @@ export default function CoursesPage() {
 
   if (loading) {
     return (
-      <Layout user={{ id: 0, name: '', email: '', role: 'admin' }}>
+      <>
         <PageLoading />
-      </Layout>
+      </>
     );
   }
 
@@ -470,7 +455,7 @@ export default function CoursesPage() {
   console.log('[CLIENT] filteredCourses count:', filteredCourses.length, 'from total:', courses.length, 'showArchived:', showArchived);
 
   return (
-    <Layout user={user}>
+    <>
       <div className="card">
         <div className="card-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
@@ -1155,6 +1140,6 @@ export default function CoursesPage() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

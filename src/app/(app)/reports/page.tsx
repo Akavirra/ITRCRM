@@ -2,21 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import { t } from '@/i18n/t';
 import PageLoading from '@/components/PageLoading';
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
-
 export default function ReportsPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user } = useUser();
   const [activeTab, setActiveTab] = useState('attendance');
   const [reportData, setReportData] = useState<any>(null);
   const [filters, setFilters] = useState({
@@ -25,26 +17,6 @@ export default function ReportsPage() {
     month: new Date().toISOString().substring(0, 7) + '-01',
     groupId: '',
   });
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const authRes = await fetch('/api/auth/me');
-        if (!authRes.ok) {
-          router.push('/login');
-          return;
-        }
-        const authData = await authRes.json();
-        setUser(authData.user);
-      } catch (error) {
-        console.error('Failed to fetch user:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [router]);
 
   const loadReport = async () => {
     setReportData(null);
@@ -106,14 +78,11 @@ export default function ReportsPage() {
     window.open(`${url}?${params.toString()}`, '_blank');
   };
 
-  if (loading) {
-    return <PageLoading />;
-  }
 
   if (!user) return null;
 
   return (
-    <Layout user={user}>
+    <>
       <div className="card">
         <div className="card-header">
           <h3 className="card-title">{t('pages.reports')}</h3>
@@ -317,6 +286,6 @@ export default function ReportsPage() {
           )}
         </div>
       </div>
-    </Layout>
+    </>
   );
 }

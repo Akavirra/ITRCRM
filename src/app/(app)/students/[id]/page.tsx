@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import { t } from '@/i18n/t';
 import { uk } from '@/i18n/uk';
 import { formatDateTimeKyiv, formatDateKyiv } from '@/lib/date-utils';
@@ -12,12 +12,6 @@ import { useLessonModals } from '@/components/LessonModalsContext';
 import StudentAttendancePanel from '@/components/StudentAttendancePanel';
 import StudentHistoryPanel from '@/components/StudentHistoryPanel';
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 interface Student {
   id: number;
@@ -197,7 +191,7 @@ export default function StudentProfilePage() {
   const studentId = params.id as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
   const [student, setStudent] = useState<Student | null>(null);
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -265,14 +259,6 @@ export default function StudentProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const authRes = await fetch('/api/auth/me');
-        if (!authRes.ok) {
-          router.push('/login');
-          return;
-        }
-        const authData = await authRes.json();
-        setUser(authData.user);
-
         // Fetch student with groups
         const studentRes = await fetch(`/api/students/${studentId}?withGroups=true`);
         if (studentRes.status === 404) {
@@ -643,7 +629,7 @@ export default function StudentProfilePage() {
   // Show loading state
   if (loading) {
     return (
-      <Layout user={{ id: 0, name: '', email: '', role: 'teacher' }}>
+      <>
         <div style={{ maxWidth: '100%' }}>
 
           {/* Animated student icon */}
@@ -775,7 +761,7 @@ export default function StudentProfilePage() {
 
           </div>
         </div>
-      </Layout>
+      </>
     );
   }
 
@@ -790,12 +776,12 @@ export default function StudentProfilePage() {
   // Show 404 state
   if (notFound || !student) {
     return (
-      <Layout user={currentUser}>
+      <>
         <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
           <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Учня не знайдено</h1>
           <a href="/students" className="btn btn-primary">Повернутися до списку</a>
         </div>
-      </Layout>
+      </>
     );
   }
 
@@ -806,7 +792,7 @@ export default function StudentProfilePage() {
   // Edit mode form
   if (isEditMode) {
     return (
-      <Layout user={currentUser}>
+      <>
         {/* Breadcrumb */}
         <div style={{ marginBottom: '1.5rem' }}>
           <button
@@ -1430,13 +1416,13 @@ export default function StudentProfilePage() {
             {toast.message}
           </div>
         )}
-      </Layout>
+      </>
     );
   }
 
   // View mode - Profile display
   return (
-    <Layout user={currentUser}>
+    <>
       {/* Breadcrumb */}
       <div style={{ marginBottom: '1.5rem' }}>
         <button
@@ -2651,6 +2637,6 @@ export default function StudentProfilePage() {
           </DraggableModal>
         );
       })}
-    </Layout>
+    </>
   );
 }

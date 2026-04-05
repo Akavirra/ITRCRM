@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Layout from '@/components/Layout';
+
 import { t } from '@/i18n/t';
 import { formatDateKyiv } from '@/lib/date-utils';
 import PageLoading from '@/components/PageLoading';
 
-interface User {
+import { User, useUser } from '@/components/UserContext';
+
+interface UserData {
   id: number;
   name: string;
   email: string;
@@ -18,25 +20,17 @@ interface User {
 
 export default function UsersPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
+  const { user } = useUser();
+  const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'teacher', telegram_id: '' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchUsers = async () => {
       try {
-        const authRes = await fetch('/api/auth/me');
-        if (!authRes.ok) {
-          router.push('/login');
-          return;
-        }
-        const authData = await authRes.json();
-        setUser(authData.user);
-
-        if (authData.user.role !== 'admin') {
+        if (!user || user.role !== 'admin') {
           router.push('/dashboard');
           return;
         }
@@ -51,8 +45,8 @@ export default function UsersPage() {
       }
     };
 
-    fetchData();
-  }, [router]);
+    fetchUsers();
+  }, [router, user]);
 
   const handleCreate = () => {
     setFormData({ name: '', email: '', password: '', role: 'teacher', telegram_id: '' });
@@ -90,16 +84,16 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <Layout user={{ id: 0, name: '', email: '', role: 'admin' }}>
+      <>
         <PageLoading />
-      </Layout>
+      </>
     );
   }
 
   if (!user || user.role !== 'admin') return null;
 
   return (
-    <Layout user={user}>
+    <>
       <div className="card">
         <div className="card-header">
           <h3 className="card-title">{t('pages.users')}</h3>
@@ -229,6 +223,6 @@ export default function UsersPage() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

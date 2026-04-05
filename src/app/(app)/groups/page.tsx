@@ -2,19 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import Portal from '@/components/Portal';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { uk } from '@/i18n/uk';
 import PageLoading from '@/components/PageLoading';
 import CreateGroupModal from '@/components/CreateGroupModal';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 interface Course {
   id: number;
@@ -50,7 +43,7 @@ interface Group {
 export default function GroupsPage() {
   const router = useRouter();
   const { openGroupModal } = useGroupModals();
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -119,14 +112,6 @@ export default function GroupsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const authRes = await fetch('/api/auth/me');
-        if (!authRes.ok) {
-          router.push('/login');
-          return;
-        }
-        const authData = await authRes.json();
-        setUser(authData.user);
-
         // Fetch groups with includeInactive to get all groups
         const groupsRes = await fetch('/api/groups?includeInactive=true');
         const groupsData = await groupsRes.json();
@@ -137,8 +122,7 @@ export default function GroupsPage() {
         const coursesData = await coursesRes.json();
         setCourses(coursesData.courses || []);
 
-        // Fetch teachers for filter (admin only)
-        if (authData.user.role === 'admin') {
+        if (user && user.role === 'admin') {
           const teachersRes = await fetch('/api/teachers');
           const teachersData = await teachersRes.json();
           setTeachers(Array.isArray(teachersData) ? teachersData : []);
@@ -491,9 +475,9 @@ export default function GroupsPage() {
 
   if (loading) {
     return (
-      <Layout user={{ id: 0, name: '', email: '', role: 'admin' }}>
+      <>
         <PageLoading />
-      </Layout>
+      </>
     );
   }
 
@@ -533,7 +517,7 @@ export default function GroupsPage() {
     });
 
   return (
-    <Layout user={user}>
+    <>
       <div className="card">
         <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
           {/* Search */}
@@ -1556,6 +1540,6 @@ export default function GroupsPage() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

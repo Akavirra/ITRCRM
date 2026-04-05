@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import DraggableModal from '@/components/DraggableModal';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
@@ -10,13 +10,6 @@ import { formatDateKyiv } from '@/lib/date-utils';
 import { t } from '@/i18n/t';
 import PageLoading from '@/components/PageLoading';
 import { uk } from '@/i18n/uk';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 interface Teacher {
   id: number;
@@ -103,7 +96,7 @@ export default function TeacherProfilePage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -181,14 +174,6 @@ export default function TeacherProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const authRes = await fetch('/api/auth/me');
-        if (!authRes.ok) {
-          router.push('/login');
-          return;
-        }
-        const authData = await authRes.json();
-        setUser(authData.user);
-
         const response = await fetch(`/api/teachers/${params.id}`);
         if (response.status === 404) {
           setNotFound(true);
@@ -450,19 +435,19 @@ export default function TeacherProfilePage() {
   // Show 404 state
   if (notFound || !teacher) {
     return (
-      <Layout user={currentUser}>
+      <>
         <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
           <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Викладача не знайдено</h1>
           <a href="/teachers" className="btn btn-primary">Повернутися до списку</a>
         </div>
-      </Layout>
+      </>
     );
   }
 
   // Edit mode form
   if (editing) {
     return (
-      <Layout user={currentUser}>
+      <>
         {/* Breadcrumb */}
         <div style={{ marginBottom: '1.5rem' }}>
           <button
@@ -711,13 +696,13 @@ export default function TeacherProfilePage() {
             {toast.message}
           </div>
         )}
-      </Layout>
+      </>
     );
   }
 
   // View mode - Profile display
   return (
-    <Layout user={currentUser}>
+    <>
       {/* Breadcrumb */}
       <div style={{ marginBottom: '1.5rem' }}>
         <button
@@ -1660,6 +1645,6 @@ export default function TeacherProfilePage() {
           </div>
         </form>
       </DraggableModal>
-    </Layout>
+    </>
   );
 }

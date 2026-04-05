@@ -2,16 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import { uk } from '@/i18n/uk';
 import PageLoading from '@/components/PageLoading';
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 interface Course {
   id: number;
@@ -26,7 +20,7 @@ interface Teacher {
 export default function NewGroupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,17 +42,11 @@ export default function NewGroupPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!user) return;
+      
       try {
-        const authRes = await fetch('/api/auth/me');
-        if (!authRes.ok) {
-          router.push('/login');
-          return;
-        }
-        const authData = await authRes.json();
-        setUser(authData.user);
-
         // Only admin can create groups
-        if (authData.user.role !== 'admin') {
+        if (user.role !== 'admin') {
           router.push('/groups');
           return;
         }
@@ -90,7 +78,7 @@ export default function NewGroupPage() {
     };
 
     fetchData();
-  }, [router, searchParams]);
+  }, [router, searchParams, user]);
 
   // Set default start date to today when component mounts
   useEffect(() => {
@@ -183,14 +171,14 @@ export default function NewGroupPage() {
     }
   };
 
-  if (loading) {
+  if (loading && !user) {
     return <PageLoading />;
   }
 
   if (!user || user.role !== 'admin') return null;
 
   return (
-    <Layout user={user}>
+    <>
       <div className="card">
         <div className="card-header">
           <h1 style={{ fontSize: '1.5rem', fontWeight: '600', margin: 0 }}>
@@ -382,6 +370,6 @@ export default function NewGroupPage() {
           </div>
         </form>
       </div>
-    </Layout>
+    </>
   );
 }

@@ -2,22 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useCourseModals } from '@/components/CourseModalsContext';
 import { format, addWeeks, subWeeks, startOfWeek, addDays, parseISO, startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
 import { uk } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar, Clock, User, Users, BookOpen, Check, X, RefreshCw, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Clock, User as UserIcon, Users, BookOpen, Check, X, RefreshCw, Plus } from 'lucide-react';
 import PageLoading from '@/components/PageLoading';
 import CreateLessonModal from '@/components/CreateLessonModal';
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 interface Lesson {
   id: number;
@@ -55,7 +49,7 @@ interface ScheduleResponse {
 
 export default function SchedulePage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [schedule, setSchedule] = useState<ScheduleResponse | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(
@@ -123,25 +117,10 @@ export default function SchedulePage() {
   }, [silentRefresh]);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const authRes = await fetch('/api/auth/me');
-      if (!authRes.ok) {
-        router.push('/login');
-        return;
-      }
-      const authData = await authRes.json();
-      setUser(authData.user);
-      setLoading(false);
-    };
-
-    checkAuth();
-  }, [router]);
-
-  useEffect(() => {
-    if (!loading && user) {
+    if (user) {
       fetchSchedule();
     }
-  }, [loading, user, fetchSchedule]);
+  }, [user, fetchSchedule]);
 
   const goToPreviousWeek = () => {
     setIsNavigating(true);
@@ -262,7 +241,7 @@ export default function SchedulePage() {
   }
 
   return (
-    <Layout user={user}>
+    <>
       {/* Page Header */}
       <div style={{
         display: 'flex',
@@ -635,7 +614,7 @@ export default function SchedulePage() {
                           display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
                           textTransform: 'uppercase', letterSpacing: '0.4px',
                         }}>
-                          <User size={8} />
+                          <UserIcon size={8} />
                           Індивідуальне
                         </div>
                       ) : null}
@@ -694,7 +673,7 @@ export default function SchedulePage() {
                         gap: '0.25rem',
                         marginTop: '0.125rem',
                       }}>
-                        <User size={9} />
+                        <UserIcon size={9} />
                         {lesson.teacherName}
                         {lesson.isReplaced && (
                           <span style={{
@@ -856,6 +835,6 @@ export default function SchedulePage() {
         onClose={() => setShowCreateLessonModal(false)}
         onSuccess={() => fetchSchedule()}
       />
-    </Layout>
+    </>
   );
 }

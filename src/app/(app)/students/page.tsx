@@ -4,19 +4,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useStudentModals } from '@/components/StudentModalsContext';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import Portal from '@/components/Portal';
 import { t } from '@/i18n/t';
 import { formatDateKyiv } from '@/lib/date-utils';
 import PageLoading from '@/components/PageLoading';
 import CreateGroupModal from '@/components/CreateGroupModal';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 interface StudentGroup {
   id: number;
@@ -215,7 +208,7 @@ export default function StudentsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const firstNameInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -360,14 +353,6 @@ export default function StudentsPage() {
 
     const fetchData = async () => {
       try {
-        const authRes = await fetch('/api/auth/me');
-        if (!authRes.ok) {
-          router.push('/login');
-          return;
-        }
-        const authData = await authRes.json();
-        setUser(authData.user);
-
         const studentsRes = await fetch('/api/students?withGroups=true');
         const studentsData = await studentsRes.json();
         setStudents(studentsData.students || []);
@@ -1083,16 +1068,16 @@ export default function StudentsPage() {
 
   if (loading) {
     return (
-      <Layout user={{ id: 0, name: '', email: '', role: 'admin' }}>
+      <>
         <PageLoading />
-      </Layout>
+      </>
     );
   }
 
   if (!user) return null;
 
   return (
-    <Layout user={user}>
+    <>
       <div className="card">
         <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
           {/* Search */}
@@ -2932,6 +2917,6 @@ export default function StudentsPage() {
           setTimeout(() => setToast(null), 3000);
         }}
       />
-    </Layout>
+    </>
   );
 }

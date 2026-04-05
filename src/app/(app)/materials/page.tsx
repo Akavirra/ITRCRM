@@ -7,7 +7,7 @@ import {
   Download, ExternalLink, Search, Trash2, LayoutGrid,
   LayoutList, MoreVertical,
 } from 'lucide-react';
-import Layout from '@/components/Layout';
+import { User, useUser } from '@/components/UserContext';
 import PageLoading from '@/components/PageLoading';
 import {
   useMediaViewer,
@@ -15,13 +15,6 @@ import {
   IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS,
   isPreviewable, isAudioType, thumbUrl, formatSize, formatDate, effectiveCategory,
 } from '@/components/MediaViewerProvider';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher';
-}
 
 // ── Kebab Menu ────────────────────────────────────────────────────────────────
 
@@ -152,8 +145,7 @@ function TypeBadge({ type }: { type: string }) {
 export default function MaterialsPage() {
   const router = useRouter();
   const { openMediaViewer } = useMediaViewer();
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const { user } = useUser();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
@@ -167,15 +159,6 @@ export default function MaterialsPage() {
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchInput, setSearchInput] = useState('');
 
-  useEffect(() => {
-    fetch('/api/auth/me').then(res => {
-      if (!res.ok) { router.push('/login'); return null; }
-      return res.json();
-    }).then(data => {
-      if (data) setUser(data.user);
-      setAuthLoading(false);
-    });
-  }, [router]);
 
   const loadTopics = useCallback(async () => {
     const res = await fetch('/api/media/topics');
@@ -249,14 +232,10 @@ export default function MaterialsPage() {
     { key: 'audio',    label: 'Аудіо',      icon: <Music size={14} /> },
   ];
 
-  if (authLoading || !user) return (
-    <Layout user={{ id: 0, name: '', email: '', role: 'admin' }}>
-      <PageLoading />
-    </Layout>
-  );
+  if (!user) return null;
 
   return (
-    <Layout user={user}>
+    <>
     <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
@@ -387,7 +366,7 @@ export default function MaterialsPage() {
         </div>
       </div>
     </div>
-    </Layout>
+    </>
   );
 }
 
