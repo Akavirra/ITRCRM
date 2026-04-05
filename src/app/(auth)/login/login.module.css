@@ -1,105 +1,174 @@
-/* Container — white background */
 .container {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: #f5f7fa;
+  background: #eef2f7;
 }
 
-/* Card — dark blue */
 .card {
   width: 100%;
-  max-width: 420px;
-  background: #2c3e6b;
-  border-radius: 16px;
-  padding: 40px 36px 32px;
-  box-shadow: 0 4px 24px rgba(44, 62, 107, 0.18);
-  animation: cardAppear 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 380px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+  animation: appear 0.35s ease;
 }
 
-@keyframes cardAppear {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes appear {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* Logo area */
+/* Top: logo on blue */
 .logoArea {
+  background: #3b5998;
+  padding: 32px 32px 28px;
   text-align: center;
 }
 
 .logo {
-  width: 100%;
-  max-width: 280px;
+  max-width: 240px;
   height: auto;
 }
 
-.divider {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.12);
-  margin: 24px 0;
+/* Bottom: form on white */
+.formArea {
+  background: #fff;
+  padding: 28px 32px 32px;
 }
 
 .subtitle {
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.65);
-  font-weight: 400;
-  margin: 0 0 24px;
+  font-size: 14px;
+  color: #7c8ba1;
   text-align: center;
+  margin: 0 0 24px;
+  font-weight: 400;
 }
 
-/* Step transition */
+/* Step animation */
 .stepContent {
-  animation: stepIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeUp 0.25s ease;
 }
 
-@keyframes stepIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* User greeting */
+/* Input */
+.inputGroup {
+  margin-bottom: 16px;
+}
+
+.inputLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #4a5568;
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  color: #1a202c;
+  background: #fff;
+  border: 1px solid #d2d9e5;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input::placeholder {
+  color: #a0aec0;
+}
+
+.input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+}
+
+/* Error */
+.errorMessage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  color: #e53e3e;
+  font-size: 13px;
+  animation: fadeUp 0.2s ease;
+}
+
+.errorIcon {
+  flex-shrink: 0;
+}
+
+/* Button */
+.submitBtn {
+  width: 100%;
+  padding: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+  background: #3b82f6;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.15s;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.submitBtn:active:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.submitBtn:disabled {
+  background: #a5c4f7;
+  cursor: default;
+}
+
+.submitBtn span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Greeting */
 .userGreeting {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 24px;
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  animation: greetAppear 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes greetAppear {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  gap: 12px;
+  margin-bottom: 20px;
+  animation: fadeUp 0.3s ease;
 }
 
 .userAvatar {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.12);
+  background: #eef2f7;
   flex-shrink: 0;
 }
 
@@ -112,168 +181,29 @@
 .greetingName {
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
-  margin-bottom: 2px;
+  color: #1a202c;
+  margin-bottom: 1px;
 }
 
-/* Email link */
 .emailLink {
-  display: inline;
   font-size: 13px;
-  color: #93bbfd;
-  cursor: pointer;
+  color: #3b82f6;
   background: none;
   border: none;
   padding: 0;
-  font-weight: 400;
-  transition: color 0.15s;
+  cursor: pointer;
 }
 
 .emailLink:hover {
-  color: #bdd4fe;
   text-decoration: underline;
 }
 
 .emailRow {
-  margin-bottom: 20px;
-}
-
-/* Floating label input */
-.inputGroup {
-  position: relative;
-  margin-bottom: 20px;
-}
-
-.floatingInput {
-  width: 100%;
-  padding: 14px 14px 6px;
-  font-size: 15px;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1.5px solid rgba(255, 255, 255, 0.18);
-  border-radius: 10px;
-  outline: none;
-  transition: border-color 0.2s, background 0.2s;
-  caret-color: #facc15;
-}
-
-.floatingInput:focus {
-  border-color: rgba(250, 204, 21, 0.5);
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.floatingLabel {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.45);
-  pointer-events: none;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  background: transparent;
-}
-
-.floatingInput:focus ~ .floatingLabel,
-.floatingInput:not(:placeholder-shown) ~ .floatingLabel {
-  top: 8px;
-  transform: translateY(0);
-  font-size: 11px;
-  color: #facc15;
-  background: #2c3e6b;
-  padding: 0 4px;
-  left: 10px;
-}
-
-.floatingInput:not(:focus):not(:placeholder-shown) ~ .floatingLabel {
-  color: rgba(255, 255, 255, 0.45);
-  background: #2c3e6b;
-  padding: 0 4px;
-  left: 10px;
-}
-
-/* Error */
-.errorMessage {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px 14px;
   margin-bottom: 16px;
-  background: rgba(220, 38, 38, 0.15);
-  border-radius: 8px;
-  color: #fca5a5;
-  font-size: 13px;
-  line-height: 1.4;
-  animation: errorAppear 0.25s ease;
 }
 
-.errorIcon {
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-@keyframes errorAppear {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Submit button */
-.submitBtn {
-  width: 100%;
-  padding: 12px 24px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #1e3a5f;
-  background: #facc15;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
-}
-
-.submitBtn:hover:not(:disabled) {
-  background: #fde047;
-  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.25);
-}
-
-.submitBtn:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.submitBtn:disabled {
-  background: rgba(250, 204, 21, 0.25);
-  color: rgba(255, 255, 255, 0.35);
-  cursor: default;
-}
-
-.submitBtn span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-/* Spinner */
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(30, 58, 95, 0.3);
-  border-top-color: #1e3a5f;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Responsive */
 @media (max-width: 480px) {
-  .container {
-    padding: 1rem;
-  }
-
-  .card {
-    padding: 32px 24px 24px;
-  }
+  .container { padding: 0; background: #fff; }
+  .card { border-radius: 0; box-shadow: none; max-width: 100%; }
+  .logoArea { border-radius: 0; }
 }
