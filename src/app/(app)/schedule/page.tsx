@@ -86,10 +86,16 @@ export default function SchedulePage() {
   // Full navigation fetch — dims the grid, shows loading state
   const fetchSchedule = useCallback(async () => {
     setIsNavigating(true);
-    const res = await fetch(buildScheduleUrl());
-    const data = await res.json();
-    setSchedule(data);
-    setTimeout(() => setIsNavigating(false), 200);
+    try {
+      const res = await fetch(buildScheduleUrl());
+      const data = await res.json();
+      setSchedule(data);
+    } catch (error) {
+      console.error('Failed to fetch schedule:', error);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setIsNavigating(false), 200);
+    }
   }, [buildScheduleUrl]);
 
   // Silent background refresh — no visual dimming, just a thin indicator

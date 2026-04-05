@@ -2,6 +2,7 @@
 
 import { MouseEvent, AnchorHTMLAttributes } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface TransitionLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> {
   href: string;
@@ -15,6 +16,7 @@ export const TransitionLink = ({
   onClick,
   ...props 
 }: TransitionLinkProps) => {
+  const router = useRouter();
   const isExternal = href.startsWith('http') || href.startsWith('//');
 
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
@@ -26,8 +28,9 @@ export const TransitionLink = ({
       onClick();
     }
     
-    // Next.js Link обробить навігацію автоматично
-    // Сторінка покаже свій власний loading стан
+    // Пряма SPA навігація через router.push щоб запобігти повному перевантаженню
+    e.preventDefault();
+    router.push(href);
   };
 
   if (isExternal) {

@@ -346,9 +346,13 @@ export default function StudentsPage() {
 
   useEffect(() => {
     // Load saved view mode
-    const savedViewMode = localStorage.getItem('studentsViewMode');
-    if (savedViewMode === 'compact' || savedViewMode === 'detailed') {
-      setViewMode(savedViewMode);
+    try {
+      const savedViewMode = localStorage.getItem('studentsViewMode');
+      if (savedViewMode === 'compact' || savedViewMode === 'detailed') {
+        setViewMode(savedViewMode);
+      }
+    } catch (e) {
+      console.warn('LocalStorage blocked or unavailable:', e);
     }
 
     const fetchData = async () => {

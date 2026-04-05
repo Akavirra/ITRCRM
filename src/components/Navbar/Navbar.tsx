@@ -119,12 +119,17 @@ const Navbar: React.FC<NavbarProps> = ({
   const [pendingDicebearSeed, setPendingDicebearSeed] = useState<string | null>(null);
 
   useEffect(() => {
-    let seed = localStorage.getItem('itrobot-avatar-seed');
-    if (!seed) {
-      seed = Math.random().toString(36).slice(2);
-      localStorage.setItem('itrobot-avatar-seed', seed);
+    try {
+      let seed = localStorage.getItem('itrobot-avatar-seed');
+      if (!seed) {
+        seed = Math.random().toString(36).slice(2);
+        localStorage.setItem('itrobot-avatar-seed', seed);
+      }
+      setDicebearSeed(seed);
+    } catch (e) {
+      console.warn('LocalStorage blocked or unavailable:', e);
+      setDicebearSeed('default-seed');
     }
-    setDicebearSeed(seed);
   }, []);
 
   useEffect(() => {
@@ -629,9 +634,9 @@ const Navbar: React.FC<NavbarProps> = ({
                       </div>
                     ) : (
                       notifications.map((n) => (
-                        <a
+                        <TransitionLink
                           key={n.id}
-                          href={n.link ?? undefined}
+                          href={n.link || '/dashboard'}
                           onClick={() => setNotifOpen(false)}
                           style={{
                             display: 'flex',
@@ -721,7 +726,7 @@ const Navbar: React.FC<NavbarProps> = ({
                               background: '#3b82f6', flexShrink: 0, marginTop: 6,
                             }} />
                           )}
-                        </a>
+                        </TransitionLink>
                       ))
                     )}
                   </div>
