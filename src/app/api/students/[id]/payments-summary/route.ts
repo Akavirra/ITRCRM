@@ -6,7 +6,7 @@ import { getLessonPrice } from '@/lib/payments';
 export const dynamic = 'force-dynamic';
 
 // GET /api/students/[id]/payments-summary
-// Returns full payment picture for a student: group debts per month, individual balance, payment history
+// Returns full payment picture for a student: group debts for ALL months, individual balance, full payment history
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -30,7 +30,7 @@ export async function GET(
   const lessonPrice = await getLessonPrice();
   const effectivePrice = Math.round(lessonPrice * (1 - student.discount / 100));
 
-  // --- Group payment status: for each active group, last 3 months ---
+  // --- Active groups ---
   const groups = await all<{ group_id: number; group_title: string }>(
     `SELECT g.id as group_id, g.title as group_title
      FROM student_groups sg
@@ -40,14 +40,46 @@ export async function GET(
     [studentId]
   );
 
-  // Generate last 3 months (including current)
-  const now = new Date();
-  const months: string[] = [];
-  for (let i = 0; i < 3; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(d.toISOString().substring(0, 7));
-  }
+  const groupIds = groups.map(g => g.group_id);
 
+  // --- Bulk: lessons count per group per month (all months) ---
+  const lessonCounts = groupIds.length > 0
+    ? await all<{ group_id: number; month: string; lessons_count: number }>(
+        `SELECT l.group_id, TO_CHAR(l.lesson_date, 'YYYY-MM') as month, COUNT(*)::integer as lessons_count
+         FROM lessons l
+         WHERE l.group_id = ANY($1)
+           AND l.status != 'canceled'
+           AND COALESCE(l.is_makeup, FALSE) = FALSE
+           AND COALESCE(l.is_trial, FALSE) = FALSE
+         GROUP BY l.group_id, TO_CHAR(l.lesson_date, 'YYYY-MM')`,
+        [groupIds]
+      )
+    : [];
+
+  // --- Bulk: payments sum per group per month (all months) ---
+  const paymentSums = groupIds.length > 0
+    ? await all<{ group_id: number; month: string; paid: number }>(
+        `SELECT p.group_id, TO_CHAR(p.month, 'YYYY-MM') as month, SUM(p.amount)::integer as paid
+         FROM payments p
+         WHERE p.student_id = $1 AND p.group_id = ANY($2)
+         GROUP BY p.group_id, TO_CHAR(p.month, 'YYYY-MM')`,
+        [studentId, groupIds]
+      )
+    : [];
+
+  // Collect all distinct months from lessons and payments
+  const monthSet = new Set<string>();
+  for (const lc of lessonCounts) monthSet.add(lc.month);
+  for (const ps of paymentSums) monthSet.add(ps.month);
+  const months = Array.from(monthSet).sort().reverse();
+
+  // Build lookup maps
+  const lessonsMap = new Map<string, number>();
+  for (const lc of lessonCounts) lessonsMap.set(`${lc.group_id}:${lc.month}`, lc.lessons_count);
+  const paymentsMap = new Map<string, number>();
+  for (const ps of paymentSums) paymentsMap.set(`${ps.group_id}:${ps.month}`, ps.paid);
+
+  // Combine into group_debts
   const groupDebts: Array<{
     group_id: number;
     group_title: string;
@@ -60,20 +92,12 @@ export async function GET(
 
   for (const g of groups) {
     for (const m of months) {
-      const row = await get<{ lessons_count: number; paid: number }>(
-        `SELECT
-          (SELECT COUNT(*) FROM lessons l
-           WHERE l.group_id = $1 AND TO_CHAR(l.lesson_date, 'YYYY-MM') = $2
-             AND l.status != 'canceled' AND COALESCE(l.is_makeup, FALSE) = FALSE AND COALESCE(l.is_trial, FALSE) = FALSE
-          ) as lessons_count,
-          COALESCE((SELECT SUM(p.amount) FROM payments p
-           WHERE p.student_id = $3 AND p.group_id = $1 AND TO_CHAR(p.month, 'YYYY-MM') = $2
-          ), 0) as paid`,
-        [g.group_id, m, studentId]
-      );
-      const lessonsCount = row?.lessons_count || 0;
+      const key = `${g.group_id}:${m}`;
+      const lessonsCount = lessonsMap.get(key) || 0;
+      const paid = paymentsMap.get(key) || 0;
+      // Skip months with no lessons and no payments for this group
+      if (lessonsCount === 0 && paid === 0) continue;
       const expected = lessonsCount * effectivePrice;
-      const paid = row?.paid || 0;
       groupDebts.push({
         group_id: g.group_id,
         group_title: g.group_title,
@@ -92,7 +116,7 @@ export async function GET(
     [studentId]
   );
 
-  // --- Payment history (last 30, both group and individual) ---
+  // --- Full payment history (no limit) ---
   const history = await all<{
     id: number;
     type: string;
@@ -121,10 +145,16 @@ export async function GET(
       JOIN users u ON ip.created_by = u.id
       WHERE ip.student_id = $1
     ) combined
-    ORDER BY paid_at DESC
-    LIMIT 30`,
+    ORDER BY paid_at DESC`,
     [studentId]
   );
+
+  // Summary for collapsed view
+  const currentMonth = new Date().toISOString().substring(0, 7);
+  const currentMonthDebts = groupDebts.filter(d => d.month === currentMonth);
+  const totalDebtCurrentMonth = currentMonthDebts.reduce((s, d) => s + Math.max(0, -d.diff), 0);
+  const totalDebtAll = groupDebts.reduce((s, d) => s + Math.max(0, -d.diff), 0);
+  const lastPayment = history.length > 0 ? history[0] : null;
 
   return NextResponse.json({
     student: {
@@ -144,5 +174,13 @@ export async function GET(
         }
       : null,
     history,
+    summary: {
+      total_debt_current_month: totalDebtCurrentMonth,
+      total_debt_all: totalDebtAll,
+      groups_count: groups.length,
+      last_payment: lastPayment
+        ? { amount: lastPayment.amount, paid_at: lastPayment.paid_at, type: lastPayment.type }
+        : null,
+    },
   });
 }
