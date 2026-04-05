@@ -165,6 +165,11 @@ export default function PaymentsPage() {
   const [consoleTab, setConsoleTab] = useState<'group' | 'individual'>('group');
   const [groupPayMonth, setGroupPayMonth] = useState('');
   const [groupPayAmount, setGroupPayAmount] = useState('');
+  // Student selection mode: search by name or browse by group
+  const [studentSelectMode, setStudentSelectMode] = useState<'search' | 'group'>('group');
+  const [browseGroupId, setBrowseGroupId] = useState<number | null>(null);
+  const [browseGroupStudents, setBrowseGroupStudents] = useState<Array<{ id: number; full_name: string }>>([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
 
   // Payment history
   const [historyPayments, setHistoryPayments] = useState<PaymentHistoryRecord[]>([]);
@@ -310,6 +315,35 @@ export default function PaymentsPage() {
     searchTimeoutRef.current = setTimeout(() => searchStudents(value), 300);
   };
 
+  // Fetch students for a group (browse mode)
+  const fetchGroupStudents = useCallback(async (groupId: number) => {
+    setBrowseLoading(true);
+    setBrowseGroupStudents([]);
+    try {
+      const res = await fetch(`/api/groups/${groupId}/students`);
+      if (res.ok) {
+        const json = await res.json();
+        const students = (json.students || []).map((s: { id: number; full_name: string }) => ({
+          id: s.id,
+          full_name: s.full_name,
+        }));
+        students.sort((a: { full_name: string }, b: { full_name: string }) => a.full_name.localeCompare(b.full_name, 'uk'));
+        setBrowseGroupStudents(students);
+      }
+    } catch { /* ignore */ } finally {
+      setBrowseLoading(false);
+    }
+  }, []);
+
+  const handleBrowseGroupChange = (groupId: number) => {
+    setBrowseGroupId(groupId);
+    if (groupId) {
+      fetchGroupStudents(groupId);
+    } else {
+      setBrowseGroupStudents([]);
+    }
+  };
+
   // Fetch lesson counts for a group and set of months
   const fetchLessonCounts = useCallback(async (groupId: number, months: string[]) => {
     if (months.length === 0) return;
@@ -410,6 +444,9 @@ export default function PaymentsPage() {
     setConsoleTab('group');
     setGroupPayMonth(month);
     setGroupPayAmount('');
+    setStudentSelectMode('group');
+    setBrowseGroupId(null);
+    setBrowseGroupStudents([]);
     setShowPaymentConsole(true);
   };
 
@@ -1237,56 +1274,169 @@ export default function PaymentsPage() {
               Консоль оплат
             </h3>
 
-            {/* Step 1: Student search */}
-            <div style={{ marginBottom: '1rem', position: 'relative' }}>
-              <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem', fontWeight: '500' }}>
-                Учень
-              </label>
-              <input
-                type="text"
-                className="form-input"
-                value={studentSearch}
-                onChange={(e) => {
-                  handleStudentSearchChange(e.target.value);
-                  if (selectedStudent) {
-                    setSelectedStudent(null);
-                    setPaymentLines([]);
-                  }
-                }}
-                placeholder="Пошук за ім'ям..."
-                style={{ width: '100%' }}
-                autoFocus
-              />
-              {searchLoading && !selectedStudent && (
-                <div style={{ position: 'absolute', right: '12px', top: '32px', fontSize: '0.75rem', color: '#9ca3af' }}>
-                  ...
-                </div>
-              )}
-              {/* Dropdown results */}
-              {studentResults.length > 0 && !selectedStudent && (
-                <div style={{
-                  position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 10,
-                  backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '0.375rem',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto',
-                }}>
-                  {studentResults.map(s => (
+            {/* Step 1: Student selection */}
+            {!selectedStudent && (
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem', color: '#374151', fontWeight: '500' }}>
+                    Учень
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.25rem' }}>
                     <button
-                      key={s.id}
-                      onClick={() => selectStudent(s.id)}
+                      onClick={() => { setStudentSelectMode('group'); setStudentSearch(''); setStudentResults([]); }}
                       style={{
-                        display: 'block', width: '100%', textAlign: 'left',
-                        padding: '0.5rem 0.75rem', border: 'none', background: 'none',
-                        cursor: 'pointer', fontSize: '0.875rem',
+                        padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '0.25rem',
+                        border: studentSelectMode === 'group' ? '1px solid #374151' : '1px solid #d1d5db',
+                        backgroundColor: studentSelectMode === 'group' ? '#374151' : 'white',
+                        color: studentSelectMode === 'group' ? 'white' : '#6b7280',
+                        cursor: 'pointer',
                       }}
-                      onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#f3f4f6')}
-                      onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      {s.full_name}
+                      З групи
                     </button>
-                  ))}
+                    <button
+                      onClick={() => { setStudentSelectMode('search'); setBrowseGroupId(null); setBrowseGroupStudents([]); }}
+                      style={{
+                        padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '0.25rem',
+                        border: studentSelectMode === 'search' ? '1px solid #374151' : '1px solid #d1d5db',
+                        backgroundColor: studentSelectMode === 'search' ? '#374151' : 'white',
+                        color: studentSelectMode === 'search' ? 'white' : '#6b7280',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Пошук
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {/* Mode: Browse by group */}
+                {studentSelectMode === 'group' && (
+                  <div>
+                    <select
+                      className="form-input"
+                      value={browseGroupId || ''}
+                      onChange={(e) => handleBrowseGroupChange(parseInt(e.target.value) || 0)}
+                      style={{ width: '100%', marginBottom: '0.5rem', fontSize: '0.875rem' }}
+                    >
+                      <option value="">Оберіть групу...</option>
+                      {groups.map(g => (
+                        <option key={g.id} value={g.id}>{g.title}</option>
+                      ))}
+                    </select>
+                    {browseLoading && (
+                      <div style={{ textAlign: 'center', padding: '0.75rem', color: '#9ca3af', fontSize: '0.8125rem' }}>
+                        Завантаження...
+                      </div>
+                    )}
+                    {browseGroupId && !browseLoading && browseGroupStudents.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '0.75rem', color: '#9ca3af', fontSize: '0.8125rem' }}>
+                        Немає учнів у групі
+                      </div>
+                    )}
+                    {browseGroupStudents.length > 0 && (
+                      <div style={{
+                        border: '1px solid #e5e7eb', borderRadius: '0.375rem',
+                        maxHeight: '220px', overflowY: 'auto',
+                      }}>
+                        {browseGroupStudents.map((s, idx) => (
+                          <button
+                            key={s.id}
+                            onClick={() => selectStudent(s.id)}
+                            style={{
+                              display: 'block', width: '100%', textAlign: 'left',
+                              padding: '0.5rem 0.75rem', border: 'none', background: 'none',
+                              cursor: 'pointer', fontSize: '0.875rem',
+                              borderTop: idx > 0 ? '1px solid #f3f4f6' : undefined,
+                            }}
+                            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#f3f4f6')}
+                            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                          >
+                            {s.full_name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Mode: Search by name */}
+                {studentSelectMode === 'search' && (
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={studentSearch}
+                      onChange={(e) => {
+                        handleStudentSearchChange(e.target.value);
+                      }}
+                      placeholder="Пошук за ім'ям..."
+                      style={{ width: '100%' }}
+                      autoFocus
+                    />
+                    {searchLoading && (
+                      <div style={{ position: 'absolute', right: '12px', top: '10px', fontSize: '0.75rem', color: '#9ca3af' }}>
+                        ...
+                      </div>
+                    )}
+                    {studentResults.length > 0 && (
+                      <div style={{
+                        position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 10,
+                        backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '0.375rem',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto',
+                      }}>
+                        {studentResults.map(s => (
+                          <button
+                            key={s.id}
+                            onClick={() => selectStudent(s.id)}
+                            style={{
+                              display: 'block', width: '100%', textAlign: 'left',
+                              padding: '0.5rem 0.75rem', border: 'none', background: 'none',
+                              cursor: 'pointer', fontSize: '0.875rem',
+                            }}
+                            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#f3f4f6')}
+                            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                          >
+                            {s.full_name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Selected student name with clear button */}
+            {selectedStudent && (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem', fontWeight: '500' }}>
+                  Учень
+                </label>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.5rem 0.75rem', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0',
+                  borderRadius: '0.375rem', fontSize: '0.875rem',
+                }}>
+                  <span style={{ flex: 1, fontWeight: '500' }}>{selectedStudent.student.full_name}</span>
+                  <button
+                    onClick={() => {
+                      setSelectedStudent(null);
+                      setPaymentLines([]);
+                      setStudentSearch('');
+                      setStudentResults([]);
+                      setGroupPayAmount('');
+                    }}
+                    style={{
+                      border: 'none', background: 'none', cursor: 'pointer',
+                      color: '#9ca3af', fontSize: '1.125rem', lineHeight: 1, padding: '0 0.25rem',
+                    }}
+                    title="Змінити учня"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Step 2: Student info + payment lines */}
             {selectedStudent && (

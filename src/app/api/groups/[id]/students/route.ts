@@ -49,8 +49,8 @@ export async function GET(
     return forbidden();
   }
   
-  const students = getStudentsInGroup(groupId);
-  
+  const students = await getStudentsInGroup(groupId);
+
   return NextResponse.json({ students });
 }
 
