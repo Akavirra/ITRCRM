@@ -35,33 +35,19 @@
   text-align: center;
 }
 
-.brandMark {
+.logoWrap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: var(--primary, #3b82f6);
-  color: #fff;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  margin-bottom: 16px;
+  background: #1a1a2e;
+  border-radius: 14px;
+  padding: 20px 32px;
 }
 
-.brandName {
-  font-size: 22px;
-  font-weight: 600;
-  color: #1a1a2e;
-  margin: 0 0 6px;
-  letter-spacing: -0.3px;
-}
-
-.schoolName {
-  font-size: 13px;
-  color: #8b8fa3;
-  font-weight: 400;
+.logo {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
 }
 
 .divider {

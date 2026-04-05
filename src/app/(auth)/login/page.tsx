@@ -108,9 +108,10 @@ export default function LoginPage() {
       <div className={styles.card}>
         {/* Brand */}
         <div className={styles.logoArea}>
-          <div className={styles.brandMark}>IT</div>
-          <h1 className={styles.brandName}>ITRobotics</h1>
-          <div className={styles.schoolName}>{t('app.schoolName')}</div>
+          <div className={styles.logoWrap}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="ITRobotics" className={styles.logo} />
+          </div>
         </div>
 
         <div className={styles.divider} />
