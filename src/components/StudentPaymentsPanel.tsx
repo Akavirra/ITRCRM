@@ -228,23 +228,23 @@ export default function StudentPaymentsPanel({ studentId }: { studentId: number 
                   ✓
                 </span>
               )}
-              {data.individual_balance && (
+              {data.individual_balance && data.individual_balance.lessons_remaining > 0 && (
                 <span style={{
                   height: 28,
                   paddingLeft: 9,
                   paddingRight: 9,
-                  border: `1px solid ${data.individual_balance.lessons_remaining > 0 ? '#93c5fd' : data.individual_balance.lessons_remaining < 0 ? '#fca5a5' : '#e5e7eb'}`,
+                  border: '1px solid #93c5fd',
                   borderRadius: 6,
-                  backgroundColor: data.individual_balance.lessons_remaining > 0 ? '#eff6ff' : data.individual_balance.lessons_remaining < 0 ? '#fef2f2' : '#f3f4f6',
+                  backgroundColor: '#eff6ff',
                   display: 'flex',
                   alignItems: 'center',
-                  color: data.individual_balance.lessons_remaining > 0 ? '#2563eb' : data.individual_balance.lessons_remaining < 0 ? '#dc2626' : '#6b7280',
+                  color: '#2563eb',
                   flexShrink: 0,
                   fontSize: '0.75rem',
                   fontWeight: 700,
                   lineHeight: 1,
                 }}>
-                  Інд: {data.individual_balance.lessons_remaining}
+                  Інд: {data.individual_balance.lessons_remaining} зан.
                 </span>
               )}
             </>

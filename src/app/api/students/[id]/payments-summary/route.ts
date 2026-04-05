@@ -152,8 +152,18 @@ export async function GET(
   // Summary for collapsed view
   const currentMonth = new Date().toISOString().substring(0, 7);
   const currentMonthDebts = groupDebts.filter(d => d.month === currentMonth);
-  const totalDebtCurrentMonth = currentMonthDebts.reduce((s, d) => s + Math.max(0, -d.diff), 0);
-  const totalDebtAll = groupDebts.reduce((s, d) => s + Math.max(0, -d.diff), 0);
+  const totalGroupDebt = groupDebts.reduce((s, d) => s + Math.max(0, -d.diff), 0);
+
+  // Individual debt in money: negative remaining lessons × effective price
+  const individualRemaining = individualBalance
+    ? individualBalance.lessons_paid - individualBalance.lessons_used
+    : 0;
+  const individualDebtMoney = individualRemaining < 0
+    ? Math.abs(individualRemaining) * effectivePrice
+    : 0;
+
+  const totalDebtCurrentMonth = currentMonthDebts.reduce((s, d) => s + Math.max(0, -d.diff), 0) + individualDebtMoney;
+  const totalDebtAll = totalGroupDebt + individualDebtMoney;
   const lastPayment = history.length > 0 ? history[0] : null;
 
   return NextResponse.json({
