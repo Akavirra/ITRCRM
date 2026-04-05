@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { t } from '@/i18n/t';
 import Sidebar from './Sidebar/Sidebar';
@@ -41,6 +41,7 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
   const [isTablet, setIsTablet] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const prevPathnameRef = useRef(pathname);
 
   // Check viewport size
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
       setIsTablet(width >= 769 && width < 1025);
       setIsMobile(width < 769);
     };
-    
+
     checkViewport();
     window.addEventListener('resize', checkViewport);
     return () => window.removeEventListener('resize', checkViewport);
@@ -63,15 +64,14 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
     }
   }, []);
 
-  // Close sidebar on route change for mobile/tablet
-  // On desktop, re-open sidebar on every navigation to keep it always visible
-  useEffect(() => {
-    if (isDesktop) {
-      setSidebarOpen(true);
-    } else {
+  // Close sidebar on route change for mobile/tablet only
+  // On desktop, sidebar stays in whatever state it was (open by default)
+  if (pathname !== prevPathnameRef.current) {
+    prevPathnameRef.current = pathname;
+    if (!isDesktop) {
       setSidebarOpen(false);
     }
-  }, [pathname, isDesktop]);
+  }
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
