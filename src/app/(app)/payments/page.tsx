@@ -861,11 +861,734 @@ export default function PaymentsPage() {
               <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                 {data ? 'Немає боргів за цей місяць' : 'Завантаження...'}
               </div>
-        )}
-      </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Individual debtors */}
+      {tab === 'individual' && (
+        <div className="card">
+          <div className="card-header">
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
+              Індивідуальні заняття — баланс занять
+            </h3>
+            <div style={{ marginLeft: 'auto', fontSize: '0.875rem', color: '#6b7280' }}>
+              {filteredIndividualDebtors.length} учнів
+            </div>
+          </div>
+          <div className="table-container">
+            {filteredIndividualDebtors.length > 0 ? (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Учень</th>
+                    <th style={{ textAlign: 'right' }}>Оплачено занять</th>
+                    <th style={{ textAlign: 'right' }}>Використано</th>
+                    <th style={{ textAlign: 'right' }}>Залишок</th>
+                    <th style={{ textAlign: 'right', width: '100px' }}>Дії</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredIndividualDebtors.map((d) => (
+                    <tr key={d.id}>
+                      <td>
+                        <button
+                          onClick={() => openStudentModal(d.id, d.full_name)}
+                          style={{
+                            background: 'none', border: 'none', padding: 0,
+                            color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem',
+                            textDecoration: 'underline', textAlign: 'left',
+                          }}
+                        >
+                          {d.full_name}
+                        </button>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>{d.balance.lessons_paid}</td>
+                      <td style={{ textAlign: 'right' }}>{d.balance.lessons_used}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <span style={{
+                          fontWeight: '600',
+                          color: d.balance.lessons_remaining < 0 ? '#ef4444' : '#22c55e',
+                        }}>
+                          {d.balance.lessons_remaining}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => openPaymentForIndividual(d)}
+                          style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                        >
+                          + Оплата
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                {data ? 'Немає учнів з від\'ємним балансом' : 'Завантаження...'}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Separator */}
+      <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
+
+      {/* Payment collected breakdown */}
+      {data && data.collected.payments_count > 0 && (
+        <div className="card" style={{ marginTop: '1.5rem' }}>
+          <div className="card-header">
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
+              Зібрано за {currentMonthLabel}
+            </h3>
+          </div>
+          <div className="card-body" style={{ padding: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+              <div>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Загалом</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: '600' }}>{data.collected.total_amount} ₴</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Готівка</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: '600' }}>{data.collected.cash_amount} ₴</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Безготівково</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: '600' }}>{data.collected.account_amount} ₴</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Кількість оплат</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: '600' }}>{data.collected.payments_count}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment History - Collapsible */}
+      <details style={{ marginTop: '1.5rem' }} open>
+        <summary style={{
+          cursor: 'pointer',
+          fontSize: '1rem',
+          fontWeight: '600',
+          color: '#374151',
+          marginBottom: '1rem',
+          listStyle: 'none',
+          display: 'flex',
+          alignItems: 'center',
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" style={{ marginRight: '0.5rem' }}>
+            <polyline points="6,9 12,15 18,9" />
+          </svg>
+          Історія оплат
+        </summary>
+        <div className="card">
+          <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Пошук за ім'ям..."
+              value={historySearch}
+              onChange={(e) => setHistorySearch(e.target.value)}
+              style={{ width: '180px', padding: '0.375rem 0.75rem', fontSize: '0.8125rem', marginLeft: '0.5rem' }}
+            />
+            <select
+              className="form-input"
+              value={historyTypeFilter}
+              onChange={(e) => setHistoryTypeFilter(e.target.value)}
+              style={{ width: '140px', padding: '0.375rem 0.75rem', fontSize: '0.8125rem' }}
+            >
+              <option value="">Усі типи</option>
+              <option value="group">Групові</option>
+              <option value="individual">Індивідуальні</option>
+            </select>
+            <select
+              className="form-input"
+              value={historyMethodFilter}
+              onChange={(e) => setHistoryMethodFilter(e.target.value)}
+              style={{ width: '150px', padding: '0.375rem 0.75rem', fontSize: '0.8125rem' }}
+            >
+              <option value="">Усі способи</option>
+              <option value="cash">Готівка</option>
+              <option value="account">Безготівково</option>
+            </select>
+            <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: '#6b7280' }}>
+              {historyTotal} записів
+            </span>
+          </div>
+          <div className="table-container">
+            {historyLoading ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Завантаження...</div>
+            ) : historyPayments.length > 0 ? (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Учень</th>
+                    <th>Тип</th>
+                    <th>Група / Деталі</th>
+                    <th style={{ textAlign: 'right' }}>Сума</th>
+                    <th>Спосіб</th>
+                    <th style={{ textAlign: 'center', width: '60px' }}>Дії</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyPayments.map(p => (
+                    <tr key={`${p.type}-${p.id}`}>
+                      <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+                        {new Date(p.paid_at).toLocaleDateString('uk-UA')}
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => openStudentModal(p.student_id, p.student_name)}
+                          style={{ background: 'none', border: 'none', padding: 0, color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline', textAlign: 'left' }}
+                        >
+                          {p.student_name}
+                        </button>
+                      </td>
+                      <td>
+                        <span style={{
+                          padding: '2px 8px', borderRadius: 4, fontSize: '0.6875rem', fontWeight: 600,
+                          backgroundColor: p.type === 'group' ? '#dbeafe' : '#f3e8ff',
+                          color: p.type === 'group' ? '#1d4ed8' : '#7c3aed',
+                        }}>
+                          {p.type === 'group' ? 'Групова' : 'Індивід.'}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '0.8125rem' }}>
+                        {p.type === 'group' && p.group_title ? (
+                          <>
+                            <button
+                              onClick={() => p.group_id && openGroupModal(p.group_id, p.group_title!)}
+                              style={{ background: 'none', border: 'none', padding: 0, color: '#3b82f6', cursor: 'pointer', fontSize: '0.8125rem', textDecoration: 'underline', textAlign: 'left' }}
+                            >
+                              {p.group_title}
+                            </button>
+                            {p.month && <span style={{ color: '#9ca3af', marginLeft: '0.375rem' }}>({p.month.substring(0, 7)})</span>}
+                          </>
+                        ) : (
+                          <span style={{ color: '#6b7280' }}>{p.lessons_count} зан.</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: '600', fontSize: '0.875rem' }}>
+                        {p.amount} ₴
+                      </td>
+                      <td>
+                        <span style={{
+                          padding: '2px 6px', borderRadius: 4, fontSize: '0.6875rem',
+                          backgroundColor: p.method === 'cash' ? '#dcfce7' : '#e0f2fe',
+                          color: p.method === 'cash' ? '#16a34a' : '#0284c7',
+                        }}>
+                          {p.method === 'cash' ? 'Готівка' : 'Безгот.'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          onClick={() => setSelectedPayment(p)}
+                          style={{
+                            background: 'none', border: '1px solid #e5e7eb', borderRadius: '0.25rem',
+                            padding: '0.25rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', color: '#6b7280',
+                          }}
+                          title="Деталі"
+                        >
+                          👁
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                Немає записів
+              </div>
+            )}
+          </div>
+          {/* Pagination */}
+          {historyTotal > HISTORY_LIMIT && (
+            <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', borderTop: '1px solid #e5e7eb' }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => fetchHistory(historyPage - 1)}
+                disabled={historyPage === 0}
+                style={{ fontSize: '0.8125rem' }}
+              >
+                ← Назад
+              </button>
+              <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                {historyPage * HISTORY_LIMIT + 1}–{Math.min((historyPage + 1) * HISTORY_LIMIT, historyTotal)} з {historyTotal}
+              </span>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => fetchHistory(historyPage + 1)}
+                disabled={(historyPage + 1) * HISTORY_LIMIT >= historyTotal}
+                style={{ fontSize: '0.8125rem' }}
+              >
+                Далі →
+              </button>
+            </div>
+          )}
+        </div>
       </details>
-    </>
-  );
+
+      {/* Payment Detail Modal */}
+      {selectedPayment && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+        }}
+        onClick={() => setSelectedPayment(null)}
+        >
+          <div
+            style={{
+              backgroundColor: 'white', borderRadius: '0.75rem',
+              padding: '1.5rem', width: '100%', maxWidth: '440px',
+              boxShadow: '0 20px 60px -15px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600' }}>
+                Деталі оплати
+              </h3>
+              <button
+                onClick={() => setSelectedPayment(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#9ca3af', padding: 0 }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', alignItems: 'start', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Тип:</span>
+                <span style={{
+                  display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, width: 'fit-content',
+                  backgroundColor: selectedPayment.type === 'group' ? '#dbeafe' : '#f3e8ff',
+                  color: selectedPayment.type === 'group' ? '#1d4ed8' : '#7c3aed',
+                }}>
+                  {selectedPayment.type === 'group' ? 'Групова' : 'Індивідуальна'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Учень:</span>
+                <button
+                  onClick={() => { setSelectedPayment(null); openStudentModal(selectedPayment.student_id, selectedPayment.student_name); }}
+                  style={{ background: 'none', border: 'none', padding: 0, color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', textAlign: 'left', fontSize: '0.875rem' }}
+                >
+                  {selectedPayment.student_name}
+                </button>
+              </div>
+              {selectedPayment.type === 'group' && selectedPayment.group_title && (
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                  <span style={{ color: '#6b7280' }}>Група:</span>
+                  <button
+                    onClick={() => { setSelectedPayment(null); selectedPayment.group_id && openGroupModal(selectedPayment.group_id, selectedPayment.group_title!); }}
+                    style={{ background: 'none', border: 'none', padding: 0, color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', textAlign: 'left', fontSize: '0.875rem' }}
+                  >
+                    {selectedPayment.group_title}
+                  </button>
+                </div>
+              )}
+              {selectedPayment.type === 'group' && selectedPayment.month && (
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                  <span style={{ color: '#6b7280' }}>Місяць:</span>
+                  <span>{selectedPayment.month.substring(0, 7)}</span>
+                </div>
+              )}
+              {selectedPayment.type === 'individual' && selectedPayment.lessons_count && (
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                  <span style={{ color: '#6b7280' }}>Занять:</span>
+                  <span>{selectedPayment.lessons_count}</span>
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Сума:</span>
+                <strong style={{ color: '#16a34a', fontSize: '1rem' }}>{selectedPayment.amount} ₴</strong>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Спосіб:</span>
+                <span style={{
+                  display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', width: 'fit-content',
+                  backgroundColor: selectedPayment.method === 'cash' ? '#dcfce7' : '#e0f2fe',
+                  color: selectedPayment.method === 'cash' ? '#16a34a' : '#0284c7',
+                }}>
+                  {selectedPayment.method === 'cash' ? 'Готівка' : 'Безготівково'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Дата оплати:</span>
+                <span>{new Date(selectedPayment.paid_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Створив:</span>
+                <span>{selectedPayment.created_by_name}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                <span style={{ color: '#6b7280' }}>Створено:</span>
+                <span>{new Date(selectedPayment.created_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              {selectedPayment.note && (
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', fontSize: '0.875rem' }}>
+                  <span style={{ color: '#6b7280' }}>Примітка:</span>
+                  <span style={{ color: '#374151' }}>{selectedPayment.note}</span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setSelectedPayment(null)}
+              >
+                Закрити
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Console Modal */}
+      {showPaymentConsole && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+        }}
+        onClick={() => setShowPaymentConsole(false)}
+        >
+          <div
+            style={{
+              backgroundColor: 'white', borderRadius: '0.75rem',
+              padding: '1.5rem', width: '100%', maxWidth: '640px',
+              maxHeight: '90vh', overflowY: 'auto',
+              boxShadow: '0 20px 60px -15px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1.25rem', fontSize: '1.25rem', fontWeight: '600' }}>
+              Консоль оплат
+            </h3>
+
+            {/* Step 1: Student selection */}
+            {!selectedStudent && (
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem', color: '#374151', fontWeight: '500' }}>
+                    Учень
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    <button
+                      onClick={() => { setStudentSelectMode('group'); setStudentSearch(''); setStudentResults([]); }}
+                      style={{
+                        padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '0.25rem',
+                        border: studentSelectMode === 'group' ? '1px solid #374151' : '1px solid #d1d5db',
+                        backgroundColor: studentSelectMode === 'group' ? '#374151' : 'white',
+                        color: studentSelectMode === 'group' ? 'white' : '#6b7280',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      З групи
+                    </button>
+                    <button
+                      onClick={() => { setStudentSelectMode('search'); setBrowseGroupId(null); setBrowseGroupStudents([]); }}
+                      style={{
+                        padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '0.25rem',
+                        border: studentSelectMode === 'search' ? '1px solid #374151' : '1px solid #d1d5db',
+                        backgroundColor: studentSelectMode === 'search' ? '#374151' : 'white',
+                        color: studentSelectMode === 'search' ? 'white' : '#6b7280',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Пошук
+                    </button>
+                  </div>
+                </div>
+
+                {/* Mode: Browse by group */}
+                {studentSelectMode === 'group' && (
+                  <div>
+                    <select
+                      className="form-input"
+                      value={browseGroupId || ''}
+                      onChange={(e) => handleBrowseGroupChange(parseInt(e.target.value) || 0)}
+                      style={{ width: '100%', marginBottom: '0.5rem', fontSize: '0.875rem' }}
+                    >
+                      <option value="">Оберіть групу...</option>
+                      {groups.map(g => (
+                        <option key={g.id} value={g.id}>{g.title}</option>
+                      ))}
+                    </select>
+                    {browseLoading && (
+                      <div style={{ textAlign: 'center', padding: '0.75rem', color: '#9ca3af', fontSize: '0.8125rem' }}>
+                        Завантаження...
+                      </div>
+                    )}
+                    {browseGroupId && !browseLoading && browseGroupStudents.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '0.75rem', color: '#9ca3af', fontSize: '0.8125rem' }}>
+                        Немає учнів у групі
+                      </div>
+                    )}
+                    {browseGroupStudents.length > 0 && (
+                      <div style={{
+                        border: '1px solid #e5e7eb', borderRadius: '0.375rem',
+                        maxHeight: '220px', overflowY: 'auto',
+                      }}>
+                        {browseGroupStudents.map((s, idx) => (
+                          <button
+                            key={s.id}
+                            onClick={() => selectStudent(s.id)}
+                            style={{
+                              display: 'block', width: '100%', textAlign: 'left',
+                              padding: '0.5rem 0.75rem', border: 'none', background: 'none',
+                              cursor: 'pointer', fontSize: '0.875rem',
+                              borderTop: idx > 0 ? '1px solid #f3f4f6' : undefined,
+                            }}
+                            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#f3f4f6')}
+                            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                          >
+                            {s.full_name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Mode: Search by name */}
+                {studentSelectMode === 'search' && (
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={studentSearch}
+                      onChange={(e) => {
+                        handleStudentSearchChange(e.target.value);
+                      }}
+                      placeholder="Пошук за ім'ям..."
+                      style={{ width: '100%' }}
+                      autoFocus
+                    />
+                    {searchLoading && (
+                      <div style={{ position: 'absolute', right: '12px', top: '10px', fontSize: '0.75rem', color: '#9ca3af' }}>
+                        ...
+                      </div>
+                    )}
+                    {studentResults.length > 0 && (
+                      <div style={{
+                        position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 10,
+                        backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '0.375rem',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto',
+                      }}>
+                        {studentResults.map(s => (
+                          <button
+                            key={s.id}
+                            onClick={() => selectStudent(s.id)}
+                            style={{
+                              display: 'block', width: '100%', textAlign: 'left',
+                              padding: '0.5rem 0.75rem', border: 'none', background: 'none',
+                              cursor: 'pointer', fontSize: '0.875rem',
+                            }}
+                            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#f3f4f6')}
+                            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                          >
+                            {s.full_name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Selected student name with clear button */}
+            {selectedStudent && (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem', fontWeight: '500' }}>
+                  Учень
+                </label>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.5rem 0.75rem', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0',
+                  borderRadius: '0.375rem', fontSize: '0.875rem',
+                }}>
+                  <span style={{ flex: 1, fontWeight: '500' }}>{selectedStudent.student.full_name}</span>
+                  <button
+                    onClick={() => {
+                      setSelectedStudent(null);
+                      setPaymentLines([]);
+                      setStudentSearch('');
+                      setStudentResults([]);
+                      setGroupPayAmount('');
+                    }}
+                    style={{
+                      border: 'none', background: 'none', cursor: 'pointer',
+                      color: '#9ca3af', fontSize: '1.125rem', lineHeight: 1, padding: '0 0.25rem',
+                    }}
+                    title="Змінити учня"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Student info + payment lines */}
+            {selectedStudent && (
+              <>
+                {/* Student info bar */}
+                <div style={{
+                  padding: '0.75rem 1rem', marginBottom: '1rem',
+                  backgroundColor: '#f9fafb', borderRadius: '0.5rem', border: '1px solid #e5e7eb',
+                  display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.875rem',
+                }}>
+                  <div>
+                    <span style={{ color: '#6b7280' }}>Ціна/заняття: </span>
+                    <strong>{selectedStudent.lesson_price} ₴</strong>
+                  </div>
+                  {selectedStudent.student.discount_percent > 0 && (
+                    <>
+                      <div>
+                        <span style={{ color: '#6b7280' }}>Знижка: </span>
+                        <strong style={{ color: '#f59e0b' }}>{selectedStudent.student.discount_percent}%</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#6b7280' }}>Зі знижкою: </span>
+                        <strong style={{ color: '#22c55e' }}>{selectedStudent.effective_price} ₴</strong>
+                      </div>
+                    </>
+                  )}
+                  {selectedStudent.individual_balance && (
+                    <div>
+                      <span style={{ color: '#6b7280' }}>Інд. баланс: </span>
+                      <strong style={{ color: selectedStudent.individual_balance.lessons_remaining < 0 ? '#ef4444' : '#22c55e' }}>
+                        {selectedStudent.individual_balance.lessons_remaining} зан.
+                      </strong>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tabs: Group / Individual */}
+                <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1rem' }}>
+                  <button
+                    onClick={() => setConsoleTab('group')}
+                    style={{
+                      padding: '0.375rem 0.75rem', fontSize: '0.8125rem', borderRadius: '0.25rem',
+                      border: consoleTab === 'group' ? '1px solid #374151' : '1px solid #d1d5db',
+                      backgroundColor: consoleTab === 'group' ? '#374151' : 'white',
+                      color: consoleTab === 'group' ? 'white' : '#6b7280',
+                      cursor: 'pointer', fontWeight: consoleTab === 'group' ? '600' : '400',
+                    }}
+                  >
+                    Групові
+                  </button>
+                  {selectedStudent.has_individual && (
+                    <button
+                      onClick={() => setConsoleTab('individual')}
+                      style={{
+                        padding: '0.375rem 0.75rem', fontSize: '0.8125rem', borderRadius: '0.25rem',
+                        border: consoleTab === 'individual' ? '1px solid #374151' : '1px solid #d1d5db',
+                        backgroundColor: consoleTab === 'individual' ? '#374151' : 'white',
+                        color: consoleTab === 'individual' ? 'white' : '#6b7280',
+                        cursor: 'pointer', fontWeight: consoleTab === 'individual' ? '600' : '400',
+                      }}
+                    >
+                      Індивідуальні
+                    </button>
+                  )}
+                </div>
+
+                {/* GROUP TAB — simplified: month → breakdown → amount */}
+                {consoleTab === 'group' && selectedStudent.groups.length > 0 && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    {/* Month selector */}
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'block', marginBottom: '0.25rem', fontWeight: '500' }}>
+                        Місяць оплати
+                      </label>
+                      <select
+                        className="form-input"
+                        value={groupPayMonth}
+                        onChange={(e) => handleGroupPayMonthChange(e.target.value)}
+                        style={{ width: '200px', fontSize: '0.875rem' }}
+                      >
+                        {monthOptions.map(o => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Auto breakdown table */}
+                    <div style={{
+                      border: '1px solid #e5e7eb', borderRadius: '0.5rem', overflow: 'hidden', marginBottom: '0.75rem',
+                    }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f9fafb' }}>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: '500', color: '#6b7280' }}>Група</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: '500', color: '#6b7280', width: '70px' }}>Занять</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: '500', color: '#6b7280', width: '100px' }}>До сплати</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {groupBreakdown.map((g, idx) => (
+                            <tr key={g.group_id} style={{ borderTop: idx > 0 ? '1px solid #f3f4f6' : undefined }}>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>{g.group_title}</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                                {g.lessons === null ? <span style={{ color: '#f59e0b' }}>...</span> : g.lessons}
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: '500' }}>
+                                {g.expected === null ? '...' : `${g.expected} ₴`}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        {allGroupsLoaded && (
+                          <tfoot>
+                            <tr style={{ borderTop: '1px solid #e5e7eb', backgroundColor: '#f0fdf4' }}>
+                              <td style={{ padding: '0.5rem 0.75rem', fontWeight: '600' }}>Разом</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: '600' }}>
+                                {groupBreakdown.reduce((s, g) => s + (g.lessons || 0), 0)}
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: '600', color: '#16a34a' }}>
+                                {totalExpected} ₴
+                              </td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+
+                    {/* Distribution preview if amount differs */}
+                    {(() => {
+                      const enteredAmt = parseFloat(groupPayAmount);
+                      if (!allGroupsLoaded || isNaN(enteredAmt) || enteredAmt <= 0 || enteredAmt === totalExpected || totalExpected === 0) return null;
+                      const groupsWithLessons = groupBreakdown.filter(g => (g.expected || 0) > 0);
+                      let remaining = enteredAmt;
+                      const dist = groupsWithLessons.map((g, i) => {
+                        const share = i < groupsWithLessons.length - 1
+                          ? Math.round(enteredAmt * ((g.expected || 0) / totalExpected))
+                          : remaining;
+                        remaining -= share;
+                        return { title: g.group_title, share };
+                      });
+                      return (
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem', padding: '0.5rem 0.75rem', backgroundColor: '#fffbeb', borderRadius: '0.375rem', border: '1px solid #fde68a' }}>
+                          <div style={{ fontWeight: '500', marginBottom: '0.25rem', color: '#92400e' }}>
+                            Розподіл {enteredAmt} ₴ по групах:
+                          </div>
+                          {dist.map(d => (
+                            <div key={d.title}>{d.title}: <strong>{d.share} ₴</strong></div>
+                          ))}
+                        </div>
+                      );
                     })()}
 
                     {/* Amount field */}
