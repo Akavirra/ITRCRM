@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { t } from '@/i18n/t';
 import Sidebar from './Sidebar/Sidebar';
@@ -41,15 +41,17 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
   const [isTablet, setIsTablet] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const prevPathnameRef = useRef(pathname);
 
   // Check viewport size
   useEffect(() => {
     const checkViewport = () => {
       const width = window.innerWidth;
-      setIsDesktop(width >= 1025);
+      const desktop = width >= 1025;
+      setIsDesktop(desktop);
       setIsTablet(width >= 769 && width < 1025);
       setIsMobile(width < 769);
+      // When resizing to/from desktop, sync sidebar state
+      setSidebarOpen(desktop);
     };
 
     checkViewport();
@@ -57,21 +59,12 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
     return () => window.removeEventListener('resize', checkViewport);
   }, []);
 
-  // On desktop, sidebar starts open; on mobile/tablet, starts closed
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setSidebarOpen(window.innerWidth >= 1025);
-    }
-  }, []);
-
   // Close sidebar on route change for mobile/tablet only
-  // On desktop, sidebar stays in whatever state it was (open by default)
-  if (pathname !== prevPathnameRef.current) {
-    prevPathnameRef.current = pathname;
-    if (!isDesktop) {
+  useEffect(() => {
+    if (window.innerWidth < 1025) {
       setSidebarOpen(false);
     }
-  }
+  }, [pathname]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
