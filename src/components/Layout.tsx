@@ -64,8 +64,11 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
   }, []);
 
   // Close sidebar on route change for mobile/tablet
+  // On desktop, re-open sidebar on every navigation to keep it always visible
   useEffect(() => {
-    if (!isDesktop) {
+    if (isDesktop) {
+      setSidebarOpen(true);
+    } else {
       setSidebarOpen(false);
     }
   }, [pathname, isDesktop]);
