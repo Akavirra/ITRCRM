@@ -48,9 +48,12 @@ export const uk = {
 
   // App name and branding
   app: {
-    name: 'Адміністрування школи',
+    name: 'ITRobotics',
+    schoolName: 'Школа робототехніки та програмування',
     subtitle: 'Панель керування',
-    loginSubtitle: 'Панель керування школою курсів',
+    loginSubtitle: 'Панель керування школою',
+    welcomeBack: 'З поверненням',
+    enterPassword: 'Введіть пароль для входу',
   },
 
   // Actions
@@ -77,6 +80,7 @@ export const uk = {
 
   // Common words
   common: {
+    continue: 'Далі',
     loading: 'Завантаження...',
     saving: 'Збереження...',
     noData: 'Немає даних',

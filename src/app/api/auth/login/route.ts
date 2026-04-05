@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
         name: result.user.name,
         email: result.user.email,
         role: result.user.role,
+        photo_url: result.user.photo_url || null,
       },
     });
 
