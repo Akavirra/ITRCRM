@@ -1593,6 +1593,19 @@ export default function PaymentsPage() {
                           Вставити {totalExpected} ₴
                         </button>
                       )}
+                      {(() => {
+                        const amt = parseFloat(groupPayAmount);
+                        if (!allGroupsLoaded || isNaN(amt) || amt <= 0 || totalExpected <= 0) return null;
+                        const diff = amt - totalExpected;
+                        if (diff > 0) {
+                          return (
+                            <div style={{ marginTop: '0.375rem', fontSize: '0.75rem', color: '#b45309', backgroundColor: '#fffbeb', padding: '0.375rem 0.625rem', borderRadius: '0.25rem', border: '1px solid #fde68a' }}>
+                              Сума на <strong>{diff} ₴</strong> більша за очікувану ({totalExpected} ₴). Переплата буде зарахована.
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
                 )}

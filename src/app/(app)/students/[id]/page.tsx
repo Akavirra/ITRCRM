@@ -11,6 +11,7 @@ import { useStudentModals } from '@/components/StudentModalsContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
 import StudentAttendancePanel from '@/components/StudentAttendancePanel';
 import StudentHistoryPanel from '@/components/StudentHistoryPanel';
+import StudentPaymentsPanel from '@/components/StudentPaymentsPanel';
 
 
 interface Student {
@@ -2402,6 +2403,9 @@ export default function StudentProfilePage() {
                 </div>
               )}
             </div>
+
+            {/* Payments Panel */}
+            <StudentPaymentsPanel studentId={student.id} />
 
             {/* Attendance Panel */}
             <StudentAttendancePanel
