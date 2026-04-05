@@ -709,40 +709,44 @@ export default function PaymentsPage() {
             + Внести оплату
           </button>
 
-          {/* Month picker */}
-          <select
-            className="form-input"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            style={{ width: '180px', padding: '0.5rem 0.875rem', fontSize: '0.875rem' }}
-          >
-            {monthOptions.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+          {/* Month picker — only for group tab */}
+          {tab === 'group' && (
+            <select
+              className="form-input"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              style={{ width: '180px', padding: '0.5rem 0.875rem', fontSize: '0.875rem' }}
+            >
+              {monthOptions.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          )}
 
           {/* Search */}
           <input
             type="text"
             className="form-input"
-            placeholder="Пошук учня або групи..."
+            placeholder={tab === 'group' ? 'Пошук учня або групи...' : 'Пошук учня...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ width: '220px', padding: '0.5rem 0.875rem', fontSize: '0.875rem' }}
           />
 
-          {/* Group filter */}
-          <select
-            className="form-input"
-            value={groupFilter}
-            onChange={(e) => setGroupFilter(e.target.value)}
-            style={{ width: '180px', padding: '0.5rem 0.875rem', fontSize: '0.875rem' }}
-          >
-            <option value="">Усі групи</option>
-            {groups.map(g => (
-              <option key={g.id} value={g.id}>{g.title}</option>
-            ))}
-          </select>
+          {/* Group filter — only for group tab */}
+          {tab === 'group' && (
+            <select
+              className="form-input"
+              value={groupFilter}
+              onChange={(e) => setGroupFilter(e.target.value)}
+              style={{ width: '180px', padding: '0.5rem 0.875rem', fontSize: '0.875rem' }}
+            >
+              <option value="">Усі групи</option>
+              {groups.map(g => (
+                <option key={g.id} value={g.id}>{g.title}</option>
+              ))}
+            </select>
+          )}
 
           {/* Tabs */}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.25rem' }}>
@@ -787,7 +791,7 @@ export default function PaymentsPage() {
         <div className="card">
           <div className="card-header">
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
-              Борги за групові заняття — {currentMonthLabel}
+              Групові заняття — {currentMonthLabel}
             </h3>
             <div style={{ marginLeft: 'auto', fontSize: '0.875rem', color: '#6b7280' }}>
               {filteredGroupDebtors.length} учнів
@@ -886,7 +890,7 @@ export default function PaymentsPage() {
         <div className="card">
           <div className="card-header">
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
-              Індивідуальні заняття — баланс
+              Індивідуальні заняття — баланс занять
             </h3>
             <div style={{ marginLeft: 'auto', fontSize: '0.875rem', color: '#6b7280' }}>
               {filteredIndividualDebtors.length} учнів
