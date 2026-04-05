@@ -13,7 +13,13 @@ import {
   BarChart3,
   ClipboardList,
   FolderOpen,
-  Wallet
+  Wallet,
+  Sun,
+  Cloud,
+  CloudRain,
+  CloudSnow,
+  Zap,
+  EyeOff
 } from 'lucide-react';
 import TransitionLink from '@/components/TransitionLink';
 
@@ -79,16 +85,18 @@ const detailPill: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-function weatherIcon(code: number): string {
-  if (code >= 200 && code < 300) return '⛈';
-  if (code >= 300 && code < 400) return '🌦';
-  if (code >= 500 && code < 600) return '🌧';
-  if (code >= 600 && code < 700) return '❄';
-  if (code >= 700 && code < 800) return '🌫';
-  if (code === 800) return '☀';
-  if (code === 801) return '🌤';
-  if (code === 802) return '⛅';
-  return '☁';
+function weatherIcon(code: number, size: number = 18): JSX.Element {
+  const iconProps = { size };
+
+  if (code >= 200 && code < 300) return <Zap {...iconProps} />;
+  if (code >= 300 && code < 400) return <CloudRain {...iconProps} />;
+  if (code >= 500 && code < 600) return <CloudRain {...iconProps} />;
+  if (code >= 600 && code < 700) return <CloudSnow {...iconProps} />;
+  if (code >= 700 && code < 800) return <EyeOff {...iconProps} />;
+  if (code === 800) return <Sun {...iconProps} />;
+  if (code === 801) return <Sun {...iconProps} />;
+  if (code === 802) return <Cloud {...iconProps} />;
+  return <Cloud {...iconProps} />;
 }
 
 function buildCalendarDays(year: number, month: number): (number | null)[] {
@@ -287,7 +295,7 @@ function SidebarInfoWidget() {
                 e.currentTarget.style.transform = 'scale(1)';
               }}
             >
-              <span className="weather-icon-anim" style={{ fontSize: '18px', lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code)}</span>
+              <span className="weather-icon-anim" style={{ lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code, 18)}</span>
               <span style={{ fontSize: '18px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
                 {weather.temp}°
               </span>
@@ -400,7 +408,7 @@ function SidebarInfoWidget() {
 
           {/* Today: icon + temp + description */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
-            <span style={{ fontSize: '40px', lineHeight: 1 }}>{weatherIcon(weather.code)}</span>
+            <span style={{ lineHeight: 1 }}>{weatherIcon(weather.code, 40)}</span>
             <div>
               <div style={{ fontSize: '32px', fontWeight: '300', color: '#1e3a5f', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
                 {weather.temp}°
@@ -427,7 +435,7 @@ function SidebarInfoWidget() {
                   <div style={{ fontSize: '9px', color: '#94a3b8', marginBottom: '4px', fontWeight: '500', letterSpacing: '0.02em' }}>
                     {day.weekday}
                   </div>
-                  <div style={{ fontSize: '16px', lineHeight: 1, marginBottom: '4px' }}>{weatherIcon(day.code)}</div>
+                  <div style={{ lineHeight: 1, marginBottom: '4px' }}>{weatherIcon(day.code, 16)}</div>
                   <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e3a5f' }}>{day.temp_max}°</div>
                   <div style={{ fontSize: '10px', color: '#b0bec5' }}>{day.temp_min}°</div>
                 </div>
