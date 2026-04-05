@@ -74,7 +74,7 @@ export async function getPaymentStatusForGroupMonth(
   const monthStr = month.substring(0, 7); // 'YYYY-MM'
   const lessonCountResult = await get<{ cnt: number }>(
     `SELECT COUNT(*) as cnt FROM lessons
-     WHERE group_id = $1 AND status != 'canceled' AND TO_CHAR(lesson_date, 'YYYY-MM') = $2`,
+     WHERE group_id = $1 AND status != 'canceled' AND COALESCE(is_makeup, FALSE) = FALSE AND COALESCE(is_trial, FALSE) = FALSE AND TO_CHAR(lesson_date, 'YYYY-MM') = $2`,
     [groupId, monthStr]
   );
   const lessonsCount = lessonCountResult?.cnt || 0;
@@ -307,7 +307,7 @@ export async function getPaymentStatusForLesson(
         COALESCE(s.discount::INTEGER, 0) as discount,
         (SELECT COUNT(*) FROM lessons l2
          WHERE l2.group_id = $1 AND TO_CHAR(l2.lesson_date, 'YYYY-MM') = $2
-           AND l2.status != 'canceled') as lessons_in_month,
+           AND l2.status != 'canceled' AND COALESCE(l2.is_makeup, FALSE) = FALSE AND COALESCE(l2.is_trial, FALSE) = FALSE) as lessons_in_month,
         COALESCE((SELECT SUM(p.amount) FROM payments p
          WHERE p.student_id = sg.student_id AND p.group_id = $1
            AND TO_CHAR(p.month, 'YYYY-MM') = $2), 0) as total_paid

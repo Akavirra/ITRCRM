@@ -509,7 +509,7 @@ export async function getStudentsWithDebt(month: string): Promise<StudentWithDeb
            THEN 'studying' ELSE 'not_studying' END as study_status,
       COALESCE(s.discount::INTEGER, 0) as discount,
       g.id as group_id, g.title as group_title,
-      (SELECT COUNT(*) FROM lessons l WHERE l.group_id = g.id AND l.status != 'canceled'
+      (SELECT COUNT(*) FROM lessons l WHERE l.group_id = g.id AND l.status != 'canceled' AND COALESCE(l.is_makeup, FALSE) = FALSE AND COALESCE(l.is_trial, FALSE) = FALSE
         AND TO_CHAR(l.lesson_date, 'YYYY-MM') = $2) as lessons_count,
       COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.student_id = s.id AND p.group_id = g.id AND p.month = $1), 0) as paid_amount
      FROM student_groups sg
