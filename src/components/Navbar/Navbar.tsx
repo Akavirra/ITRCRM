@@ -106,7 +106,9 @@ const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { calcOpen, toggleCalc } = useCalculator();
   const { notesOpen, toggleNotes } = useNotes();
   const [userPhotoUrl, setUserPhotoUrl] = useState<string | null>(null);
@@ -258,7 +260,7 @@ const Navbar: React.FC<NavbarProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        setSearchOpen(true);
+        searchInputRef.current?.focus();
       }
     };
 
@@ -481,21 +483,34 @@ const Navbar: React.FC<NavbarProps> = ({
 
           {/* Center section - Search */}
           <div className={styles.navbarCenter}>
-            <button
-              className={styles.searchContainer}
-              onClick={() => setSearchOpen(true)}
-              type="button"
-            >
+            <div className={styles.searchContainer}>
               <Search size={18} className={styles.searchIcon} />
-              <span className={styles.searchPlaceholder}>
-                {t('search.placeholder') || 'Пошук по системі...'}
-              </span>
-              <div className={styles.searchHint}>
-                <Keyboard size={10} />
-                <kbd>Ctrl</kbd>
-                <kbd>K</kbd>
-              </div>
-            </button>
+              <input
+                id="global-search-input"
+                ref={searchInputRef}
+                type="text"
+                className={styles.searchInput}
+                placeholder={t('search.placeholder') || 'Пошук по системі...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {!searchFocused && !searchQuery && (
+                <div className={styles.searchHint}>
+                  <Keyboard size={10} />
+                  <kbd>Ctrl</kbd>
+                  <kbd>K</kbd>
+                </div>
+              )}
+              <GlobalSearch
+                query={searchQuery}
+                inputFocused={searchFocused}
+                onClose={() => { setSearchQuery(''); setSearchFocused(false); searchInputRef.current?.blur(); }}
+              />
+            </div>
           </div>
 
           {/* Right section */}
@@ -757,8 +772,6 @@ const Navbar: React.FC<NavbarProps> = ({
         </div>
       </nav>
 
-      {/* Global Search Modal */}
-      <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* Settings Modal */}
       {settingsOpen && (
