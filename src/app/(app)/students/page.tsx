@@ -222,6 +222,7 @@ export default function StudentsPage() {
   const { user } = useUser();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<StudentsPagination>({
@@ -262,6 +263,7 @@ export default function StudentsPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const dropdownButtonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
+  const hasLoadedOnceRef = useRef(false);
   
   // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -428,13 +430,19 @@ export default function StudentsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      if (hasLoadedOnceRef.current) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       try {
         await loadStudents();
       } catch (error) {
         console.error('Failed to fetch students:', error);
       } finally {
+        hasLoadedOnceRef.current = true;
         setLoading(false);
+        setIsRefreshing(false);
       }
     };
 
@@ -1179,6 +1187,11 @@ export default function StudentsPage() {
 
           {/* Right side: count and button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto' }}>
+            {isRefreshing && (
+              <span style={{ fontSize: '0.75rem', color: '#6366f1', fontWeight: 500 }}>
+                Оновлення...
+              </span>
+            )}
             <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
               Показано {students.length} з {pagination.total} {pagination.total === 1 ? 'учня' : pagination.total > 1 && pagination.total < 5 ? 'учнів' : 'учнів'}
             </span>
@@ -1298,6 +1311,8 @@ export default function StudentsPage() {
                 : 'repeat(auto-fill, minmax(250px, 1fr))',
               gap: viewMode === 'detailed' ? '1.25rem' : '0.875rem',
               alignItems: 'start',
+              opacity: isRefreshing ? 0.72 : 1,
+              transition: 'opacity 0.15s ease',
             }}>
               {students.map((student) => {
                 const age = calculateAge(student.birth_date);
