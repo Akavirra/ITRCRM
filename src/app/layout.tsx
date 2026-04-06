@@ -18,6 +18,9 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { CalculatorProvider } from '@/components/CalculatorProvider';
 import { NotesProvider } from '@/components/NotesProvider';
 import { MediaViewerProvider } from '@/components/MediaViewerProvider';
+import { validateRuntimeEnv } from '@/lib/env';
+
+validateRuntimeEnv();
 
 export const metadata: Metadata = {
   title: 'Адміністрування школи',
