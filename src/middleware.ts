@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { validateRuntimeEnv } from '@/lib/env';
 
 const PUBLIC_ROUTES = [
   '/login',
@@ -26,8 +25,6 @@ function isPublicRoute(pathname: string): boolean {
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export function middleware(request: NextRequest) {
-  validateRuntimeEnv();
-
   const { pathname } = request.nextUrl
 
   // Пропускаємо публічні маршрути
