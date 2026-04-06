@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, startTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useStudentModals } from '@/components/StudentModalsContext';
@@ -109,6 +109,11 @@ interface StudentsPagination {
   limit: number;
   total: number;
   totalPages: number;
+}
+
+interface StudentsResponse {
+  students: Student[];
+  pagination: StudentsPagination;
 }
 
 const RELATION_OPTIONS = [
@@ -224,6 +229,7 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<StudentsPagination>({
     page: 1,
@@ -264,6 +270,8 @@ export default function StudentsPage() {
   const dropdownButtonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const hasLoadedOnceRef = useRef(false);
+  const studentsCacheRef = useRef<Map<string, StudentsResponse>>(new Map());
+  const requestAbortRef = useRef<AbortController | null>(null);
   
   // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -363,22 +371,58 @@ export default function StudentsPage() {
       sortOrder,
     });
 
-    if (search.trim()) params.set('search', search.trim());
+    if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
     if (courseFilter) params.set('courseId', courseFilter);
     if (groupFilter) params.set('groupId', groupFilter);
     if (selectedAges.length > 0) params.set('ages', selectedAges.join(','));
 
-    const response = await fetch(`/api/students?${params.toString()}`);
-    const result = await response.json();
+    const queryString = params.toString();
+    const cacheKey = queryString;
+    const cached = studentsCacheRef.current.get(cacheKey);
 
-    setStudents(result.students || []);
-    setPagination(result.pagination || {
-      page: currentPage,
-      limit: STUDENTS_PAGE_SIZE,
-      total: (result.students || []).length,
-      totalPages: 1,
+    if (cached) {
+      startTransition(() => {
+        setStudents(cached.students);
+        setPagination(cached.pagination);
+      });
+    }
+
+    requestAbortRef.current?.abort();
+    const controller = new AbortController();
+    requestAbortRef.current = controller;
+
+    const response = await fetch(`/api/students?${queryString}`, { signal: controller.signal });
+    const result = await response.json();
+    const nextResponse: StudentsResponse = {
+      students: result.students || [],
+      pagination: result.pagination || {
+        page: currentPage,
+        limit: STUDENTS_PAGE_SIZE,
+        total: (result.students || []).length,
+        totalPages: 1,
+      },
+    };
+
+    studentsCacheRef.current.set(cacheKey, nextResponse);
+    startTransition(() => {
+      setStudents(nextResponse.students);
+      setPagination(nextResponse.pagination);
     });
-  }, [courseFilter, currentPage, groupFilter, search, selectedAges, sortBy, sortOrder]);
+  }, [courseFilter, currentPage, debouncedSearch, groupFilter, selectedAges, sortBy, sortOrder]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    return () => {
+      requestAbortRef.current?.abort();
+    };
+  }, []);
   
   const toggleNoteExpand = (studentId: number) => {
     setExpandedNotes(prev => {
@@ -438,7 +482,9 @@ export default function StudentsPage() {
       try {
         await loadStudents();
       } catch (error) {
-        console.error('Failed to fetch students:', error);
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error('Failed to fetch students:', error);
+        }
       } finally {
         hasLoadedOnceRef.current = true;
         setLoading(false);
