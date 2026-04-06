@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useStudentModals } from '@/components/StudentModalsContext';
 import { User, useUser } from '@/components/UserContext';
@@ -207,6 +207,7 @@ function formatTime(time: string): string {
 
 export default function StudentsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const firstNameInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
@@ -382,6 +383,12 @@ export default function StudentsPage() {
 
     fetchData();
   }, [router]);
+
+  useEffect(() => {
+    if (searchParams.get('create') === '1') {
+      setShowModal(true);
+    }
+  }, [searchParams]);
 
   // Auto-hide toast after 2 seconds
   useEffect(() => {

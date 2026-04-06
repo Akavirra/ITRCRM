@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { User, useUser } from '@/components/UserContext';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useStudentModals } from '@/components/StudentModalsContext';
@@ -126,6 +126,7 @@ function getMonthOptions(): { value: string; label: string }[] {
 
 export default function PaymentsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { openGroupModal } = useGroupModals();
   const { openStudentModal } = useStudentModals();
 
@@ -414,7 +415,7 @@ export default function PaymentsPage() {
   };
 
   // Open console fresh
-  const openPaymentConsole = () => {
+  const openPaymentConsole = useCallback(() => {
     setStudentSearch('');
     setStudentResults([]);
     setSelectedStudent(null);
@@ -430,7 +431,13 @@ export default function PaymentsPage() {
     setBrowseGroupId(null);
     setBrowseGroupStudents([]);
     setShowPaymentConsole(true);
-  };
+  }, [month]);
+
+  useEffect(() => {
+    if (searchParams.get('newPayment') === '1' && !showPaymentConsole) {
+      openPaymentConsole();
+    }
+  }, [openPaymentConsole, searchParams, showPaymentConsole]);
 
   // Open console pre-filled for a group debtor
   const openPaymentForDebtor = (debtor: StudentDebt) => {
