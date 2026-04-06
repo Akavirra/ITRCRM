@@ -102,6 +102,7 @@ export async function PUT(
       discount,
       parent_relation,
       parent2_name,
+      parent2_phone,
       parent2_relation,
       interested_courses,
       source,
@@ -139,6 +140,7 @@ export async function PUT(
       discount !== undefined ? (discount != null ? parseInt(discount, 10) || 0 : null) : existingStudent.discount,
       parent_relation !== undefined ? parent_relation?.trim() : existingStudent.parent_relation,
       parent2_name !== undefined ? parent2_name?.trim() : existingStudent.parent2_name,
+      parent2_phone !== undefined ? parent2_phone?.trim() : existingStudent.parent2_phone,
       parent2_relation !== undefined ? parent2_relation?.trim() : existingStudent.parent2_relation,
       interested_courses !== undefined ? interested_courses : existingStudent.interested_courses,
       source !== undefined ? source?.trim() : existingStudent.source

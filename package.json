@@ -36,6 +36,7 @@
     "db:add-notes-links": "node scripts/add-notes-links.js",
     "db:add-student-group-status": "node scripts/migrate-student-group-status.js",
     "db:add-enrollment": "node scripts/add-enrollment.js",
+    "db:add-parent2-phone": "node scripts/add-parent2-phone.js",
     "test": "jest"
   },
   "dependencies": {

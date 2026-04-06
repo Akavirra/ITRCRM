@@ -50,6 +50,7 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     parent_phone: phone,
     parent_relation: body.parent_relation || undefined,
     parent2_name: body.parent2_name?.trim() || undefined,
+    parent2_phone: body.parent2_phone?.replace(/[^\d+]/g, '') || undefined,
     parent2_relation: body.parent2_relation || undefined,
     notes: body.notes?.trim() || undefined,
     interested_courses: body.interested_courses || undefined,

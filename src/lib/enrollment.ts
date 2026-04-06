@@ -22,6 +22,7 @@ export interface EnrollmentSubmission {
   parent_phone: string;
   parent_relation: string | null;
   parent2_name: string | null;
+  parent2_phone: string | null;
   parent2_relation: string | null;
   notes: string | null;
   interested_courses: string | null;
@@ -111,6 +112,7 @@ export async function createSubmission(
     parent_phone: string;
     parent_relation?: string;
     parent2_name?: string;
+    parent2_phone?: string;
     parent2_relation?: string;
     notes?: string;
     interested_courses?: string;
@@ -121,8 +123,8 @@ export async function createSubmission(
     `INSERT INTO enrollment_submissions
      (token_id, child_first_name, child_last_name, birth_date, school,
       parent_name, parent_phone, parent_relation,
-      parent2_name, parent2_relation, notes, interested_courses, source)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      parent2_name, parent2_phone, parent2_relation, notes, interested_courses, source)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      RETURNING *`,
     [
       tokenId,
@@ -134,6 +136,7 @@ export async function createSubmission(
       data.parent_phone,
       data.parent_relation || null,
       data.parent2_name || null,
+      data.parent2_phone || null,
       data.parent2_relation || null,
       data.notes || null,
       data.interested_courses || null,
@@ -174,6 +177,7 @@ export async function updateSubmission(
     parent_phone: string;
     parent_relation: string | null;
     parent2_name: string | null;
+    parent2_phone: string | null;
     parent2_relation: string | null;
     notes: string | null;
     interested_courses: string | null;

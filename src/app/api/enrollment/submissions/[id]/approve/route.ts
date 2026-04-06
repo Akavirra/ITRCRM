@@ -36,6 +36,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     undefined,                                     // discount
     submission.parent_relation || undefined,
     submission.parent2_name || undefined,
+    submission.parent2_phone || undefined,
     submission.parent2_relation || undefined,
     submission.interested_courses || undefined,
     submission.source || undefined

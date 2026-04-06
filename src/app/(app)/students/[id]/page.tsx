@@ -29,6 +29,7 @@ interface Student {
   discount: number | null;
   parent_relation: string | null;
   parent2_name: string | null;
+  parent2_phone: string | null;
   parent2_relation: string | null;
   interested_courses: string | null;
   source: string | null;
@@ -63,6 +64,7 @@ interface StudentFormData {
   parent_relation_other: string;
   parent_phone: string;
   parent2_name: string;
+  parent2_phone: string;
   parent2_relation: string;
   parent2_relation_other: string;
   notes: string;
@@ -215,6 +217,7 @@ export default function StudentProfilePage() {
     parent_relation_other: '',
     parent_phone: '',
     parent2_name: '',
+    parent2_phone: '',
     parent2_relation: '',
     parent2_relation_other: '',
     notes: '',
@@ -347,6 +350,7 @@ export default function StudentProfilePage() {
       parent_relation_other: '',
       parent_phone: parentPhoneDigits,
       parent2_name: student.parent2_name || '',
+      parent2_phone: student.parent2_phone || '',
       parent2_relation: student.parent2_relation || '',
       parent2_relation_other: '',
       notes: student.notes || '',
@@ -421,6 +425,7 @@ export default function StudentProfilePage() {
         discount: formData.discount,
         parent_relation: formData.parent_relation === 'other' ? formData.parent_relation_other : formData.parent_relation,
         parent2_name: formData.parent2_name,
+        parent2_phone: formData.parent2_phone || null,
         parent2_relation: formData.parent2_relation === 'other' ? formData.parent2_relation_other : formData.parent2_relation,
         interested_courses: formData.interested_courses.join(', '),
         source: formData.source === 'other' ? formData.source_other : formData.source,
@@ -1203,7 +1208,21 @@ export default function StudentProfilePage() {
                     style={{ width: '100%' }}
                   />
                 </div>
-                
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
+                    Телефон
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.parent2_phone}
+                    onChange={(e) => setFormData({ ...formData, parent2_phone: e.target.value })}
+                    className="form-input"
+                    style={{ width: '100%' }}
+                    placeholder="+380..."
+                  />
+                </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
                     Стосунок

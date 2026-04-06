@@ -63,6 +63,7 @@ interface StudentData {
   discount: number | null;
   parent_relation: string | null;
   parent2_name: string | null;
+  parent2_phone: string | null;
   parent2_relation: string | null;
   interested_courses: string | null;
   source: string | null;
@@ -551,30 +552,32 @@ export default function StudentModalsManager() {
                           {student.parent2_name || 'Батьки'} {student.parent2_relation && <span style={{ color: '#1d4ed8' }}>({getRelationLabel(student.parent2_relation)})</span>}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <a
-                          href={`tel:${student.phone}`}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            navigator.clipboard.writeText(student.phone || '');
-                            setCopiedField({ studentId: student.id, field: 'phone-parent' });
-                            setTimeout(() => setCopiedField(null), 2000);
-                          }}
-                          style={{
-                            color: copiedField?.field === 'phone-parent' && copiedField?.studentId === student.id ? '#2563eb' : '#1e40af',
-                            textDecoration: 'none',
-                            fontSize: '0.8125rem',
-                            fontWeight: '600',
-                            transition: 'color 0.15s',
-                          }}
-                          title="Клікніть щоб скопіювати"
-                        >
-                          {formatPhone(student.phone)}
-                        </a>
-                      </div>
+                      {student.parent2_phone && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <a
+                            href={`tel:${student.parent2_phone}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigator.clipboard.writeText(student.parent2_phone || '');
+                              setCopiedField({ studentId: student.id, field: 'phone-parent2' });
+                              setTimeout(() => setCopiedField(null), 2000);
+                            }}
+                            style={{
+                              color: copiedField?.field === 'phone-parent2' && copiedField?.studentId === student.id ? '#2563eb' : '#1e40af',
+                              textDecoration: 'none',
+                              fontSize: '0.8125rem',
+                              fontWeight: '600',
+                              transition: 'color 0.15s',
+                            }}
+                            title="Клікніть щоб скопіювати"
+                          >
+                            {formatPhone(student.parent2_phone)}
+                          </a>
+                        </div>
+                      )}
                     </div>
                   )}
-                  
+
                   {/* Email */}
                   {student.email && (
                     <div 

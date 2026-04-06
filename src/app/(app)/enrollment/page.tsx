@@ -24,6 +24,7 @@ interface Submission {
   parent_phone: string;
   parent_relation: string | null;
   parent2_name: string | null;
+  parent2_phone: string | null;
   parent2_relation: string | null;
   notes: string | null;
   interested_courses: string | null;
@@ -165,6 +166,7 @@ export default function EnrollmentPage() {
       parent_phone: s.parent_phone,
       parent_relation: s.parent_relation,
       parent2_name: s.parent2_name,
+      parent2_phone: s.parent2_phone,
       parent2_relation: s.parent2_relation,
       notes: s.notes,
       source: s.source,
@@ -401,6 +403,9 @@ export default function EnrollmentPage() {
                       <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '0.5rem 0' }} />
                       <DetailRow label="Дод. контакт" value={editing ? undefined : (selectedSubmission.parent2_name || '—')}>
                         {editing && <input className="form-input" value={editData.parent2_name || ''} onChange={e => setEditData({ ...editData, parent2_name: e.target.value })} />}
+                      </DetailRow>
+                      <DetailRow label="Тел. дод. контакту" value={editing ? undefined : (selectedSubmission.parent2_phone || '—')}>
+                        {editing && <input className="form-input" value={editData.parent2_phone || ''} onChange={e => setEditData({ ...editData, parent2_phone: e.target.value })} />}
                       </DetailRow>
                     </>
                   )}

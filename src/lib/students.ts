@@ -18,6 +18,7 @@ export interface Student {
   discount: number | null;
   parent_relation: string | null;
   parent2_name: string | null;
+  parent2_phone: string | null;
   parent2_relation: string | null;
   interested_courses: string | null;
   source: string | null;
@@ -162,14 +163,15 @@ export async function createStudent(
   discount?: number | null,
   parentRelation?: string,
   parent2Name?: string,
+  parent2Phone?: string,
   parent2Relation?: string,
   interestedCourses?: string,
   source?: string
 ): Promise<{ id: number; public_id: string }> {
   const publicId = await generateUniquePublicId('student', isPublicIdUnique);
   const result = await run(
-    `INSERT INTO students (public_id, full_name, phone, email, parent_name, parent_phone, notes, birth_date, photo, school, discount, parent_relation, parent2_name, parent2_relation, interested_courses, source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
-    [publicId, fullName, phone || null, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount != null ? discount : null, parentRelation || null, parent2Name || null, parent2Relation || null, interestedCourses || null, source || null]
+    `INSERT INTO students (public_id, full_name, phone, email, parent_name, parent_phone, notes, birth_date, photo, school, discount, parent_relation, parent2_name, parent2_phone, parent2_relation, interested_courses, source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
+    [publicId, fullName, phone || null, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount != null ? discount : null, parentRelation || null, parent2Name || null, parent2Phone || null, parent2Relation || null, interestedCourses || null, source || null]
   );
 
   return { id: Number(result[0]?.id || 0), public_id: publicId };
@@ -190,13 +192,14 @@ export async function updateStudent(
   discount?: number | null,
   parentRelation?: string,
   parent2Name?: string,
+  parent2Phone?: string,
   parent2Relation?: string,
   interestedCourses?: string,
   source?: string
 ): Promise<void> {
   await run(
-    `UPDATE students SET full_name = $1, phone = $2, email = $3, parent_name = $4, parent_phone = $5, notes = $6, birth_date = $7, photo = $8, school = $9, discount = $10, parent_relation = $11, parent2_name = $12, parent2_relation = $13, interested_courses = $14, source = $15, updated_at = NOW() WHERE id = $16`,
-    [fullName, phone || null, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount != null ? discount : null, parentRelation || null, parent2Name || null, parent2Relation || null, interestedCourses || null, source || null, id]
+    `UPDATE students SET full_name = $1, phone = $2, email = $3, parent_name = $4, parent_phone = $5, notes = $6, birth_date = $7, photo = $8, school = $9, discount = $10, parent_relation = $11, parent2_name = $12, parent2_phone = $13, parent2_relation = $14, interested_courses = $15, source = $16, updated_at = NOW() WHERE id = $17`,
+    [fullName, phone || null, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount != null ? discount : null, parentRelation || null, parent2Name || null, parent2Phone || null, parent2Relation || null, interestedCourses || null, source || null, id]
   );
 }
 

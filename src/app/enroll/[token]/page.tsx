@@ -30,6 +30,7 @@ interface FormData {
   parent_relation: string;
   parent_relation_other: string;
   parent2_name: string;
+  parent2_phone: string;
   parent2_relation: string;
   parent2_relation_other: string;
   notes: string;
@@ -47,6 +48,7 @@ const initialFormData: FormData = {
   parent_relation: '',
   parent_relation_other: '',
   parent2_name: '',
+  parent2_phone: '',
   parent2_relation: '',
   parent2_relation_other: '',
   notes: '',
@@ -147,6 +149,7 @@ export default function EnrollPage() {
         ? formData.source_other.trim()
         : formData.source,
       parent_phone: formData.parent_phone.replace(/\s/g, ''),
+      parent2_phone: formData.parent2_phone ? formData.parent2_phone.replace(/\s/g, '') : '',
     };
 
     try {
@@ -356,6 +359,32 @@ export default function EnrollPage() {
                   placeholder="Ім'я та прізвище"
                 />
               </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Телефон</label>
+                <input
+                  type="tel"
+                  style={styles.input}
+                  value={formData.parent2_phone ? formatPhoneDisplay(formData.parent2_phone) : ''}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (!val || val === '+') {
+                      handleChange('parent2_phone', '');
+                      return;
+                    }
+                    let digits = val.replace(/\D/g, '');
+                    if (!digits.startsWith('380')) {
+                      if (digits.startsWith('0')) digits = '38' + digits;
+                      else if (digits.startsWith('80')) digits = '3' + digits;
+                      else if (!digits.startsWith('3')) digits = '380' + digits;
+                    }
+                    digits = digits.slice(0, 12);
+                    handleChange('parent2_phone', '+' + digits);
+                  }}
+                  placeholder="+380 XX XXX XX XX"
+                />
+              </div>
+            </div>
+            <div style={styles.row}>
               <div style={styles.field}>
                 <label style={styles.label}>Хто дитині</label>
                 <select

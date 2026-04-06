@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
       discount,
       parent_relation,
       parent2_name,
+      parent2_phone,
       parent2_relation,
       interested_courses,
       source,
@@ -132,6 +133,7 @@ export async function POST(request: NextRequest) {
       discount != null ? parseInt(discount, 10) || 0 : undefined,
       parent_relation?.trim(),
       parent2_name?.trim(),
+      parent2_phone?.trim(),
       parent2_relation?.trim(),
       interestedCoursesJson,
       source?.trim()
