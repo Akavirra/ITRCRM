@@ -8,3 +8,8 @@ node_modules
 tsconfig.tsbuildinfo
 data/
 *.db
+cookies.txt
+dev_output.txt
+diff.txt
+out.txt
+temp_start.txt
