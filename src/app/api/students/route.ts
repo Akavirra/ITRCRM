@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
-import { getStudentsWithGroupCount, getStudents, createStudent, searchStudents, quickSearchStudents, getStudentsWithGroups, searchStudentsWithGroups } from '@/lib/students';
+import { getStudentsWithGroupCount, getStudents, createStudent, searchStudents, quickSearchStudents, getStudentsWithGroups, searchStudentsWithGroups, listStudentsWithGroups, getStudentAgeOptions } from '@/lib/students';
 import { safeAddStudentHistoryEntry } from '@/lib/student-history';
 
 export const dynamic = 'force-dynamic';
@@ -35,22 +35,80 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get('search') || '';
   const withGroupCount = searchParams.get('withGroupCount') === 'true';
   const withGroups = searchParams.get('withGroups') === 'true';
+  const ageOptionsOnly = searchParams.get('ageOptions') === 'true';
+  const courseIdParam = searchParams.get('courseId');
+  const groupIdParam = searchParams.get('groupId');
+  const agesParam = searchParams.get('ages');
+  const sortByParam = searchParams.get('sortBy');
+  const sortOrderParam = searchParams.get('sortOrder');
   
+  if (ageOptionsOnly) {
+    const ages = await getStudentAgeOptions(includeInactive);
+    return NextResponse.json({ ages });
+  }
+
   let students;
   
   // Check for limit param (for autocomplete/pagination)
   const limitParam = searchParams.get('limit');
   const limit = limitParam ? parseInt(limitParam, 10) : null;
+  const pageParam = searchParams.get('page');
+  const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1;
+  const offset = limit ? (page - 1) * limit : 0;
+  const courseId = courseIdParam ? parseInt(courseIdParam, 10) : undefined;
+  const groupId = groupIdParam ? parseInt(groupIdParam, 10) : undefined;
+  const ages = agesParam
+    ? agesParam.split(',').map((value) => parseInt(value, 10)).filter((value) => !Number.isNaN(value))
+    : undefined;
+  const sortBy = sortByParam === 'created_at' ? 'created_at' : 'name';
+  const sortOrder = sortOrderParam === 'desc' ? 'desc' : 'asc';
+  let total: number | undefined;
   
   if (search) {
     // Search with optional limit
     if (limit) {
       students = await quickSearchStudents(search, limit);
-    } else if (withGroups) {
-      students = await searchStudentsWithGroups(search, includeInactive);
+    } else if (withGroups || courseId || groupId || (ages && ages.length > 0)) {
+      const result = await listStudentsWithGroups({
+        includeInactive,
+        search,
+        courseId,
+        groupId,
+        ages,
+        sortBy,
+        sortOrder,
+        limit: withGroups ? limit || 48 : undefined,
+        offset: withGroups ? offset : undefined,
+      });
+      students = result.students;
+      total = result.total;
     } else {
       students = await searchStudents(search, includeInactive);
     }
+  } else if (withGroups && limit) {
+    const result = await listStudentsWithGroups({
+      includeInactive,
+      courseId,
+      groupId,
+      ages,
+      sortBy,
+      sortOrder,
+      limit,
+      offset,
+    });
+    students = result.students;
+    total = result.total;
+  } else if (withGroups && (courseId || groupId || (ages && ages.length > 0) || sortByParam || sortOrderParam)) {
+    const result = await listStudentsWithGroups({
+      includeInactive,
+      courseId,
+      groupId,
+      ages,
+      sortBy,
+      sortOrder,
+    });
+    students = result.students;
+    total = result.total;
   } else if (limit) {
     // Limit without search - get all students with limit
     students = await getStudents(includeInactive);
@@ -64,8 +122,25 @@ export async function GET(request: NextRequest) {
   } else {
     students = await getStudents(includeInactive);
   }
-  
-  return NextResponse.json({ students });
+
+  const response: Record<string, unknown> = { students };
+  if (typeof total === 'number' && limit) {
+    response.pagination = {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    };
+  } else if (typeof total === 'number') {
+    response.pagination = {
+      page: 1,
+      limit: total,
+      total,
+      totalPages: 1,
+    };
+  }
+
+  return NextResponse.json(response);
 }
 
 // POST /api/students - Create student

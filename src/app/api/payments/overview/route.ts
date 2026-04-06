@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized } from '@/lib/api-utils';
-import { getStudentsWithDebt, getTotalDebtForMonth } from '@/lib/students';
+import { getStudentsWithDebt } from '@/lib/students';
 import { getLessonPrice } from '@/lib/payments';
 import { all } from '@/db';
 
@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
 
   // Group debts
   const debtors = await getStudentsWithDebt(month);
-  const { total_debt, students_count } = await getTotalDebtForMonth(month);
+  const total_debt = debtors.reduce((sum, debtor) => sum + debtor.debt, 0);
+  const students_count = new Set(debtors.map((debtor) => debtor.id)).size;
   const lessonPrice = await getLessonPrice();
 
   // Individual students — read directly from individual_balances

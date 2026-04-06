@@ -474,8 +474,9 @@ export async function getStudentsWithDebt(month: string): Promise<StudentWithDeb
     `SELECT value FROM system_settings WHERE key = 'lesson_price'`
   );
   const lessonPrice = parseInt(setting?.value || '300', 10);
+  const monthKey = month.substring(0, 7);
 
-  // Get all active student-group combinations with lesson counts for the month
+  // Get all active student-group combinations with lesson counts and paid amounts for the month
   const rows = await all<{
     id: number;
     full_name: string;
@@ -493,22 +494,61 @@ export async function getStudentsWithDebt(month: string): Promise<StudentWithDeb
     lessons_count: number;
     paid_amount: number;
   }>(
-    `SELECT
-      s.id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
-      CASE WHEN (SELECT COUNT(*) FROM student_groups sg2 WHERE sg2.student_id = s.id AND sg2.is_active = TRUE) > 0
-           OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = s.id AND l2.group_id IS NULL AND l2.status = 'scheduled' AND l2.lesson_date >= CURRENT_DATE)
-           THEN 'studying' ELSE 'not_studying' END as study_status,
-      COALESCE(s.discount::INTEGER, 0) as discount,
-      g.id as group_id, g.title as group_title,
-      (SELECT COUNT(*) FROM lessons l WHERE l.group_id = g.id AND l.status != 'canceled' AND COALESCE(l.is_makeup, FALSE) = FALSE AND COALESCE(l.is_trial, FALSE) = FALSE
-        AND TO_CHAR(l.lesson_date, 'YYYY-MM') = $2) as lessons_count,
-      COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.student_id = s.id AND p.group_id = g.id AND p.month = $1), 0) as paid_amount
-     FROM student_groups sg
-     JOIN students s ON sg.student_id = s.id
-     JOIN groups g ON sg.group_id = g.id
-     WHERE sg.is_active = TRUE AND s.is_active = TRUE AND g.is_active = TRUE
-     ORDER BY s.full_name`,
-    [month, month.substring(0, 7)]
+    `WITH active_links AS (
+       SELECT sg.student_id, sg.group_id
+       FROM student_groups sg
+       JOIN students s ON s.id = sg.student_id
+       JOIN groups g ON g.id = sg.group_id
+       WHERE sg.is_active = TRUE
+         AND s.is_active = TRUE
+         AND g.is_active = TRUE
+     ),
+     lesson_counts AS (
+       SELECT l.group_id, COUNT(*)::INTEGER as lessons_count
+       FROM lessons l
+       WHERE l.group_id IS NOT NULL
+         AND l.status != 'canceled'
+         AND COALESCE(l.is_makeup, FALSE) = FALSE
+         AND COALESCE(l.is_trial, FALSE) = FALSE
+         AND TO_CHAR(l.lesson_date, 'YYYY-MM') = $2
+       GROUP BY l.group_id
+     ),
+     payment_sums AS (
+       SELECT p.student_id, p.group_id, COALESCE(SUM(p.amount), 0)::INTEGER as paid_amount
+       FROM payments p
+       WHERE p.month = $1
+       GROUP BY p.student_id, p.group_id
+     )
+     SELECT
+       s.id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
+       CASE WHEN EXISTS (
+              SELECT 1
+              FROM student_groups sg2
+              WHERE sg2.student_id = s.id AND sg2.is_active = TRUE
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM attendance a2
+              JOIN lessons l2 ON a2.lesson_id = l2.id
+              WHERE a2.student_id = s.id
+                AND l2.group_id IS NULL
+                AND l2.status = 'scheduled'
+                AND l2.lesson_date >= CURRENT_DATE
+            )
+            THEN 'studying' ELSE 'not_studying'
+       END as study_status,
+       COALESCE(s.discount::INTEGER, 0) as discount,
+       g.id as group_id,
+       g.title as group_title,
+       COALESCE(lc.lessons_count, 0) as lessons_count,
+       COALESCE(ps.paid_amount, 0) as paid_amount
+     FROM active_links al
+     JOIN students s ON s.id = al.student_id
+     JOIN groups g ON g.id = al.group_id
+     LEFT JOIN lesson_counts lc ON lc.group_id = g.id
+     LEFT JOIN payment_sums ps ON ps.student_id = s.id AND ps.group_id = g.id
+     ORDER BY s.full_name, g.title`,
+    [month, monthKey]
   );
 
   return rows
@@ -546,79 +586,186 @@ export interface StudentGroupInfo {
   course_title: string;
 }
 
-export async function getStudentsWithGroups(includeInactive: boolean = false): Promise<Array<Student & { groups: StudentGroupInfo[] }>> {
-  // First get all students with study_status computed
-  const studentsSql = includeInactive
-    ? `SELECT students.*, 
-        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
-             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL AND l2.status = 'scheduled' AND l2.lesson_date >= CURRENT_DATE)
-             THEN 'studying' ELSE 'not_studying' END as study_status
-       FROM students ORDER BY full_name`
-    : `SELECT students.*, 
-        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
-             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL AND l2.status = 'scheduled' AND l2.lesson_date >= CURRENT_DATE)
-             THEN 'studying' ELSE 'not_studying' END as study_status
-       FROM students WHERE is_active = TRUE ORDER BY full_name`;
-  
-  const students = await all<Student>(studentsSql);
-  
-  // Then get groups for each student
-  const groupsSql = `
-    SELECT g.id, g.public_id, g.title, c.title as course_title
-    FROM student_groups sg
-    JOIN groups g ON sg.group_id = g.id
-    JOIN courses c ON g.course_id = c.id
-    WHERE sg.student_id = $1 AND sg.is_active = TRUE AND g.is_active = TRUE
-    ORDER BY g.title
-  `;
-  
-  const groupsResults = await Promise.all(
-    students.map(student => all<StudentGroupInfo>(groupsSql, [student.id]))
+export interface StudentsWithGroupsQuery {
+  includeInactive?: boolean;
+  search?: string;
+  limit?: number;
+  offset?: number;
+  courseId?: number;
+  groupId?: number;
+  ages?: number[];
+  sortBy?: 'name' | 'created_at';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface StudentsWithGroupsResult {
+  students: Array<Student & { groups: StudentGroupInfo[] }>;
+  total: number;
+}
+
+function buildStudentsWhereClause(options: StudentsWithGroupsQuery): { whereClause: string; params: unknown[] } {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let paramIndex = 1;
+
+  if (!options.includeInactive) {
+    conditions.push(`s.is_active = TRUE`);
+  }
+
+  if (options.search) {
+    const searchTerm = `%${options.search}%`;
+    conditions.push(`(s.full_name ILIKE $${paramIndex} OR s.phone ILIKE $${paramIndex + 1} OR s.parent_name ILIKE $${paramIndex + 2} OR s.parent_phone ILIKE $${paramIndex + 3})`);
+    params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    paramIndex += 4;
+  }
+
+  if (options.courseId) {
+    conditions.push(`
+      EXISTS (
+        SELECT 1
+        FROM student_groups sg_filter
+        JOIN groups g_filter ON g_filter.id = sg_filter.group_id
+        WHERE sg_filter.student_id = s.id
+          AND sg_filter.is_active = TRUE
+          AND g_filter.is_active = TRUE
+          AND g_filter.course_id = $${paramIndex}
+      )
+    `);
+    params.push(options.courseId);
+    paramIndex += 1;
+  }
+
+  if (options.groupId) {
+    conditions.push(`
+      EXISTS (
+        SELECT 1
+        FROM student_groups sg_filter
+        WHERE sg_filter.student_id = s.id
+          AND sg_filter.is_active = TRUE
+          AND sg_filter.group_id = $${paramIndex}
+      )
+    `);
+    params.push(options.groupId);
+    paramIndex += 1;
+  }
+
+  if (options.ages && options.ages.length > 0) {
+    const agePlaceholders = options.ages.map(() => `$${paramIndex++}`);
+    conditions.push(`EXTRACT(YEAR FROM age(CURRENT_DATE, s.birth_date))::INTEGER IN (${agePlaceholders.join(', ')})`);
+    params.push(...options.ages);
+  }
+
+  return {
+    whereClause: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '',
+    params,
+  };
+}
+
+export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = {}): Promise<StudentsWithGroupsResult> {
+  const { whereClause, params } = buildStudentsWhereClause(options);
+  const sortBy = options.sortBy === 'created_at' ? 'created_at' : 'full_name';
+  const sortOrder = options.sortOrder === 'desc' ? 'DESC' : 'ASC';
+  const limit = typeof options.limit === 'number' ? Math.max(1, options.limit) : null;
+  const offset = typeof options.offset === 'number' ? Math.max(0, options.offset) : 0;
+
+  const totalResult = await get<{ count: number }>(
+    `SELECT COUNT(*)::INTEGER as count
+     FROM students s
+     ${whereClause}`,
+    params
   );
-  
-  return students.map((student, index) => ({
-    ...student,
-    groups: groupsResults[index]
-  }));
+  const total = totalResult?.count || 0;
+
+  const limitClause = limit !== null ? `LIMIT $${params.length + 1} OFFSET $${params.length + 2}` : '';
+  const dataParams = limit !== null ? [...params, limit, offset] : params;
+
+  const rows = await all<
+    Student & {
+      groups: StudentGroupInfo[] | string | null;
+    }
+  >(
+    `WITH paged_students AS (
+       SELECT
+         s.*,
+         CASE WHEN EXISTS (
+                SELECT 1
+                FROM student_groups sg2
+                WHERE sg2.student_id = s.id AND sg2.is_active = TRUE
+              )
+              OR EXISTS (
+                SELECT 1
+                FROM attendance a2
+                JOIN lessons l2 ON a2.lesson_id = l2.id
+                WHERE a2.student_id = s.id
+                  AND l2.group_id IS NULL
+                  AND l2.status = 'scheduled'
+                  AND l2.lesson_date >= CURRENT_DATE
+              )
+              THEN 'studying' ELSE 'not_studying'
+         END as study_status
+       FROM students s
+       ${whereClause}
+       ORDER BY s.${sortBy} ${sortOrder}, s.id ASC
+       ${limitClause}
+     )
+     SELECT
+       ps.*,
+       COALESCE(
+         json_agg(
+           json_build_object(
+             'id', g.id,
+             'public_id', g.public_id,
+             'title', g.title,
+             'course_title', c.title
+           )
+           ORDER BY g.title
+         ) FILTER (WHERE g.id IS NOT NULL),
+         '[]'::json
+       ) as groups
+     FROM paged_students ps
+     LEFT JOIN student_groups sg ON sg.student_id = ps.id AND sg.is_active = TRUE
+     LEFT JOIN groups g ON g.id = sg.group_id AND g.is_active = TRUE
+     LEFT JOIN courses c ON c.id = g.course_id
+     GROUP BY
+       ps.id, ps.public_id, ps.full_name, ps.phone, ps.email, ps.parent_name, ps.parent_phone,
+       ps.notes, ps.birth_date, ps.photo, ps.school, ps.discount, ps.parent_relation, ps.parent2_name,
+       ps.parent2_phone, ps.parent2_relation, ps.interested_courses, ps.source, ps.is_active,
+       ps.study_status, ps.created_at, ps.updated_at
+     ORDER BY ps.${sortBy} ${sortOrder}, ps.id ASC`,
+    dataParams
+  );
+
+  return {
+    students: rows.map((row) => ({
+      ...row,
+      groups: Array.isArray(row.groups) ? row.groups : JSON.parse(String(row.groups || '[]')),
+    })),
+    total,
+  };
+}
+
+export async function getStudentsWithGroups(includeInactive: boolean = false): Promise<Array<Student & { groups: StudentGroupInfo[] }>> {
+  const result = await listStudentsWithGroups({ includeInactive });
+  return result.students;
 }
 
 // Search students with their groups
 export async function searchStudentsWithGroups(query: string, includeInactive: boolean = false): Promise<Array<Student & { groups: StudentGroupInfo[] }>> {
-  const searchTerm = `%${query}%`;
-  const studentsSql = includeInactive
-    ? `SELECT students.*, 
-        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
-             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL AND l2.status = 'scheduled' AND l2.lesson_date >= CURRENT_DATE)
-             THEN 'studying' ELSE 'not_studying' END as study_status
+  const result = await listStudentsWithGroups({ includeInactive, search: query });
+  return result.students;
+}
+
+export async function getStudentAgeOptions(includeInactive: boolean = false): Promise<number[]> {
+  const sql = includeInactive
+    ? `SELECT DISTINCT EXTRACT(YEAR FROM age(CURRENT_DATE, birth_date))::INTEGER as age
        FROM students
-       WHERE full_name ILIKE $1 OR phone ILIKE $2 OR parent_name ILIKE $3 OR parent_phone ILIKE $4
-       ORDER BY full_name`
-    : `SELECT students.*, 
-        CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
-             OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL AND l2.status = 'scheduled' AND l2.lesson_date >= CURRENT_DATE)
-             THEN 'studying' ELSE 'not_studying' END as study_status
+       WHERE birth_date IS NOT NULL
+       ORDER BY age ASC`
+    : `SELECT DISTINCT EXTRACT(YEAR FROM age(CURRENT_DATE, birth_date))::INTEGER as age
        FROM students
-       WHERE is_active = TRUE AND (full_name ILIKE $1 OR phone ILIKE $2 OR parent_name ILIKE $3 OR parent_phone ILIKE $4)
-       ORDER BY full_name`;
-  
-  const students = await all<Student>(studentsSql, [searchTerm, searchTerm, searchTerm, searchTerm]);
-  
-  // Then get groups for each student
-  const groupsSql = `
-    SELECT g.id, g.public_id, g.title, c.title as course_title
-    FROM student_groups sg
-    JOIN groups g ON sg.group_id = g.id
-    JOIN courses c ON g.course_id = c.id
-    WHERE sg.student_id = $1 AND sg.is_active = TRUE AND g.is_active = TRUE
-    ORDER BY g.title
-  `;
-  
-  const groupsResults = await Promise.all(
-    students.map(student => all<StudentGroupInfo>(groupsSql, [student.id]))
-  );
-  
-  return students.map((student, index) => ({
-    ...student,
-    groups: groupsResults[index]
-  }));
+       WHERE is_active = TRUE AND birth_date IS NOT NULL
+       ORDER BY age ASC`;
+
+  const rows = await all<{ age: number }>(sql);
+  return rows.map((row) => row.age).filter((age) => age >= 0);
 }

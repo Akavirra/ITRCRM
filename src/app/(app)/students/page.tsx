@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useStudentModals } from '@/components/StudentModalsContext';
@@ -102,6 +102,13 @@ interface AutocompleteStudent {
   full_name: string;
   phone: string | null;
   parent_name: string | null;
+}
+
+interface StudentsPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 const RELATION_OPTIONS = [
@@ -206,6 +213,7 @@ function formatTime(time: string): string {
 }
 
 export default function StudentsPage() {
+  const STUDENTS_PAGE_SIZE = 48;
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -215,6 +223,13 @@ export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<StudentsPagination>({
+    page: 1,
+    limit: STUDENTS_PAGE_SIZE,
+    total: 0,
+    totalPages: 1,
+  });
   const [showModal, setShowModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [formData, setFormData] = useState<StudentFormData>({
@@ -288,6 +303,7 @@ export default function StudentsPage() {
   const [courseFilter, setCourseFilter] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
   const [selectedAges, setSelectedAges] = useState<number[]>([]);
+  const [allAges, setAllAges] = useState<number[]>([]);
 
   // Note editing state
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
@@ -313,10 +329,10 @@ export default function StudentsPage() {
 
   const clearSelection = () => setSelectedStudents(new Set());
   const handleSelectAll = () => {
-    if (selectedStudents.size === filteredStudents.length && filteredStudents.length > 0) {
+    if (selectedStudents.size === students.length && students.length > 0) {
       clearSelection();
     } else {
-      setSelectedStudents(new Set(filteredStudents.map(s => s.id)));
+      setSelectedStudents(new Set(students.map(s => s.id)));
     }
   };
 
@@ -335,6 +351,32 @@ export default function StudentsPage() {
   // Sorting state
   const [sortBy, setSortBy] = useState<'name' | 'created_at'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const loadStudents = useCallback(async () => {
+    const params = new URLSearchParams({
+      withGroups: 'true',
+      page: String(currentPage),
+      limit: String(STUDENTS_PAGE_SIZE),
+      sortBy,
+      sortOrder,
+    });
+
+    if (search.trim()) params.set('search', search.trim());
+    if (courseFilter) params.set('courseId', courseFilter);
+    if (groupFilter) params.set('groupId', groupFilter);
+    if (selectedAges.length > 0) params.set('ages', selectedAges.join(','));
+
+    const response = await fetch(`/api/students?${params.toString()}`);
+    const result = await response.json();
+
+    setStudents(result.students || []);
+    setPagination(result.pagination || {
+      page: currentPage,
+      limit: STUDENTS_PAGE_SIZE,
+      total: (result.students || []).length,
+      totalPages: 1,
+    });
+  }, [courseFilter, currentPage, groupFilter, search, selectedAges, sortBy, sortOrder]);
   
   const toggleNoteExpand = (studentId: number) => {
     setExpandedNotes(prev => {
@@ -358,22 +400,37 @@ export default function StudentsPage() {
     } catch (e) {
       console.warn('LocalStorage blocked or unavailable:', e);
     }
+  }, []);
 
-    const fetchData = async () => {
+  useEffect(() => {
+    const fetchPageData = async () => {
       try {
-        const studentsRes = await fetch('/api/students?withGroups=true');
-        const studentsData = await studentsRes.json();
-        setStudents(studentsData.students || []);
-        
-        // Fetch courses for filter
-        const coursesRes = await fetch('/api/courses');
+        const [coursesRes, groupsRes, agesRes] = await Promise.all([
+          fetch('/api/courses'),
+          fetch('/api/groups?includeInactive=true'),
+          fetch('/api/students?ageOptions=true'),
+        ]);
+
         const coursesData = await coursesRes.json();
-        setCourses(coursesData.courses || []);
-        
-        // Fetch groups for filter
-        const groupsRes = await fetch('/api/groups?includeInactive=true');
         const groupsData = await groupsRes.json();
+        const agesData = await agesRes.json();
+
+        setCourses(coursesData.courses || []);
         setGroups(groupsData.groups || []);
+        setAllAges(agesData.ages || []);
+      } catch (error) {
+        console.error('Failed to fetch students page filters:', error);
+      }
+    };
+
+    fetchPageData();
+  }, [router]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        await loadStudents();
       } catch (error) {
         console.error('Failed to fetch students:', error);
       } finally {
@@ -382,13 +439,17 @@ export default function StudentsPage() {
     };
 
     fetchData();
-  }, [router]);
+  }, [loadStudents]);
 
   useEffect(() => {
     if (searchParams.get('create') === '1') {
       setShowModal(true);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    setSelectedStudents((prev) => new Set(Array.from(prev).filter((id) => students.some((student) => student.id === id))));
+  }, [students]);
 
   // Auto-hide toast after 2 seconds
   useEffect(() => {
@@ -402,20 +463,13 @@ export default function StudentsPage() {
 
   const handleSearch = async (query: string) => {
     setSearch(query);
-    if (query.trim()) {
-      const res = await fetch(`/api/students?search=${encodeURIComponent(query)}&withGroups=true`);
-      const data = await res.json();
-      setStudents(data.students || []);
-    } else {
-      const res = await fetch('/api/students?withGroups=true');
-      const data = await res.json();
-      setStudents(data.students || []);
-    }
+    setCurrentPage(1);
   };
 
   // Filter handlers
   const handleCourseFilterChange = (courseId: string) => {
     setCourseFilter(courseId);
+    setCurrentPage(1);
     // Reset group filter when course changes
     if (courseId) {
       setGroupFilter('');
@@ -424,9 +478,11 @@ export default function StudentsPage() {
 
   const handleGroupFilterChange = (groupId: string) => {
     setGroupFilter(groupId);
+    setCurrentPage(1);
   };
 
   const handleAgeFilterToggle = (age: number) => {
+    setCurrentPage(1);
     setSelectedAges(prev => 
       prev.includes(age) 
         ? prev.filter(a => a !== age)
@@ -436,64 +492,8 @@ export default function StudentsPage() {
 
   const handleClearAgeFilter = () => {
     setSelectedAges([]);
+    setCurrentPage(1);
   };
-
-  // Filter students based on selected filters
-  const filteredStudents = students.filter(student => {
-    // Course filter
-    if (courseFilter) {
-      const studentCourses = student.groups?.map(g => g.course_title) || [];
-      const course = courses.find(c => c.id === parseInt(courseFilter));
-      if (course && !studentCourses.includes(course.title)) {
-        return false;
-      }
-    }
-
-    // Group filter
-    if (groupFilter) {
-      const studentGroupIds = student.groups?.map(g => g.id) || [];
-      if (!studentGroupIds.includes(parseInt(groupFilter))) {
-        return false;
-      }
-    }
-
-    // Age filter
-    if (selectedAges.length > 0) {
-      const age = calculateAge(student.birth_date);
-      if (age === null || !selectedAges.includes(age)) {
-        return false;
-      }
-    }
-
-    return true;
-  }).sort((a, b) => {
-    // Sorting logic
-    if (sortBy === 'name') {
-      const nameA = a.full_name.toLowerCase();
-      const nameB = b.full_name.toLowerCase();
-      if (sortOrder === 'asc') {
-        return nameA.localeCompare(nameB);
-      } else {
-        return nameB.localeCompare(nameA);
-      }
-    } else if (sortBy === 'created_at') {
-      const dateA = new Date(a.created_at).getTime();
-      const dateB = new Date(b.created_at).getTime();
-      if (sortOrder === 'asc') {
-        return dateA - dateB;
-      } else {
-        return dateB - dateA;
-      }
-    }
-    return 0;
-  });
-
-  // Get unique ages from all students
-  const allAges = Array.from(new Set(students
-    .map(s => calculateAge(s.birth_date))
-    .filter((a): a is number => a !== null)
-    .sort((a, b) => a - b)
-  ));
 
   // Copy phone to clipboard
   const copyPhone = async (phone: string | null, type: 'main' | 'parent') => {
@@ -840,9 +840,7 @@ export default function StudentsPage() {
       }
       
       setShowModal(false);
-      const studentsRes = await fetch('/api/students?withGroups=true');
-      const data = await studentsRes.json();
-      setStudents(data.students || []);
+      await loadStudents();
     } catch (error) {
       console.error('Failed to save student:', error);
       alert('Помилка мережі. Спробуйте ще раз.');
@@ -900,10 +898,7 @@ export default function StudentsPage() {
       if (res.ok) {
         setShowDeleteModal(false);
         setStudentToDelete(null);
-        // Refresh students list
-        const studentsRes = await fetch('/api/students?withGroups=true');
-        const studentsData = await studentsRes.json();
-        setStudents(studentsData.students || []);
+        await loadStudents();
       } else if (res.status === 401) {
         setDeleteError('Невірний пароль');
       } else {
@@ -1185,7 +1180,7 @@ export default function StudentsPage() {
           {/* Right side: count and button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto' }}>
             <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-              {filteredStudents.length} {filteredStudents.length === 1 ? 'учень' : filteredStudents.length > 1 && filteredStudents.length < 5 ? 'учні' : 'учнів'}
+              Показано {students.length} з {pagination.total} {pagination.total === 1 ? 'учня' : pagination.total > 1 && pagination.total < 5 ? 'учнів' : 'учнів'}
             </span>
             
             {/* Sort buttons */}
@@ -1193,6 +1188,7 @@ export default function StudentsPage() {
               <span style={{ fontSize: '0.75rem', color: '#6b7280', marginRight: '0.25rem' }}>Сортування:</span>
               <button
                 onClick={() => {
+                  setCurrentPage(1);
                   if (sortBy === 'name') {
                     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                   } else {
@@ -1223,6 +1219,7 @@ export default function StudentsPage() {
               </button>
               <button
                 onClick={() => {
+                  setCurrentPage(1);
                   if (sortBy === 'created_at') {
                     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                   } else {
@@ -1293,7 +1290,7 @@ export default function StudentsPage() {
         </div>
 
         <div style={{ padding: '1rem 0.75rem' }}>
-          {filteredStudents.length > 0 ? (
+          {students.length > 0 ? (
             <div style={{
               display: 'grid',
               gridTemplateColumns: viewMode === 'detailed' 
@@ -1302,7 +1299,7 @@ export default function StudentsPage() {
               gap: viewMode === 'detailed' ? '1.25rem' : '0.875rem',
               alignItems: 'start',
             }}>
-              {filteredStudents.map((student) => {
+              {students.map((student) => {
                 const age = calculateAge(student.birth_date);
                 const firstLetter = getFirstLetter(student.full_name);
                 
@@ -2122,6 +2119,62 @@ export default function StudentsPage() {
                   {t('emptyStates.addStudent')}
                 </button>
               )}
+            </div>
+          )}
+
+          {pagination.totalPages > 1 && (
+            <div
+              style={{
+                marginTop: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+                flexWrap: 'wrap',
+                paddingTop: '1rem',
+                borderTop: '1px solid #f1f5f9',
+              }}
+            >
+              <div style={{ fontSize: '0.8125rem', color: '#64748b' }}>
+                Сторінка {pagination.page} з {pagination.totalPages}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage <= 1}
+                  style={{
+                    padding: '0.5rem 0.875rem',
+                    borderRadius: '0.625rem',
+                    border: '1px solid #dbe2ea',
+                    backgroundColor: currentPage <= 1 ? '#f8fafc' : 'white',
+                    color: currentPage <= 1 ? '#94a3b8' : '#0f172a',
+                    cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  Назад
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(pagination.totalPages, prev + 1))}
+                  disabled={currentPage >= pagination.totalPages}
+                  style={{
+                    padding: '0.5rem 0.875rem',
+                    borderRadius: '0.625rem',
+                    border: '1px solid #dbe2ea',
+                    backgroundColor: currentPage >= pagination.totalPages ? '#f8fafc' : 'white',
+                    color: currentPage >= pagination.totalPages ? '#94a3b8' : '#0f172a',
+                    cursor: currentPage >= pagination.totalPages ? 'not-allowed' : 'pointer',
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  Далі
+                </button>
+              </div>
             </div>
           )}
         </div>
