@@ -140,6 +140,13 @@ export const uk = {
     inactive: 'Неактивна',
   },
 
+  // Student-group status labels
+  studentGroupStatus: {
+    active: 'Навчається',
+    graduated: 'Випускник',
+    removed: 'Видалений',
+  },
+
   // Roles
   roles: {
     admin: 'Адміністратор',
@@ -472,6 +479,7 @@ export const uk = {
     archiveCourse: 'Архівувати курс "{title}"?',
     restoreCourse: 'Відновити курс "{title}"?',
     removeStudent: 'Видалити учня "{name}" з групи?',
+    graduateStudent: 'Випустити учня "{name}" з групи? Історія відвідуваності та оплат збережеться.',
     deleteCourse: 'Ви впевнені, що хочете видалити курс "{title}"? Цю дію неможливо скасувати.',
   },
 

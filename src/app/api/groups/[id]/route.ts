@@ -3,11 +3,12 @@ import { getAuthUser, unauthorized, isAdmin, forbidden, notFound, checkGroupAcce
 import {
   getGroupById,
   getGroupWithDetailsById,
-  updateGroup, 
+  updateGroup,
   updateGroupStatus,
-  archiveGroup, 
-  restoreGroup, 
+  archiveGroup,
+  restoreGroup,
   getStudentsInGroup,
+  getStudentsInGroupWithGraduated,
   deleteGroup,
   checkGroupDeletion,
   validateTime,
@@ -88,8 +89,13 @@ export async function GET(
   // Add students if requested
   const responseData: any = { group };
   if (withStudents) {
-    // For graduated/archived groups show all students (including inactive) to preserve history
-    responseData.students = await getStudentsInGroup(groupId, group.status === 'graduate' || group.status === 'inactive');
+    if (group.status === 'graduate' || group.status === 'inactive') {
+      // For graduated/archived groups show all students (including inactive) to preserve history
+      responseData.students = await getStudentsInGroup(groupId, true);
+    } else {
+      // For active groups show active + graduated students
+      responseData.students = await getStudentsInGroupWithGraduated(groupId);
+    }
   }
   
   return NextResponse.json(responseData);

@@ -36,9 +36,9 @@ export async function POST(
     [groupId]
   );
 
-  // 2. Deactivate all students in the group
+  // 2. Graduate all students in the group
   await run(
-    `UPDATE student_groups SET is_active = FALSE, leave_date = $1, updated_at = NOW()
+    `UPDATE student_groups SET is_active = FALSE, leave_date = $1, status = 'graduated', updated_at = NOW()
      WHERE group_id = $2 AND is_active = TRUE`,
     [graduation_date, groupId]
   );

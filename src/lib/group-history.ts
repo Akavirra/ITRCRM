@@ -8,6 +8,7 @@ export type GroupHistoryActionType =
   | 'teacher_changed'
   | 'student_added'
   | 'student_removed'
+  | 'student_graduated'
   | 'lesson_conducted'
   | 'status_changed'
   | 'deleted'
@@ -84,6 +85,11 @@ export function formatStudentAddedDescription(studentName: string): string {
 // Helper function to format action description for student removed
 export function formatStudentRemovedDescription(studentName: string): string {
   return `Видалено учня: ${studentName}`;
+}
+
+// Helper function to format action description for student graduated
+export function formatStudentGraduatedDescription(studentName: string, graduationDate: string): string {
+  return `Випущено у��ня: ${studentName} (${graduationDate})`;
 }
 
 // Helper function to format action description for teacher changed

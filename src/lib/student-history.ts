@@ -9,6 +9,7 @@ export type StudentHistoryActionType =
   | 'restored'
   | 'group_joined'
   | 'group_left'
+  | 'group_graduated'
   | 'lesson_attended'
   | 'lesson_missed'
   | 'lesson_makeup_planned'
@@ -123,6 +124,11 @@ export function formatGroupJoinedDescription(groupTitle: string): string {
 // Helper function to format action description for group left
 export function formatGroupLeftDescription(groupTitle: string): string {
   return `Видалений з групи «${groupTitle}»`;
+}
+
+// Helper function to format action description for group graduated
+export function formatGroupGraduatedDescription(groupTitle: string): string {
+  return `Випущений з групи «${groupTitle}»`;
 }
 
 // Helper function to format attendance description

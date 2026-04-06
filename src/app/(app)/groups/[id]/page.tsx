@@ -38,8 +38,10 @@ interface Student {
   parent_name: string | null;
   parent_phone: string | null;
   join_date: string;
+  leave_date: string | null;
   student_group_id: number;
   photo: string | null;
+  sg_status: 'active' | 'graduated' | 'removed';
 }
 
 interface StudentSearch {
@@ -138,6 +140,16 @@ export default function GroupDetailsPage() {
   const [addingStudentId, setAddingStudentId] = useState<number | null>(null);
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Graduate student
+  const [showGraduateStudentModal, setShowGraduateStudentModal] = useState(false);
+  const [graduateStudentTarget, setGraduateStudentTarget] = useState<Student | null>(null);
+  const [graduateStudentDate, setGraduateStudentDate] = useState('');
+  const [graduatingStudent, setGraduatingStudent] = useState(false);
+
+  // Student action dropdown
+  const [studentActionDropdown, setStudentActionDropdown] = useState<number | null>(null);
+  const studentActionRef = useRef<HTMLDivElement>(null);
+
   // Change teacher state
   const [showChangeTeacher, setShowChangeTeacher] = useState(false);
   const [changeTeacherForm, setChangeTeacherForm] = useState({ newTeacherId: '', reason: '' });
@@ -291,8 +303,10 @@ export default function GroupDetailsPage() {
             parent_name: null,
             parent_phone: null,
             join_date: new Date().toISOString(),
+            leave_date: null,
             photo: found.photo || null,
             student_group_id: result.id,
+            sg_status: 'active',
           };
           setStudents(prev => [...prev, newStudent]);
           setGroup(prev => prev ? { ...prev, students_count: (prev.students_count || 0) + 1 } : prev);
@@ -306,6 +320,49 @@ export default function GroupDetailsPage() {
       console.error('Failed to add student:', error);
     } finally {
       setAddingStudentId(null);
+    }
+  };
+
+  // Close student action dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (studentActionRef.current && !studentActionRef.current.contains(e.target as Node)) {
+        setStudentActionDropdown(null);
+      }
+    };
+    if (studentActionDropdown !== null) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [studentActionDropdown]);
+
+  const handleGraduateStudent = async () => {
+    if (!graduateStudentTarget || !graduateStudentDate) return;
+    setGraduatingStudent(true);
+    try {
+      const res = await fetch(`/api/groups/${groupId}/students/graduate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_group_id: graduateStudentTarget.student_group_id,
+          graduation_date: graduateStudentDate,
+        }),
+      });
+
+      if (res.ok) {
+        setShowGraduateStudentModal(false);
+        setGraduateStudentTarget(null);
+        // Refresh data
+        const groupRes = await fetch(`/api/groups/${groupId}?withStudents=true`);
+        const groupData = await groupRes.json();
+        setStudents(groupData.students || []);
+        setGroup(groupData.group);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Помилка випуску учня');
+      }
+    } catch (error) {
+      console.error('Graduate student error:', error);
+    } finally {
+      setGraduatingStudent(false);
     }
   };
 
@@ -869,6 +926,11 @@ export default function GroupDetailsPage() {
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
                   Склад групи
+                  {students.length > 0 && (
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--gray-400)' }}>
+                      ({students.filter(s => s.sg_status === 'active').length}{students.some(s => s.sg_status === 'graduated') ? ` + ${students.filter(s => s.sg_status === 'graduated').length} вип.` : ''})
+                    </span>
+                  )}
                 </h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {isAdmin && (
@@ -900,8 +962,10 @@ export default function GroupDetailsPage() {
               {studentsExpanded && (
               <div style={{ padding: '0.5rem 0' }}>
                 {students.length > 0 ? (
-                  students.map((student) => (
-                    <div 
+                  students.map((student) => {
+                    const isGraduated = student.sg_status === 'graduated';
+                    return (
+                    <div
                       key={student.id}
                       style={{
                         display: 'flex',
@@ -910,17 +974,18 @@ export default function GroupDetailsPage() {
                         borderBottom: '1px solid var(--gray-100)',
                         transition: 'background 0.15s',
                         cursor: 'pointer',
+                        opacity: isGraduated ? 0.7 : 1,
                       }}
                       onClick={() => openStudentModal(student.id, student.full_name)}
                       onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-50)'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
-                      <div style={{ 
-                        width: '36px', 
-                        height: '36px', 
-                        borderRadius: '50%', 
-                        background: student.photo ? 'transparent' : 'var(--gray-100)', 
-                        color: 'var(--gray-600)',
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        background: student.photo ? 'transparent' : isGraduated ? '#ede9fe' : 'var(--gray-100)',
+                        color: isGraduated ? '#7c3aed' : 'var(--gray-600)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -931,19 +996,42 @@ export default function GroupDetailsPage() {
                         overflow: 'hidden',
                       }}>
                         {student.photo ? (
-                          <img 
-                            src={student.photo} 
+                          <img
+                            src={student.photo}
                             alt={student.full_name}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', filter: isGraduated ? 'grayscale(0.5)' : 'none' }}
                           />
+                        ) : isGraduated ? (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                          </svg>
                         ) : (
                           student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)
                         )}
                       </div>
                       <div style={{ flex: 1 }}>
-                        <p style={{ margin: 0, fontSize: '0.9375rem', fontWeight: '500', color: 'var(--gray-900)' }}>{student.full_name}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <p style={{ margin: 0, fontSize: '0.9375rem', fontWeight: '500', color: isGraduated ? 'var(--gray-600)' : 'var(--gray-900)' }}>{student.full_name}</p>
+                          {isGraduated && (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                              padding: '0.125rem 0.5rem', borderRadius: '999px',
+                              fontSize: '0.6875rem', fontWeight: 600,
+                              background: '#ede9fe', color: '#7c3aed',
+                            }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                              </svg>
+                              Випускник
+                            </span>
+                          )}
+                        </div>
                         <p style={{ margin: '0.125rem 0 0 0', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{student.phone || 'Телефон не вказано'}</p>
-                        {student.join_date ? (
+                        {isGraduated && student.leave_date ? (
+                          <p style={{ margin: '0.125rem 0 0 0', fontSize: '0.75rem', color: '#7c3aed' }}>Випущений: {formatDateKyiv(student.leave_date)}</p>
+                        ) : student.join_date ? (
                           <>
                             <p style={{ margin: '0.125rem 0 0 0', fontSize: '0.75rem', color: 'var(--gray-400)' }}>Доданий: {formatDateKyiv(student.join_date)}</p>
                             {(() => {
@@ -961,35 +1049,88 @@ export default function GroupDetailsPage() {
                           </>
                         ) : null}
                       </div>
-                      {isAdmin && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleRemoveStudent(student.student_group_id, student.full_name); }}
-                          style={{
-                            padding: '0.375rem 0.625rem',
-                            background: 'var(--gray-100)',
-                            border: 'none',
-                            borderRadius: '0.375rem',
-                            color: 'var(--gray-500)',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--danger)';
-                            e.currentTarget.style.color = 'white';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'var(--gray-100)';
-                            e.currentTarget.style.color = 'var(--gray-500)';
-                          }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                        </button>
+                      {isAdmin && !isGraduated && (
+                        <div style={{ position: 'relative' }} ref={studentActionDropdown === student.id ? studentActionRef : undefined}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setStudentActionDropdown(studentActionDropdown === student.id ? null : student.id); }}
+                            style={{
+                              padding: '0.375rem',
+                              background: 'var(--gray-100)',
+                              border: 'none',
+                              borderRadius: '0.375rem',
+                              color: 'var(--gray-500)',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--gray-200)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--gray-100)'; }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                              <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                            </svg>
+                          </button>
+                          {studentActionDropdown === student.id && (
+                            <div style={{
+                              position: 'absolute', right: 0, top: 'calc(100% + 4px)',
+                              background: 'white', border: '1px solid var(--gray-200)',
+                              borderRadius: '0.5rem', boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+                              minWidth: '180px', zIndex: 100, overflow: 'hidden',
+                            }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setStudentActionDropdown(null);
+                                  setGraduateStudentTarget(student);
+                                  setGraduateStudentDate(new Date().toISOString().split('T')[0]);
+                                  setShowGraduateStudentModal(true);
+                                }}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                  width: '100%', padding: '0.625rem 0.875rem', background: 'none',
+                                  border: 'none', cursor: 'pointer', fontSize: '0.8125rem',
+                                  color: '#7c3aed', fontWeight: 500, textAlign: 'left',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#f5f3ff'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                                  <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                                </svg>
+                                Випустити
+                              </button>
+                              <div style={{ height: '1px', background: 'var(--gray-100)', margin: '0 0.5rem' }} />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setStudentActionDropdown(null);
+                                  handleRemoveStudent(student.student_group_id, student.full_name);
+                                }}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                  width: '100%', padding: '0.625rem 0.875rem', background: 'none',
+                                  border: 'none', cursor: 'pointer', fontSize: '0.8125rem',
+                                  color: '#dc2626', fontWeight: 500, textAlign: 'left',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <line x1="18" y1="6" x2="6" y2="18" />
+                                  <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                                Видалити з групи
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div style={{ padding: '2.5rem 1.25rem', textAlign: 'center', color: 'var(--gray-400)' }}>
                     <p style={{ margin: 0 }}>Немає учнів у групі</p>
@@ -1494,7 +1635,69 @@ export default function GroupDetailsPage() {
         </div>
       )}
 
-      {/* Graduate Modal */}
+      {/* Graduate Student Modal */}
+      {showGraduateStudentModal && graduateStudentTarget && (
+        <div className="modal-overlay" onClick={() => !graduatingStudent && setShowGraduateStudentModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                  <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                </svg>
+                Випуск учня
+              </h3>
+              <button className="modal-close" onClick={() => setShowGraduateStudentModal(false)} disabled={graduatingStudent}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: '0 0 1.25rem 0', color: '#374151' }}>
+                Випустити учня <strong>{graduateStudentTarget.full_name}</strong> з групи <strong>{group?.title}</strong>?
+              </p>
+              <ul style={{ margin: '0 0 1.25rem 0', paddingLeft: '1.25rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.7 }}>
+                <li>Історія відвідуваності збережеться</li>
+                <li>Історія оплат збережеться</li>
+                <li>Учень залишиться у списку зі статусом «Випускник»</li>
+                <li>Учень не буде в наступних заняттях цієї групи</li>
+                <li>Вже заплановані заняття будуть оновлені</li>
+              </ul>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem', color: '#374151' }}>
+                Дата випуску
+              </label>
+              <input
+                type="date"
+                className="form-input"
+                value={graduateStudentDate}
+                onChange={(e) => setGraduateStudentDate(e.target.value)}
+                disabled={graduatingStudent}
+              />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowGraduateStudentModal(false)} disabled={graduatingStudent}>
+                Скасувати
+              </button>
+              <button
+                className="btn"
+                onClick={handleGraduateStudent}
+                disabled={graduatingStudent || !graduateStudentDate}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  backgroundColor: '#7c3aed', color: 'white', border: 'none',
+                  padding: '0.625rem 1.25rem', borderRadius: '0.5rem',
+                  fontWeight: 500, cursor: graduatingStudent ? 'default' : 'pointer',
+                  opacity: graduatingStudent ? 0.7 : 1,
+                }}
+              >
+                {graduatingStudent && (
+                  <span style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+                )}
+                Випустити учня
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Graduate Group Modal */}
       {showGraduateModal && group && (
         <div className="modal-overlay" onClick={() => !graduating && setShowGraduateModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>

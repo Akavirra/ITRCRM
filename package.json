@@ -34,6 +34,7 @@
     "db:add-notes-archive": "node scripts/add-notes-archive.js",
     "db:add-notes-remind": "node scripts/add-notes-remind.js",
     "db:add-notes-links": "node scripts/add-notes-links.js",
+    "db:add-student-group-status": "node scripts/migrate-student-group-status.js",
     "test": "jest"
   },
   "dependencies": {

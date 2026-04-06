@@ -439,8 +439,10 @@ export async function getStudentsInGroup(groupId: number, includeInactive = fals
   parent_name: string | null;
   parent_phone: string | null;
   join_date: string;
+  leave_date: string | null;
   student_group_id: number;
   photo: string | null;
+  sg_status: string;
 }>> {
   return await all<{
     id: number;
@@ -450,14 +452,52 @@ export async function getStudentsInGroup(groupId: number, includeInactive = fals
     parent_name: string | null;
     parent_phone: string | null;
     join_date: string;
+    leave_date: string | null;
     student_group_id: number;
     photo: string | null;
+    sg_status: string;
   }>(
-    `SELECT s.id, s.public_id, s.full_name, s.phone, s.parent_name, s.parent_phone, sg.join_date, sg.id as student_group_id, s.photo
+    `SELECT s.id, s.public_id, s.full_name, s.phone, s.parent_name, s.parent_phone, sg.join_date, sg.leave_date, sg.id as student_group_id, s.photo, sg.status as sg_status
      FROM students s
      JOIN student_groups sg ON s.id = sg.student_id
      WHERE sg.group_id = $1${includeInactive ? '' : ' AND sg.is_active = TRUE'}
-     ORDER BY s.full_name`,
+     ORDER BY sg.status ASC, s.full_name`,
+    [groupId]
+  );
+}
+
+// Get students in group including graduated (for display on group page)
+export async function getStudentsInGroupWithGraduated(groupId: number): Promise<Array<{
+  id: number;
+  public_id: string;
+  full_name: string;
+  phone: string | null;
+  parent_name: string | null;
+  parent_phone: string | null;
+  join_date: string;
+  leave_date: string | null;
+  student_group_id: number;
+  photo: string | null;
+  sg_status: string;
+}>> {
+  return await all<{
+    id: number;
+    public_id: string;
+    full_name: string;
+    phone: string | null;
+    parent_name: string | null;
+    parent_phone: string | null;
+    join_date: string;
+    leave_date: string | null;
+    student_group_id: number;
+    photo: string | null;
+    sg_status: string;
+  }>(
+    `SELECT s.id, s.public_id, s.full_name, s.phone, s.parent_name, s.parent_phone, sg.join_date, sg.leave_date, sg.id as student_group_id, s.photo, sg.status as sg_status
+     FROM students s
+     JOIN student_groups sg ON s.id = sg.student_id
+     WHERE sg.group_id = $1 AND sg.status IN ('active', 'graduated')
+     ORDER BY sg.status ASC, s.full_name`,
     [groupId]
   );
 }
@@ -475,7 +515,7 @@ export async function addStudentToGroup(studentId: number, groupId: number, join
 // Remove student from group
 export async function removeStudentFromGroup(studentGroupId: number): Promise<void> {
   await run(
-    `UPDATE student_groups SET is_active = FALSE, leave_date = CURRENT_DATE, updated_at = NOW() WHERE id = $1`,
+    `UPDATE student_groups SET is_active = FALSE, leave_date = CURRENT_DATE, status = 'removed', updated_at = NOW() WHERE id = $1`,
     [studentGroupId]
   );
 }
@@ -483,8 +523,24 @@ export async function removeStudentFromGroup(studentGroupId: number): Promise<vo
 // Remove student from group by student and group IDs
 export async function removeStudentFromGroupByIDs(studentId: number, groupId: number): Promise<void> {
   await run(
-    `UPDATE student_groups SET is_active = FALSE, leave_date = CURRENT_DATE, updated_at = NOW() WHERE student_id = $1 AND group_id = $2 AND is_active = TRUE`,
+    `UPDATE student_groups SET is_active = FALSE, leave_date = CURRENT_DATE, status = 'removed', updated_at = NOW() WHERE student_id = $1 AND group_id = $2 AND is_active = TRUE`,
     [studentId, groupId]
+  );
+}
+
+// Graduate student from group (individual graduation)
+export async function graduateStudentFromGroup(studentGroupId: number, graduationDate: string): Promise<void> {
+  await run(
+    `UPDATE student_groups SET is_active = FALSE, leave_date = $1, status = 'graduated', updated_at = NOW() WHERE id = $2`,
+    [graduationDate, studentGroupId]
+  );
+}
+
+// Graduate student from group by student and group IDs
+export async function graduateStudentFromGroupByIDs(studentId: number, groupId: number, graduationDate: string): Promise<void> {
+  await run(
+    `UPDATE student_groups SET is_active = FALSE, leave_date = $1, status = 'graduated', updated_at = NOW() WHERE student_id = $2 AND group_id = $3 AND is_active = TRUE`,
+    [graduationDate, studentId, groupId]
   );
 }
 
@@ -509,7 +565,7 @@ export async function wasStudentInGroup(studentId: number, groupId: number): Pro
 // Reactivate student in group (when they were removed before)
 export async function reactivateStudentInGroup(studentId: number, groupId: number, joinDate?: string): Promise<number> {
   await run(
-    `UPDATE student_groups SET is_active = TRUE, join_date = $1, leave_date = NULL, updated_at = NOW() WHERE student_id = $2 AND group_id = $3 AND is_active = FALSE`,
+    `UPDATE student_groups SET is_active = TRUE, join_date = $1, leave_date = NULL, status = 'active', updated_at = NOW() WHERE student_id = $2 AND group_id = $3 AND is_active = FALSE`,
     [joinDate || new Date().toISOString().split('T')[0], studentId, groupId]
   );
   
