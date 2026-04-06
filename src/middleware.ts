@@ -62,6 +62,11 @@ export function middleware(request: NextRequest) {
   // Назва cookie: session_id (з src/app/api/auth/login/route.ts)
   const token = request.cookies.get('session_id')?.value
 
+  if (pathname === '/') {
+    const url = new URL(token ? '/dashboard' : '/login', request.url)
+    return NextResponse.redirect(url)
+  }
+
   if (!token) {
     const url = new URL('/login', request.url)
     url.searchParams.set('from', pathname)
