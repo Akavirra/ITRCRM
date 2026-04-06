@@ -23,6 +23,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [userPreview, setUserPreview] = useState<UserPreview | null>(null);
   const [loggedInName, setLoggedInName] = useState('');
   const [step, setStep] = useState<'email' | 'password' | 'welcome'>('email');
@@ -67,17 +68,53 @@ export default function LoginPage() {
       setLoggedInName(data.user?.name || '');
       setStep('welcome');
       setTimeout(() => router.push('/dashboard'), 2200);
-    } catch { setError(t('toasts.networkError')); setLoading(false); }
+    } catch {
+      setError(t('toasts.networkError'));
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     if (step === 'password') setTimeout(() => passwordRef.current?.focus(), 50);
   }, [step]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkSession() {
+      try {
+        const res = await fetch('/api/auth/me', { cache: 'no-store' });
+        if (!cancelled && res.ok) {
+          router.replace('/dashboard');
+          return;
+        }
+      } catch {}
+
+      if (!cancelled) {
+        setCheckingSession(false);
+      }
+    }
+
+    checkSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
   const avatarSrc = userPreview?.photo_url || getDicebearUrl(email);
   const firstName = loggedInName?.split(' ')[0] || '';
 
-  /* ── Welcome screen (after successful login) ── */
+  if (checkingSession) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.card}>
+          <p className={styles.subtitle}>{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (step === 'welcome') {
     return (
       <div className={`${styles.container} ${styles.welcomeContainer}`}>
@@ -195,3 +232,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

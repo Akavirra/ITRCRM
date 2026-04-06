@@ -1,27 +1,21 @@
-'use client';
+import { cookies } from '"'"'next/headers'"'"';
+import { redirect } from '"'"'next/navigation'"'"';
+import { getSession } from '"'"'@/lib/auth'"'"';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { t } from '@/i18n/t';
+export const dynamic = '"'"'force-dynamic'"'"';
 
-export default function HomePage() {
-  const router = useRouter();
+export default async function HomePage() {
+  const sessionId = cookies().get('"'"'session_id'"'"')?.value;
 
-  useEffect(() => {
-    router.push('/login');
-  }, [router]);
+  if (!sessionId) {
+    redirect('"'"'/login'"'"');
+  }
 
-  return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{t('app.name')}</div>
-        <div style={{ color: '#6b7280' }}>Перенаправлення на вхід...</div>
-      </div>
-    </div>
-  );
+  const session = await getSession(sessionId);
+
+  if (!session) {
+    redirect('"'"'/login'"'"');
+  }
+
+  redirect('"'"'/dashboard'"'"');
 }
