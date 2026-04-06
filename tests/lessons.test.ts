@@ -1,14 +1,12 @@
-import { generateLessonsForGroup } from '../src/lib/lessons';
-
-// Mock database
-jest.mock('../src/db', () => ({
+jest.mock('@/db', () => ({
   get: jest.fn(),
   all: jest.fn(),
   run: jest.fn(),
   transaction: jest.fn((fn) => fn()),
 }));
 
-import { get, all, run } from '../src/db';
+import { all, get, run } from '@/db';
+import { generateLessonsForGroup } from '@/lib/lessons';
 
 const mockGet = get as jest.MockedFunction<typeof get>;
 const mockAll = all as jest.MockedFunction<typeof all>;
@@ -17,11 +15,17 @@ const mockRun = run as jest.MockedFunction<typeof run>;
 describe('Lesson Generation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2024-01-10T09:00:00Z'));
   });
 
-  test('should generate lessons for a group', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('should generate lessons for a group', async () => {
     // Mock group data
-    mockGet.mockReturnValue({
+    mockGet.mockResolvedValue({
       id: 1,
       weekly_day: 5, // Friday
       start_time: '11:30',
@@ -32,20 +36,21 @@ describe('Lesson Generation', () => {
     });
 
     // Mock existing lessons (empty)
-    mockAll.mockReturnValue([]);
+    mockAll.mockResolvedValue([]);
 
     // Mock insert
-    mockRun.mockReturnValue({ lastInsertRowid: 1, changes: 1 });
+    mockRun.mockResolvedValue([{ id: 1 }] as any);
 
-    const result = generateLessonsForGroup(1, 8, 1);
+    const result = await generateLessonsForGroup(1, 8, 1);
 
     expect(result.generated).toBeGreaterThan(0);
     expect(result.skipped).toBe(0);
+    expect(mockRun).toHaveBeenCalled();
   });
 
-  test('should skip existing lessons', () => {
+  test('should skip existing lessons', async () => {
     // Mock group data
-    mockGet.mockReturnValue({
+    mockGet.mockResolvedValue({
       id: 1,
       weekly_day: 5,
       start_time: '11:30',
@@ -60,16 +65,18 @@ describe('Lesson Generation', () => {
       { lesson_date: '2024-01-12' },
       { lesson_date: '2024-01-19' },
     ];
-    mockAll.mockReturnValue(existingDates);
+    mockAll.mockResolvedValue(existingDates as any);
 
-    const result = generateLessonsForGroup(1, 8, 1);
+    const result = await generateLessonsForGroup(1, 8, 1);
 
     expect(result.skipped).toBeGreaterThan(0);
   });
 
-  test('should throw error for non-existent group', () => {
-    mockGet.mockReturnValue(null);
+  test('should throw error for non-existent group', async () => {
+    mockGet.mockResolvedValue(undefined);
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    expect(() => generateLessonsForGroup(999, 8, 1)).toThrow('Group not found');
+    await expect(generateLessonsForGroup(999, 8, 1)).rejects.toThrow('Group not found');
+    consoleErrorSpy.mockRestore();
   });
 });

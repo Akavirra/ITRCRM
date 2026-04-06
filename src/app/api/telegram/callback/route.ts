@@ -10,9 +10,10 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 
 function verifyTelegramRequest(request: NextRequest): boolean {
-  if (!TELEGRAM_WEBHOOK_SECRET) return true; // skip if secret not configured
+  if (!TELEGRAM_WEBHOOK_SECRET) return false;
   const secret = request.headers.get('x-telegram-bot-api-secret-token');
   if (!secret) return false;
+  if (secret.length !== TELEGRAM_WEBHOOK_SECRET.length) return false;
   return crypto.timingSafeEqual(
     Buffer.from(secret),
     Buffer.from(TELEGRAM_WEBHOOK_SECRET)
@@ -21,6 +22,11 @@ function verifyTelegramRequest(request: NextRequest): boolean {
 
 // POST /api/telegram/callback - Handle callback queries from Telegram inline buttons
 export async function POST(request: NextRequest) {
+  if (!TELEGRAM_WEBHOOK_SECRET) {
+    console.error('[Telegram Callback Error] TELEGRAM_WEBHOOK_SECRET is not configured');
+    return NextResponse.json({ ok: false }, { status: 503 });
+  }
+
   if (!verifyTelegramRequest(request)) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
