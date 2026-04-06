@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, startTransition } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useStudentModals } from '@/components/StudentModalsContext';
@@ -109,11 +109,6 @@ interface StudentsPagination {
   limit: number;
   total: number;
   totalPages: number;
-}
-
-interface StudentsResponse {
-  students: Student[];
-  pagination: StudentsPagination;
 }
 
 const RELATION_OPTIONS = [
@@ -270,7 +265,6 @@ export default function StudentsPage() {
   const dropdownButtonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const hasLoadedOnceRef = useRef(false);
-  const studentsCacheRef = useRef<Map<string, StudentsResponse>>(new Map());
   const requestAbortRef = useRef<AbortController | null>(null);
   
   // Delete modal state
@@ -377,15 +371,6 @@ export default function StudentsPage() {
     if (selectedAges.length > 0) params.set('ages', selectedAges.join(','));
 
     const queryString = params.toString();
-    const cacheKey = queryString;
-    const cached = studentsCacheRef.current.get(cacheKey);
-
-    if (cached) {
-      startTransition(() => {
-        setStudents(cached.students);
-        setPagination(cached.pagination);
-      });
-    }
 
     requestAbortRef.current?.abort();
     const controller = new AbortController();
@@ -393,20 +378,12 @@ export default function StudentsPage() {
 
     const response = await fetch(`/api/students?${queryString}`, { signal: controller.signal });
     const result = await response.json();
-    const nextResponse: StudentsResponse = {
-      students: result.students || [],
-      pagination: result.pagination || {
-        page: currentPage,
-        limit: STUDENTS_PAGE_SIZE,
-        total: (result.students || []).length,
-        totalPages: 1,
-      },
-    };
-
-    studentsCacheRef.current.set(cacheKey, nextResponse);
-    startTransition(() => {
-      setStudents(nextResponse.students);
-      setPagination(nextResponse.pagination);
+    setStudents(result.students || []);
+    setPagination(result.pagination || {
+      page: currentPage,
+      limit: STUDENTS_PAGE_SIZE,
+      total: (result.students || []).length,
+      totalPages: 1,
     });
   }, [courseFilter, currentPage, debouncedSearch, groupFilter, selectedAges, sortBy, sortOrder]);
 
