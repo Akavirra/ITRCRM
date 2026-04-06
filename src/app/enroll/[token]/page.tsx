@@ -11,6 +11,13 @@ const RELATIONS = [
   { value: 'other', label: 'Інше' },
 ];
 
+const SOURCE_OPTIONS = [
+  { value: 'social', label: 'Соціальні мережі' },
+  { value: 'friends', label: 'Знайомі/Рекомендації' },
+  { value: 'search', label: 'Пошук в інтернеті' },
+  { value: 'other', label: 'Інше' },
+];
+
 type FormState = 'loading' | 'form' | 'submitting' | 'success' | 'error';
 
 interface FormData {
@@ -21,10 +28,13 @@ interface FormData {
   parent_name: string;
   parent_phone: string;
   parent_relation: string;
+  parent_relation_other: string;
   parent2_name: string;
   parent2_relation: string;
+  parent2_relation_other: string;
   notes: string;
   source: string;
+  source_other: string;
 }
 
 const initialFormData: FormData = {
@@ -33,13 +43,26 @@ const initialFormData: FormData = {
   birth_date: '',
   school: '',
   parent_name: '',
-  parent_phone: '',
+  parent_phone: '+380',
   parent_relation: '',
+  parent_relation_other: '',
   parent2_name: '',
   parent2_relation: '',
+  parent2_relation_other: '',
   notes: '',
   source: '',
+  source_other: '',
 };
+
+// Format phone: +380XXXXXXXXX → +380 XX XXX XX XX
+function formatPhoneDisplay(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length <= 3) return '+' + digits;
+  if (digits.length <= 5) return '+' + digits.slice(0, 3) + ' ' + digits.slice(3);
+  if (digits.length <= 8) return '+' + digits.slice(0, 3) + ' ' + digits.slice(3, 5) + ' ' + digits.slice(5);
+  if (digits.length <= 10) return '+' + digits.slice(0, 3) + ' ' + digits.slice(3, 5) + ' ' + digits.slice(5, 8) + ' ' + digits.slice(8);
+  return '+' + digits.slice(0, 3) + ' ' + digits.slice(3, 5) + ' ' + digits.slice(5, 8) + ' ' + digits.slice(8, 10) + ' ' + digits.slice(10, 12);
+}
 
 export default function EnrollPage() {
   const params = useParams();
@@ -74,23 +97,35 @@ export default function EnrollPage() {
   };
 
   const handlePhoneChange = (value: string) => {
-    // Auto-format: keep only digits and +
-    const cleaned = value.replace(/[^\d+]/g, '');
-    handleChange('parent_phone', cleaned);
+    // Extract only digits
+    let digits = value.replace(/\D/g, '');
+    // Ensure starts with 380
+    if (!digits.startsWith('380')) {
+      if (digits.startsWith('0')) {
+        digits = '38' + digits;
+      } else if (digits.startsWith('80')) {
+        digits = '3' + digits;
+      } else if (!digits.startsWith('3')) {
+        digits = '380' + digits;
+      }
+    }
+    // Max 12 digits (380 + 9 digits)
+    digits = digits.slice(0, 12);
+    handleChange('parent_phone', '+' + digits);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationErrors([]);
 
-    // Client-side validation
     const errors: string[] = [];
     if (!formData.child_first_name.trim()) errors.push("Ім'я дитини обов'язкове");
     if (!formData.child_last_name.trim()) errors.push("Прізвище дитини обов'язкове");
     if (!formData.parent_name.trim()) errors.push("Ім'я контактної особи обов'язкове");
-    if (!formData.parent_phone.trim()) errors.push('Телефон обов\'язковий');
-    if (formData.parent_phone.replace(/[^\d]/g, '').length < 10)
-      errors.push('Невірний формат телефону');
+    const phoneDigits = formData.parent_phone.replace(/\D/g, '');
+    if (phoneDigits.length < 12) errors.push('Введіть повний номер телефону (12 цифр)');
+    if (formData.parent_relation === 'other' && !formData.parent_relation_other.trim())
+      errors.push("Вкажіть ким ви доводитесь дитині");
 
     if (errors.length > 0) {
       setValidationErrors(errors);
@@ -99,11 +134,26 @@ export default function EnrollPage() {
 
     setState('submitting');
 
+    // Resolve "other" values
+    const submitData = {
+      ...formData,
+      parent_relation: formData.parent_relation === 'other'
+        ? formData.parent_relation_other.trim()
+        : formData.parent_relation,
+      parent2_relation: formData.parent2_relation === 'other'
+        ? formData.parent2_relation_other.trim()
+        : formData.parent2_relation,
+      source: formData.source === 'other'
+        ? formData.source_other.trim()
+        : formData.source,
+      parent_phone: formData.parent_phone.replace(/\s/g, ''),
+    };
+
     try {
       const res = await fetch(`/api/enroll/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
       const data = await res.json();
 
@@ -258,14 +308,14 @@ export default function EnrollPage() {
                 <input
                   type="tel"
                   style={styles.input}
-                  value={formData.parent_phone}
+                  value={formatPhoneDisplay(formData.parent_phone)}
                   onChange={e => handlePhoneChange(e.target.value)}
-                  placeholder="+380..."
+                  placeholder="+380 XX XXX XX XX"
                   required
                 />
               </div>
               <div style={styles.field}>
-                <label style={styles.label}>Хто дитині</label>
+                <label style={styles.label}>Хто дитині *</label>
                 <select
                   style={styles.input}
                   value={formData.parent_relation}
@@ -278,6 +328,18 @@ export default function EnrollPage() {
                 </select>
               </div>
             </div>
+            {formData.parent_relation === 'other' && (
+              <div style={styles.field}>
+                <label style={styles.label}>Вкажіть ким ви доводитесь дитині *</label>
+                <input
+                  style={styles.input}
+                  value={formData.parent_relation_other}
+                  onChange={e => handleChange('parent_relation_other', e.target.value)}
+                  placeholder="Наприклад: тітка, опікун..."
+                  required
+                />
+              </div>
+            )}
           </fieldset>
 
           {/* Parent 2 (optional) */}
@@ -308,6 +370,17 @@ export default function EnrollPage() {
                 </select>
               </div>
             </div>
+            {formData.parent2_relation === 'other' && (
+              <div style={styles.field}>
+                <label style={styles.label}>Вкажіть</label>
+                <input
+                  style={styles.input}
+                  value={formData.parent2_relation_other}
+                  onChange={e => handleChange('parent2_relation_other', e.target.value)}
+                  placeholder="Наприклад: тітка, опікун..."
+                />
+              </div>
+            )}
           </fieldset>
 
           {/* Additional */}
@@ -316,13 +389,28 @@ export default function EnrollPage() {
 
             <div style={styles.field}>
               <label style={styles.label}>Звідки дізнались про школу</label>
-              <input
+              <select
                 style={styles.input}
                 value={formData.source}
                 onChange={e => handleChange('source', e.target.value)}
-                placeholder="Рекомендація, Instagram, Google..."
-              />
+              >
+                <option value="">Оберіть</option>
+                {SOURCE_OPTIONS.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
             </div>
+            {formData.source === 'other' && (
+              <div style={styles.field}>
+                <label style={styles.label}>Вкажіть</label>
+                <input
+                  style={styles.input}
+                  value={formData.source_other}
+                  onChange={e => handleChange('source_other', e.target.value)}
+                  placeholder="Звідки саме..."
+                />
+              </div>
+            )}
 
             <div style={styles.field}>
               <label style={styles.label}>Побажання / коментарі</label>
