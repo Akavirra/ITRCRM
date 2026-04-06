@@ -13,6 +13,7 @@ export const uk = {
     attendance: 'Відвідуваність',
     payments: 'Оплати',
     materials: 'Файли',
+    enrollment: 'Анкети',
     users: 'Користувачі',
     settings: 'Налаштування',
   },
@@ -44,6 +45,12 @@ export const uk = {
     reports: 'Звіти',
     users: 'Користувачі',
     login: 'Вхід',
+    enrollment: 'Анкети',
+  },
+
+  // Enrollment
+  enrollment: {
+    title: 'Електронні анкети',
   },
 
   // App name and branding

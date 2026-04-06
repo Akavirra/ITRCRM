@@ -14,6 +14,7 @@ import {
   ClipboardList,
   FolderOpen,
   Wallet,
+  FileText,
   Sun,
   Cloud,
   CloudRain,
@@ -42,6 +43,7 @@ const menuItems = [
   { href: '/teachers', labelKey: 'nav.teachers', icon: GraduationCap },
   { href: '/attendance', labelKey: 'nav.attendance', icon: ClipboardList },
   { href: '/payments', labelKey: 'nav.payments', icon: Wallet },
+  { href: '/enrollment', labelKey: 'nav.enrollment', icon: FileText },
 ];
 
 const filesMenuItem = { href: '/materials', labelKey: 'nav.materials', icon: FolderOpen };

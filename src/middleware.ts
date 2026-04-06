@@ -13,6 +13,8 @@ const PUBLIC_ROUTES = [
   '/admin-app',
   '/api/admin-app',
   '/api/tg-app',
+  '/enroll',
+  '/api/enroll',
 ]
 
 // Check if pathname starts with any of the public routes
