@@ -54,11 +54,13 @@ export async function all<T = any>(sql: string, params: unknown[] = []): Promise
   return rows as T[];
 }
 
-// Транзакції - Neon підтримує через функцію transaction
+// WARNING: Neon HTTP driver does not support multi-statement transactions.
+// Each call to run/get/all is a separate HTTP request.
+// For atomic operations, use CTE queries (WITH ... DELETE/INSERT) instead.
+// This wrapper executes the callback sequentially but WITHOUT transaction guarantees.
+// Callers that need atomicity should use single-query CTE patterns.
 export async function transaction<T>(fn: () => Promise<T>): Promise<T> {
-  // Neon serverless не має нативної підтримки транзакцій у синхронному режимі
-  // Для транзакцій потрібно використовувати pooling режим або neonPool
-  // Тут повертаємо результат виконання функції
+  console.warn('[DB] transaction() called — no real transaction guarantees with Neon HTTP driver. Use CTE queries for atomicity.');
   return await fn();
 }
 

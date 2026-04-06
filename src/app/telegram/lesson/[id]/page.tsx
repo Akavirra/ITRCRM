@@ -46,14 +46,6 @@ interface Student {
 export default function TelegramLessonPage({ params, searchParams }: { params: { id: string }, searchParams: { teacher_id?: string } }) {
   const lessonId = parseInt(params.id);
   const teacherId = searchParams.teacher_id;
-  console.log('[TelegramLessonPage] Page loaded with params:', params);
-  console.log('[TelegramLessonPage] Parsed lessonId:', lessonId);
-  console.log('[TelegramLessonPage] Teacher ID from URL:', teacherId);
-  
-  // Only access window on client side
-  if (typeof window !== 'undefined') {
-    console.log('[TelegramLessonPage] URL params:', window.location?.search);
-  }
 
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -64,17 +56,10 @@ export default function TelegramLessonPage({ params, searchParams }: { params: {
   const [error, setError] = useState('');
   
   useEffect(() => {
-    console.log('[TelegramLessonPage] Component mounted, lessonId:', lessonId);
-    
     // Initialize Telegram WebApp
     if (window.Telegram?.WebApp) {
-      console.log('[TelegramLessonPage] Initializing WebApp...');
       window.Telegram.WebApp.ready();
       window.Telegram.WebApp.expand();
-      
-      console.log('[TelegramLessonPage] WebApp initialized successfully');
-    } else {
-      console.log('[TelegramLessonPage] Telegram WebApp not available');
     }
     
     // Load data directly (we've removed strict Telegram auth check)

@@ -1,4 +1,4 @@
-import { run, get, all, transaction } from '@/db';
+import { run, get, all } from '@/db';
 import { generateUniquePublicId } from './public-id';
 
 export type StudyStatus = 'studying' | 'not_studying';
@@ -262,22 +262,16 @@ export async function safeDeleteStudent(studentId: number, adminUserId: number):
     };
   }
   
-  // Perform cascade delete using transaction
+  // Atomic cascade delete using CTE (single query = single transaction)
   try {
-    await transaction(async () => {
-      // Delete from student_groups (cascade will handle this, but we do it explicitly for logging)
-      await run(`DELETE FROM student_groups WHERE student_id = $1`, [studentId]);
-      
-      // Delete attendance records (cascade will handle this, but explicit for safety)
-      await run(`DELETE FROM attendance WHERE student_id = $1`, [studentId]);
-      
-      // Delete payment records (cascade will handle this, but explicit for safety)
-      await run(`DELETE FROM payments WHERE student_id = $1`, [studentId]);;
-      
-      // Delete the student
-      await run(`DELETE FROM students WHERE id = $1`, [studentId]);
-    });
-    
+    await run(
+      `WITH del_sg AS (DELETE FROM student_groups WHERE student_id = $1),
+           del_att AS (DELETE FROM attendance WHERE student_id = $1),
+           del_pay AS (DELETE FROM payments WHERE student_id = $1)
+       DELETE FROM students WHERE id = $1`,
+      [studentId]
+    );
+
     // Log the deletion
     console.log(`[STUDENT_DELETE] Student ID ${studentId} (${student.full_name}) deleted by admin user ID ${adminUserId} at ${new Date().toISOString()}`);
     
@@ -303,22 +297,16 @@ export async function forceDeleteStudent(studentId: number, adminUserId: number)
   const activeGroups = await getStudentActiveGroups(studentId);
   const groupsCount = activeGroups.length;
   
-  // Perform cascade delete using transaction
+  // Atomic cascade delete using CTE (single query = single transaction)
   try {
-    await transaction(async () => {
-      // Delete from student_groups
-      await run(`DELETE FROM student_groups WHERE student_id = $1`, [studentId]);
-      
-      // Delete attendance records
-      await run(`DELETE FROM attendance WHERE student_id = $1`, [studentId]);;
-      
-      // Delete payment records
-      await run(`DELETE FROM payments WHERE student_id = $1`, [studentId]);;
-      
-      // Delete the student
-      await run(`DELETE FROM students WHERE id = $1`, [studentId]);
-    });
-    
+    await run(
+      `WITH del_sg AS (DELETE FROM student_groups WHERE student_id = $1),
+           del_att AS (DELETE FROM attendance WHERE student_id = $1),
+           del_pay AS (DELETE FROM payments WHERE student_id = $1)
+       DELETE FROM students WHERE id = $1`,
+      [studentId]
+    );
+
     // Log the deletion with group info
     console.log(`[STUDENT_DELETE] Student ID ${studentId} (${student.full_name}, public_id: ${student.public_id}) deleted by admin user ID ${adminUserId}. Removed from ${groupsCount} group(s) at ${new Date().toISOString()}`);
     

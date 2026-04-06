@@ -60,7 +60,7 @@ interface StudentData {
   birth_date: string | null;
   photo: string | null;
   school: string | null;
-  discount: string | null;
+  discount: number | null;
   parent_relation: string | null;
   parent2_name: string | null;
   parent2_relation: string | null;

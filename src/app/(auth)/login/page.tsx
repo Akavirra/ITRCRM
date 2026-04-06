@@ -6,7 +6,6 @@ import { t } from '@/i18n/t';
 import styles from './login.module.css';
 
 interface UserPreview {
-  name: string;
   photo_url: string | null;
 }
 
@@ -25,6 +24,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [userPreview, setUserPreview] = useState<UserPreview | null>(null);
+  const [loggedInName, setLoggedInName] = useState('');
   const [step, setStep] = useState<'email' | 'password' | 'welcome'>('email');
   const passwordRef = useRef<HTMLInputElement>(null);
   const lookupTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -64,6 +64,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || t('auth.loginFailed')); setLoading(false); return; }
+      setLoggedInName(data.user?.name || '');
       setStep('welcome');
       setTimeout(() => router.push('/dashboard'), 2200);
     } catch { setError(t('toasts.networkError')); setLoading(false); }
@@ -73,8 +74,8 @@ export default function LoginPage() {
     if (step === 'password') setTimeout(() => passwordRef.current?.focus(), 50);
   }, [step]);
 
-  const avatarSrc = userPreview?.photo_url || getDicebearUrl(userPreview?.name || email);
-  const firstName = userPreview?.name?.split(' ')[0] || '';
+  const avatarSrc = userPreview?.photo_url || getDicebearUrl(email);
+  const firstName = loggedInName?.split(' ')[0] || '';
 
   /* ── Welcome screen (after successful login) ── */
   if (step === 'welcome') {
@@ -146,12 +147,9 @@ export default function LoginPage() {
               <div className={styles.userGreeting}>
                 <div className={styles.userAvatar}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={avatarSrc} alt={userPreview?.name || email} />
+                  <img src={avatarSrc} alt={email} />
                 </div>
                 <div>
-                  {userPreview?.name && (
-                    <div className={styles.greetingName}>{t('app.welcomeBack')}, {firstName}!</div>
-                  )}
                   <div className={styles.emailDisplay}>
                     {email}
                     <button type="button" className={styles.changeBtn} onClick={() => { setStep('email'); setPassword(''); setError(''); }}>

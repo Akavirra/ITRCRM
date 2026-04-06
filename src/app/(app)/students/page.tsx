@@ -59,7 +59,7 @@ interface Student {
   birth_date: string | null;
   photo: string | null;
   school: string | null;
-  discount: string | null;
+  discount: number | null;
   parent_relation: string | null;
   parent2_name: string | null;
   parent2_relation: string | null;
@@ -729,7 +729,7 @@ export default function StudentsPage() {
       birth_date: student.birth_date || '',
       email: student.email || '',
       school: student.school || '',
-      discount: student.discount || '',
+      discount: student.discount != null ? String(student.discount) : '',
       photo: student.photo,
       photoFile: null,
       phone: phoneDigits,
@@ -1726,9 +1726,9 @@ export default function StudentsPage() {
                             )}
                           </div>
                           {/* Discount Badge on Avatar Corner */}
-                          {student.discount && (
+                          {student.discount != null && student.discount > 0 && (
                             <div
-                              title={`Знижка на навчання: ${student.discount.replace(/[^0-9]/g, '')}%`}
+                              title={`Знижка на навчання: ${student.discount}%`}
                               style={{
                                 position: 'absolute',
                                 top: '-6px',
@@ -1752,7 +1752,7 @@ export default function StudentsPage() {
                                 <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
                                 <line x1="7" y1="7" x2="7.01" y2="7"></line>
                               </svg>
-                              {student.discount.replace(/[^0-9]/g, '')}%
+                              {student.discount}%
                             </div>
                           )}
                         </div>

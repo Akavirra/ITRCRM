@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { login } from '@/lib/auth';
-import { initializeDatabase } from '@/db';
 
 export const dynamic = 'force-dynamic';
-
-// Initialize database on first request
-let dbInitialized = false;
 
 // Ukrainian error messages
 const ERROR_MESSAGES = {
@@ -17,12 +13,6 @@ const ERROR_MESSAGES = {
 
 export async function POST(request: NextRequest) {
   try {
-    // Initialize database if not done
-    if (!dbInitialized) {
-      initializeDatabase();
-      dbInitialized = true;
-    }
-
     const body = await request.json();
     const { email, password } = body;
 

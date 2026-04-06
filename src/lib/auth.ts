@@ -1,9 +1,7 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { run, get, all } from '@/db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'school-admin-secret-key-change-in-production';
 const SESSION_EXPIRY_HOURS = 24;
 
 export interface User {
@@ -127,25 +125,6 @@ export async function login(email: string, password: string): Promise<{ user: Us
 // Logout
 export async function logout(sessionId: string): Promise<void> {
   await deleteSession(sessionId);
-}
-
-// Create JWT token (alternative to session-based auth)
-export function createToken(userId: number, role: string): string {
-  return jwt.sign(
-    { userId, role },
-    JWT_SECRET,
-    { expiresIn: `${SESSION_EXPIRY_HOURS}h` }
-  );
-}
-
-// Verify JWT token
-export function verifyToken(token: string): { userId: number; role: string } | null {
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; role: string };
-    return decoded;
-  } catch {
-    return null;
-  }
 }
 
 // Check if user has access to group (for teachers)

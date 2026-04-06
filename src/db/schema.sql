@@ -1,5 +1,9 @@
--- School Admin Panel Database Schema
--- SQLite (better-sqlite3) compatible
+-- ⚠️  DEPRECATED — DO NOT USE
+-- This file contains the ORIGINAL SQLite schema and is NOT the current database schema.
+-- The production database is Neon PostgreSQL. The schema has evolved through migrations in scripts/.
+-- This file is kept for historical reference only. Do not apply it to any database.
+--
+-- Original: School Admin Panel Database Schema (SQLite / better-sqlite3)
 
 -- Enable foreign keys
 PRAGMA foreign_keys = ON;

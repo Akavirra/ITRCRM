@@ -161,17 +161,20 @@ export async function generateLessonsForGroup(
       currentDate = addDays(currentDate, 7);
     }
     
-    // Insert all lessons in a transaction
+    // Batch insert all lessons in a single query (atomic)
     if (lessonsToInsert.length > 0) {
-      await transaction(async () => {
-        for (const lesson of lessonsToInsert) {
-          await run(
-            `INSERT INTO lessons (public_id, group_id, lesson_date, start_datetime, end_datetime, status, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            lesson
-          );
-        }
-      });
+      const placeholders: string[] = [];
+      const params: unknown[] = [];
+      for (let i = 0; i < lessonsToInsert.length; i++) {
+        const offset = i * 7;
+        placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7})`);
+        params.push(...lessonsToInsert[i]);
+      }
+      await run(
+        `INSERT INTO lessons (public_id, group_id, lesson_date, start_datetime, end_datetime, status, created_by)
+         VALUES ${placeholders.join(', ')}`,
+        params
+      );
     }
     
     return { generated, skipped };
