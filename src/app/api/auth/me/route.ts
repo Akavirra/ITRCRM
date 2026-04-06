@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession, getUserById } from '@/lib/auth';
+import {
+  getSession,
+  getUserById,
+  refreshSession,
+  SESSION_REFRESH_THRESHOLD_MS,
+} from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +47,14 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    return NextResponse.json({
+    const expiresAtMs = new Date(session.expires_at).getTime();
+    const shouldRefreshSession = expiresAtMs - Date.now() <= SESSION_REFRESH_THRESHOLD_MS;
+
+    if (shouldRefreshSession) {
+      await refreshSession(sessionId);
+    }
+
+    const response = NextResponse.json({
       user: {
         id: user.id,
         name: user.name,
@@ -54,6 +66,18 @@ export async function GET(request: NextRequest) {
         telegram_id: user.telegram_id ?? null,
       },
     });
+
+    if (shouldRefreshSession) {
+      response.cookies.set('session_id', sessionId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60,
+        path: '/',
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error('Auth check error:', error);
     return NextResponse.json(

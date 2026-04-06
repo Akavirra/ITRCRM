@@ -3,6 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { run, get, all } from '@/db';
 
 const SESSION_EXPIRY_HOURS = 24;
+const SESSION_EXPIRY_MS = SESSION_EXPIRY_HOURS * 60 * 60 * 1000;
+export const SESSION_REFRESH_THRESHOLD_HOURS = 12;
+export const SESSION_REFRESH_THRESHOLD_MS = SESSION_REFRESH_THRESHOLD_HOURS * 60 * 60 * 1000;
 
 export interface User {
   id: number;
@@ -39,7 +42,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 // Create session
 export async function createSession(userId: number): Promise<string> {
   const sessionId = uuidv4();
-  const expiresAt = new Date(Date.now() + SESSION_EXPIRY_HOURS * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + SESSION_EXPIRY_MS);
   
   await run(
     `INSERT INTO sessions (id, user_id, expires_at) VALUES ($1, $2, $3)`,
@@ -57,6 +60,17 @@ export async function getSession(sessionId: string): Promise<Session | null> {
   );
   
   return session || null;
+}
+
+export async function refreshSession(sessionId: string): Promise<string> {
+  const expiresAt = new Date(Date.now() + SESSION_EXPIRY_MS);
+
+  await run(
+    `UPDATE sessions SET expires_at = $2 WHERE id = $1`,
+    [sessionId, expiresAt.toISOString()]
+  );
+
+  return expiresAt.toISOString();
 }
 
 // Delete session

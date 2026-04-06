@@ -34,6 +34,8 @@ const adminMenuItems = [
   { href: '/users', labelKey: 'nav.users', icon: 'settings' },
 ];
 
+const SESSION_HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000;
+
 export default function Layout({ children, user, headerActions, hideNavbar }: LayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -65,6 +67,31 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
       setSidebarOpen(false);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    let active = true;
+
+    const refreshSession = async () => {
+      try {
+        const response = await fetch('/api/auth/me', { cache: 'no-store' });
+
+        if (!response.ok && response.status === 401 && active) {
+          router.replace('/login');
+        }
+      } catch {
+        // Ignore transient network errors and try again on the next heartbeat.
+      }
+    };
+
+    refreshSession();
+
+    const intervalId = window.setInterval(refreshSession, SESSION_HEARTBEAT_INTERVAL_MS);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [router]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
