@@ -202,26 +202,9 @@ function SidebarInfoWidget() {
 
   // Generate dynamic styles based on time & weather
   const getWidgetTheme = () => {
-    let bg = 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.4) 100%)';
-    let borderColor = 'rgba(255, 255, 255, 0.8)';
-    let shadow = '0 8px 32px -4px rgba(15, 23, 42, 0.04)';
-
-    const currentHour = now.getHours();
-
-    if (currentHour >= 20 || currentHour < 6) { // Night
-      bg = 'linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(226, 232, 240, 0.5) 100%)';
-      borderColor = 'rgba(255, 255, 255, 0.6)';
-    } else if (currentHour >= 6 && currentHour < 10) { // Morning
-      bg = 'linear-gradient(135deg, rgba(255, 253, 245, 0.9) 0%, rgba(255, 248, 231, 0.5) 100%)';
-    } else if (currentHour >= 17 && currentHour < 20) { // Evening
-      bg = 'linear-gradient(135deg, rgba(255, 247, 245, 0.9) 0%, rgba(255, 235, 235, 0.4) 100%)';
-    } else if (weather) { // Day, depend on weather
-      if (weather.code >= 200 && weather.code < 700) { // rain / snow / clouds
-        bg = 'linear-gradient(135deg, rgba(244, 244, 245, 0.9) 0%, rgba(228, 228, 231, 0.5) 100%)';
-      } else if (weather.code === 800 || weather.code === 801) { // clear/sunny
-        bg = 'linear-gradient(135deg, rgba(255, 254, 245, 0.95) 0%, rgba(255, 249, 219, 0.4) 100%)';
-      }
-    }
+    const bg = 'linear-gradient(135deg, rgba(248, 250, 252, 0.85) 0%, rgba(241, 245, 249, 0.5) 100%)';
+    const borderColor = 'rgba(226, 232, 240, 0.6)';
+    const shadow = '0 4px 16px -4px rgba(15, 23, 42, 0.04)';
     return { bg, borderColor, shadow };
   };
 
