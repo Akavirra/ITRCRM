@@ -1211,20 +1211,6 @@ export default function StudentProfilePage() {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
-                    Телефон
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.parent2_phone}
-                    onChange={(e) => setFormData({ ...formData, parent2_phone: e.target.value })}
-                    className="form-input"
-                    style={{ width: '100%' }}
-                    placeholder="+380..."
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
                     Стосунок
                   </label>
                   <select

@@ -2533,19 +2533,6 @@ export default function StudentsPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">{t('forms.phone')}</label>
-                    <input
-                      type="tel"
-                      className="form-input"
-                      value={formData.parent2_phone}
-                      onChange={(e) => setFormData({ ...formData, parent2_phone: e.target.value })}
-                      placeholder="+380..."
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
                     <label className="form-label">{t('forms.whoIsThis')}</label>
                     <select
                       className="form-input"
