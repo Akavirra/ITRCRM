@@ -1,5 +1,3 @@
-import 'server-only';
-
 type EnvMap = Record<string, string | undefined>;
 
 const REQUIRED_IN_PRODUCTION = [
