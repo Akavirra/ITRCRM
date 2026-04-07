@@ -1319,16 +1319,6 @@ export default function LessonModalsManager() {
                                 }}
                               />
                             </label>
-                            {photoUploadProgress[modal.id] && (
-                              <div style={{
-                                marginBottom: '0.75rem',
-                                fontSize: '0.75rem',
-                                color: '#6b7280',
-                                textAlign: 'center',
-                              }}>
-                                {`Завантажено ${photoUploadProgress[modal.id]!.current} з ${photoUploadProgress[modal.id]!.total}`}
-                              </div>
-                            )}
                           </>
                         )}
 
