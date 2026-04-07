@@ -117,6 +117,14 @@ const Navbar: React.FC<NavbarProps> = ({
   const [profilePhotoBase64, setProfilePhotoBase64] = useState<string | null>(null);
   const [dicebearSeed, setDicebearSeed] = useState<string>('');
   const [pendingDicebearSeed, setPendingDicebearSeed] = useState<string | null>(null);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -464,6 +472,48 @@ const Navbar: React.FC<NavbarProps> = ({
       setTimeout(() => setSaved(false), 2000);
     } catch { /* silent */ } finally {
       setProfileSaving(false);
+    }
+  };
+
+  const handlePasswordInputChange = (field: 'currentPassword' | 'newPassword' | 'confirmPassword', value: string) => {
+    setPasswordForm(prev => ({ ...prev, [field]: value }));
+    setPasswordMessage(null);
+    setPasswordError(null);
+  };
+
+  const handlePasswordSave = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordError('Заповніть усі поля для зміни пароля');
+      return;
+    }
+
+    setPasswordSaving(true);
+    setPasswordMessage(null);
+    setPasswordError(null);
+
+    try {
+      const res = await fetch('/api/settings/password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(passwordForm),
+      });
+      const d = await res.json();
+
+      if (!res.ok) {
+        setPasswordError(d.error || 'Не вдалося змінити пароль');
+        return;
+      }
+
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      setPasswordMessage(d.message || 'Пароль успішно змінено');
+    } catch {
+      setPasswordError('Не вдалося змінити пароль');
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -1095,6 +1145,84 @@ const Navbar: React.FC<NavbarProps> = ({
                           onChange={e => handleSettingChange('telegram_id', e.target.value)}
                           placeholder="123456789" style={{ maxWidth: '360px' }} />
                         <span className="form-hint">Числовий ID в Telegram. Необхідний для доступу до міні-додатку.</span>
+                      </div>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
+                      <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Зміна пароля</h3>
+                      <div className="form-group">
+                        <label className="form-label">Поточний пароль</label>
+                        <input
+                          type="password"
+                          className="form-input"
+                          value={passwordForm.currentPassword}
+                          onChange={e => handlePasswordInputChange('currentPassword', e.target.value)}
+                          placeholder="Введіть поточний пароль"
+                          autoComplete="current-password"
+                          style={{ maxWidth: '360px' }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Новий пароль</label>
+                        <input
+                          type="password"
+                          className="form-input"
+                          value={passwordForm.newPassword}
+                          onChange={e => handlePasswordInputChange('newPassword', e.target.value)}
+                          placeholder="Не менше 6 символів"
+                          autoComplete="new-password"
+                          style={{ maxWidth: '360px' }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Підтвердіть новий пароль</label>
+                        <input
+                          type="password"
+                          className="form-input"
+                          value={passwordForm.confirmPassword}
+                          onChange={e => handlePasswordInputChange('confirmPassword', e.target.value)}
+                          placeholder="Повторіть новий пароль"
+                          autoComplete="new-password"
+                          style={{ maxWidth: '360px' }}
+                        />
+                      </div>
+
+                      {passwordError && (
+                        <div style={{ color: '#dc2626', fontSize: '0.875rem', fontWeight: 500, marginTop: '-0.25rem', marginBottom: '0.75rem' }}>
+                          {passwordError}
+                        </div>
+                      )}
+
+                      {passwordMessage && (
+                        <div style={{ color: '#16a34a', fontSize: '0.875rem', fontWeight: 500, marginTop: '-0.25rem', marginBottom: '0.75rem' }}>
+                          {passwordMessage}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            setPasswordForm({
+                              currentPassword: '',
+                              newPassword: '',
+                              confirmPassword: '',
+                            });
+                            setPasswordMessage(null);
+                            setPasswordError(null);
+                          }}
+                          disabled={passwordSaving}
+                        >
+                          Очистити
+                        </button>
+                        <button
+                          className="btn btn-primary"
+                          onClick={handlePasswordSave}
+                          disabled={passwordSaving}
+                        >
+                          <Save size={14} />
+                          {passwordSaving ? 'Збереження...' : 'Змінити пароль'}
+                        </button>
                       </div>
                     </div>
 
