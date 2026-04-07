@@ -55,23 +55,23 @@ interface Student {
   phone: string | null;
   email: string | null;
   parent_name: string | null;
-  parent_phone: string | null;
   notes: string | null;
   birth_date: string | null;
   photo: string | null;
   school: string | null;
   discount: number | null;
   parent_relation: string | null;
-  parent2_name: string | null;
-  parent2_phone: string | null;
-  parent2_relation: string | null;
-  interested_courses: string | null;
-  source: string | null;
-  groups_count: number;
-  is_active: boolean;
-  created_at: string;
   study_status: 'studying' | 'not_studying';
-  groups?: StudentGroup[];
+  groups: StudentGroup[];
+  parent_phone?: string | null;
+  parent2_name?: string | null;
+  parent2_phone?: string | null;
+  parent2_relation?: string | null;
+  interested_courses?: string | null;
+  source?: string | null;
+  groups_count?: number;
+  is_active?: boolean;
+  created_at?: string;
 }
 
 interface StudentFormData {
@@ -715,54 +715,66 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
     loadSchools();
   };
 
-  const handleEdit = (student: Student) => {
-    setEditingStudent(student);
-    
-    // Parse full name into first and last name
-    const nameParts = student.full_name.trim().split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-    
-    // Extract 9 digits from phone (remove +380 prefix if present)
-    let phoneDigits = '';
-    if (student.phone) {
-      const digits = student.phone.replace(/\D/g, '');
-      phoneDigits = digits.slice(-9);
+  const handleEdit = async (student: Student) => {
+    try {
+      const res = await fetch(`/api/students/${student.id}`);
+      if (!res.ok) {
+        throw new Error('Failed to load full student details');
+      }
+
+      const data = await res.json();
+      const fullStudent: Student = data.student || student;
+
+      setEditingStudent(fullStudent);
+
+      // Parse full name into first and last name
+      const nameParts = fullStudent.full_name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      // Extract 9 digits from phone (remove +380 prefix if present)
+      let phoneDigits = '';
+      if (fullStudent.phone) {
+        const digits = fullStudent.phone.replace(/\D/g, '');
+        phoneDigits = digits.slice(-9);
+      }
+      
+      let parentPhoneDigits = '';
+      if (fullStudent.parent_phone) {
+        const digits = fullStudent.parent_phone.replace(/\D/g, '');
+        parentPhoneDigits = digits.slice(-9);
+      }
+      
+      setFormData({
+        first_name: firstName,
+        last_name: lastName,
+        birth_date: fullStudent.birth_date || '',
+        email: fullStudent.email || '',
+        school: fullStudent.school || '',
+        discount: fullStudent.discount != null ? String(fullStudent.discount) : '',
+        photo: fullStudent.photo,
+        photoFile: null,
+        phone: phoneDigits,
+        parent_name: fullStudent.parent_name || '',
+        parent_relation: fullStudent.parent_relation || '',
+        parent_relation_other: '',
+        parent_phone: parentPhoneDigits,
+        parent2_name: fullStudent.parent2_name || '',
+        parent2_phone: fullStudent.parent2_phone || '',
+        parent2_relation: fullStudent.parent2_relation || '',
+        parent2_relation_other: '',
+        notes: fullStudent.notes || '',
+        interested_courses: fullStudent.interested_courses ? fullStudent.interested_courses.split(',').map(s => s.trim()).filter(Boolean) : [],
+        source: fullStudent.source || '',
+        source_other: '',
+      });
+      setShowModal(true);
+      loadCourses();
+      loadSchools();
+    } catch (error) {
+      console.error('Failed to load student for edit:', error);
+      setToast({ message: 'Не вдалося завантажити повні дані учня', type: 'error' });
     }
-    
-    let parentPhoneDigits = '';
-    if (student.parent_phone) {
-      const digits = student.parent_phone.replace(/\D/g, '');
-      parentPhoneDigits = digits.slice(-9);
-    }
-    
-    setFormData({
-      first_name: firstName,
-      last_name: lastName,
-      birth_date: student.birth_date || '',
-      email: student.email || '',
-      school: student.school || '',
-      discount: student.discount != null ? String(student.discount) : '',
-      photo: student.photo,
-      photoFile: null,
-      phone: phoneDigits,
-      parent_name: student.parent_name || '',
-      parent_relation: student.parent_relation || '',
-      parent_relation_other: '',
-      parent_phone: parentPhoneDigits,
-      parent2_name: student.parent2_name || '',
-      parent2_phone: student.parent2_phone || '',
-      parent2_relation: student.parent2_relation || '',
-      parent2_relation_other: '',
-      notes: student.notes || '',
-      interested_courses: student.interested_courses ? student.interested_courses.split(',').map(s => s.trim()).filter(Boolean) : [],
-      source: student.source || '',
-      source_other: '',
-    });
-    setShowModal(true);
-    // Load courses and schools for autocomplete
-    loadCourses();
-    loadSchools();
   };
 
   const validateForm = (): boolean => {

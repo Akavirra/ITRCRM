@@ -627,9 +627,32 @@ export interface StudentsWithGroupsQuery {
 }
 
 export interface StudentsWithGroupsResult {
-  students: Array<Student & { groups: StudentGroupInfo[] }>;
+  students: Array<StudentListStudent>;
   total: number;
 }
+
+export type StudentListStudent = Pick<
+  Student,
+  | 'id'
+  | 'public_id'
+  | 'full_name'
+  | 'phone'
+  | 'email'
+  | 'parent_name'
+  | 'notes'
+  | 'birth_date'
+  | 'photo'
+  | 'school'
+  | 'discount'
+  | 'parent_relation'
+  | 'study_status'
+> & {
+  groups: StudentGroupInfo[];
+};
+
+type StudentListItemRow = Omit<StudentListStudent, 'groups'> & {
+  groups: StudentGroupInfo[] | string | null;
+};
 
 function buildStudentsWhereClause(options: StudentsWithGroupsQuery): { whereClause: string; params: unknown[] } {
   const conditions: string[] = [];
@@ -707,14 +730,21 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
   const limitClause = limit !== null ? `LIMIT $${params.length + 1} OFFSET $${params.length + 2}` : '';
   const dataParams = limit !== null ? [...params, limit, offset] : params;
 
-  const rows = await all<
-    Student & {
-      groups: StudentGroupInfo[] | string | null;
-    }
-  >(
+  const rows = await all<StudentListItemRow>(
     `WITH paged_students AS (
        SELECT
-         s.*,
+         s.id,
+         s.public_id,
+         s.full_name,
+         s.phone,
+         s.email,
+         s.parent_name,
+         s.notes,
+         s.birth_date,
+         s.photo,
+         s.school,
+         s.discount,
+         s.parent_relation,
          CASE WHEN EXISTS (
                 SELECT 1
                 FROM student_groups sg2
@@ -755,10 +785,9 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
      LEFT JOIN groups g ON g.id = sg.group_id AND g.is_active = TRUE
      LEFT JOIN courses c ON c.id = g.course_id
      GROUP BY
-       ps.id, ps.public_id, ps.full_name, ps.phone, ps.email, ps.parent_name, ps.parent_phone,
-       ps.notes, ps.birth_date, ps.photo, ps.school, ps.discount, ps.parent_relation, ps.parent2_name,
-       ps.parent2_phone, ps.parent2_relation, ps.interested_courses, ps.source, ps.is_active,
-       ps.study_status, ps.created_at, ps.updated_at
+       ps.id, ps.public_id, ps.full_name, ps.phone, ps.email, ps.parent_name,
+       ps.notes, ps.birth_date, ps.photo, ps.school, ps.discount, ps.parent_relation,
+       ps.study_status
      ORDER BY ps.${sortBy} ${sortOrder}, ps.id ASC`,
     dataParams
   );
@@ -772,13 +801,13 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
   };
 }
 
-export async function getStudentsWithGroups(includeInactive: boolean = false): Promise<Array<Student & { groups: StudentGroupInfo[] }>> {
+export async function getStudentsWithGroups(includeInactive: boolean = false): Promise<StudentListStudent[]> {
   const result = await listStudentsWithGroups({ includeInactive });
   return result.students;
 }
 
 // Search students with their groups
-export async function searchStudentsWithGroups(query: string, includeInactive: boolean = false): Promise<Array<Student & { groups: StudentGroupInfo[] }>> {
+export async function searchStudentsWithGroups(query: string, includeInactive: boolean = false): Promise<StudentListStudent[]> {
   const result = await listStudentsWithGroups({ includeInactive, search: query });
   return result.students;
 }
