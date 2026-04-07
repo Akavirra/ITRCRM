@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
   const withGroupCount = searchParams.get('withGroupCount') === 'true';
   const withGroups = searchParams.get('withGroups') === 'true';
   const ageOptionsOnly = searchParams.get('ageOptions') === 'true';
+  const autocompleteOnly = searchParams.get('autocomplete') === 'true';
   const courseIdParam = searchParams.get('courseId');
   const groupIdParam = searchParams.get('groupId');
   const agesParam = searchParams.get('ages');
@@ -50,6 +51,13 @@ export async function GET(request: NextRequest) {
       () => getStudentAgeOptions(includeInactive)
     );
     return NextResponse.json({ ages });
+  }
+
+  if (autocompleteOnly) {
+    const limitParam = searchParams.get('limit');
+    const limit = limitParam ? Math.min(parseInt(limitParam, 10), 20) : 10;
+    const students = search ? await quickSearchStudents(search, limit) : [];
+    return NextResponse.json({ students });
   }
 
   let students;

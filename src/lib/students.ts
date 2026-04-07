@@ -28,6 +28,12 @@ export interface Student {
   updated_at: string;
 }
 
+export interface StudentAutocompleteOption {
+  id: number;
+  full_name: string;
+  public_id: string;
+}
+
 export interface StudentWithGroups extends Student {
   groups: Array<{
     id: number;
@@ -379,19 +385,41 @@ export async function searchStudents(query: string, includeInactive: boolean = f
   return await all<Student & { groups_count: number }>(sql, [searchTerm, searchTerm, searchTerm, searchTerm]);
 }
 
-// Quick search for autocomplete - returns basic student info
-export async function quickSearchStudents(query: string, limit: number = 10): Promise<Student[]> {
-  const searchTerm = `%${query}%`;
-  const sql = `SELECT students.*, 
-                CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
-                     OR EXISTS (SELECT 1 FROM attendance a2 JOIN lessons l2 ON a2.lesson_id = l2.id WHERE a2.student_id = students.id AND l2.group_id IS NULL AND l2.status = 'scheduled' AND l2.lesson_date >= CURRENT_DATE)
-                     THEN 'studying' ELSE 'not_studying' END as study_status
-               FROM students 
-                WHERE is_active = TRUE AND (full_name ILIKE $1 OR phone ILIKE $2)
-               ORDER BY full_name
-               LIMIT $3`;
-  
-  return await all<Student>(sql, [searchTerm, searchTerm, limit]);
+// Quick search for autocomplete - returns only the fields needed for lightweight selectors
+export async function quickSearchStudents(query: string, limit: number = 10): Promise<StudentAutocompleteOption[]> {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) return [];
+
+  const prefixTerm = `${trimmedQuery}%`;
+  const containsTerm = `%${trimmedQuery}%`;
+  const normalizedPhone = trimmedQuery.replace(/[^\d+]/g, '');
+  const phonePrefixTerm = normalizedPhone ? `${normalizedPhone}%` : '';
+  const phoneContainsTerm = normalizedPhone ? `%${normalizedPhone}%` : '';
+
+  return await all<StudentAutocompleteOption>(
+    `SELECT
+        id,
+        full_name,
+        public_id
+     FROM students
+     WHERE is_active = TRUE
+       AND (
+         full_name ILIKE $1
+         OR full_name ILIKE $2
+         OR ($3 <> '' AND phone ILIKE $3)
+         OR ($4 <> '' AND phone ILIKE $4)
+       )
+     ORDER BY
+       CASE
+         WHEN full_name ILIKE $1 THEN 0
+         WHEN $3 <> '' AND phone ILIKE $3 THEN 1
+         WHEN full_name ILIKE $2 THEN 2
+         ELSE 3
+       END,
+       full_name
+     LIMIT $5`,
+    [prefixTerm, containsTerm, phonePrefixTerm, phoneContainsTerm, limit]
+  );
 }
 
 // Get student attendance history

@@ -64,6 +64,7 @@ interface OverviewData {
 interface StudentSearchResult {
   id: number;
   full_name: string;
+  public_id?: string;
 }
 
 // Student payment info from API
@@ -152,6 +153,8 @@ export default function PaymentsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchCacheRef = useRef<Map<string, StudentSearchResult[]>>(new Map());
   // lesson counts per group per month: { "groupId:YYYY-MM": count }
   const [lessonCounts, setLessonCounts] = useState<Record<string, number>>({});
   const [consoleTab, setConsoleTab] = useState<'group' | 'individual'>('group');
@@ -303,21 +306,49 @@ export default function PaymentsPage() {
 
   // Search students for payment console
   const searchStudents = useCallback(async (query: string) => {
-    if (query.length < 2) {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.length < 2) {
+      searchAbortRef.current?.abort();
       setStudentResults([]);
       return;
     }
+
+    const cached = searchCacheRef.current.get(normalizedQuery);
+    if (cached) {
+      setStudentResults(cached);
+      return;
+    }
+
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+
     setSearchLoading(true);
     try {
-      const res = await fetch(`/api/students?search=${encodeURIComponent(query)}&limit=8`);
+      const params = new URLSearchParams({
+        search: query.trim(),
+        limit: '8',
+        autocomplete: 'true',
+      });
+      const res = await fetch(`/api/students?${params}`, { signal: controller.signal });
       if (res.ok) {
         const json = await res.json();
-        setStudentResults((json.students || []).map((s: { id: number; full_name: string }) => ({
+        const results = (json.students || []).map((s: { id: number; full_name: string; public_id?: string }) => ({
           id: s.id,
           full_name: s.full_name,
-        })));
+          public_id: s.public_id,
+        }));
+        searchCacheRef.current.set(normalizedQuery, results);
+        setStudentResults(results);
       }
-    } catch { /* ignore */ } finally {
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        /* ignore */
+      }
+    } finally {
+      if (searchAbortRef.current === controller) {
+        searchAbortRef.current = null;
+      }
       setSearchLoading(false);
     }
   }, []);
@@ -325,7 +356,7 @@ export default function PaymentsPage() {
   const handleStudentSearchChange = (value: string) => {
     setStudentSearch(value);
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    searchTimeoutRef.current = setTimeout(() => searchStudents(value), 300);
+    searchTimeoutRef.current = setTimeout(() => searchStudents(value), 180);
   };
 
   // Fetch students for a group (browse mode)
