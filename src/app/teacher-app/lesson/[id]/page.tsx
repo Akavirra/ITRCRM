@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv, formatDateTimeKyiv } from '@/lib/date-utils';
-import { splitFilesIntoUploadBatches, getUploadErrorMessage } from '@/lib/client-photo-upload';
+import { splitFilesIntoUploadBatches, getUploadErrorMessage, prepareImageFilesForUpload } from '@/lib/client-photo-upload';
 import {
   CheckCircleIcon, ClipboardIcon, ClockIcon, RefreshIcon, UsersIcon,
   BookOpenIcon, AlertTriangleIcon, FileTextIcon, EditIcon, SaveIcon,
@@ -377,13 +377,14 @@ export default function LessonDetailPage() {
     setUploadingPhotos(true);
 
     try {
-      const batches = splitFilesIntoUploadBatches(pendingPhotos, (photo) => photo.file.size);
+      const preparedPhotos = await prepareImageFilesForUpload(pendingPhotos.map((photo) => photo.file));
+      const batches = splitFilesIntoUploadBatches(preparedPhotos, (file) => file.size);
       let latestResult: { photoFolder?: LessonData['photoFolder']; photos?: LessonPhoto[] } | null = null;
 
       for (const batch of batches) {
         const formData = new FormData();
-        batch.forEach((photo) => {
-          formData.append('files', photo.file);
+        batch.forEach((file) => {
+          formData.append('files', file);
         });
 
         const response = await fetch(`/api/teacher-app/lessons/${lessonId}/photos`, {
