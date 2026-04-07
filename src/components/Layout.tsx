@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { t } from '@/i18n/t';
 import Sidebar from './Sidebar/Sidebar';
@@ -34,7 +34,7 @@ const adminMenuItems = [
   { href: '/users', labelKey: 'nav.users', icon: 'settings' },
 ];
 
-const SESSION_HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000;
+const SESSION_REFRESH_THROTTLE_MS = 5 * 60 * 1000;
 
 export default function Layout({ children, user, headerActions, hideNavbar }: LayoutProps) {
   const router = useRouter();
@@ -68,10 +68,23 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
     }
   }, [pathname]);
 
+  const lastSessionCheckRef = useRef(0);
+
   useEffect(() => {
     let active = true;
 
-    const refreshSession = async () => {
+    const refreshSessionIfNeeded = async (force = false) => {
+      if (!active || document.hidden) {
+        return;
+      }
+
+      const now = Date.now();
+      if (!force && now - lastSessionCheckRef.current < SESSION_REFRESH_THROTTLE_MS) {
+        return;
+      }
+
+      lastSessionCheckRef.current = now;
+
       try {
         const response = await fetch('/api/auth/me', { cache: 'no-store' });
 
@@ -79,17 +92,31 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
           router.replace('/login');
         }
       } catch {
-        // Ignore transient network errors and try again on the next heartbeat.
+        // Ignore transient network errors and retry on the next foreground interaction.
       }
     };
 
-    refreshSession();
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        void refreshSessionIfNeeded(true);
+      }
+    };
 
-    const intervalId = window.setInterval(refreshSession, SESSION_HEARTBEAT_INTERVAL_MS);
+    const handleUserActivity = () => {
+      void refreshSessionIfNeeded(false);
+    };
+
+    window.addEventListener('focus', handleUserActivity);
+    window.addEventListener('pointerdown', handleUserActivity);
+    window.addEventListener('keydown', handleUserActivity);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       active = false;
-      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleUserActivity);
+      window.removeEventListener('pointerdown', handleUserActivity);
+      window.removeEventListener('keydown', handleUserActivity);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [router]);
 

@@ -1,48 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized } from '@/lib/api-utils';
 import { run, get } from '@/db';
+import { clearServerCache, getOrSetServerCache } from '@/lib/server-cache';
 
 export const dynamic = 'force-dynamic';
 
-// Ukrainian error messages
 const ERROR_MESSAGES = {
   notAuthenticated: 'Необхідна авторизація',
   updateFailed: 'Не вдалося оновити налаштування',
-  invalidField: 'Невірне значення поля',
 };
 
-// GET /api/settings - Get user settings
 export async function GET(request: NextRequest) {
   const user = await getAuthUser(request);
-  
+
   if (!user) {
     return unauthorized();
   }
-  
+
   try {
-    // Get user settings from database
-    const settings = await get(
-      `SELECT
-        u.name,
-        u.email,
-        up.phone,
-        up.language,
-        up.timezone,
-        up.date_format,
-        up.currency,
-        up.email_notifications,
-        up.push_notifications,
-        up.lesson_reminders,
-        up.payment_alerts,
-        up.weekly_report,
-        up.weather_city
-      FROM users u
-      LEFT JOIN user_settings up ON u.id = up.user_id
-      WHERE u.id = $1`,
-      [user.id]
+    const settings = await getOrSetServerCache(
+      `settings:${user.id}`,
+      60 * 1000,
+      () => get(
+        `SELECT
+          u.name,
+          u.email,
+          up.phone,
+          up.language,
+          up.timezone,
+          up.date_format,
+          up.currency,
+          up.email_notifications,
+          up.push_notifications,
+          up.lesson_reminders,
+          up.payment_alerts,
+          up.weekly_report,
+          up.weather_city
+        FROM users u
+        LEFT JOIN user_settings up ON u.id = up.user_id
+        WHERE u.id = $1`,
+        [user.id]
+      )
     );
-    
-    // If no settings exist, return defaults
+
     if (!settings) {
       return NextResponse.json({
         settings: {
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-    
+
     const s = settings as any;
     return NextResponse.json({
       settings: {
@@ -90,19 +90,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT /api/settings - Update user settings
 export async function PUT(request: NextRequest) {
   const user = await getAuthUser(request);
-  
+
   if (!user) {
     return unauthorized();
   }
-  
+
   try {
     const body = await request.json();
     const {
       displayName,
-      email,
       phone,
       language,
       timezone,
@@ -115,17 +113,14 @@ export async function PUT(request: NextRequest) {
       weeklyReport,
       weatherCity,
     } = body;
-    
-    // Update user name
+
     if (displayName !== undefined) {
       await run(`UPDATE users SET name = $1 WHERE id = $2`, [displayName, user.id]);
     }
-    
-    // Check if user_settings exists
+
     const existingSettings = await get(`SELECT user_id FROM user_settings WHERE user_id = $1`, [user.id]);
-    
+
     if (existingSettings) {
-      // Update existing settings
       await run(
         `UPDATE user_settings SET
           phone = $1,
@@ -156,7 +151,6 @@ export async function PUT(request: NextRequest) {
         ]
       );
     } else {
-      // Insert new settings
       await run(
         `INSERT INTO user_settings (
           user_id,
@@ -188,7 +182,9 @@ export async function PUT(request: NextRequest) {
         ]
       );
     }
-    
+
+    clearServerCache(`settings:${user.id}`);
+
     return NextResponse.json({
       message: 'Налаштування успішно збережено',
     });

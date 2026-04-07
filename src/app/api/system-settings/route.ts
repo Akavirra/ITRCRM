@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, forbidden } from '@/lib/api-utils';
 import { all, run } from '@/db';
+import { clearServerCache, getOrSetServerCache } from '@/lib/server-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,14 +16,15 @@ export async function GET(request: NextRequest) {
   if (!user) return unauthorized();
 
   try {
-    const rows = await all<{ key: string; value: string }>(
-      `SELECT key, value FROM system_settings`
+    const rows = await getOrSetServerCache(
+      'system-settings:all',
+      60 * 1000,
+      () => all<{ key: string; value: string }>(`SELECT key, value FROM system_settings`)
     );
     const settings: Record<string, string> = { ...DEFAULTS };
     for (const row of rows) settings[row.key] = row.value;
     return NextResponse.json({ settings });
   } catch {
-    // Table may not exist yet — return defaults
     return NextResponse.json({ settings: DEFAULTS });
   }
 }
@@ -51,6 +53,8 @@ export async function PUT(request: NextRequest) {
       );
     }
   }
+
+  clearServerCache('system-settings:');
 
   return NextResponse.json({ success: true });
 }

@@ -21,13 +21,31 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const [notesOpen, setNotesOpen] = useState(false);
   const toggleNotes = () => setNotesOpen(v => !v);
 
-  // Background reminder polling (every 90s)
+  // Background reminder polling runs only while the tab is visible.
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
+    const checkReminders = () => {
+      if (document.hidden) {
+        return;
+      }
+
       fetch('/api/notes/check-reminders', { method: 'POST' }).catch(() => {});
-    }, 90000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    };
+
+    intervalRef.current = setInterval(checkReminders, 90000);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkReminders();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   return (

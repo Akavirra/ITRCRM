@@ -517,21 +517,19 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     return () => window.clearInterval(interval);
   }, []);
 
-  // Poll unread notifications + birthdays
+  // Sidebar consumes the shared notification state published by the navbar.
   useEffect(() => {
-    const check = async () => {
-      try {
-        const res = await fetch('/api/notifications?count=true');
-        if (res.ok) {
-          const data = await res.json();
-          setHasNotifications((data.unreadCount ?? 0) > 0);
-          setHasBirthday(!!data.hasBirthday);
-        }
-      } catch { }
+    const handleNotificationUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<{ unreadCount: number; hasBirthday: boolean }>).detail;
+      setHasNotifications((detail?.unreadCount ?? 0) > 0);
+      setHasBirthday(Boolean(detail?.hasBirthday));
     };
-    check();
-    const interval = setInterval(check, 30_000);
-    return () => clearInterval(interval);
+
+    window.addEventListener('app:notifications-updated', handleNotificationUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('app:notifications-updated', handleNotificationUpdate as EventListener);
+    };
   }, []);
 
   // Eyes follow mouse + idle sleep detection

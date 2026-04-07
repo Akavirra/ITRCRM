@@ -4,10 +4,10 @@ import { all, run, get } from '@/db';
 import { hashPassword } from '@/lib/auth';
 import { generatePublicId } from '@/lib/public-id';
 import { uploadImage } from '@/lib/cloudinary';
+import { clearServerCache, getOrSetServerCache } from '@/lib/server-cache';
 
 export const dynamic = 'force-dynamic';
 
-// GET /api/teachers - список викладачів
 export async function GET(req: NextRequest) {
   try {
     const currentUser = await getAuthUser(req);
@@ -18,15 +18,17 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const simple = searchParams.get('simple') === 'true';
 
-    // Lightweight mode: only id + name (for dropdowns)
     if (simple) {
-      const teachers = await all<{ id: number; name: string }>(
-        `SELECT id, name FROM users WHERE role = 'teacher' AND is_active = TRUE ORDER BY name ASC`
+      const teachers = await getOrSetServerCache(
+        'teachers:simple',
+        60 * 1000,
+        () => all<{ id: number; name: string }>(
+          `SELECT id, name FROM users WHERE role = 'teacher' AND is_active = TRUE ORDER BY name ASC`
+        )
       );
       return NextResponse.json({ teachers });
     }
 
-    // Full mode: teachers with their active groups (single JOIN query, no N+1)
     const rows = await all(`
       SELECT
         u.id, u.public_id, u.name, u.email, u.phone, u.telegram_id,
@@ -47,7 +49,6 @@ export async function GET(req: NextRequest) {
       ORDER BY u.name ASC, c.title ASC, g.weekly_day ASC, g.start_time ASC
     `);
 
-    // Collapse rows into per-teacher objects
     const teacherMap = new Map<number, any>();
     for (const row of rows as any[]) {
       if (!teacherMap.has(row.id)) {
@@ -88,14 +89,13 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/teachers - створення викладача
 export async function POST(req: NextRequest) {
   try {
     const currentUser = await getAuthUser(req);
     if (!currentUser) {
       return unauthorized();
     }
-    
+
     if (currentUser.role !== 'admin') {
       return forbidden();
     }
@@ -106,15 +106,13 @@ export async function POST(req: NextRequest) {
       return badRequest('Name and email are required');
     }
 
-    // Generate password if not provided (for auto-generated login)
     const password = Math.random().toString(36).slice(-8);
     const hashedPassword = await hashPassword(password);
-    
-    // Generate unique public_id
+
     let publicId = generatePublicId('teacher');
     let retries = 0;
     const maxRetries = 5;
-    
+
     while (retries < maxRetries) {
       const existing = await get<{ id: number }>('SELECT id FROM users WHERE public_id = $1', [publicId]);
       if (!existing) break;
@@ -122,7 +120,6 @@ export async function POST(req: NextRequest) {
       retries++;
     }
 
-    // Check if email is already taken
     const emailConflict = await get<{ role: string }>('SELECT role FROM users WHERE email = $1', [email.trim().toLowerCase()]);
     if (emailConflict) {
       if (emailConflict.role === 'admin') {
@@ -131,26 +128,26 @@ export async function POST(req: NextRequest) {
       return badRequest('Викладач з таким email вже існує');
     }
 
-    // Handle photo - upload to Cloudinary if base64
     let photoUrl = null;
     if (photo && photo.startsWith('data:')) {
-      // Upload photo to Cloudinary
       const uploadResult = await uploadImage(photo, 'teachers');
       photoUrl = uploadResult.url;
     }
-    
+
     const result = await run(`
       INSERT INTO users (public_id, name, email, password_hash, role, phone, telegram_id, notes, photo_url, is_active)
       VALUES ($1, $2, $3, $4, 'teacher', $5, $6, $7, $8, TRUE)
       RETURNING id
     `, [publicId, name, email, hashedPassword, phone || null, telegram_id || null, notes || null, photoUrl]);
 
-    return NextResponse.json({ 
-      id: result[0]?.id, 
-      public_id: publicId, 
-      name, 
+    clearServerCache('teachers:');
+
+    return NextResponse.json({
+      id: result[0]?.id,
+      public_id: publicId,
+      name,
       email,
-      auto_password: password // Return auto-generated password for admin to share
+      auto_password: password
     }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating teacher:', error);

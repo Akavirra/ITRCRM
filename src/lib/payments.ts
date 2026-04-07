@@ -87,26 +87,47 @@ export async function getPaymentStatusForGroupMonth(
     parent_name: string | null;
     parent_phone: string | null;
     discount: number | null;
+    total_paid: number;
+    payments: Payment[] | string | null;
   }>(
     `SELECT s.id as student_id, s.full_name as student_name, s.phone as student_phone,
-            s.parent_name, s.parent_phone, COALESCE(s.discount::INTEGER, 0) as discount
+            s.parent_name, s.parent_phone, COALESCE(s.discount::INTEGER, 0) as discount,
+            COALESCE(SUM(p.amount), 0)::INTEGER as total_paid,
+            COALESCE(
+              json_agg(
+                json_build_object(
+                  'id', p.id,
+                  'student_id', p.student_id,
+                  'group_id', p.group_id,
+                  'month', p.month,
+                  'amount', p.amount,
+                  'method', p.method,
+                  'paid_at', p.paid_at,
+                  'note', p.note,
+                  'created_by', p.created_by,
+                  'created_at', p.created_at
+                )
+                ORDER BY p.paid_at DESC, p.id DESC
+              ) FILTER (WHERE p.id IS NOT NULL),
+              '[]'::json
+            ) as payments
      FROM students s
      JOIN student_groups sg ON s.id = sg.student_id
+     LEFT JOIN payments p ON p.student_id = s.id AND p.group_id = $1 AND p.month = $2
      WHERE sg.group_id = $1 AND sg.is_active = TRUE AND s.is_active = TRUE
+     GROUP BY s.id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.discount
      ORDER BY s.full_name`,
-    [groupId]
+    [groupId, month]
   );
 
-  return await Promise.all(students.map(async student => {
-    const payments = await all<Payment>(
-      `SELECT * FROM payments WHERE student_id = $1 AND group_id = $2 AND month = $3`,
-      [student.student_id, groupId, month]
-    );
-
+  return students.map((student) => {
     const discountPercent = student.discount || 0;
     const effectivePrice = Math.round(lessonPrice * (1 - discountPercent / 100));
     const expectedAmount = lessonsCount * effectivePrice;
-    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const payments = Array.isArray(student.payments)
+      ? student.payments
+      : JSON.parse(String(student.payments || '[]')) as Payment[];
+    const totalPaid = student.total_paid || 0;
 
     return {
       student_id: student.student_id,
@@ -123,7 +144,7 @@ export async function getPaymentStatusForGroupMonth(
       debt: Math.max(0, expectedAmount - totalPaid),
       payments
     };
-  }));
+  });
 }
 
 // Create payment
@@ -337,17 +358,20 @@ export async function getPaymentStatusForLesson(
     }
   } else {
     // Individual lesson: check balance for each student in the attendance list
-    const attendanceStudents = await all<{ student_id: number }>(
-      `SELECT student_id FROM attendance WHERE lesson_id = $1`,
+    const attendanceStudents = await all<{
+      student_id: number;
+      lessons_paid: number | null;
+      lessons_used: number | null;
+    }>(
+      `SELECT a.student_id, ib.lessons_paid, ib.lessons_used
+       FROM attendance a
+       LEFT JOIN individual_balances ib ON ib.student_id = a.student_id
+       WHERE a.lesson_id = $1`,
       [lessonId]
     );
 
-    for (const { student_id } of attendanceStudents) {
-      const balance = await get<{ lessons_paid: number; lessons_used: number }>(
-        `SELECT lessons_paid, lessons_used FROM individual_balances WHERE student_id = $1`,
-        [student_id]
-      );
-      const remaining = balance ? balance.lessons_paid - balance.lessons_used : 0;
+    for (const { student_id, lessons_paid, lessons_used } of attendanceStudents) {
+      const remaining = (lessons_paid || 0) - (lessons_used || 0);
       if (remaining > 0) {
         result.set(student_id, { status: 'paid', label: 'Оплачено' });
       } else {

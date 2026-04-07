@@ -142,6 +142,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [hasBirthday, setHasBirthday] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
   const [clearing, setClearing] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -187,13 +188,29 @@ const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   // ── Poll unread count every 60 s ──────────────────────────────────────────
+  const broadcastNotificationState = useCallback((nextUnreadCount: number, nextHasBirthday: boolean) => {
+    window.dispatchEvent(new CustomEvent('app:notifications-updated', {
+      detail: {
+        unreadCount: nextUnreadCount,
+        hasBirthday: nextHasBirthday,
+      },
+    }));
+  }, []);
+
   const fetchUnreadCount = useCallback(async () => {
+    if (document.hidden) {
+      return;
+    }
+
     try {
       const res = await fetch('/api/notifications?count=true');
       if (res.ok) {
         const data = await res.json();
         const newCount = data.unreadCount ?? 0;
+        const nextHasBirthday = Boolean(data.hasBirthday);
         setUnreadCount(newCount);
+        setHasBirthday(nextHasBirthday);
+        broadcastNotificationState(newCount, nextHasBirthday);
         // Play sound when new notifications arrive (skip on first load)
         if (prevUnreadRef.current !== null && newCount > prevUnreadRef.current) {
           playNotificationSound();
@@ -201,12 +218,29 @@ const Navbar: React.FC<NavbarProps> = ({
         prevUnreadRef.current = newCount;
       }
     } catch { /* silent */ }
-  }, []);
+  }, [broadcastNotificationState]);
 
   useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 15_000);
-    return () => clearInterval(interval);
+    void fetchUnreadCount();
+
+    const interval = setInterval(() => {
+      void fetchUnreadCount();
+    }, 30_000);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        void fetchUnreadCount();
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchUnreadCount]);
 
   // ── Close notification panel on outside click ─────────────────────────────
@@ -231,6 +265,7 @@ const Navbar: React.FC<NavbarProps> = ({
       });
       setNotifications([]);
       setUnreadCount(0);
+      broadcastNotificationState(0, hasBirthday);
     } catch { /* silent */ } finally {
       setClearing(false);
     }
@@ -248,6 +283,7 @@ const Navbar: React.FC<NavbarProps> = ({
         setNotifications(data.notifications ?? []);
         // Optimistically clear badge
         setUnreadCount(0);
+        broadcastNotificationState(0, hasBirthday);
         // Mark all as read server-side
         fetch('/api/notifications', {
           method: 'POST',

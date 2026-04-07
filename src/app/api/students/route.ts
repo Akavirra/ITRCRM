@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
 import { getStudentsWithGroupCount, getStudents, createStudent, searchStudents, quickSearchStudents, getStudentsWithGroups, searchStudentsWithGroups, listStudentsWithGroups, getStudentAgeOptions } from '@/lib/students';
 import { safeAddStudentHistoryEntry } from '@/lib/student-history';
+import { getOrSetServerCache } from '@/lib/server-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,11 @@ export async function GET(request: NextRequest) {
   const sortOrderParam = searchParams.get('sortOrder');
   
   if (ageOptionsOnly) {
-    const ages = await getStudentAgeOptions(includeInactive);
+    const ages = await getOrSetServerCache(
+      `students:age-options:${includeInactive ? 'all' : 'active'}`,
+      5 * 60 * 1000,
+      () => getStudentAgeOptions(includeInactive)
+    );
     return NextResponse.json({ ages });
   }
 
