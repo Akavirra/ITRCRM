@@ -9,12 +9,8 @@ interface UserPreview {
   photo_url: string | null;
 }
 
-function getDicebearUrl(name: string): string {
-  let seed = '';
-  try {
-    seed = localStorage.getItem('itrobot-avatar-seed') || '';
-  } catch {}
-  return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(seed || name)}`;
+function getDicebearUrl(seedOrName: string): string {
+  return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(seedOrName)}`;
 }
 
 export default function LoginPage() {
@@ -27,6 +23,7 @@ export default function LoginPage() {
   const [userPreview, setUserPreview] = useState<UserPreview | null>(null);
   const [loggedInName, setLoggedInName] = useState('');
   const [step, setStep] = useState<'email' | 'password' | 'welcome'>('email');
+  const [avatarSeed, setAvatarSeed] = useState('');
   const passwordRef = useRef<HTMLInputElement>(null);
   const lookupTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -79,6 +76,12 @@ export default function LoginPage() {
   }, [step]);
 
   useEffect(() => {
+    try {
+      setAvatarSeed(localStorage.getItem('itrobot-avatar-seed') || '');
+    } catch {}
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function checkSession() {
@@ -102,7 +105,7 @@ export default function LoginPage() {
     };
   }, [router]);
 
-  const avatarSrc = userPreview?.photo_url || getDicebearUrl(email);
+  const avatarSrc = userPreview?.photo_url || getDicebearUrl(avatarSeed || email);
   const firstName = loggedInName?.split(' ')[0] || '';
 
   if (checkingSession) {

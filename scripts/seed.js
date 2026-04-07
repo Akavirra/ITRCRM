@@ -39,7 +39,7 @@ db.pragma('foreign_keys = ON');
 
 // Initialize schema
 function initSchema() {
-  const schemaPath = path.join(__dirname, '..', 'src', 'db', 'schema.sql');
+  const schemaPath = path.join(__dirname, 'legacy-sqlite-schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
   
   const statements = schema

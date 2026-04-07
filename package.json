@@ -28,6 +28,8 @@
     "db:add-notification-clears": "node scripts/add-notification-clears.js",
     "db:add-notifications-dedup-key": "node scripts/add-notifications-dedup-key.js",
     "db:add-media-tables": "node scripts/add-media-tables.js",
+    "db:add-media-indexes": "node scripts/add-media-indexes.js",
+    "db:add-core-indexes": "node scripts/add-core-performance-indexes.js",
     "db:add-weather-city": "node scripts/add-weather-city.js",
     "db:add-group-teacher-assignments": "node scripts/add-group-teacher-assignments.js",
     "db:add-system-settings": "node scripts/add-system-settings.js",
@@ -42,6 +44,7 @@
     "db:add-student-group-status": "node scripts/migrate-student-group-status.js",
     "db:add-enrollment": "node scripts/add-enrollment.js",
     "db:add-parent2-phone": "node scripts/add-parent2-phone.js",
+    "db:schema:dump": "node scripts/dump-schema.js",
     "test": "jest"
   },
   "dependencies": {

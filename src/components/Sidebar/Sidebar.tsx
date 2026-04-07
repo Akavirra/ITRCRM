@@ -78,6 +78,29 @@ interface ForecastDay {
   code: number;
 }
 
+interface SeasonalUiState {
+  isNight: boolean;
+  isNewYear: boolean;
+  isHalloween: boolean;
+  isSep1: boolean;
+  isEaster: boolean;
+}
+
+function getSeasonalUiState(date: Date = new Date()): SeasonalUiState {
+  const month = date.getMonth() + 1; // 1-12
+  const day = date.getDate();
+  const hour = date.getHours();
+
+  return {
+    isNight: hour >= 22 || hour < 6,
+    isNewYear: (month === 12 && day >= 20) || (month === 1 && day <= 7),
+    isHalloween: month === 10 && day >= 25 && day <= 31,
+    isSep1: month === 9 && day >= 1 && day <= 3,
+    // Easter approximate (for 2026: April 12, show April 5-19; for 2027: May 2)
+    isEaster: (month === 4 && day >= 5 && day <= 19) || (month === 5 && day >= 1 && day <= 5),
+  };
+}
+
 const detailPill: React.CSSProperties = {
   fontSize: '10px',
   color: '#64748b',
@@ -471,20 +494,28 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const [halloweenParty, setHalloweenParty] = useState(false);
   const [sep1Party, setSep1Party] = useState(false);
   const [easterParty, setEasterParty] = useState(false);
+  const [seasonalUi, setSeasonalUi] = useState<SeasonalUiState>({
+    isNight: false,
+    isNewYear: false,
+    isHalloween: false,
+    isSep1: false,
+    isEaster: false,
+  });
   const lastMoveRef = useRef(Date.now());
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Seasonal detection
-  const now = new Date();
-  const month = now.getMonth() + 1; // 1-12
-  const day = now.getDate();
-  const hour = now.getHours();
-  const isNight = hour >= 22 || hour < 6;
-  const isNewYear = (month === 12 && day >= 20) || (month === 1 && day <= 7);
-  const isHalloween = month === 10 && day >= 25 && day <= 31;
-  const isSep1 = month === 9 && day >= 1 && day <= 3;
-  // Easter approximate (for 2026: April 12, show April 5-19; for 2027: May 2)
-  const isEaster = (month === 4 && day >= 5 && day <= 19) || (month === 5 && day >= 1 && day <= 5);
+  const { isNight, isNewYear, isHalloween, isSep1, isEaster } = seasonalUi;
+
+  useEffect(() => {
+    const syncSeasonalUi = () => {
+      setSeasonalUi(getSeasonalUiState());
+    };
+
+    syncSeasonalUi();
+    const interval = window.setInterval(syncSeasonalUi, 60_000);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   // Poll unread notifications + birthdays
   useEffect(() => {
