@@ -61,6 +61,10 @@ export function middleware(request: NextRequest) {
   // Назва cookie: session_id (з src/app/api/auth/login/route.ts)
   const token = request.cookies.get('session_id')?.value
 
+  if (pathname.startsWith('/api/') && !token) {
+    return NextResponse.json({ error: 'Необхідна авторизація' }, { status: 401 })
+  }
+
   if (pathname === '/') {
     const url = new URL(token ? '/dashboard' : '/login', request.url)
     return NextResponse.redirect(url)
