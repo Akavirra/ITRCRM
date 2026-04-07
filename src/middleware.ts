@@ -4,6 +4,8 @@ const PUBLIC_ROUTES = [
   '/login',
   '/api/auth/login',
   '/api/auth/logout',
+  '/api/auth/lookup',
+  '/api/auth/reset-temporary-password',
   '/api/notifications/telegram',
   '/api/telegram',
   '/telegram',
