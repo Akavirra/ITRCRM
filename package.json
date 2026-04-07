@@ -35,6 +35,7 @@
     "db:add-system-settings": "node scripts/add-system-settings.js",
     "db:add-salary-extra-items": "node scripts/add-salary-extra-items.js",
     "db:add-is-owner": "node scripts/add-is-owner.js",
+    "db:add-must-change-password": "node scripts/add-must-change-password.js",
     "db:add-notes": "node scripts/add-notes.js",
     "db:add-notes-tags": "node scripts/add-notes-tags.js",
     "db:add-notes-deadline": "node scripts/add-notes-deadline.js",

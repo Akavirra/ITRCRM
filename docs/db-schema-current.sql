@@ -731,7 +731,8 @@ CREATE TABLE users (
   is_active boolean DEFAULT true NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
-  is_owner boolean DEFAULT false NOT NULL
+  is_owner boolean DEFAULT false NOT NULL,
+  must_change_password boolean DEFAULT false NOT NULL
 );
 
 -- Constraints for users

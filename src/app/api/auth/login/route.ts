@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create response with session cookie
     const response = NextResponse.json({
       user: {
         id: result.user.id,
@@ -40,17 +39,19 @@ export async function POST(request: NextRequest) {
         email: result.user.email,
         role: result.user.role,
         photo_url: result.user.photo_url || null,
+        must_change_password: result.user.must_change_password ?? false,
       },
     });
 
-    // Set session cookie
-    response.cookies.set('session_id', result.sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60, // 24 hours
-      path: '/',
-    });
+    if (result.sessionId) {
+      response.cookies.set('session_id', result.sessionId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60, // 24 hours
+        path: '/',
+      });
+    }
 
     return response;
   } catch (error) {

@@ -18,6 +18,7 @@ export interface User {
   notes?: string | null;
   is_active: boolean;
   is_owner: boolean;
+  must_change_password?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -104,7 +105,7 @@ export async function getUserById(id: number): Promise<User | null> {
 }
 
 // Login - Only admin role is allowed to login
-export async function login(email: string, password: string): Promise<{ user: User; sessionId: string } | null> {
+export async function login(email: string, password: string): Promise<{ user: User; sessionId: string | null } | null> {
   const user = await getUserByEmail(email);
   
   if (!user || !user.is_active) {
@@ -131,7 +132,7 @@ export async function login(email: string, password: string): Promise<{ user: Us
     return null;
   }
   
-  const sessionId = await createSession(user.id);
+  const sessionId = user.must_change_password ? null : await createSession(user.id);
   
   return { user, sessionId };
 }

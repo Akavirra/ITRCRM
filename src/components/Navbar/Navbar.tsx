@@ -173,6 +173,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [createUserForm, setCreateUserForm] = useState({ name: '', email: '', password: '', role: 'admin' });
   const [createUserSaving, setCreateUserSaving] = useState(false);
+  const [resettingUserId, setResettingUserId] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -472,6 +473,31 @@ const Navbar: React.FC<NavbarProps> = ({
     const d = await res.json();
     if (!res.ok) { alert(d.error || 'Помилка'); return; }
     setSysUsers(prev => prev.filter(u => u.id !== id));
+  };
+
+  const handleResetUserPassword = async (id: number, name: string) => {
+    const manualPassword = window.prompt(
+      `Вкажіть тимчасовий пароль для "${name}".\nЗалиште поле порожнім, якщо хочете згенерувати пароль автоматично.`,
+      ''
+    );
+
+    if (manualPassword === null) return;
+
+    setResettingUserId(id);
+    try {
+      const res = await fetch(`/api/users/${id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ temporaryPassword: manualPassword.trim() }),
+      });
+      const d = await res.json();
+      if (!res.ok) { alert(d.error || 'Помилка'); return; }
+      alert(`Тимчасовий пароль для ${name}: ${d.temporaryPassword}\n\nПередайте його адміну безпечним каналом. Після входу система змусить його задати новий пароль.`);
+    } catch {
+      alert('Не вдалося скинути пароль');
+    } finally {
+      setResettingUserId(null);
+    }
   };
 
   // Load settings when panel opens
@@ -1388,15 +1414,27 @@ const Navbar: React.FC<NavbarProps> = ({
                                 {currentUserIsOwner && (
                                   <td style={{ padding: '0.625rem 0.875rem' }}>
                                     {!u.is_owner && (
-                                      <button
-                                        onClick={() => handleDeleteUser(u.id)}
-                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '3px 6px', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 500 }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
-                                        title="Видалити користувача"
-                                      >
-                                        Видалити
-                                      </button>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <button
+                                          onClick={() => handleResetUserPassword(u.id, u.name)}
+                                          style={{ background: 'none', border: 'none', cursor: resettingUserId === u.id ? 'wait' : 'pointer', color: '#2563eb', padding: '3px 6px', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 500 }}
+                                          onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; }}
+                                          onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                                          title="Скинути пароль користувача"
+                                          disabled={resettingUserId === u.id}
+                                        >
+                                          {resettingUserId === u.id ? 'Скидання...' : 'Скинути пароль'}
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteUser(u.id)}
+                                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '3px 6px', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 500 }}
+                                          onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; }}
+                                          onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                                          title="Видалити користувача"
+                                        >
+                                          Видалити
+                                        </button>
+                                      </div>
                                     )}
                                   </td>
                                 )}

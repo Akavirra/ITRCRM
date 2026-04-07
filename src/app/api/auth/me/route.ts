@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         role: user.role,
         is_owner: user.is_owner ?? false,
+        must_change_password: user.must_change_password ?? false,
         photo_url: user.photo_url ?? null,
         phone: user.phone ?? null,
         telegram_id: user.telegram_id ?? null,

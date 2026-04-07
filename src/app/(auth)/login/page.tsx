@@ -9,6 +9,8 @@ interface UserPreview {
   photo_url: string | null;
 }
 
+type Step = 'email' | 'password' | 'forceReset' | 'welcome';
+
 function getDicebearUrl(seedOrName: string): string {
   return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(seedOrName)}`;
 }
@@ -22,9 +24,14 @@ export default function LoginPage() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [userPreview, setUserPreview] = useState<UserPreview | null>(null);
   const [loggedInName, setLoggedInName] = useState('');
-  const [step, setStep] = useState<'email' | 'password' | 'welcome'>('email');
+  const [step, setStep] = useState<Step>('email');
   const [avatarSeed, setAvatarSeed] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const newPasswordRef = useRef<HTMLInputElement>(null);
   const lookupTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const lookupUser = useCallback((emailValue: string) => {
@@ -62,7 +69,13 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || t('auth.loginFailed')); setLoading(false); return; }
+      setCurrentPassword(password);
       setLoggedInName(data.user?.name || '');
+      if (data.user?.must_change_password) {
+        setStep('forceReset');
+        setLoading(false);
+        return;
+      }
       setStep('welcome');
       setTimeout(() => router.push('/dashboard'), 2200);
     } catch {
@@ -71,8 +84,48 @@ export default function LoginPage() {
     }
   };
 
+  const handleForceResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!newPassword || !confirmPassword) {
+      setError('Вкажіть новий пароль і підтвердження');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-temporary-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          currentPassword,
+          newPassword,
+          confirmPassword,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || t('auth.loginFailed'));
+        setResetLoading(false);
+        return;
+      }
+
+      setPassword(newPassword);
+      setResetLoading(false);
+      setStep('welcome');
+      setTimeout(() => router.push('/dashboard'), 2200);
+    } catch {
+      setError(t('toasts.networkError'));
+      setResetLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (step === 'password') setTimeout(() => passwordRef.current?.focus(), 50);
+    if (step === 'forceReset') setTimeout(() => newPasswordRef.current?.focus(), 50);
   }, [step]);
 
   useEffect(() => {
@@ -226,6 +279,68 @@ export default function LoginPage() {
                   <span>
                     {loading && <div className={styles.spinner} />}
                     {loading ? t('common.loading') : t('actions.login')}
+                  </span>
+                </button>
+              </form>
+            </div>
+          )}
+
+          {step === 'forceReset' && (
+            <div className={styles.stepContent}>
+              <div className={styles.userGreeting}>
+                <div className={styles.userAvatar}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={avatarSrc} alt={email} />
+                </div>
+                <div>
+                  <div className={styles.emailDisplay}>{email}</div>
+                  <div className={styles.inputLabel} style={{ marginTop: '0.35rem' }}>
+                    Тимчасовий пароль потрібно змінити перед входом у систему
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleForceResetSubmit}>
+                <div className={styles.inputGroup}>
+                  <label htmlFor="new-password" className={styles.inputLabel}>Новий пароль</label>
+                  <input
+                    ref={newPasswordRef}
+                    id="new-password"
+                    type="password"
+                    className={styles.input}
+                    value={newPassword}
+                    onChange={(e) => { setNewPassword(e.target.value); setError(''); }}
+                    placeholder="Не менше 6 символів"
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+
+                <div className={styles.inputGroup}>
+                  <label htmlFor="confirm-password" className={styles.inputLabel}>Підтвердіть пароль</label>
+                  <input
+                    id="confirm-password"
+                    type="password"
+                    className={styles.input}
+                    value={confirmPassword}
+                    onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                    placeholder="Повторіть новий пароль"
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+
+                {error && (
+                  <div className={styles.errorMessage}>
+                    <svg className={styles.errorIcon} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    {error}
+                  </div>
+                )}
+
+                <button type="submit" className={styles.submitBtn} disabled={resetLoading || !newPassword || !confirmPassword}>
+                  <span>
+                    {resetLoading && <div className={styles.spinner} />}
+                    {resetLoading ? t('common.loading') : 'Зберегти новий пароль'}
                   </span>
                 </button>
               </form>
