@@ -44,7 +44,7 @@ interface LessonPhotoContext {
   groupId: number;
   courseTitle: string;
   groupTitle: string;
-  lessonDate: string;
+  lessonDate: string | Date | { toString(): string } | null;
   topic: string | null;
 }
 
@@ -82,7 +82,24 @@ function getRootFolderId(): string {
   return rootId;
 }
 
-function formatLessonFolderDate(dateStr: string): string {
+function normalizeLessonDateInput(value: LessonPhotoContext['lessonDate']): string {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (value == null) {
+    return '';
+  }
+
+  return String(value);
+}
+
+function formatLessonFolderDate(value: LessonPhotoContext['lessonDate']): string {
+  const dateStr = normalizeLessonDateInput(value).trim();
   const normalized = dateStr.includes('T')
     ? dateStr
     : /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
@@ -105,7 +122,7 @@ function formatLessonFolderDate(dateStr: string): string {
   return `${dd}.${mm}.${yy}`;
 }
 
-export function buildLessonFolderName(lessonDate: string, topic: string | null): string {
+export function buildLessonFolderName(lessonDate: LessonPhotoContext['lessonDate'], topic: string | null): string {
   const safeTopic = sanitizeDriveFolderName(topic?.trim() || LESSON_PHOTOS_FALLBACK_TOPIC, LESSON_PHOTOS_FALLBACK_TOPIC);
   return `${formatLessonFolderDate(lessonDate)} ${safeTopic}`;
 }
