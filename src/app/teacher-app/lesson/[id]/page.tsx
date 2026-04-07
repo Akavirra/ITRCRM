@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv, formatDateTimeKyiv } from '@/lib/date-utils';
+import { splitFilesIntoUploadBatches, getUploadErrorMessage } from '@/lib/client-photo-upload';
 import {
   CheckCircleIcon, ClipboardIcon, ClockIcon, RefreshIcon, UsersIcon,
   BookOpenIcon, AlertTriangleIcon, FileTextIcon, EditIcon, SaveIcon,
@@ -376,27 +377,37 @@ export default function LessonDetailPage() {
     setUploadingPhotos(true);
 
     try {
-      const formData = new FormData();
-      pendingPhotos.forEach((photo) => {
-        formData.append('files', photo.file);
-      });
+      const batches = splitFilesIntoUploadBatches(pendingPhotos, (photo) => photo.file.size);
+      let latestResult: { photoFolder?: LessonData['photoFolder']; photos?: LessonPhoto[] } | null = null;
 
-      const response = await fetch(`/api/teacher-app/lessons/${lessonId}/photos`, {
-        method: 'POST',
-        headers: {
-          'X-Telegram-Init-Data': initData,
-        },
-        body: formData,
-      });
+      for (const batch of batches) {
+        const formData = new FormData();
+        batch.forEach((photo) => {
+          formData.append('files', photo.file);
+        });
 
-      if (!response.ok) {
+        const response = await fetch(`/api/teacher-app/lessons/${lessonId}/photos`, {
+          method: 'POST',
+          headers: {
+            'X-Telegram-Init-Data': initData,
+          },
+          body: formData,
+        });
+
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Помилка завантаження фото');
+
+        if (!response.ok) {
+          if (response.status === 413) {
+            throw new Error('Забагато фото за один пакет. Спробуйте ще раз: система відправить їх меншими частинами.');
+          }
+          throw new Error(getUploadErrorMessage(errorData, 'Помилка завантаження фото'));
+        }
+
+        latestResult = errorData;
       }
 
-      const result = await response.json();
-      setPhotoFolder(result.photoFolder || null);
-      setPhotos(result.photos || []);
+      setPhotoFolder(latestResult?.photoFolder || null);
+      setPhotos(latestResult?.photos || []);
       pendingPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
       setPendingPhotos([]);
     } catch (uploadError) {

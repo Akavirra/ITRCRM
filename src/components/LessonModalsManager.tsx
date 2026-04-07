@@ -8,6 +8,7 @@ import { useGroupModals } from './GroupModalsContext';
 import { useCourseModals } from './CourseModalsContext';
 import { useTeacherModals } from './TeacherModalsContext';
 import { Clock, BookOpen, User, Check, X, Calendar, Trash2, UserMinus, Users, MoreVertical, Edit2, Save, RefreshCw, ExternalLink, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
+import { splitFilesIntoUploadBatches, getUploadErrorMessage } from '@/lib/client-photo-upload';
 
 interface Teacher {
   id: number;
@@ -528,25 +529,35 @@ export default function LessonModalsManager() {
     setPhotoUploading(prev => ({ ...prev, [lessonId]: true }));
 
     try {
-      const formData = new FormData();
-      Array.from(files).forEach((file) => {
-        formData.append('files', file);
-      });
+      const batches = splitFilesIntoUploadBatches(Array.from(files), (file) => file.size);
+      let latestData: { photoFolder?: LessonPhotoFolder | null; photos?: LessonPhotoFile[]; canManagePhotos?: boolean } | null = null;
 
-      const res = await fetch(`/api/lessons/${lessonId}/photos`, {
-        method: 'POST',
-        body: formData,
-      });
+      for (const batch of batches) {
+        const formData = new FormData();
+        batch.forEach((file) => {
+          formData.append('files', file);
+        });
 
-      const data = await res.json().catch(() => ({}));
+        const res = await fetch(`/api/lessons/${lessonId}/photos`, {
+          method: 'POST',
+          body: formData,
+        });
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Не вдалося завантажити фото');
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          if (res.status === 413) {
+            throw new Error('Забагато фото за один пакет. Система може завантажувати їх частинами, але один із пакетів усе ще завеликий.');
+          }
+          throw new Error(getUploadErrorMessage(data, 'Не вдалося завантажити фото'));
+        }
+
+        latestData = data;
       }
 
-      setPhotoFolders(prev => ({ ...prev, [lessonId]: data.photoFolder || null }));
-      setLessonPhotos(prev => ({ ...prev, [lessonId]: data.photos || [] }));
-      setCanManagePhotos(prev => ({ ...prev, [lessonId]: Boolean(data.canManagePhotos) }));
+      setPhotoFolders(prev => ({ ...prev, [lessonId]: latestData?.photoFolder || null }));
+      setLessonPhotos(prev => ({ ...prev, [lessonId]: latestData?.photos || [] }));
+      setCanManagePhotos(prev => ({ ...prev, [lessonId]: Boolean(latestData?.canManagePhotos) }));
       await loadLessonDataRef.current(lessonId);
       window.dispatchEvent(new Event('itrobot-lesson-updated'));
     } catch (error) {
