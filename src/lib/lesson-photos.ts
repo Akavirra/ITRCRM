@@ -2,6 +2,7 @@ import { get, all, run } from '@/db';
 import {
   getDriveFolderUrl,
   getDriveThumbnailUrl,
+  getDriveDownloadUrl,
   getOrCreateFolder,
   makeFilePublic,
   renameDriveFolder,
@@ -59,6 +60,7 @@ export interface LessonPhotoFileInfo {
   id: number;
   driveFileId: string;
   url: string;
+  downloadUrl: string;
   thumbnailUrl: string;
   fileName: string;
   mimeType: string | null;
@@ -168,6 +170,7 @@ function mapPhoto(row: LessonPhotoFileRow): LessonPhotoFileInfo {
     id: row.id,
     driveFileId: row.drive_file_id,
     url: getDriveViewUrl(row.drive_file_id),
+    downloadUrl: getDriveDownloadUrl(row.drive_file_id),
     thumbnailUrl: getDriveThumbnailUrl(row.drive_file_id),
     fileName: row.file_name,
     mimeType: row.mime_type,
@@ -314,7 +317,7 @@ export async function addLessonPhotoRecord(input: {
 
   const driveFile = await uploadFileToDrive(
     input.buffer,
-    sanitizeDriveFolderName(input.fileName, 'photo.jpg'),
+    sanitizeDriveFolderName(input.fileName, 'lesson-media'),
     input.mimeType,
     folder.id
   );

@@ -9,6 +9,7 @@ import { useCourseModals } from './CourseModalsContext';
 import { useTeacherModals } from './TeacherModalsContext';
 import { Clock, BookOpen, User, Check, X, Calendar, Trash2, UserMinus, Users, MoreVertical, Edit2, Save, RefreshCw, ExternalLink, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
 import { splitFilesIntoUploadBatches, getUploadErrorMessage, prepareImageFilesForUpload } from '@/lib/client-photo-upload';
+import { isVideoMimeType } from '@/lib/lesson-media';
 
 interface Teacher {
   id: number;
@@ -91,6 +92,7 @@ interface LessonPhotoFile {
   id: number;
   driveFileId: string;
   url: string;
+  downloadUrl: string;
   thumbnailUrl: string;
   fileName: string;
   mimeType: string | null;
@@ -98,6 +100,10 @@ interface LessonPhotoFile {
   uploadedAt: string;
   uploadedBy: string | null;
   uploadedVia: 'admin' | 'telegram';
+}
+
+function isVideoLessonMedia(photo: LessonPhotoFile): boolean {
+  return isVideoMimeType(photo.mimeType);
 }
 
 function formatDateTime(startTime: string, endTime: string): string {
@@ -1309,7 +1315,7 @@ export default function LessonModalsManager() {
                               </span>
                               <input
                                 type="file"
-                                accept="image/*"
+                                accept="image/*,video/*"
                                 multiple
                                 disabled={photoUploading[modal.id]}
                                 style={{ display: 'none' }}
@@ -1327,13 +1333,22 @@ export default function LessonModalsManager() {
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.5rem' }}>
                               {visibleLessonPhotos.map((photo) => (
                                 <div key={photo.id} style={{ position: 'relative' }}>
-                                  <a href={photo.url} target="_blank" rel="noreferrer">
-                                    <img
-                                      src={photo.thumbnailUrl}
-                                      alt={photo.fileName}
-                                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block' }}
-                                    />
-                                  </a>
+                                    {isVideoLessonMedia(photo) ? (
+                                      <video
+                                        src={photo.downloadUrl}
+                                        controls
+                                        preload="metadata"
+                                        style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block', background: '#000' }}
+                                      />
+                                    ) : (
+                                      <a href={photo.url} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
+                                      <img
+                                        src={photo.thumbnailUrl}
+                                        alt={photo.fileName}
+                                        style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block' }}
+                                      />
+                                      </a>
+                                    )}
                                   {canManagePhotos[modal.id] && (
                                     <button
                                       onClick={() => handlePhotoDelete(modal.id, photo.id)}

@@ -2,34 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryOne } from '@/db/neon';
 import crypto from 'crypto';
 import { addLessonPhotoRecord, getLessonPhotoPayload } from '@/lib/lesson-photos';
+import { isSupportedLessonMediaFile, resolveLessonMediaMimeType } from '@/lib/lesson-media';
 
 export const dynamic = 'force-dynamic';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/jpg'];
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-
-function isSupportedImageFile(file: File): boolean {
-  if (file.type && (ALLOWED_MIME_TYPES.includes(file.type) || file.type.startsWith('image/'))) {
-    return true;
-  }
-
-  const lowerName = file.name.toLowerCase();
-  return ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'].some((ext) => lowerName.endsWith(ext));
-}
-
-function resolveMimeType(file: File): string {
-  if (file.type && file.type.startsWith('image/')) {
-    return file.type;
-  }
-
-  const lowerName = file.name.toLowerCase();
-  if (lowerName.endsWith('.png')) return 'image/png';
-  if (lowerName.endsWith('.webp')) return 'image/webp';
-  if (lowerName.endsWith('.heic')) return 'image/heic';
-  if (lowerName.endsWith('.heif')) return 'image/heif';
-  return 'image/jpeg';
-}
 
 function verifyInitData(initData: string): { valid: boolean; telegramId?: string } {
   if (!TELEGRAM_BOT_TOKEN) {
@@ -214,7 +192,7 @@ export async function POST(
   }
 
   for (const file of files) {
-    if (!isSupportedImageFile(file)) {
+    if (!isSupportedLessonMediaFile(file)) {
       return NextResponse.json({ error: `Непідтримуваний тип файлу: ${file.type}` }, { status: 400 });
     }
 
@@ -232,7 +210,7 @@ export async function POST(
         lessonId,
         buffer: Buffer.from(bytes),
         fileName: file.name,
-        mimeType: resolveMimeType(file),
+        mimeType: resolveLessonMediaMimeType(file),
         fileSize: file.size,
         uploadedBy: access.teacher!.id,
         uploadedByName: access.teacher!.name,

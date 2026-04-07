@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv, formatDateTimeKyiv } from '@/lib/date-utils';
 import { splitFilesIntoUploadBatches, getUploadErrorMessage, prepareImageFilesForUpload } from '@/lib/client-photo-upload';
+import { isVideoMimeType } from '@/lib/lesson-media';
 import {
   CheckCircleIcon, ClipboardIcon, ClockIcon, RefreshIcon, UsersIcon,
   BookOpenIcon, AlertTriangleIcon, FileTextIcon, EditIcon, SaveIcon,
@@ -60,6 +61,7 @@ interface LessonPhoto {
   id: number;
   driveFileId: string;
   url: string;
+  downloadUrl: string;
   thumbnailUrl: string;
   fileName: string;
   mimeType: string | null;
@@ -73,6 +75,11 @@ interface PendingPhotoPreview {
   id: string;
   file: File;
   previewUrl: string;
+}
+
+function isVideoFile(file: File | LessonPhoto): boolean {
+  const mimeType = 'mimeType' in file ? file.mimeType : file.type;
+  return isVideoMimeType(mimeType);
 }
 
 export default function LessonDetailPage() {
@@ -676,7 +683,7 @@ export default function LessonDetailPage() {
               <span>{pendingPhotos.length > 0 ? 'Додати ще фото' : 'Вибрати фото'}</span>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 multiple
                 onChange={handlePhotoSelection}
                 disabled={uploadingPhotos}
@@ -701,11 +708,20 @@ export default function LessonDetailPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
                   {pendingPhotos.map((photo) => (
                     <div key={photo.id} style={{ position: 'relative' }}>
-                      <img
-                        src={photo.previewUrl}
-                        alt={photo.file.name}
-                        style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)' }}
-                      />
+                      {isVideoFile(photo.file) ? (
+                        <video
+                          src={photo.previewUrl}
+                          controls
+                          preload="metadata"
+                          style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000' }}
+                        />
+                      ) : (
+                        <img
+                          src={photo.previewUrl}
+                          alt={photo.file.name}
+                          style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)' }}
+                        />
+                      )}
                       <button
                         type="button"
                         onClick={() => removePendingPhoto(photo.id)}
@@ -742,19 +758,29 @@ export default function LessonDetailPage() {
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
                   {visibleUploadedPhotos.map((photo) => (
-                    <a
-                      key={photo.id}
-                      href={photo.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ textDecoration: 'none' }}
-                    >
-                      <img
-                        src={photo.thumbnailUrl}
-                        alt={photo.fileName}
-                        style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)' }}
-                      />
-                    </a>
+                    <div key={photo.id}>
+                      {isVideoFile(photo) ? (
+                        <video
+                          src={photo.downloadUrl}
+                          controls
+                          preload="metadata"
+                          style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000' }}
+                        />
+                      ) : (
+                        <a
+                          href={photo.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ textDecoration: 'none', display: 'block' }}
+                        >
+                          <img
+                            src={photo.thumbnailUrl}
+                            alt={photo.fileName}
+                            style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)' }}
+                          />
+                        </a>
+                      )}
+                    </div>
                   ))}
                 </div>
               {photos.length > 3 && (
