@@ -428,22 +428,13 @@ export default function StudentsPage() {
   useEffect(() => {
     const fetchPageData = async () => {
       try {
-        const [coursesRes, groupsRes, agesRes, schoolsRes] = await Promise.all([
-          fetch('/api/courses?simple=true'),
-          fetch('/api/groups?includeInactive=true&basic=true'),
-          fetch('/api/students?ageOptions=true'),
-          fetch('/api/students?schoolOptions=true'),
-        ]);
+        const res = await fetch('/api/students/filters');
+        const data = await res.json();
 
-        const coursesData = await coursesRes.json();
-        const groupsData = await groupsRes.json();
-        const agesData = await agesRes.json();
-        const schoolsData = await schoolsRes.json();
-
-        setCourses(coursesData.courses || []);
-        setGroups(groupsData.groups || []);
-        setAllAges(agesData.ages || []);
-        setSchools(schoolsData.schools || []);
+        setCourses(data.courses || []);
+        setGroups(data.groups || []);
+        setAllAges(data.ages || []);
+        setSchools(data.schools || []);
       } catch (error) {
         console.error('Failed to fetch students page filters:', error);
       }
