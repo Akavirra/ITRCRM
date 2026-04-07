@@ -1187,10 +1187,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
                     <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
                       <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Зміна пароля</h3>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                        <p style={{ display: 'none', margin: 0, fontSize: '0.875rem', color: '#64748b', maxWidth: '460px', lineHeight: 1.5 }}>
-                          Поля зміни пароля відкриваються в окремому вікні, щоб не займати місце в профілі.
-                        </p>
+                      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                         <button
                           className="btn btn-secondary"
                           onClick={() => setPasswordModalOpen(true)}
@@ -1200,85 +1197,6 @@ const Navbar: React.FC<NavbarProps> = ({
                       </div>
                     </div>
 
-                    <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1rem', display: 'none' }}>
-                      <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Зміна пароля</h3>
-                      <div className="form-group">
-                        <label className="form-label">Поточний пароль</label>
-                        <input
-                          type="password"
-                          className="form-input"
-                          value={passwordForm.currentPassword}
-                          onChange={e => handlePasswordInputChange('currentPassword', e.target.value)}
-                          placeholder="Введіть поточний пароль"
-                          autoComplete="current-password"
-                          style={{ maxWidth: '360px' }}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Новий пароль</label>
-                        <input
-                          type="password"
-                          className="form-input"
-                          value={passwordForm.newPassword}
-                          onChange={e => handlePasswordInputChange('newPassword', e.target.value)}
-                          placeholder="Не менше 6 символів"
-                          autoComplete="new-password"
-                          style={{ maxWidth: '360px' }}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Підтвердіть новий пароль</label>
-                        <input
-                          type="password"
-                          className="form-input"
-                          value={passwordForm.confirmPassword}
-                          onChange={e => handlePasswordInputChange('confirmPassword', e.target.value)}
-                          placeholder="Повторіть новий пароль"
-                          autoComplete="new-password"
-                          style={{ maxWidth: '360px' }}
-                        />
-                      </div>
-
-                      {passwordError && (
-                        <div style={{ color: '#dc2626', fontSize: '0.875rem', fontWeight: 500, marginTop: '-0.25rem', marginBottom: '0.75rem' }}>
-                          {passwordError}
-                        </div>
-                      )}
-
-                      {passwordMessage && (
-                        <div style={{ color: '#16a34a', fontSize: '0.875rem', fontWeight: 500, marginTop: '-0.25rem', marginBottom: '0.75rem' }}>
-                          {passwordMessage}
-                        </div>
-                      )}
-
-                      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => {
-                            setPasswordForm({
-                              currentPassword: '',
-                              newPassword: '',
-                              confirmPassword: '',
-                            });
-                            setPasswordMessage(null);
-                            setPasswordError(null);
-                          }}
-                          disabled={passwordSaving}
-                        >
-                          Очистити
-                        </button>
-                        <button
-                          className="btn btn-primary"
-                          onClick={handlePasswordSave}
-                          disabled={passwordSaving}
-                        >
-                          <Save size={14} />
-                          {passwordSaving ? 'Збереження...' : 'Змінити пароль'}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Save */}
                     <div style={{ paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem' }}>
                       <button className="btn btn-primary" onClick={handleProfileSave} disabled={profileSaving} style={{ minWidth: 120 }}>
                         <Save size={14} />
