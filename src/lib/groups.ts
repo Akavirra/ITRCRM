@@ -466,6 +466,28 @@ export async function getStudentsInGroup(groupId: number, includeInactive = fals
   );
 }
 
+export async function getStudentsInGroupBasic(
+  groupId: number,
+  includeInactive = false
+): Promise<Array<{
+  id: number;
+  public_id: string;
+  full_name: string;
+}>> {
+  return await all<{
+    id: number;
+    public_id: string;
+    full_name: string;
+  }>(
+    `SELECT s.id, s.public_id, s.full_name
+     FROM students s
+     JOIN student_groups sg ON s.id = sg.student_id
+     WHERE sg.group_id = $1${includeInactive ? '' : ' AND sg.is_active = TRUE'}
+     ORDER BY s.full_name`,
+    [groupId]
+  );
+}
+
 // Get students in group including graduated (for display on group page)
 export async function getStudentsInGroupWithGraduated(groupId: number): Promise<Array<{
   id: number;

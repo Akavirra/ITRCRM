@@ -165,6 +165,8 @@ export default function PaymentsPage() {
   const [browseGroupId, setBrowseGroupId] = useState<number | null>(null);
   const [browseGroupStudents, setBrowseGroupStudents] = useState<Array<{ id: number; full_name: string }>>([]);
   const [browseLoading, setBrowseLoading] = useState(false);
+  const browseAbortRef = useRef<AbortController | null>(null);
+  const browseGroupCacheRef = useRef<Map<number, Array<{ id: number; full_name: string }>>>(new Map());
 
   // Payment history
   const [historyPayments, setHistoryPayments] = useState<PaymentHistoryRecord[]>([]);
@@ -361,10 +363,20 @@ export default function PaymentsPage() {
 
   // Fetch students for a group (browse mode)
   const fetchGroupStudents = useCallback(async (groupId: number) => {
+    const cached = browseGroupCacheRef.current.get(groupId);
+    if (cached) {
+      setBrowseGroupStudents(cached);
+      return;
+    }
+
+    browseAbortRef.current?.abort();
+    const controller = new AbortController();
+    browseAbortRef.current = controller;
+
     setBrowseLoading(true);
     setBrowseGroupStudents([]);
     try {
-      const res = await fetch(`/api/groups/${groupId}/students`);
+      const res = await fetch(`/api/groups/${groupId}/students?basic=true`, { signal: controller.signal });
       if (res.ok) {
         const json = await res.json();
         const students = (json.students || []).map((s: { id: number; full_name: string }) => ({
@@ -372,9 +384,17 @@ export default function PaymentsPage() {
           full_name: s.full_name,
         }));
         students.sort((a: { full_name: string }, b: { full_name: string }) => a.full_name.localeCompare(b.full_name, 'uk'));
+        browseGroupCacheRef.current.set(groupId, students);
         setBrowseGroupStudents(students);
       }
-    } catch { /* ignore */ } finally {
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        /* ignore */
+      }
+    } finally {
+      if (browseAbortRef.current === controller) {
+        browseAbortRef.current = null;
+      }
       setBrowseLoading(false);
     }
   }, []);

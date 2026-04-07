@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden, checkGroupAccess } from '@/lib/api-utils';
 import {
   getStudentsInGroup,
+  getStudentsInGroupBasic,
   addStudentToGroup,
   removeStudentFromGroup,
   removeStudentFromGroupByIDs,
@@ -49,7 +50,13 @@ export async function GET(
     return forbidden();
   }
   
-  const students = await getStudentsInGroup(groupId);
+  const { searchParams } = new URL(request.url);
+  const basic = searchParams.get('basic') === 'true';
+  const includeInactive = searchParams.get('includeInactive') === 'true';
+
+  const students = basic
+    ? await getStudentsInGroupBasic(groupId, includeInactive)
+    : await getStudentsInGroup(groupId, includeInactive);
 
   return NextResponse.json({ students });
 }
