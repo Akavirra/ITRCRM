@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { User, useUser } from '@/components/UserContext';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useStudentModals } from '@/components/StudentModalsContext';
@@ -125,7 +125,6 @@ function getMonthOptions(): { value: string; label: string }[] {
 }
 
 export default function PaymentsPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { openGroupModal } = useGroupModals();
   const { openStudentModal } = useStudentModals();
@@ -175,6 +174,9 @@ export default function PaymentsPage() {
   const [selectedPayment, setSelectedPayment] = useState<PaymentHistoryRecord | null>(null);
 
   const [monthOptions, setMonthOptions] = useState<{ value: string; label: string }[]>([]);
+  const bootstrappedMonthRef = useRef<string | null>(null);
+  const bootstrapInFlightRef = useRef(false);
+  const skipInitialHistoryFetchRef = useRef(false);
 
   // Initialize date-dependent state on client only to avoid hydration mismatch
   useEffect(() => {
@@ -186,6 +188,30 @@ export default function PaymentsPage() {
   }, []);
 
   const HISTORY_LIMIT = 30;
+
+  const fetchBootstrap = useCallback(async (targetMonth: string) => {
+    try {
+      const params = new URLSearchParams({
+        month: targetMonth,
+        historyLimit: String(HISTORY_LIMIT),
+      });
+      const res = await fetch(`/api/payments/bootstrap?${params}`);
+      if (!res.ok) return false;
+
+      const json = await res.json();
+      setData(json.overview);
+      setGroups(json.groups || []);
+      setHistoryPayments(json.history?.payments || []);
+      setHistoryTotal(json.history?.total || 0);
+      setHistoryPage(0);
+      bootstrappedMonthRef.current = targetMonth;
+      skipInitialHistoryFetchRef.current = true;
+      return true;
+    } catch (error) {
+      console.error('Failed to fetch payments bootstrap:', error);
+      return false;
+    }
+  }, []);
 
   const fetchHistory = useCallback(async (page = 0) => {
     setHistoryLoading(true);
@@ -222,35 +248,39 @@ export default function PaymentsPage() {
   }, [month]);
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const [groupsRes] = await Promise.all([
-          fetch('/api/groups'),
-        ]);
-        const groupsData = await groupsRes.json();
-        setGroups((groupsData.groups || []).map((g: { id: number; title: string }) => ({
-          id: g.id,
-          title: g.title,
-        })));
-      } catch (error) {
-        console.error('Failed to fetch:', error);
-      }
-    };
-
-    init();
-  }, [router]);
+    if (user && month && !bootstrappedMonthRef.current && !bootstrapInFlightRef.current) {
+      bootstrapInFlightRef.current = true;
+      void fetchBootstrap(month)
+        .then((ok) => {
+          if (!ok) {
+            fetchData();
+            fetchHistory(0);
+          }
+        })
+        .finally(() => {
+          bootstrapInFlightRef.current = false;
+        });
+    }
+  }, [user, month, fetchBootstrap, fetchData, fetchHistory]);
 
   useEffect(() => {
-    if (user) {
+    if (user && month && bootstrappedMonthRef.current !== month && !bootstrapInFlightRef.current) {
       fetchData();
     }
-  }, [user, fetchData]);
+  }, [user, month, fetchData]);
 
   useEffect(() => {
     if (user) {
+      if (bootstrapInFlightRef.current && !historySearch && !historyMethodFilter && !historyTypeFilter) {
+        return;
+      }
+      if (skipInitialHistoryFetchRef.current && !historySearch && !historyMethodFilter && !historyTypeFilter) {
+        skipInitialHistoryFetchRef.current = false;
+        return;
+      }
       fetchHistory(0);
     }
-  }, [user, fetchHistory]);
+  }, [user, fetchHistory, historySearch, historyMethodFilter, historyTypeFilter]);
 
   // Filter group debtors
   const filteredGroupDebtors = (data?.group_debts.debtors || []).filter(d => {
@@ -327,31 +357,26 @@ export default function PaymentsPage() {
     }
   };
 
-  // Fetch lesson counts for a group and set of months
-  const fetchLessonCounts = useCallback(async (groupId: number, months: string[]) => {
-    if (months.length === 0) return;
-    const monthKeys = months.map(m => m.substring(0, 7)); // YYYY-MM
-    try {
-      const res = await fetch(`/api/groups/${groupId}/lessons-count?months=${monthKeys.join(',')}`);
-      if (res.ok) {
-        const json = await res.json();
-        setLessonCounts(prev => {
-          const next = { ...prev };
-          for (const [m, cnt] of Object.entries(json.counts as Record<string, number>)) {
-            next[`${groupId}:${m}`] = cnt;
-          }
-          return next;
-        });
-      }
-    } catch { /* ignore */ }
-  }, []);
-
-  // Fetch lesson counts for all groups for a given month
+  // Fetch lesson counts for all groups for a given month in one request
   const fetchAllGroupLessonCounts = useCallback(async (groups: Array<{ group_id: number; group_title: string }>, payMonth: string) => {
-    for (const g of groups) {
-      fetchLessonCounts(g.group_id, [payMonth]);
+    if (groups.length === 0 || !payMonth) return;
+
+    const monthKey = payMonth.substring(0, 7);
+    const groupIds = groups.map((group) => group.group_id).join(',');
+
+    try {
+      const res = await fetch(`/api/groups/lesson-counts?groupIds=${groupIds}&months=${monthKey}`);
+      if (!res.ok) return;
+
+      const json = await res.json();
+      setLessonCounts((prev) => ({
+        ...prev,
+        ...(json.counts || {}),
+      }));
+    } catch {
+      /* ignore */
     }
-  }, [fetchLessonCounts]);
+  }, []);
 
   // Select student → load their payment info
   const selectStudent = async (studentId: number) => {
