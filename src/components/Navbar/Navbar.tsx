@@ -1188,7 +1188,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
                       <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Зміна пароля</h3>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', maxWidth: '460px', lineHeight: 1.5 }}>
+                        <p style={{ display: 'none', margin: 0, fontSize: '0.875rem', color: '#64748b', maxWidth: '460px', lineHeight: 1.5 }}>
                           Поля зміни пароля відкриваються в окремому вікні, щоб не займати місце в профілі.
                         </p>
                         <button
@@ -1669,7 +1669,7 @@ const Navbar: React.FC<NavbarProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             padding: '1.5rem',
-            zIndex: 3000,
+            zIndex: 10001,
           }}
           onClick={() => setResetPasswordResult(null)}
         >
@@ -1730,7 +1730,7 @@ const Navbar: React.FC<NavbarProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             padding: '1.5rem',
-            zIndex: 3000,
+            zIndex: 10001,
           }}
           onClick={closePasswordModal}
         >
