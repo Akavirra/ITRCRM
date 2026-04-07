@@ -95,6 +95,7 @@ export default function LessonDetailPage() {
   const [isPastLesson, setIsPastLesson] = useState(false);
   const [photoFolder, setPhotoFolder] = useState<LessonData['photoFolder']>(null);
   const [photos, setPhotos] = useState<LessonPhoto[]>([]);
+  const [showAllUploadedPhotos, setShowAllUploadedPhotos] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhotoPreview[]>([]);
   const pendingPhotosRef = useRef<PendingPhotoPreview[]>([]);
@@ -440,6 +441,8 @@ export default function LessonDetailPage() {
     );
   }
 
+  const visibleUploadedPhotos = showAllUploadedPhotos ? photos : photos.slice(0, 3);
+
   return (
     <div>
       {/* Header */}
@@ -718,23 +721,45 @@ export default function LessonDetailPage() {
             )}
 
             {photos.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
-                {photos.map((photo) => (
-                  <a
-                    key={photo.id}
-                    href={photo.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    <img
-                      src={photo.thumbnailUrl}
-                      alt={photo.fileName}
-                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)' }}
-                    />
-                  </a>
-                ))}
-              </div>
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
+                  {visibleUploadedPhotos.map((photo) => (
+                    <a
+                      key={photo.id}
+                      href={photo.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <img
+                        src={photo.thumbnailUrl}
+                        alt={photo.fileName}
+                        style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)' }}
+                      />
+                    </a>
+                  ))}
+                </div>
+              {photos.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllUploadedPhotos((prev) => !prev)}
+                  style={{
+                    width: '100%',
+                    marginTop: '10px',
+                    padding: '10px 12px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--tg-border)',
+                    background: 'var(--tg-primary-bg)',
+                    color: 'var(--tg-link-color)',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {showAllUploadedPhotos ? 'Сховати зайві фото' : `Показати ще ${photos.length - 3} фото`}
+                </button>
+              )}
+              </>
             ) : (
               <p style={{ margin: 0, fontSize: '13px', color: 'var(--tg-hint-color)', fontStyle: 'italic' }}>
                 Фото ще не завантажені.
