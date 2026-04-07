@@ -5,8 +5,30 @@ import { addLessonPhotoRecord, getLessonPhotoPayload } from '@/lib/lesson-photos
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/jpg'];
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
+
+function isSupportedImageFile(file: File): boolean {
+  if (file.type && (ALLOWED_MIME_TYPES.includes(file.type) || file.type.startsWith('image/'))) {
+    return true;
+  }
+
+  const lowerName = file.name.toLowerCase();
+  return ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'].some((ext) => lowerName.endsWith(ext));
+}
+
+function resolveMimeType(file: File): string {
+  if (file.type && file.type.startsWith('image/')) {
+    return file.type;
+  }
+
+  const lowerName = file.name.toLowerCase();
+  if (lowerName.endsWith('.png')) return 'image/png';
+  if (lowerName.endsWith('.webp')) return 'image/webp';
+  if (lowerName.endsWith('.heic')) return 'image/heic';
+  if (lowerName.endsWith('.heif')) return 'image/heif';
+  return 'image/jpeg';
+}
 
 async function getAccessibleLesson(request: NextRequest, lessonId: number) {
   const user = await getAuthUser(request);
@@ -104,7 +126,7 @@ export async function POST(
   }
 
   for (const file of files) {
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    if (!isSupportedImageFile(file)) {
       return NextResponse.json({ error: `Непідтримуваний тип файлу: ${file.type}` }, { status: 400 });
     }
 
@@ -122,7 +144,7 @@ export async function POST(
         lessonId,
         buffer: Buffer.from(bytes),
         fileName: file.name,
-        mimeType: file.type,
+        mimeType: resolveMimeType(file),
         fileSize: file.size,
         uploadedBy: access.user!.id,
         uploadedByName: access.user!.name,

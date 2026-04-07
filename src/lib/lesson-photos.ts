@@ -83,7 +83,22 @@ function getRootFolderId(): string {
 }
 
 function formatLessonFolderDate(dateStr: string): string {
-  const date = new Date(`${dateStr}T00:00:00`);
+  const normalized = dateStr.includes('T')
+    ? dateStr
+    : /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
+      ? `${dateStr}T00:00:00`
+      : dateStr;
+  const date = new Date(normalized);
+
+  if (Number.isNaN(date.getTime())) {
+    const match = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return `${match[3]}.${match[2]}.${match[1].slice(-2)}`;
+    }
+
+    return '00.00.00';
+  }
+
   const dd = String(date.getDate()).padStart(2, '0');
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const yy = String(date.getFullYear()).slice(-2);
@@ -155,6 +170,10 @@ export async function ensureLessonPhotoFolder(lessonId: number): Promise<LessonP
 
   const existing = await getStoredLessonPhotoFolder(lessonId);
   if (existing) {
+    const expectedName = buildLessonFolderName(lesson.lessonDate, lesson.topic);
+    if (existing.lesson_folder_name !== expectedName) {
+      return await syncLessonPhotoFolderName(lessonId);
+    }
     return mapFolder(existing);
   }
 
