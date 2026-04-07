@@ -181,7 +181,9 @@ const Navbar: React.FC<NavbarProps> = ({
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [createUserForm, setCreateUserForm] = useState({ name: '', email: '', password: '', role: 'admin' });
   const [createUserSaving, setCreateUserSaving] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [resettingUserId, setResettingUserId] = useState<number | null>(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState<{ name: string; password: string; copied: boolean } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -481,6 +483,17 @@ const Navbar: React.FC<NavbarProps> = ({
     setPasswordError(null);
   };
 
+  const closePasswordModal = () => {
+    setPasswordModalOpen(false);
+    setPasswordForm({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
+    setPasswordMessage(null);
+    setPasswordError(null);
+  };
+
   const handlePasswordSave = async () => {
     if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
       setPasswordError('Заповніть усі поля для зміни пароля');
@@ -542,11 +555,35 @@ const Navbar: React.FC<NavbarProps> = ({
       });
       const d = await res.json();
       if (!res.ok) { alert(d.error || 'Помилка'); return; }
-      alert(`Тимчасовий пароль для ${name}: ${d.temporaryPassword}\n\nПередайте його адміну безпечним каналом. Після входу система змусить його задати новий пароль.`);
+      let copied = false;
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(d.temporaryPassword);
+          copied = true;
+        } catch {
+          copied = false;
+        }
+      }
+      setResetPasswordResult({
+        name,
+        password: d.temporaryPassword,
+        copied,
+      });
     } catch {
       alert('Не вдалося скинути пароль');
     } finally {
       setResettingUserId(null);
+    }
+  };
+
+  const handleCopyTemporaryPassword = async () => {
+    if (!resetPasswordResult) return;
+
+    try {
+      await navigator.clipboard.writeText(resetPasswordResult.password);
+      setResetPasswordResult(prev => prev ? { ...prev, copied: true } : prev);
+    } catch {
+      alert('Не вдалося скопіювати пароль');
     }
   };
 
@@ -1150,6 +1187,21 @@ const Navbar: React.FC<NavbarProps> = ({
 
                     <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
                       <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Зміна пароля</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', maxWidth: '460px', lineHeight: 1.5 }}>
+                          Поля зміни пароля відкриваються в окремому вікні, щоб не займати місце в профілі.
+                        </p>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => setPasswordModalOpen(true)}
+                        >
+                          Змінити пароль
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1rem', display: 'none' }}>
+                      <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Зміна пароля</h3>
                       <div className="form-group">
                         <label className="form-label">Поточний пароль</label>
                         <input
@@ -1602,6 +1654,166 @@ const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {resetPasswordResult && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.5rem',
+            zIndex: 3000,
+          }}
+          onClick={() => setResetPasswordResult(null)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '480px',
+              background: '#fff',
+              borderRadius: '16px',
+              boxShadow: '0 24px 60px rgba(15, 23, 42, 0.22)',
+              padding: '1.25rem',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
+              Тимчасовий пароль створено
+            </h3>
+            <p style={{ margin: '0.65rem 0 1rem', fontSize: '0.9rem', color: '#475569', lineHeight: 1.5 }}>
+              Передайте пароль адміну <strong>{resetPasswordResult.name}</strong> безпечним каналом. Після входу система змусить його одразу змінити пароль.
+            </p>
+
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.45rem' }}>
+              Тимчасовий пароль
+            </label>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'stretch' }}>
+              <input
+                type="text"
+                readOnly
+                value={resetPasswordResult.password}
+                className="form-input"
+                style={{ flex: 1, fontFamily: 'monospace', letterSpacing: '0.04em' }}
+                onFocus={e => e.currentTarget.select()}
+              />
+              <button className="btn btn-primary" onClick={handleCopyTemporaryPassword}>
+                {resetPasswordResult.copied ? 'Скопійовано' : 'Скопіювати'}
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.85rem' }}>
+              <span style={{ fontSize: '0.8rem', color: resetPasswordResult.copied ? '#16a34a' : '#64748b' }}>
+                {resetPasswordResult.copied ? 'Пароль уже скопійовано в буфер обміну.' : 'Можна виділити пароль або скопіювати кнопкою.'}
+              </span>
+              <button className="btn btn-secondary" onClick={() => setResetPasswordResult(null)}>
+                Закрити
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {passwordModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.5rem',
+            zIndex: 3000,
+          }}
+          onClick={closePasswordModal}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '480px',
+              background: '#fff',
+              borderRadius: '16px',
+              boxShadow: '0 24px 60px rgba(15, 23, 42, 0.22)',
+              padding: '1.25rem',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
+              Зміна пароля
+            </h3>
+            <p style={{ margin: '0.65rem 0 1rem', fontSize: '0.9rem', color: '#475569', lineHeight: 1.5 }}>
+              Вкажіть поточний пароль і двічі введіть новий.
+            </p>
+
+            <div className="form-group">
+              <label className="form-label">Поточний пароль</label>
+              <input
+                type="password"
+                className="form-input"
+                value={passwordForm.currentPassword}
+                onChange={e => handlePasswordInputChange('currentPassword', e.target.value)}
+                placeholder="Введіть поточний пароль"
+                autoComplete="current-password"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Новий пароль</label>
+              <input
+                type="password"
+                className="form-input"
+                value={passwordForm.newPassword}
+                onChange={e => handlePasswordInputChange('newPassword', e.target.value)}
+                placeholder="Не менше 6 символів"
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Підтвердіть новий пароль</label>
+              <input
+                type="password"
+                className="form-input"
+                value={passwordForm.confirmPassword}
+                onChange={e => handlePasswordInputChange('confirmPassword', e.target.value)}
+                placeholder="Повторіть новий пароль"
+                autoComplete="new-password"
+              />
+            </div>
+
+            {passwordError && (
+              <div style={{ color: '#dc2626', fontSize: '0.875rem', fontWeight: 500, marginTop: '-0.25rem', marginBottom: '0.75rem' }}>
+                {passwordError}
+              </div>
+            )}
+
+            {passwordMessage && (
+              <div style={{ color: '#16a34a', fontSize: '0.875rem', fontWeight: 500, marginTop: '-0.25rem', marginBottom: '0.75rem' }}>
+                {passwordMessage}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={closePasswordModal}
+                disabled={passwordSaving}
+              >
+                Закрити
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handlePasswordSave}
+                disabled={passwordSaving}
+              >
+                <Save size={14} />
+                {passwordSaving ? 'Збереження...' : 'Змінити пароль'}
+              </button>
             </div>
           </div>
         </div>
