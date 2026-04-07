@@ -1,7 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
 interface PageTransitionContextType {
   isLoading: boolean;
@@ -24,34 +23,15 @@ interface PageTransitionProviderProps {
 }
 
 export const PageTransitionProvider = ({ children }: PageTransitionProviderProps) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const pathname = usePathname();
-  const prevPathRef = useRef<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const startLoading = useCallback(() => {
-    // Не показуємо глобальний лоадер при навігації - сторінки мають свої loading стани
+    setIsLoading(false);
   }, []);
 
   const stopLoading = useCallback(() => {
     setIsLoading(false);
   }, []);
-
-  // Initial load - показуємо лоадер тільки при першому завантаженні сайту
-  useEffect(() => {
-    // Затримка для показу лоадера при першому завантаженні
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      setIsInitialLoad(false);
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Оновлюємо ref при зміні шляху
-  useEffect(() => {
-    prevPathRef.current = pathname;
-  }, [pathname]);
 
   const contextValue: PageTransitionContextType = {
     isLoading,

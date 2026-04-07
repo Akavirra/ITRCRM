@@ -1,7 +1,11 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { usePageTransition } from './PageTransitionProvider';
-import PageLoader from './PageLoader';
+
+const PageLoader = dynamic(() => import('./PageLoader'), {
+  ssr: false,
+});
 
 export const PageTransitionLoader = () => {
   const { isLoading } = usePageTransition();
