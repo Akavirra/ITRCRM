@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized } from '@/lib/api-utils';
 import { get, run } from '@/db';
 import { uploadImage, deleteImage, getPublicIdFromUrl } from '@/lib/cloudinary';
+import { clearServerCache } from '@/lib/server-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,6 +69,8 @@ export async function PATCH(request: NextRequest) {
       `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx}`,
       values
     );
+
+    clearServerCache(`settings:${currentUser.id}`);
 
     const updated = await get<{ name: string; phone: string | null; photo_url: string | null; telegram_id: string | null }>(
       `SELECT name, phone, photo_url, telegram_id FROM users WHERE id = $1`,

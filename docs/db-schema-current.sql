@@ -696,7 +696,6 @@ CREATE UNIQUE INDEX system_settings_pkey ON public.system_settings USING btree (
 -- Table: user_settings
 CREATE TABLE user_settings (
   user_id integer NOT NULL,
-  phone text DEFAULT ''::text,
   language text DEFAULT 'uk'::text,
   timezone text DEFAULT 'Europe/Kyiv'::text,
   date_format text DEFAULT 'DD.MM.YYYY'::text,

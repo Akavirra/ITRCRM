@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
         `SELECT
           u.name,
           u.email,
-          up.phone,
+          COALESCE(u.phone, '') AS phone,
           up.language,
           up.timezone,
           up.date_format,
@@ -118,25 +118,27 @@ export async function PUT(request: NextRequest) {
       await run(`UPDATE users SET name = $1 WHERE id = $2`, [displayName, user.id]);
     }
 
+    if (phone !== undefined) {
+      await run(`UPDATE users SET phone = $1, updated_at = NOW() WHERE id = $2`, [phone || null, user.id]);
+    }
+
     const existingSettings = await get(`SELECT user_id FROM user_settings WHERE user_id = $1`, [user.id]);
 
     if (existingSettings) {
       await run(
         `UPDATE user_settings SET
-          phone = $1,
-          language = $2,
-          timezone = $3,
-          date_format = $4,
-          currency = $5,
-          email_notifications = $6,
-          push_notifications = $7,
-          lesson_reminders = $8,
-          payment_alerts = $9,
-          weekly_report = $10,
-          weather_city = $11
-        WHERE user_id = $12`,
+          language = $1,
+          timezone = $2,
+          date_format = $3,
+          currency = $4,
+          email_notifications = $5,
+          push_notifications = $6,
+          lesson_reminders = $7,
+          payment_alerts = $8,
+          weekly_report = $9,
+          weather_city = $10
+        WHERE user_id = $11`,
         [
-          phone || '',
           language || 'uk',
           timezone || 'Europe/Kyiv',
           dateFormat || 'DD.MM.YYYY',
@@ -154,7 +156,6 @@ export async function PUT(request: NextRequest) {
       await run(
         `INSERT INTO user_settings (
           user_id,
-          phone,
           language,
           timezone,
           date_format,
@@ -165,10 +166,9 @@ export async function PUT(request: NextRequest) {
           payment_alerts,
           weekly_report,
           weather_city
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
         [
           user.id,
-          phone || '',
           language || 'uk',
           timezone || 'Europe/Kyiv',
           dateFormat || 'DD.MM.YYYY',
