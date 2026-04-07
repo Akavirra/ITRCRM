@@ -183,6 +183,7 @@ export default function LessonModalsManager() {
   const [photoFolders, setPhotoFolders] = useState<Record<number, LessonPhotoFolder | null>>({});
   const [lessonPhotos, setLessonPhotos] = useState<Record<number, LessonPhotoFile[]>>({});
   const [canManagePhotos, setCanManagePhotos] = useState<Record<number, boolean>>({});
+  const [showAllPhotos, setShowAllPhotos] = useState<Record<number, boolean>>({});
   const [photoUploading, setPhotoUploading] = useState<Record<number, boolean>>({});
   const [photoDeleting, setPhotoDeleting] = useState<Record<number, number | null>>({});
 
@@ -1231,6 +1232,158 @@ export default function LessonModalsManager() {
                   {getStatusBadge(lesson.status)}
                 </div>
 
+                {(() => {
+                  const allLessonPhotos = lessonPhotos[modal.id] || [];
+                  const isPhotosExpanded = Boolean(showAllPhotos[modal.id]);
+                  const visibleLessonPhotos = isPhotosExpanded ? allLessonPhotos : allLessonPhotos.slice(0, 3);
+                  const hiddenPhotosCount = Math.max(0, allLessonPhotos.length - visibleLessonPhotos.length);
+
+                  return lesson.groupId !== null && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', gap: '0.5rem' }}>
+                        <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                          <ImageIcon size={12} />
+                          Фото заняття
+                        </div>
+                        {photoFolders[modal.id]?.url && (
+                          <a
+                            href={photoFolders[modal.id]!.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ fontSize: '0.75rem', color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}
+                          >
+                            <ExternalLink size={12} />
+                            Папка на Drive
+                          </a>
+                        )}
+                      </div>
+
+                      {!lesson.topic && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#9a3412',
+                          background: '#fff7ed',
+                          border: '1px solid #fed7aa',
+                          borderRadius: '0.5rem',
+                          padding: '0.625rem 0.75rem',
+                          marginBottom: '0.75rem',
+                          lineHeight: 1.5,
+                        }}>
+                          Папка заняття буде створена з тимчасовою назвою <strong>Без теми</strong>, а після збереження теми автоматично перейменується.
+                        </div>
+                      )}
+
+                      <div style={{
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        padding: '0.75rem',
+                        background: '#fafafa',
+                      }}>
+                        {canManagePhotos[modal.id] && (
+                          <label style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            padding: '0.625rem 0.75rem',
+                            border: '1px dashed #93c5fd',
+                            borderRadius: '0.5rem',
+                            background: '#eff6ff',
+                            color: '#1d4ed8',
+                            cursor: photoUploading[modal.id] ? 'not-allowed' : 'pointer',
+                            opacity: photoUploading[modal.id] ? 0.7 : 1,
+                            marginBottom: '0.75rem',
+                          }}>
+                            {photoUploading[modal.id] ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 500 }}>
+                              {photoUploading[modal.id] ? 'Завантаження...' : 'Додати фото'}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              disabled={photoUploading[modal.id]}
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                handlePhotoUpload(modal.id, e.target.files);
+                                e.currentTarget.value = '';
+                              }}
+                            />
+                          </label>
+                        )}
+
+                        {allLessonPhotos.length > 0 ? (
+                          <>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.5rem' }}>
+                              {visibleLessonPhotos.map((photo) => (
+                                <div key={photo.id} style={{ position: 'relative' }}>
+                                  <a href={photo.url} target="_blank" rel="noreferrer">
+                                    <img
+                                      src={photo.thumbnailUrl}
+                                      alt={photo.fileName}
+                                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block' }}
+                                    />
+                                  </a>
+                                  {canManagePhotos[modal.id] && (
+                                    <button
+                                      onClick={() => handlePhotoDelete(modal.id, photo.id)}
+                                      disabled={photoDeleting[modal.id] === photo.id}
+                                      title="Видалити фото"
+                                      style={{
+                                        position: 'absolute',
+                                        top: '0.35rem',
+                                        right: '0.35rem',
+                                        width: '24px',
+                                        height: '24px',
+                                        borderRadius: '999px',
+                                        border: 'none',
+                                        background: 'rgba(17, 24, 39, 0.8)',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                      }}
+                                    >
+                                      {photoDeleting[modal.id] === photo.id ? <Loader2 size={12} className="spin" /> : <Trash2 size={12} />}
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            {allLessonPhotos.length > 3 && (
+                              <button
+                                onClick={() => setShowAllPhotos((prev) => ({ ...prev, [modal.id]: !prev[modal.id] }))}
+                                style={{
+                                  marginTop: '0.75rem',
+                                  padding: '0.5rem 0.75rem',
+                                  borderRadius: '0.5rem',
+                                  border: '1px solid #dbeafe',
+                                  background: '#eff6ff',
+                                  color: '#1d4ed8',
+                                  fontSize: '0.8125rem',
+                                  fontWeight: 500,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {isPhotosExpanded ? 'Сховати зайві фото' : `Показати ще ${allLessonPhotos.length - 3} фото`}
+                              </button>
+                            )}
+                            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                              Завантажено фото: {allLessonPhotos.length}
+                              {hiddenPhotosCount > 0 && !isPhotosExpanded ? `, у треї ще ${hiddenPhotosCount}` : ''}
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{ fontSize: '0.8125rem', color: '#9ca3af', fontStyle: 'italic' }}>
+                            Фото заняття ще не завантажені.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Makeup: which original lessons are being covered */}
                 {lesson.isMakeup && (() => {
                   const items = makeupForData[modal.id] || [];
@@ -1787,7 +1940,7 @@ export default function LessonModalsManager() {
                   )}
                 </div>
                 
-                {lesson.groupId !== null && (
+                {false ? (
                   <div style={{ marginBottom: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', gap: '0.5rem' }}>
                       <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
@@ -1807,7 +1960,7 @@ export default function LessonModalsManager() {
                       )}
                     </div>
 
-                    {!lesson.topic && (
+                    {!lesson?.topic && (
                       <div style={{
                         fontSize: '0.75rem',
                         color: '#9a3412',
@@ -1910,7 +2063,7 @@ export default function LessonModalsManager() {
                       )}
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 {/* Attendance section */}
                 <div style={{ marginBottom: '1rem' }}>
