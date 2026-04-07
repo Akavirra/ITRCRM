@@ -1,13 +1,29 @@
-import { all, get } from '@/db';
+﻿import { all, get } from '@/db';
 import type { DashboardStatsPayload } from '@/lib/dashboard-types';
 import { addDays, format, startOfMonth } from 'date-fns';
 
+const KYIV_TIME_ZONE = 'Europe/Kyiv';
+
+function getGreetingForDate(date: Date) {
+  const kyivHour = Number(
+    new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      hour12: false,
+      timeZone: KYIV_TIME_ZONE,
+    }).format(date)
+  );
+
+  if (kyivHour < 12) return 'Доброго ранку';
+  if (kyivHour < 18) return 'Доброго дня';
+  return 'Доброго вечора';
+}
+
 export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload> {
-  const today = new Date();
-  const todayStr = format(today, 'yyyy-MM-dd');
-  const firstDayOfMonth = format(startOfMonth(today), 'yyyy-MM-dd');
-  const nextWeek = format(addDays(today, 7), 'MM-dd');
-  const todayMonthDay = format(today, 'MM-dd');
+  const now = new Date();
+  const todayStr = format(now, 'yyyy-MM-dd');
+  const firstDayOfMonth = format(startOfMonth(now), 'yyyy-MM-dd');
+  const nextWeek = format(addDays(now, 7), 'MM-dd');
+  const todayMonthDay = format(now, 'MM-dd');
 
   const statsPromise = Promise.all([
     get<{ count: number }>(`SELECT COUNT(*) as count FROM students WHERE is_active = TRUE`),
@@ -72,6 +88,9 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   ]);
 
   return {
+    generatedAt: now.toISOString(),
+    todayDate: todayStr,
+    greeting: getGreetingForDate(now),
     stats: {
       activeStudents: studentCount?.count || 0,
       activeGroups: groupCount?.count || 0,

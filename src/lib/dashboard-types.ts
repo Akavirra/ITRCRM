@@ -1,4 +1,7 @@
-export interface DashboardStatsPayload {
+﻿export interface DashboardStatsPayload {
+  generatedAt: string;
+  todayDate: string;
+  greeting: string;
   stats: {
     activeStudents: number;
     activeGroups: number;

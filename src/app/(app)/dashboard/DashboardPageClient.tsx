@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -10,6 +10,8 @@ import type { DashboardStatsPayload } from '@/lib/dashboard-types';
 import styles from './dashboard.module.css';
 
 type ActivityTab = 'payments' | 'history';
+
+const KYIV_TIME_ZONE = 'Europe/Kyiv';
 
 const statCards = [
   { key: 'activeStudents', label: 'Активні студенти', icon: Users },
@@ -27,32 +29,28 @@ function formatCurrency(amount: number) {
 }
 
 function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString('uk-UA', {
+  return new Intl.DateTimeFormat('uk-UA', {
     hour: '2-digit',
     minute: '2-digit',
-  });
+    timeZone: KYIV_TIME_ZONE,
+  }).format(new Date(dateStr));
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('uk-UA', {
+  return new Intl.DateTimeFormat('uk-UA', {
     day: '2-digit',
     month: 'long',
-  });
+    timeZone: KYIV_TIME_ZONE,
+  }).format(new Date(dateStr));
 }
 
 function formatFullDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('uk-UA', {
+  return new Intl.DateTimeFormat('uk-UA', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  });
-}
-
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Доброго ранку';
-  if (hour < 18) return 'Доброго дня';
-  return 'Доброго вечора';
+    timeZone: KYIV_TIME_ZONE,
+  }).format(new Date(dateStr));
 }
 
 function getStatusLabel(status: string) {
@@ -82,8 +80,8 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
       <div className={styles.page}>
         <section className={styles.hero}>
           <div className={styles.heroMain}>
-            <div className={styles.heroDate}>Огляд школи на {formatFullDate(new Date().toISOString())}</div>
-            <h1 className={styles.heroTitle}>{getGreeting()}!</h1>
+            <div className={styles.heroDate}>Огляд школи на {formatFullDate(initialData.generatedAt)}</div>
+            <h1 className={styles.heroTitle}>{initialData.greeting}!</h1>
             <p className={styles.heroText}>
               Усе важливе на одному екрані: ключові цифри, розклад на сьогодні та останні фінансові й системні зміни.
             </p>
@@ -285,7 +283,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
           setShowCreateLessonModal(false);
           router.refresh();
         }}
-        initialDate={new Date().toISOString().split('T')[0]}
+        initialDate={initialData.todayDate}
       />
     </>
   );
