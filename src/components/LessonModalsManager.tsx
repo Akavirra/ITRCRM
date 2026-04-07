@@ -185,6 +185,7 @@ export default function LessonModalsManager() {
   const [canManagePhotos, setCanManagePhotos] = useState<Record<number, boolean>>({});
   const [showAllPhotos, setShowAllPhotos] = useState<Record<number, boolean>>({});
   const [photoUploading, setPhotoUploading] = useState<Record<number, boolean>>({});
+  const [photoUploadProgress, setPhotoUploadProgress] = useState<Record<number, { current: number; total: number } | null>>({});
   const [photoDeleting, setPhotoDeleting] = useState<Record<number, number | null>>({});
 
   // Load teachers list
@@ -528,11 +529,13 @@ export default function LessonModalsManager() {
     if (!files || files.length === 0) return;
 
     setPhotoUploading(prev => ({ ...prev, [lessonId]: true }));
+    setPhotoUploadProgress(prev => ({ ...prev, [lessonId]: { current: 0, total: files.length } }));
 
     try {
       const preparedFiles = await prepareImageFilesForUpload(Array.from(files));
       const batches = splitFilesIntoUploadBatches(preparedFiles, (file) => file.size);
       let latestData: { photoFolder?: LessonPhotoFolder | null; photos?: LessonPhotoFile[]; canManagePhotos?: boolean } | null = null;
+      let uploadedCount = 0;
 
       for (const batch of batches) {
         const formData = new FormData();
@@ -555,6 +558,8 @@ export default function LessonModalsManager() {
         }
 
         latestData = data;
+        uploadedCount += batch.length;
+        setPhotoUploadProgress(prev => ({ ...prev, [lessonId]: { current: uploadedCount, total: preparedFiles.length } }));
       }
 
       setPhotoFolders(prev => ({ ...prev, [lessonId]: latestData?.photoFolder || null }));
@@ -567,6 +572,7 @@ export default function LessonModalsManager() {
       alert(error instanceof Error ? error.message : 'Не вдалося завантажити фото');
     } finally {
       setPhotoUploading(prev => ({ ...prev, [lessonId]: false }));
+      setPhotoUploadProgress(prev => ({ ...prev, [lessonId]: null }));
     }
   };
 
@@ -1280,36 +1286,50 @@ export default function LessonModalsManager() {
                         background: '#fafafa',
                       }}>
                         {canManagePhotos[modal.id] && (
-                          <label style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.5rem',
-                            padding: '0.625rem 0.75rem',
-                            border: '1px dashed #93c5fd',
-                            borderRadius: '0.5rem',
-                            background: '#eff6ff',
-                            color: '#1d4ed8',
-                            cursor: photoUploading[modal.id] ? 'not-allowed' : 'pointer',
-                            opacity: photoUploading[modal.id] ? 0.7 : 1,
-                            marginBottom: '0.75rem',
-                          }}>
-                            {photoUploading[modal.id] ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 500 }}>
-                              {photoUploading[modal.id] ? 'Завантаження...' : 'Додати фото'}
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              disabled={photoUploading[modal.id]}
-                              style={{ display: 'none' }}
-                              onChange={(e) => {
-                                handlePhotoUpload(modal.id, e.target.files);
-                                e.currentTarget.value = '';
-                              }}
-                            />
-                          </label>
+                          <>
+                            <label style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.5rem',
+                              padding: '0.625rem 0.75rem',
+                              border: '1px dashed #93c5fd',
+                              borderRadius: '0.5rem',
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              cursor: photoUploading[modal.id] ? 'not-allowed' : 'pointer',
+                              opacity: photoUploading[modal.id] ? 0.7 : 1,
+                              marginBottom: photoUploadProgress[modal.id] ? '0.5rem' : '0.75rem',
+                            }}>
+                              {photoUploading[modal.id] ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
+                              <span style={{ fontSize: '0.8125rem', fontWeight: 500 }}>
+                                {photoUploading[modal.id]
+                                  ? `Завантаження ${photoUploadProgress[modal.id]?.current ?? 0} з ${photoUploadProgress[modal.id]?.total ?? 0}`
+                                  : 'Додати фото'}
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                disabled={photoUploading[modal.id]}
+                                style={{ display: 'none' }}
+                                onChange={(e) => {
+                                  handlePhotoUpload(modal.id, e.target.files);
+                                  e.currentTarget.value = '';
+                                }}
+                              />
+                            </label>
+                            {photoUploadProgress[modal.id] && (
+                              <div style={{
+                                marginBottom: '0.75rem',
+                                fontSize: '0.75rem',
+                                color: '#6b7280',
+                                textAlign: 'center',
+                              }}>
+                                {`Завантажено ${photoUploadProgress[modal.id]!.current} з ${photoUploadProgress[modal.id]!.total}`}
+                              </div>
+                            )}
+                          </>
                         )}
 
                         {allLessonPhotos.length > 0 ? (

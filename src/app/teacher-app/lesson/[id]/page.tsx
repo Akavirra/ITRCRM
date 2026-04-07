@@ -97,6 +97,7 @@ export default function LessonDetailPage() {
   const [photos, setPhotos] = useState<LessonPhoto[]>([]);
   const [showAllUploadedPhotos, setShowAllUploadedPhotos] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhotoPreview[]>([]);
   const pendingPhotosRef = useRef<PendingPhotoPreview[]>([]);
 
@@ -376,11 +377,13 @@ export default function LessonDetailPage() {
     if (!initData || pendingPhotos.length === 0) return;
 
     setUploadingPhotos(true);
+    setUploadProgress({ current: 0, total: pendingPhotos.length });
 
     try {
       const preparedPhotos = await prepareImageFilesForUpload(pendingPhotos.map((photo) => photo.file));
       const batches = splitFilesIntoUploadBatches(preparedPhotos, (file) => file.size);
       let latestResult: { photoFolder?: LessonData['photoFolder']; photos?: LessonPhoto[] } | null = null;
+      let uploadedCount = 0;
 
       for (const batch of batches) {
         const formData = new FormData();
@@ -406,6 +409,8 @@ export default function LessonDetailPage() {
         }
 
         latestResult = errorData;
+        uploadedCount += batch.length;
+        setUploadProgress({ current: uploadedCount, total: preparedPhotos.length });
       }
 
       setPhotoFolder(latestResult?.photoFolder || null);
@@ -417,6 +422,7 @@ export default function LessonDetailPage() {
       alert(uploadError instanceof Error ? uploadError.message : 'Не вдалося завантажити фото заняття');
     } finally {
       setUploadingPhotos(false);
+      setUploadProgress(null);
     }
   };
 
@@ -650,8 +656,8 @@ export default function LessonDetailPage() {
             padding: 'var(--space-md)',
             marginBottom: 'var(--space-md)',
           }}>
-            <label
-              style={{
+              <label
+                style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -675,10 +681,22 @@ export default function LessonDetailPage() {
                 onChange={handlePhotoSelection}
                 disabled={uploadingPhotos}
                 style={{ display: 'none' }}
-              />
-            </label>
+                />
+              </label>
 
-            {pendingPhotos.length > 0 && (
+              {uploadProgress && (
+                <div style={{
+                  marginTop: '10px',
+                  marginBottom: pendingPhotos.length > 0 ? '12px' : 0,
+                  fontSize: '13px',
+                  color: 'var(--tg-text-secondary)',
+                  textAlign: 'center',
+                }}>
+                  {`Завантаження фото: ${uploadProgress.current} з ${uploadProgress.total}`}
+                </div>
+              )}
+
+              {pendingPhotos.length > 0 && (
               <div style={{ marginBottom: '12px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
                   {pendingPhotos.map((photo) => (
