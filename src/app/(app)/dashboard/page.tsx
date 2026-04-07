@@ -1,5 +1,5 @@
-import DashboardPageClient from '@/components/DashboardPageClient';
-import { getDashboardStatsPayload } from '@/lib/dashboard';
+п»їimport { getDashboardStatsPayload } from '@/lib/dashboard';
+import DashboardPageClient from './DashboardPageClient';
 import styles from './dashboard.module.css';
 
 export default async function DashboardPage() {
@@ -11,9 +11,9 @@ export default async function DashboardPage() {
     return (
       <div className={styles.page}>
         <section className={styles.errorCard}>
-          <div className={styles.errorLabel}>Дашборд недоступний</div>
-          <h1 className={styles.errorTitle}>Не вдалося завантажити дані</h1>
-          <p className={styles.errorText}>Спробуйте оновити сторінку ще раз.</p>
+          <div className={styles.errorLabel}>Р”Р°С€Р±РѕСЂРґ РЅРµРґРѕСЃС‚СѓРїРЅРёР№</div>
+          <h1 className={styles.errorTitle}>РќРµ РІРґР°Р»РѕСЃСЏ Р·Р°РІР°РЅС‚Р°Р¶РёС‚Рё РґР°РЅС–</h1>
+          <p className={styles.errorText}>РЎРїСЂРѕР±СѓР№С‚Рµ РѕРЅРѕРІРёС‚Рё СЃС‚РѕСЂС–РЅРєСѓ С‰Рµ СЂР°Р·.</p>
         </section>
       </div>
     );
