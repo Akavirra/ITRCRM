@@ -742,47 +742,55 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
          s.photo,
          s.school,
          s.discount,
-         s.parent_relation,
-         CASE WHEN EXISTS (
-                SELECT 1
-                FROM student_groups sg2
-                WHERE sg2.student_id = s.id AND sg2.is_active = TRUE
-              )
-              OR EXISTS (
-                SELECT 1
-                FROM attendance a2
-                JOIN lessons l2 ON a2.lesson_id = l2.id
-                WHERE a2.student_id = s.id
-                  AND l2.group_id IS NULL
-                  AND l2.status = 'scheduled'
-                  AND l2.lesson_date >= CURRENT_DATE
-              )
-              THEN 'studying' ELSE 'not_studying'
-         END as study_status
+         s.parent_relation
        FROM students s
        ${whereClause}
        ORDER BY s.${sortBy} ${sortOrder}, s.id ASC
        ${limitClause}
+     ),
+     grouped_students AS (
+       SELECT DISTINCT sg.student_id
+       FROM student_groups sg
+       JOIN paged_students ps ON ps.id = sg.student_id
+       WHERE sg.is_active = TRUE
+     ),
+     individual_students AS (
+       SELECT DISTINCT a.student_id
+       FROM attendance a
+       JOIN lessons l ON a.lesson_id = l.id
+       JOIN paged_students ps ON ps.id = a.student_id
+       WHERE l.group_id IS NULL
+         AND l.status = 'scheduled'
+         AND l.lesson_date >= CURRENT_DATE
      )
      SELECT
        ps.*,
-       COALESCE(
-         json_agg(
-           json_build_object(
-             'id', g.id,
-             'title', g.title
-           )
-           ORDER BY g.title
-         ) FILTER (WHERE g.id IS NOT NULL),
-         '[]'::json
-       ) as groups
+       CASE
+         WHEN gs.student_id IS NOT NULL OR inds.student_id IS NOT NULL THEN 'studying'
+         ELSE 'not_studying'
+       END as study_status,
+       COALESCE(group_data.groups, '[]'::json) as groups
      FROM paged_students ps
-     LEFT JOIN student_groups sg ON sg.student_id = ps.id AND sg.is_active = TRUE
-     LEFT JOIN groups g ON g.id = sg.group_id AND g.is_active = TRUE
+     LEFT JOIN grouped_students gs ON gs.student_id = ps.id
+     LEFT JOIN individual_students inds ON inds.student_id = ps.id
+     LEFT JOIN LATERAL (
+       SELECT json_agg(
+                json_build_object(
+                  'id', g.id,
+                  'title', g.title
+                )
+                ORDER BY g.title
+              ) as groups
+       FROM student_groups sg
+       JOIN groups g ON g.id = sg.group_id
+       WHERE sg.student_id = ps.id
+         AND sg.is_active = TRUE
+         AND g.is_active = TRUE
+     ) group_data ON TRUE
      GROUP BY
        ps.id, ps.public_id, ps.full_name, ps.phone, ps.email, ps.parent_name,
        ps.notes, ps.birth_date, ps.photo, ps.school, ps.discount, ps.parent_relation,
-       ps.study_status
+       gs.student_id, inds.student_id, group_data.groups
      ORDER BY ps.${sortBy} ${sortOrder}, ps.id ASC`,
     dataParams
   );
