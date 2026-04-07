@@ -24,7 +24,9 @@ export function CalculatorProvider({ children }: { children: ReactNode }) {
   return (
     <CalculatorContext.Provider value={{ calcOpen, toggleCalc }}>
       {children}
-      <CalculatorModal isOpen={calcOpen} onClose={() => setCalcOpen(false)} />
+      {calcOpen && (
+        <CalculatorModal isOpen={calcOpen} onClose={() => setCalcOpen(false)} />
+      )}
     </CalculatorContext.Provider>
   );
 }

@@ -33,7 +33,9 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   return (
     <NotesContext.Provider value={{ notesOpen, toggleNotes }}>
       {children}
-      <NotesModal isOpen={notesOpen} onClose={() => setNotesOpen(false)} />
+      {notesOpen && (
+        <NotesModal isOpen={notesOpen} onClose={() => setNotesOpen(false)} />
+      )}
     </NotesContext.Provider>
   );
 }
