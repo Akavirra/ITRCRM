@@ -4,6 +4,7 @@ import {
   getGroupsWithDetails,
   getGroupsForTeacher,
   getGroupsFiltered,
+  getGroupFilterOptions,
   createGroup,
   validateTime, 
   validateUrl,
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
   const courseId = searchParams.get('courseId');
   const teacherId = searchParams.get('teacherId');
   const status = searchParams.get('status') as GroupStatus | null;
+  const basic = searchParams.get('basic') === 'true';
   
   let groups;
   
@@ -79,7 +81,9 @@ export async function GET(request: NextRequest) {
     }
   }
   
-  if (Object.keys(filters).length > 1 || search) {
+  if (basic) {
+    groups = await getGroupFilterOptions(includeInactive);
+  } else if (Object.keys(filters).length > 1 || search) {
     // Apply filters for admin
     groups = await getGroupsFiltered(filters);
   } else {

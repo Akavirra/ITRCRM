@@ -797,3 +797,16 @@ export async function getStudentAgeOptions(includeInactive: boolean = false): Pr
   const rows = await all<{ age: number }>(sql);
   return rows.map((row) => row.age).filter((age) => age >= 0);
 }
+
+export async function getStudentSchoolOptions(includeInactive: boolean = false): Promise<string[]> {
+  const rows = await all<{ school: string }>(
+    `SELECT DISTINCT TRIM(school) as school
+     FROM students
+     WHERE school IS NOT NULL
+       AND TRIM(school) != ''
+       ${includeInactive ? '' : 'AND is_active = TRUE'}
+     ORDER BY TRIM(school)`
+  );
+
+  return rows.map((row) => row.school);
+}

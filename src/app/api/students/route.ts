@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
-import { getStudentsWithGroupCount, getStudents, createStudent, searchStudents, quickSearchStudents, getStudentsWithGroups, searchStudentsWithGroups, listStudentsWithGroups, getStudentAgeOptions } from '@/lib/students';
+import { getStudentsWithGroupCount, getStudents, createStudent, searchStudents, quickSearchStudents, getStudentsWithGroups, searchStudentsWithGroups, listStudentsWithGroups, getStudentAgeOptions, getStudentSchoolOptions } from '@/lib/students';
 import { safeAddStudentHistoryEntry } from '@/lib/student-history';
 import { getOrSetServerCache } from '@/lib/server-cache';
 
@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
   const withGroupCount = searchParams.get('withGroupCount') === 'true';
   const withGroups = searchParams.get('withGroups') === 'true';
   const ageOptionsOnly = searchParams.get('ageOptions') === 'true';
+  const schoolOptionsOnly = searchParams.get('schoolOptions') === 'true';
   const autocompleteOnly = searchParams.get('autocomplete') === 'true';
   const courseIdParam = searchParams.get('courseId');
   const groupIdParam = searchParams.get('groupId');
@@ -51,6 +52,15 @@ export async function GET(request: NextRequest) {
       () => getStudentAgeOptions(includeInactive)
     );
     return NextResponse.json({ ages });
+  }
+
+  if (schoolOptionsOnly) {
+    const schools = await getOrSetServerCache(
+      `students:school-options:${includeInactive ? 'all' : 'active'}`,
+      5 * 60 * 1000,
+      () => getStudentSchoolOptions(includeInactive)
+    );
+    return NextResponse.json({ schools });
   }
 
   if (autocompleteOnly) {

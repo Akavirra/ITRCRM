@@ -428,26 +428,29 @@ export default function StudentsPage() {
   useEffect(() => {
     const fetchPageData = async () => {
       try {
-        const [coursesRes, groupsRes, agesRes] = await Promise.all([
-          fetch('/api/courses'),
-          fetch('/api/groups?includeInactive=true'),
+        const [coursesRes, groupsRes, agesRes, schoolsRes] = await Promise.all([
+          fetch('/api/courses?simple=true'),
+          fetch('/api/groups?includeInactive=true&basic=true'),
           fetch('/api/students?ageOptions=true'),
+          fetch('/api/students?schoolOptions=true'),
         ]);
 
         const coursesData = await coursesRes.json();
         const groupsData = await groupsRes.json();
         const agesData = await agesRes.json();
+        const schoolsData = await schoolsRes.json();
 
         setCourses(coursesData.courses || []);
         setGroups(groupsData.groups || []);
         setAllAges(agesData.ages || []);
+        setSchools(schoolsData.schools || []);
       } catch (error) {
         console.error('Failed to fetch students page filters:', error);
       }
     };
 
     fetchPageData();
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -584,20 +587,13 @@ export default function StudentsPage() {
     }
   };
 
-  // Get unique schools from students
+  // Load unique schools for autocomplete
   const loadSchools = async () => {
+    if (schools.length > 0) return;
     try {
-      const res = await fetch('/api/students?limit=1000');
+      const res = await fetch('/api/students?schoolOptions=true');
       const data = await res.json();
-      const students = data.students || [];
-      const schoolArray: string[] = [];
-      students.forEach((s: any) => {
-        const school = s.school;
-        if (school && school.length > 0 && !schoolArray.includes(school)) {
-          schoolArray.push(school);
-        }
-      });
-      setSchools(schoolArray);
+      setSchools(data.schools || []);
     } catch (error) {
       console.error('Failed to load schools:', error);
     }
@@ -616,8 +612,9 @@ export default function StudentsPage() {
 
   // Load courses
   const loadCourses = async () => {
+    if (courses.length > 0) return;
     try {
-      const res = await fetch('/api/courses');
+      const res = await fetch('/api/courses?simple=true');
       const data = await res.json();
       setCourses(data.courses || []);
     } catch (error) {

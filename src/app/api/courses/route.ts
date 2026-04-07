@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
   const includeInactive = searchParams.get('includeInactive') === 'true';
   const search = searchParams.get('search') || '';
   const withStats = searchParams.get('withStats') === 'true';
+  const simple = searchParams.get('simple') === 'true';
 
   let courses;
 
@@ -47,6 +48,14 @@ export async function GET(request: NextRequest) {
       60 * 1000,
       () => getCourses(includeInactive)
     );
+  }
+
+  if (simple) {
+    courses = (courses || []).map((course: { id: number; title: string; public_id: string }) => ({
+      id: course.id,
+      title: course.title,
+      public_id: course.public_id,
+    }));
   }
 
   return NextResponse.json({ courses });

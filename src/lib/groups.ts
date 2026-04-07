@@ -63,6 +63,13 @@ export interface GroupWithDetails extends Group {
   students_count: number;
 }
 
+export interface GroupFilterOption {
+  id: number;
+  title: string;
+  course_id: number;
+  course_title: string;
+}
+
 // Validation error messages in Ukrainian
 export const VALIDATION_ERRORS = {
   courseRequired: "Оберіть курс",
@@ -118,6 +125,20 @@ export async function getGroups(includeInactive: boolean = false): Promise<Group
     : `SELECT * FROM groups WHERE is_active = TRUE ORDER BY created_at DESC`;
   
   return await all<Group>(sql);
+}
+
+export async function getGroupFilterOptions(includeInactive: boolean = false): Promise<GroupFilterOption[]> {
+  return await all<GroupFilterOption>(
+    `SELECT
+        g.id,
+        g.title,
+        g.course_id,
+        c.title as course_title
+     FROM groups g
+     JOIN courses c ON g.course_id = c.id
+     ${includeInactive ? '' : 'WHERE g.is_active = TRUE'}
+     ORDER BY g.title`
+  );
 }
 
 // Get groups with details
