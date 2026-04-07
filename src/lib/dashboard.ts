@@ -18,6 +18,39 @@ function getGreetingForDate(date: Date) {
   return 'Доброго вечора';
 }
 
+function formatCurrencyLabel(amount: number) {
+  return new Intl.NumberFormat('uk-UA', {
+    style: 'currency',
+    currency: 'UAH',
+    minimumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatTimeLabel(dateStr: string) {
+  return new Intl.DateTimeFormat('uk-UA', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: KYIV_TIME_ZONE,
+  }).format(new Date(dateStr));
+}
+
+function formatDateLabel(dateStr: string) {
+  return new Intl.DateTimeFormat('uk-UA', {
+    day: '2-digit',
+    month: 'long',
+    timeZone: KYIV_TIME_ZONE,
+  }).format(new Date(dateStr));
+}
+
+function formatFullDateLabel(date: Date) {
+  return new Intl.DateTimeFormat('uk-UA', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: KYIV_TIME_ZONE,
+  }).format(date);
+}
+
 export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload> {
   const now = new Date();
   const todayStr = format(now, 'yyyy-MM-dd');
@@ -87,19 +120,33 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     recentHistoryPromise,
   ]);
 
+  const monthlyRevenue = revenue?.total || 0;
+
   return {
-    generatedAt: now.toISOString(),
+    generatedAtLabel: formatFullDateLabel(now),
     todayDate: todayStr,
     greeting: getGreetingForDate(now),
     stats: {
       activeStudents: studentCount?.count || 0,
       activeGroups: groupCount?.count || 0,
       todayLessons: lessonCount?.count || 0,
-      monthlyRevenue: revenue?.total || 0,
+      monthlyRevenue,
+      monthlyRevenueLabel: formatCurrencyLabel(monthlyRevenue),
     },
-    todaySchedule,
+    todaySchedule: todaySchedule.map((lesson) => ({
+      ...lesson,
+      startTimeLabel: formatTimeLabel(lesson.start_datetime),
+      endTimeLabel: formatTimeLabel(lesson.end_datetime),
+    })),
     upcomingBirthdays,
-    recentPayments,
-    recentHistory,
+    recentPayments: recentPayments.map((payment) => ({
+      ...payment,
+      amountLabel: formatCurrencyLabel(payment.amount),
+      paidAtLabel: formatDateLabel(payment.paid_at),
+    })),
+    recentHistory: recentHistory.map((history) => ({
+      ...history,
+      createdAtLabel: formatDateLabel(history.created_at),
+    })),
   };
 }

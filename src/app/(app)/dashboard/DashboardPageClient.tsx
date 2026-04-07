@@ -11,47 +11,12 @@ import styles from './dashboard.module.css';
 
 type ActivityTab = 'payments' | 'history';
 
-const KYIV_TIME_ZONE = 'Europe/Kyiv';
-
 const statCards = [
   { key: 'activeStudents', label: 'Активні студенти', icon: Users },
   { key: 'activeGroups', label: 'Активні групи', icon: Users2 },
   { key: 'todayLessons', label: 'Уроків сьогодні', icon: BookOpen },
   { key: 'monthlyRevenue', label: 'Дохід за місяць', icon: DollarSign },
 ] as const;
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('uk-UA', {
-    style: 'currency',
-    currency: 'UAH',
-    minimumFractionDigits: 0,
-  }).format(amount);
-}
-
-function formatTime(dateStr: string) {
-  return new Intl.DateTimeFormat('uk-UA', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: KYIV_TIME_ZONE,
-  }).format(new Date(dateStr));
-}
-
-function formatDate(dateStr: string) {
-  return new Intl.DateTimeFormat('uk-UA', {
-    day: '2-digit',
-    month: 'long',
-    timeZone: KYIV_TIME_ZONE,
-  }).format(new Date(dateStr));
-}
-
-function formatFullDate(dateStr: string) {
-  return new Intl.DateTimeFormat('uk-UA', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: KYIV_TIME_ZONE,
-  }).format(new Date(dateStr));
-}
 
 function getStatusLabel(status: string) {
   if (status === 'completed') return 'Завершено';
@@ -80,7 +45,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
       <div className={styles.page}>
         <section className={styles.hero}>
           <div className={styles.heroMain}>
-            <div className={styles.heroDate}>Огляд школи на {formatFullDate(initialData.generatedAt)}</div>
+            <div className={styles.heroDate}>Огляд школи на {initialData.generatedAtLabel}</div>
             <h1 className={styles.heroTitle}>{initialData.greeting}!</h1>
             <p className={styles.heroText}>
               Усе важливе на одному екрані: ключові цифри, розклад на сьогодні та останні фінансові й системні зміни.
@@ -130,8 +95,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
         <section className={styles.statsGrid}>
           {statCards.map((card) => {
             const Icon = card.icon;
-            const value =
-              card.key === 'monthlyRevenue' ? formatCurrency(initialData.stats.monthlyRevenue) : initialData.stats[card.key];
+            const value = card.key === 'monthlyRevenue' ? initialData.stats.monthlyRevenueLabel : initialData.stats[card.key];
 
             const hint =
               card.key === 'todayLessons'
@@ -181,8 +145,8 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               {initialData.todaySchedule.slice(0, 10).map((lesson) => (
                 <div key={lesson.id} className={styles.timelineItem}>
                   <div className={styles.timelineTime}>
-                    <div>{formatTime(lesson.start_datetime)}</div>
-                    <div>{formatTime(lesson.end_datetime)}</div>
+                    <div>{lesson.startTimeLabel}</div>
+                    <div>{lesson.endTimeLabel}</div>
                   </div>
 
                   <div className={styles.timelineBody}>
@@ -238,10 +202,10 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                     <div>
                       <div className={styles.activityTitle}>{payment.student_name}</div>
                       <div className={styles.activityMeta}>
-                        {payment.student_public_id} · {formatDate(payment.paid_at)}
+                        {payment.student_public_id} · {payment.paidAtLabel}
                       </div>
                     </div>
-                    <div className={styles.activityAmount}>{formatCurrency(payment.amount)}</div>
+                    <div className={styles.activityAmount}>{payment.amountLabel}</div>
                   </div>
                 ))
               ) : (
@@ -253,7 +217,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   <div>
                     <div className={styles.activityTitle}>{history.student_name}</div>
                     <div className={styles.activityMeta}>
-                      {formatDate(history.created_at)} · {history.user_name}
+                      {history.createdAtLabel} · {history.user_name}
                     </div>
                     <div className={styles.activityDescription}>{history.action_description}</div>
                   </div>

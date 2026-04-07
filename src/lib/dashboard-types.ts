@@ -1,5 +1,5 @@
 ﻿export interface DashboardStatsPayload {
-  generatedAt: string;
+  generatedAtLabel: string;
   todayDate: string;
   greeting: string;
   stats: {
@@ -7,11 +7,14 @@
     activeGroups: number;
     todayLessons: number;
     monthlyRevenue: number;
+    monthlyRevenueLabel: string;
   };
   todaySchedule: Array<{
     id: number;
     start_datetime: string;
     end_datetime: string;
+    startTimeLabel: string;
+    endTimeLabel: string;
     status: string;
     topic?: string;
     group_title: string;
@@ -26,7 +29,9 @@
   }>;
   recentPayments: Array<{
     amount: number;
+    amountLabel: string;
     paid_at: string;
+    paidAtLabel: string;
     student_name: string;
     student_public_id: string;
   }>;
@@ -34,6 +39,7 @@
     action_type: string;
     action_description: string;
     created_at: string;
+    createdAtLabel: string;
     user_name: string;
     student_name: string;
     student_public_id: string;
