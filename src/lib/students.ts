@@ -787,10 +787,6 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
          AND sg.is_active = TRUE
          AND g.is_active = TRUE
      ) group_data ON TRUE
-     GROUP BY
-       ps.id, ps.public_id, ps.full_name, ps.phone, ps.email, ps.parent_name,
-       ps.notes, ps.birth_date, ps.photo, ps.school, ps.discount, ps.parent_relation,
-       gs.student_id, inds.student_id, group_data.groups
      ORDER BY ps.${sortBy} ${sortOrder}, ps.id ASC`,
     dataParams
   );
