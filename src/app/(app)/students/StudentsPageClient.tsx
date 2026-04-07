@@ -14,9 +14,7 @@ import CreateGroupModal from '@/components/CreateGroupModal';
 
 interface StudentGroup {
   id: number;
-  public_id: string;
   title: string;
-  course_title: string;
 }
 
 interface GroupDetails {
@@ -214,7 +212,7 @@ function formatTime(time: string): string {
 }
 
 export default function StudentsPageClient({ initialFilters }: { initialFilters: StudentsFilterBootstrap }) {
-  const STUDENTS_PAGE_SIZE = 48;
+  const STUDENTS_PAGE_SIZE = 24;
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);

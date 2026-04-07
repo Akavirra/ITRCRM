@@ -609,9 +609,7 @@ export async function getTotalDebtForMonth(month: string): Promise<{ total_debt:
 // Get students with their groups for cards display
 export interface StudentGroupInfo {
   id: number;
-  public_id: string;
   title: string;
-  course_title: string;
 }
 
 export interface StudentsWithGroupsQuery {
@@ -772,9 +770,7 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
          json_agg(
            json_build_object(
              'id', g.id,
-             'public_id', g.public_id,
-             'title', g.title,
-             'course_title', c.title
+             'title', g.title
            )
            ORDER BY g.title
          ) FILTER (WHERE g.id IS NOT NULL),
@@ -783,7 +779,6 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
      FROM paged_students ps
      LEFT JOIN student_groups sg ON sg.student_id = ps.id AND sg.is_active = TRUE
      LEFT JOIN groups g ON g.id = sg.group_id AND g.is_active = TRUE
-     LEFT JOIN courses c ON c.id = g.course_id
      GROUP BY
        ps.id, ps.public_id, ps.full_name, ps.phone, ps.email, ps.parent_name,
        ps.notes, ps.birth_date, ps.photo, ps.school, ps.discount, ps.parent_relation,
