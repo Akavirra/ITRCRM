@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv, formatDateTimeKyiv } from '@/lib/date-utils';
-import { splitFilesIntoUploadBatches, getUploadErrorMessage, prepareImageFilesForUpload, validateFilesBeforeUpload } from '@/lib/client-photo-upload';
+import { getUploadErrorMessage, prepareImageFilesForUpload, uploadFileToDriveResumableSession } from '@/lib/client-photo-upload';
 import { isVideoMimeType } from '@/lib/lesson-media';
 import {
   CheckCircleIcon, ClipboardIcon, ClockIcon, RefreshIcon, UsersIcon,
@@ -383,20 +383,63 @@ export default function LessonDetailPage() {
   const uploadSelectedPhotos = async () => {
     if (!initData || pendingPhotos.length === 0) return;
 
-    const validationError = validateFilesBeforeUpload(pendingPhotos.map((photo) => photo.file));
-    if (validationError) {
-      alert(validationError);
-      return;
-    }
-
     setUploadingPhotos(true);
     setUploadProgress({ current: 0, total: pendingPhotos.length });
 
     try {
       const preparedPhotos = await prepareImageFilesForUpload(pendingPhotos.map((photo) => photo.file));
-      const batches = splitFilesIntoUploadBatches(preparedPhotos, (file) => file.size);
+      const videoFiles = preparedPhotos.filter((file) => isVideoMimeType(file.type));
+      const imageFiles = preparedPhotos.filter((file) => !isVideoMimeType(file.type));
+      const batches = imageFiles.map((file) => [file]);
       let latestResult: { photoFolder?: LessonData['photoFolder']; photos?: LessonPhoto[] } | null = null;
       let uploadedCount = 0;
+
+      for (const file of videoFiles) {
+        const startResponse = await fetch(`/api/teacher-app/lessons/${lessonId}/photos/direct`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': initData,
+          },
+          body: JSON.stringify({
+            action: 'start',
+            fileName: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            fileSize: file.size,
+          }),
+        });
+
+        const startData = await startResponse.json().catch(() => ({}));
+        if (!startResponse.ok) {
+          throw new Error(getUploadErrorMessage(startData, 'Не вдалося підготувати завантаження відео'));
+        }
+
+        const uploadedDriveFile = await uploadFileToDriveResumableSession(startData.uploadUrl, file);
+
+        const finalizeResponse = await fetch(`/api/teacher-app/lessons/${lessonId}/photos/direct`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': initData,
+          },
+          body: JSON.stringify({
+            action: 'finalize',
+            driveFileId: uploadedDriveFile.id,
+            fileName: uploadedDriveFile.name || file.name,
+            mimeType: uploadedDriveFile.mimeType || file.type || 'application/octet-stream',
+            fileSize: Number(uploadedDriveFile.size ?? file.size),
+          }),
+        });
+
+        const finalizeData = await finalizeResponse.json().catch(() => ({}));
+        if (!finalizeResponse.ok) {
+          throw new Error(getUploadErrorMessage(finalizeData, 'Не вдалося завершити завантаження відео'));
+        }
+
+        latestResult = finalizeData;
+        uploadedCount += 1;
+        setUploadProgress({ current: uploadedCount, total: preparedPhotos.length });
+      }
 
       for (const batch of batches) {
         const formData = new FormData();
@@ -432,7 +475,7 @@ export default function LessonDetailPage() {
       setPendingPhotos([]);
     } catch (uploadError) {
       console.error('Photo upload error:', uploadError);
-      alert(uploadError instanceof Error ? uploadError.message : 'Не вдалося завантажити фото заняття');
+      alert(uploadError instanceof Error ? uploadError.message : 'Не вдалося завантажити медіа заняття');
     } finally {
       setUploadingPhotos(false);
       setUploadProgress(null);

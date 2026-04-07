@@ -8,7 +8,7 @@ import { useGroupModals } from './GroupModalsContext';
 import { useCourseModals } from './CourseModalsContext';
 import { useTeacherModals } from './TeacherModalsContext';
 import { Clock, BookOpen, User, Check, X, Calendar, Trash2, UserMinus, Users, MoreVertical, Edit2, Save, RefreshCw, ExternalLink, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
-import { splitFilesIntoUploadBatches, getUploadErrorMessage, prepareImageFilesForUpload, validateFilesBeforeUpload } from '@/lib/client-photo-upload';
+import { getUploadErrorMessage, prepareImageFilesForUpload, uploadFileToDriveResumableSession } from '@/lib/client-photo-upload';
 import { isVideoMimeType } from '@/lib/lesson-media';
 
 interface Teacher {
@@ -534,20 +534,57 @@ export default function LessonModalsManager() {
   const handlePhotoUpload = async (lessonId: number, files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    const validationError = validateFilesBeforeUpload(Array.from(files));
-    if (validationError) {
-      alert(validationError);
-      return;
-    }
-
     setPhotoUploading(prev => ({ ...prev, [lessonId]: true }));
     setPhotoUploadProgress(prev => ({ ...prev, [lessonId]: { current: 0, total: files.length } }));
 
     try {
       const preparedFiles = await prepareImageFilesForUpload(Array.from(files));
-      const batches = splitFilesIntoUploadBatches(preparedFiles, (file) => file.size);
+      const videoFiles = preparedFiles.filter((file) => isVideoMimeType(file.type));
+      const imageFiles = preparedFiles.filter((file) => !isVideoMimeType(file.type));
+      const batches = imageFiles.map((file) => [file]);
       let latestData: { photoFolder?: LessonPhotoFolder | null; photos?: LessonPhotoFile[]; canManagePhotos?: boolean } | null = null;
       let uploadedCount = 0;
+
+      for (const file of videoFiles) {
+        const startRes = await fetch(`/api/lessons/${lessonId}/photos/direct`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'start',
+            fileName: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            fileSize: file.size,
+          }),
+        });
+
+        const startData = await startRes.json().catch(() => ({}));
+        if (!startRes.ok) {
+          throw new Error(getUploadErrorMessage(startData, 'Не вдалося підготувати завантаження відео'));
+        }
+
+        const uploadedDriveFile = await uploadFileToDriveResumableSession(startData.uploadUrl, file);
+
+        const finalizeRes = await fetch(`/api/lessons/${lessonId}/photos/direct`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'finalize',
+            driveFileId: uploadedDriveFile.id,
+            fileName: uploadedDriveFile.name || file.name,
+            mimeType: uploadedDriveFile.mimeType || file.type || 'application/octet-stream',
+            fileSize: Number(uploadedDriveFile.size ?? file.size),
+          }),
+        });
+
+        const finalizeData = await finalizeRes.json().catch(() => ({}));
+        if (!finalizeRes.ok) {
+          throw new Error(getUploadErrorMessage(finalizeData, 'Не вдалося завершити завантаження відео'));
+        }
+
+        latestData = finalizeData;
+        uploadedCount += 1;
+        setPhotoUploadProgress(prev => ({ ...prev, [lessonId]: { current: uploadedCount, total: preparedFiles.length } }));
+      }
 
       for (const batch of batches) {
         const formData = new FormData();
@@ -581,7 +618,7 @@ export default function LessonModalsManager() {
       window.dispatchEvent(new Event('itrobot-lesson-updated'));
     } catch (error) {
       console.error('Failed to upload lesson photos:', error);
-      alert(error instanceof Error ? error.message : 'Не вдалося завантажити фото');
+      alert(error instanceof Error ? error.message : 'Не вдалося завантажити медіа');
     } finally {
       setPhotoUploading(prev => ({ ...prev, [lessonId]: false }));
       setPhotoUploadProgress(prev => ({ ...prev, [lessonId]: null }));

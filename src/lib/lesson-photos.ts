@@ -75,6 +75,18 @@ export interface LessonPhotoUploadResult {
   files: LessonPhotoFileInfo[];
 }
 
+interface RegisterLessonDriveFileInput {
+  lessonId: number;
+  driveFileId: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  uploadedBy: number | null;
+  uploadedByName: string | null;
+  uploadedVia: UploadVia;
+  uploadedByTelegramId?: string | null;
+}
+
 function getRootFolderId(): string {
   const rootId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
   if (!rootId) {
@@ -322,7 +334,22 @@ export async function addLessonPhotoRecord(input: {
     folder.id
   );
 
-  await makeFilePublic(driveFile.id);
+  return registerUploadedDriveFile({
+    lessonId: input.lessonId,
+    driveFileId: driveFile.id,
+    fileName: driveFile.name,
+    mimeType: input.mimeType,
+    fileSize: input.fileSize,
+    uploadedBy: input.uploadedBy,
+    uploadedByName: input.uploadedByName,
+    uploadedVia: input.uploadedVia,
+    uploadedByTelegramId: input.uploadedByTelegramId ?? null,
+  });
+}
+
+async function registerUploadedDriveFile(input: RegisterLessonDriveFileInput): Promise<LessonPhotoFileInfo> {
+  await makeFilePublic(input.driveFileId);
+  const driveFile = { name: input.fileName };
 
   const row = await get<LessonPhotoFileRow>(
     `INSERT INTO lesson_photo_files
@@ -342,8 +369,8 @@ export async function addLessonPhotoRecord(input: {
        TO_CHAR(created_at AT TIME ZONE 'Europe/Kyiv', 'DD.MM.YYYY HH24:MI') as created_at`,
     [
       input.lessonId,
-      driveFile.id,
-      driveFile.name,
+      input.driveFileId,
+      input.fileName,
       input.mimeType,
       input.fileSize,
       input.uploadedBy,
@@ -369,6 +396,15 @@ export async function addLessonPhotoRecord(input: {
   );
 
   return mapPhoto(row!);
+}
+
+export async function registerLessonDriveFile(input: RegisterLessonDriveFileInput): Promise<LessonPhotoFileInfo> {
+  const folder = await ensureLessonPhotoFolder(input.lessonId);
+  if (!folder) {
+    throw new Error('Lesson media uploads are available only for group lessons');
+  }
+
+  return registerUploadedDriveFile(input);
 }
 
 export async function deleteLessonPhoto(

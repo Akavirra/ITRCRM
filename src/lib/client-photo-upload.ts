@@ -75,6 +75,41 @@ export function validateFilesBeforeUpload(files: readonly File[]): string | null
   return null;
 }
 
+export async function uploadFileToDriveResumableSession(
+  uploadUrl: string,
+  file: File,
+  onProgress?: (loaded: number, total: number) => void
+): Promise<{ id: string; name: string; mimeType: string; size?: string }> {
+  return await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        onProgress?.(event.loaded, event.total);
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Не вдалося напряму завантажити файл на Google Drive'));
+    xhr.onabort = () => reject(new Error('Завантаження файлу було скасовано'));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error('Google Drive повернув некоректну відповідь'));
+        }
+        return;
+      }
+
+      reject(new Error(`Google Drive upload failed with status ${xhr.status}`));
+    };
+
+    xhr.send(file);
+  });
+}
+
 function shouldCompressImage(file: File): boolean {
   if (!file.type.startsWith('image/')) {
     return false;

@@ -228,6 +228,58 @@ export async function uploadFileToDrive(
   return res.json();
 }
 
+export async function createDriveResumableUploadSession(input: {
+  fileName: string;
+  mimeType: string;
+  folderId: string;
+  fileSize?: number | null;
+}): Promise<string> {
+  const token = await getAccessToken();
+  const res = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,mimeType,webViewLink,webContentLink,size',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json; charset=UTF-8',
+        'X-Upload-Content-Type': input.mimeType,
+        ...(typeof input.fileSize === 'number' ? { 'X-Upload-Content-Length': String(input.fileSize) } : {}),
+      },
+      body: JSON.stringify({
+        name: input.fileName,
+        parents: [input.folderId],
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error(`Drive create resumable upload session failed: ${await res.text()}`);
+  }
+
+  const location = res.headers.get('Location');
+  if (!location) {
+    throw new Error('Drive resumable upload session did not return Location header');
+  }
+
+  return location;
+}
+
+export async function getDriveFileMetadata(fileId: string): Promise<DriveFile> {
+  const token = await getAccessToken();
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,webViewLink,webContentLink,size`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error(`Drive get file metadata failed: ${await res.text()}`);
+  }
+
+  return res.json();
+}
+
 // Make a file publicly readable (so anyone with link can view/download)
 export async function makeFilePublic(fileId: string): Promise<void> {
   const token = await getAccessToken();
