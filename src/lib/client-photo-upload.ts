@@ -3,6 +3,7 @@ const MAX_UPLOAD_BATCH_FILES = 1;
 const MAX_IMAGE_DIMENSION = 2000;
 const JPEG_QUALITY = 0.82;
 const MIN_SIZE_FOR_COMPRESSION = 2 * 1024 * 1024;
+const MAX_DIRECT_VIDEO_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 export function splitFilesIntoUploadBatches<T>(
   files: readonly T[],
@@ -45,6 +46,33 @@ export function getUploadErrorMessage(errorData: unknown, fallback: string): str
   }
 
   return fallback;
+}
+
+function formatSizeMb(sizeInBytes: number): string {
+  return `${(sizeInBytes / (1024 * 1024)).toFixed(1)} МБ`;
+}
+
+export function getOversizedVideoUploadMessage(file: File): string | null {
+  if (!file.type.startsWith('video/')) {
+    return null;
+  }
+
+  if (file.size <= MAX_DIRECT_VIDEO_UPLOAD_BYTES) {
+    return null;
+  }
+
+  return `Відео "${file.name}" має розмір ${formatSizeMb(file.size)}. Зараз через технічне обмеження можна завантажувати відео до ${formatSizeMb(MAX_DIRECT_VIDEO_UPLOAD_BYTES)} напряму з CRM або Telegram Mini App.`;
+}
+
+export function validateFilesBeforeUpload(files: readonly File[]): string | null {
+  for (const file of files) {
+    const videoMessage = getOversizedVideoUploadMessage(file);
+    if (videoMessage) {
+      return videoMessage;
+    }
+  }
+
+  return null;
 }
 
 function shouldCompressImage(file: File): boolean {

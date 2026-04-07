@@ -8,7 +8,7 @@ import { useGroupModals } from './GroupModalsContext';
 import { useCourseModals } from './CourseModalsContext';
 import { useTeacherModals } from './TeacherModalsContext';
 import { Clock, BookOpen, User, Check, X, Calendar, Trash2, UserMinus, Users, MoreVertical, Edit2, Save, RefreshCw, ExternalLink, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
-import { splitFilesIntoUploadBatches, getUploadErrorMessage, prepareImageFilesForUpload } from '@/lib/client-photo-upload';
+import { splitFilesIntoUploadBatches, getUploadErrorMessage, prepareImageFilesForUpload, validateFilesBeforeUpload } from '@/lib/client-photo-upload';
 import { isVideoMimeType } from '@/lib/lesson-media';
 
 interface Teacher {
@@ -533,6 +533,12 @@ export default function LessonModalsManager() {
 
   const handlePhotoUpload = async (lessonId: number, files: FileList | null) => {
     if (!files || files.length === 0) return;
+
+    const validationError = validateFilesBeforeUpload(Array.from(files));
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
 
     setPhotoUploading(prev => ({ ...prev, [lessonId]: true }));
     setPhotoUploadProgress(prev => ({ ...prev, [lessonId]: { current: 0, total: files.length } }));

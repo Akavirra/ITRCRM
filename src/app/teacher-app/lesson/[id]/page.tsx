@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv, formatDateTimeKyiv } from '@/lib/date-utils';
-import { splitFilesIntoUploadBatches, getUploadErrorMessage, prepareImageFilesForUpload } from '@/lib/client-photo-upload';
+import { splitFilesIntoUploadBatches, getUploadErrorMessage, prepareImageFilesForUpload, validateFilesBeforeUpload } from '@/lib/client-photo-upload';
 import { isVideoMimeType } from '@/lib/lesson-media';
 import {
   CheckCircleIcon, ClipboardIcon, ClockIcon, RefreshIcon, UsersIcon,
@@ -382,6 +382,12 @@ export default function LessonDetailPage() {
 
   const uploadSelectedPhotos = async () => {
     if (!initData || pendingPhotos.length === 0) return;
+
+    const validationError = validateFilesBeforeUpload(pendingPhotos.map((photo) => photo.file));
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
 
     setUploadingPhotos(true);
     setUploadProgress({ current: 0, total: pendingPhotos.length });
