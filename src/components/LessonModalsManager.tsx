@@ -7,7 +7,7 @@ import { useStudentModals } from './StudentModalsContext';
 import { useGroupModals } from './GroupModalsContext';
 import { useCourseModals } from './CourseModalsContext';
 import { useTeacherModals } from './TeacherModalsContext';
-import { Clock, BookOpen, User, Check, X, Calendar, Trash2, UserMinus, Users, MoreVertical, Edit2, Save, RefreshCw, ExternalLink } from 'lucide-react';
+import { Clock, BookOpen, User, Check, X, Calendar, Trash2, UserMinus, Users, MoreVertical, Edit2, Save, RefreshCw, ExternalLink, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
 
 interface Teacher {
   id: number;
@@ -77,6 +77,26 @@ interface ChangeHistoryEntry {
   changed_by_telegram_id: string | null;
   changed_via: string;
   created_at: string;
+}
+
+interface LessonPhotoFolder {
+  id: string;
+  name: string;
+  url: string;
+  exists: boolean;
+}
+
+interface LessonPhotoFile {
+  id: number;
+  driveFileId: string;
+  url: string;
+  thumbnailUrl: string;
+  fileName: string;
+  mimeType: string | null;
+  size: number | null;
+  uploadedAt: string;
+  uploadedBy: string | null;
+  uploadedVia: 'admin' | 'telegram';
 }
 
 function formatDateTime(startTime: string, endTime: string): string {
@@ -159,6 +179,11 @@ export default function LessonModalsManager() {
   const [attendance, setAttendance] = useState<Record<number, AttendanceRecord[]>>({});
   const [attendanceLoading, setAttendanceLoading] = useState<Record<number, boolean>>({});
   const [attendanceSaving, setAttendanceSaving] = useState<Record<number, boolean>>({});
+  const [photoFolders, setPhotoFolders] = useState<Record<number, LessonPhotoFolder | null>>({});
+  const [lessonPhotos, setLessonPhotos] = useState<Record<number, LessonPhotoFile[]>>({});
+  const [canManagePhotos, setCanManagePhotos] = useState<Record<number, boolean>>({});
+  const [photoUploading, setPhotoUploading] = useState<Record<number, boolean>>({});
+  const [photoDeleting, setPhotoDeleting] = useState<Record<number, number | null>>({});
 
   // Load teachers list
   const loadTeachers = async (lessonId: number) => {
@@ -314,6 +339,9 @@ export default function LessonModalsManager() {
         if (data.changeHistory) {
           setChangeHistory(prev => ({ ...prev, [lessonId]: data.changeHistory }));
         }
+        setPhotoFolders(prev => ({ ...prev, [lessonId]: data.photoFolder || null }));
+        setLessonPhotos(prev => ({ ...prev, [lessonId]: data.photos || [] }));
+        setCanManagePhotos(prev => ({ ...prev, [lessonId]: Boolean(data.canManagePhotos) }));
       }
     } catch (error) {
       console.error('Error loading lesson:', error);
@@ -412,6 +440,9 @@ export default function LessonModalsManager() {
         if (data.changeHistory) {
           setChangeHistory(prev => ({ ...prev, [lessonId]: data.changeHistory }));
         }
+        setPhotoFolders(prev => ({ ...prev, [lessonId]: data.photoFolder || null }));
+        setLessonPhotos(prev => ({ ...prev, [lessonId]: data.photos || [] }));
+        setCanManagePhotos(prev => ({ ...prev, [lessonId]: Boolean(data.canManagePhotos) }));
         window.dispatchEvent(new Event('itrobot-lesson-updated'));
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -473,6 +504,9 @@ export default function LessonModalsManager() {
         if (data.changeHistory) {
           setChangeHistory(prev => ({ ...prev, [lessonId]: data.changeHistory }));
         }
+        setPhotoFolders(prev => ({ ...prev, [lessonId]: data.photoFolder || null }));
+        setLessonPhotos(prev => ({ ...prev, [lessonId]: data.photos || [] }));
+        setCanManagePhotos(prev => ({ ...prev, [lessonId]: Boolean(data.canManagePhotos) }));
         window.dispatchEvent(new Event('itrobot-lesson-updated'));
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -486,8 +520,72 @@ export default function LessonModalsManager() {
       setSavingNotes(prev => ({ ...prev, [lessonId]: false }));
       setEditingNotes(prev => ({ ...prev, [lessonId]: false }));
     }
+    };
+
+  const handlePhotoUpload = async (lessonId: number, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    setPhotoUploading(prev => ({ ...prev, [lessonId]: true }));
+
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach((file) => {
+        formData.append('files', file);
+      });
+
+      const res = await fetch(`/api/lessons/${lessonId}/photos`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Не вдалося завантажити фото');
+      }
+
+      setPhotoFolders(prev => ({ ...prev, [lessonId]: data.photoFolder || null }));
+      setLessonPhotos(prev => ({ ...prev, [lessonId]: data.photos || [] }));
+      setCanManagePhotos(prev => ({ ...prev, [lessonId]: Boolean(data.canManagePhotos) }));
+      await loadLessonDataRef.current(lessonId);
+      window.dispatchEvent(new Event('itrobot-lesson-updated'));
+    } catch (error) {
+      console.error('Failed to upload lesson photos:', error);
+      alert(error instanceof Error ? error.message : 'Не вдалося завантажити фото');
+    } finally {
+      setPhotoUploading(prev => ({ ...prev, [lessonId]: false }));
+    }
   };
 
+  const handlePhotoDelete = async (lessonId: number, photoId: number) => {
+    if (!confirm('Видалити це фото заняття?')) return;
+
+    setPhotoDeleting(prev => ({ ...prev, [lessonId]: photoId }));
+
+    try {
+      const res = await fetch(`/api/lessons/${lessonId}/photos/${photoId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Не вдалося видалити фото');
+      }
+
+      setLessonPhotos(prev => ({
+        ...prev,
+        [lessonId]: (prev[lessonId] || []).filter((photo) => photo.id !== photoId),
+      }));
+      await loadLessonDataRef.current(lessonId);
+    } catch (error) {
+      console.error('Failed to delete lesson photo:', error);
+      alert(error instanceof Error ? error.message : 'Не вдалося видалити фото');
+    } finally {
+      setPhotoDeleting(prev => ({ ...prev, [lessonId]: null }));
+    }
+  };
+  
   // Polling for live updates when modal is open
   // Use refs to avoid recreating interval on every render
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -553,12 +651,15 @@ export default function LessonModalsManager() {
                 }
 
                 // Update change history (used by "Інформація про передачу даних")
-                if (data.changeHistory) {
-                  setChangeHistory(prev => ({ ...prev, [modal.id]: data.changeHistory }));
-                }
+                  if (data.changeHistory) {
+                    setChangeHistory(prev => ({ ...prev, [modal.id]: data.changeHistory }));
+                  }
+                  setPhotoFolders(prev => ({ ...prev, [modal.id]: data.photoFolder || null }));
+                  setLessonPhotos(prev => ({ ...prev, [modal.id]: data.photos || [] }));
+                  setCanManagePhotos(prev => ({ ...prev, [modal.id]: Boolean(data.canManagePhotos) }));
 
-                // Refresh attendance data
-                loadAttendance(modal.id);
+                  // Refresh attendance data
+                  loadAttendance(modal.id);
               }
             })
             .catch(err => console.error('Polling error:', err));
@@ -821,6 +922,13 @@ export default function LessonModalsManager() {
         @keyframes lmm-skeleton {
           0%   { background-position: -200px 0; }
           100% { background-position: calc(200px + 100%) 0; }
+        }
+        .spin {
+          animation: lmm-spin 1s linear infinite;
+        }
+        @keyframes lmm-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
         .lmm-skeleton {
           background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
@@ -1667,6 +1775,131 @@ export default function LessonModalsManager() {
                   )}
                 </div>
                 
+                {lesson.groupId !== null && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', gap: '0.5rem' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                        <ImageIcon size={12} />
+                        Фото заняття
+                      </div>
+                      {photoFolders[modal.id]?.url && (
+                        <a
+                          href={photoFolders[modal.id]!.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ fontSize: '0.75rem', color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}
+                        >
+                          <ExternalLink size={12} />
+                          Папка на Drive
+                        </a>
+                      )}
+                    </div>
+
+                    {!lesson.topic && (
+                      <div style={{
+                        fontSize: '0.75rem',
+                        color: '#9a3412',
+                        background: '#fff7ed',
+                        border: '1px solid #fed7aa',
+                        borderRadius: '0.5rem',
+                        padding: '0.625rem 0.75rem',
+                        marginBottom: '0.5rem',
+                      }}>
+                        Тема ще не вказана. Папка заняття буде створена з тимчасовою назвою "Без теми" і автоматично перейменується після збереження теми.
+                      </div>
+                    )}
+
+                    <div style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      padding: '0.75rem',
+                      background: '#fafafa',
+                    }}>
+                      {canManagePhotos[modal.id] && (
+                        <label style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem',
+                          padding: '0.625rem 0.75rem',
+                          border: '1px dashed #93c5fd',
+                          borderRadius: '0.5rem',
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          cursor: photoUploading[modal.id] ? 'not-allowed' : 'pointer',
+                          opacity: photoUploading[modal.id] ? 0.7 : 1,
+                          marginBottom: '0.75rem',
+                        }}>
+                          {photoUploading[modal.id] ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 500 }}>
+                            {photoUploading[modal.id] ? 'Завантаження...' : 'Додати фото'}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            style={{ display: 'none' }}
+                            disabled={photoUploading[modal.id]}
+                            onChange={(e) => {
+                              handlePhotoUpload(modal.id, e.target.files);
+                              e.currentTarget.value = '';
+                            }}
+                          />
+                        </label>
+                      )}
+
+                      {lessonPhotos[modal.id] && lessonPhotos[modal.id].length > 0 ? (
+                        <>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.5rem' }}>
+                            {lessonPhotos[modal.id].map((photo) => (
+                              <div key={photo.id} style={{ position: 'relative' }}>
+                                <a href={photo.url} target="_blank" rel="noreferrer">
+                                  <img
+                                    src={photo.thumbnailUrl}
+                                    alt={photo.fileName}
+                                    style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block' }}
+                                  />
+                                </a>
+                                {canManagePhotos[modal.id] && (
+                                  <button
+                                    onClick={() => handlePhotoDelete(modal.id, photo.id)}
+                                    disabled={photoDeleting[modal.id] === photo.id}
+                                    title="Видалити фото"
+                                    style={{
+                                      position: 'absolute',
+                                      top: '0.35rem',
+                                      right: '0.35rem',
+                                      width: '24px',
+                                      height: '24px',
+                                      borderRadius: '999px',
+                                      border: 'none',
+                                      background: 'rgba(17, 24, 39, 0.8)',
+                                      color: 'white',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}
+                                  >
+                                    {photoDeleting[modal.id] === photo.id ? <Loader2 size={12} className="spin" /> : <Trash2 size={12} />}
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                            Завантажено фото: {lessonPhotos[modal.id].length}
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: '0.8125rem', color: '#9ca3af', fontStyle: 'italic' }}>
+                          Фото заняття ще не завантажені.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Attendance section */}
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
@@ -1876,6 +2109,11 @@ export default function LessonModalsManager() {
                           {entry.field_name === 'attendance' && (
                             <div>
                               <span style={{ fontWeight: 500, color: '#059669' }}>Відвідуваність:</span> {entry.new_value}
+                            </div>
+                          )}
+                          {entry.field_name === 'photos' && (
+                            <div>
+                              <span style={{ fontWeight: 500, color: '#059669' }}>Фото:</span> {entry.new_value || entry.old_value}
                             </div>
                           )}
                           <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>

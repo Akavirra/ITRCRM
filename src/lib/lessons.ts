@@ -411,7 +411,7 @@ export async function checkAndAutoCancelLesson(
 // Log lesson change to history table
 export async function logLessonChange(
   lessonId: number,
-  fieldName: 'topic' | 'notes' | 'attendance',
+  fieldName: 'topic' | 'notes' | 'attendance' | 'photos',
   oldValue: string | null,
   newValue: string | null,
   changedBy: number | null,

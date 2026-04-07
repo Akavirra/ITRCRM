@@ -7,6 +7,7 @@ import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/gr
 import { formatDateTimeKyiv, formatTimeKyiv } from '@/lib/date-utils';
 import { logLessonChange, getLessonChangeHistory } from '@/lib/lessons';
 import { useIndividualLesson } from '@/lib/individual-payments';
+import { getLessonPhotoPayload, syncLessonPhotoFolderName } from '@/lib/lesson-photos';
 
 export const dynamic = 'force-dynamic';
 
@@ -167,6 +168,15 @@ export async function GET(
 
     // Get change history
     const changeHistory = await getLessonChangeHistory(lessonId);
+    const canManagePhotos = user.role === 'admin' && lesson.group_id !== null;
+    let photoPayload: Awaited<ReturnType<typeof getLessonPhotoPayload>> = { photoFolder: null, photos: [] };
+    if (lesson.group_id !== null) {
+      try {
+        photoPayload = await getLessonPhotoPayload(lessonId);
+      } catch (photoError) {
+        console.error('Failed to load lesson photo payload:', photoError);
+      }
+    }
 
     // If this is a makeup lesson, fetch which original lessons it covers
     let makeupFor: Array<{
@@ -211,6 +221,9 @@ export async function GET(
       lesson: transformedLesson,
       changeHistory: changeHistory || [],
       makeupFor,
+      photoFolder: photoPayload.photoFolder,
+      photos: photoPayload.photos,
+      canManagePhotos,
     });
   } catch (error) {
     console.error('Get lesson error:', error);
@@ -457,11 +470,34 @@ export async function PATCH(
     } : null;
     
     const updatedChangeHistory = await getLessonChangeHistory(lessonId);
+    let photoFolder = null;
+    let photos: Awaited<ReturnType<typeof getLessonPhotoPayload>>['photos'] = [];
+
+    if (lesson.group_id !== null) {
+      if (topic !== undefined || lesson_date !== undefined) {
+        try {
+          await syncLessonPhotoFolderName(lessonId);
+        } catch (syncError) {
+          console.error('Failed to sync lesson photo folder:', syncError);
+        }
+      }
+
+      try {
+        const photoPayload = await getLessonPhotoPayload(lessonId);
+        photoFolder = photoPayload.photoFolder;
+        photos = photoPayload.photos;
+      } catch (photoError) {
+        console.error('Failed to load lesson photo payload:', photoError);
+      }
+    }
 
     return NextResponse.json({
       message: 'Заняття оновлено',
       lesson: updatedLesson,
       changeHistory: updatedChangeHistory || [],
+      photoFolder,
+      photos,
+      canManagePhotos: user.role === 'admin' && lesson.group_id !== null,
     });
   } catch (error) {
     console.error('Update lesson error:', error);

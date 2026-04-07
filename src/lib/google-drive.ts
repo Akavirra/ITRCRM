@@ -7,6 +7,12 @@ interface DriveFile {
   size?: string;
 }
 
+interface DriveFolder {
+  id: string;
+  name: string;
+  webViewLink?: string;
+}
+
 // Cache access token in module scope — survives across warm Vercel invocations
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
@@ -60,6 +66,21 @@ async function findFolder(name: string, parentId: string): Promise<string | null
   return data.files?.[0]?.id ?? null;
 }
 
+async function findFolderWithMetadata(name: string, parentId: string): Promise<DriveFolder | null> {
+  const token = await getAccessToken();
+  const q = `name='${name.replace(/'/g, "\\'")}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,webViewLink)`;
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) throw new Error(`Drive findFolderWithMetadata failed: ${await res.text()}`);
+
+  const data = await res.json();
+  return data.files?.[0] ?? null;
+}
+
 // Create a folder inside a parent folder
 async function createFolder(name: string, parentId: string): Promise<string> {
   const token = await getAccessToken();
@@ -81,6 +102,25 @@ async function createFolder(name: string, parentId: string): Promise<string> {
   return data.id;
 }
 
+async function createFolderWithMetadata(name: string, parentId: string): Promise<DriveFolder> {
+  const token = await getAccessToken();
+  const res = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name,webViewLink', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      name,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentId],
+    }),
+  });
+
+  if (!res.ok) throw new Error(`Drive createFolderWithMetadata failed: ${await res.text()}`);
+  return res.json();
+}
+
 // Get existing folder or create it — used for topic folders
 export async function getOrCreateTopicFolder(topicName: string): Promise<string> {
   const rootId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
@@ -89,6 +129,59 @@ export async function getOrCreateTopicFolder(topicName: string): Promise<string>
   const existing = await findFolder(topicName, rootId);
   if (existing) return existing;
   return createFolder(topicName, rootId);
+}
+
+export function sanitizeDriveFolderName(name: string, fallback: string = 'Без назви'): string {
+  const normalized = name
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const finalName = normalized || fallback;
+  return finalName.slice(0, 120);
+}
+
+export function getDriveFolderUrl(folderId: string): string {
+  return `https://drive.google.com/drive/folders/${folderId}`;
+}
+
+export async function getOrCreateFolder(parentId: string, folderName: string): Promise<DriveFolder> {
+  const sanitizedName = sanitizeDriveFolderName(folderName);
+  const existing = await findFolderWithMetadata(sanitizedName, parentId);
+
+  if (existing) {
+    return {
+      ...existing,
+      webViewLink: existing.webViewLink ?? getDriveFolderUrl(existing.id),
+    };
+  }
+
+  const created = await createFolderWithMetadata(sanitizedName, parentId);
+  return {
+    ...created,
+    webViewLink: created.webViewLink ?? getDriveFolderUrl(created.id),
+  };
+}
+
+export async function renameDriveFolder(folderId: string, newName: string): Promise<DriveFolder> {
+  const token = await getAccessToken();
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,name,webViewLink`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: sanitizeDriveFolderName(newName),
+    }),
+  });
+
+  if (!res.ok) throw new Error(`Drive renameDriveFolder failed: ${await res.text()}`);
+  const data = await res.json();
+  return {
+    ...data,
+    webViewLink: data.webViewLink ?? getDriveFolderUrl(data.id),
+  };
 }
 
 // Upload a file buffer to a Drive folder
@@ -175,4 +268,3 @@ export function getDriveDownloadUrl(fileId: string): string {
 export function getDriveThumbnailUrl(fileId: string): string {
   return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
 }
-

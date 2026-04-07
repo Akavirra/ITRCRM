@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/db/neon';
 import crypto from 'crypto';
 import { logLessonChange, getLessonChangeHistory } from '@/lib/lessons';
+import { getLessonPhotoPayload, syncLessonPhotoFolderName } from '@/lib/lesson-photos';
 
 export const dynamic = 'force-dynamic';
 
@@ -209,9 +210,21 @@ export async function GET(
       }));
     }
 
+    let photoPayload: Awaited<ReturnType<typeof getLessonPhotoPayload>> = { photoFolder: null, photos: [] };
+    if (lesson.group_id) {
+      try {
+        photoPayload = await getLessonPhotoPayload(lessonId);
+      } catch (photoError) {
+        console.error('Failed to load lesson photo payload:', photoError);
+      }
+    }
+
     return NextResponse.json({
       lesson,
-      students: studentsWithOriginal
+      students: studentsWithOriginal,
+      photoFolder: photoPayload.photoFolder,
+      photos: photoPayload.photos,
+      canManagePhotos: lesson.group_id !== null,
     });
 
   } catch (error) {
@@ -416,9 +429,33 @@ export async function PATCH(
       );
     }
 
+    let photoFolder = null;
+    let photos: Awaited<ReturnType<typeof getLessonPhotoPayload>>['photos'] = [];
+
+    if (lessonAccess.group_id !== null) {
+      if (topic !== undefined) {
+        try {
+          await syncLessonPhotoFolderName(lessonId);
+        } catch (syncError) {
+          console.error('Failed to sync lesson photo folder:', syncError);
+        }
+      }
+
+      try {
+        const photoPayload = await getLessonPhotoPayload(lessonId);
+        photoFolder = photoPayload.photoFolder;
+        photos = photoPayload.photos;
+      } catch (photoError) {
+        console.error('Failed to load lesson photo payload:', photoError);
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      lesson: result
+      lesson: result,
+      photoFolder,
+      photos,
+      canManagePhotos: lessonAccess.group_id !== null,
     });
 
   } catch (error) {

@@ -1,19 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv, formatDateTimeKyiv } from '@/lib/date-utils';
 import {
   CheckCircleIcon, ClipboardIcon, ClockIcon, RefreshIcon, UsersIcon,
   BookOpenIcon, AlertTriangleIcon, FileTextIcon, EditIcon, SaveIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon, UploadIcon, CameraIcon
 } from '@/components/Icons';
 
 interface Lesson {
   id: number;
   public_id: string;
-  group_id: number;
+  group_id: number | null;
   lesson_date: string;
   start_datetime: string;
   end_datetime: string;
@@ -45,6 +45,33 @@ interface Student {
 interface LessonData {
   lesson: Lesson;
   students: Student[];
+  photoFolder?: {
+    id: string;
+    name: string;
+    url: string;
+    exists: boolean;
+  } | null;
+  photos?: LessonPhoto[];
+  canManagePhotos?: boolean;
+}
+
+interface LessonPhoto {
+  id: number;
+  driveFileId: string;
+  url: string;
+  thumbnailUrl: string;
+  fileName: string;
+  mimeType: string | null;
+  size: number | null;
+  uploadedAt: string;
+  uploadedBy: string | null;
+  uploadedVia: 'admin' | 'telegram';
+}
+
+interface PendingPhotoPreview {
+  id: string;
+  file: File;
+  previewUrl: string;
 }
 
 export default function LessonDetailPage() {
@@ -65,6 +92,11 @@ export default function LessonDetailPage() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPastLesson, setIsPastLesson] = useState(false);
+  const [photoFolder, setPhotoFolder] = useState<LessonData['photoFolder']>(null);
+  const [photos, setPhotos] = useState<LessonPhoto[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [pendingPhotos, setPendingPhotos] = useState<PendingPhotoPreview[]>([]);
+  const pendingPhotosRef = useRef<PendingPhotoPreview[]>([]);
 
   // Check if lesson is from a past day
   useEffect(() => {
@@ -107,6 +139,8 @@ export default function LessonDetailPage() {
         setStudents(data.students);
         setTopic(data.lesson.topic || '');
         setNotes(data.lesson.notes || '');
+        setPhotoFolder(data.photoFolder || null);
+        setPhotos(data.photos || []);
         setLoading(false);
 
         // Setup back button if available
@@ -131,6 +165,16 @@ export default function LessonDetailPage() {
 
     fetchLesson();
   }, [lessonId, router, initData, initLoading, initError, isInWebView, webApp]);
+
+  useEffect(() => {
+    pendingPhotosRef.current = pendingPhotos;
+  }, [pendingPhotos]);
+
+  useEffect(() => {
+    return () => {
+      pendingPhotosRef.current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+    };
+  }, []);
 
   // Format time - use proper timezone handling
   const formatTime = (datetime: string): string => {
@@ -220,6 +264,8 @@ export default function LessonDetailPage() {
           reported_via: 'telegram'
         });
       }
+      setPhotoFolder(result.photoFolder || null);
+      setPhotos(result.photos || []);
 
       setEditingTopic(false);
       setEditingNotes(false);
@@ -282,6 +328,8 @@ export default function LessonDetailPage() {
           reported_via: 'telegram'
         });
       }
+      setPhotoFolder(result.photoFolder || null);
+      setPhotos(result.photos || []);
 
       await webApp.showPopup({
         title: 'Готово!',
@@ -295,6 +343,67 @@ export default function LessonDetailPage() {
       alert('Помилка завершення заняття');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePhotoSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const nextItems = files.map((file) => ({
+      id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+
+    setPendingPhotos((prev) => [...prev, ...nextItems]);
+    event.target.value = '';
+  };
+
+  const removePendingPhoto = (previewId: string) => {
+    setPendingPhotos((prev) => {
+      const item = prev.find((photo) => photo.id === previewId);
+      if (item) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+      return prev.filter((photo) => photo.id !== previewId);
+    });
+  };
+
+  const uploadSelectedPhotos = async () => {
+    if (!initData || pendingPhotos.length === 0) return;
+
+    setUploadingPhotos(true);
+
+    try {
+      const formData = new FormData();
+      pendingPhotos.forEach((photo) => {
+        formData.append('files', photo.file);
+      });
+
+      const response = await fetch(`/api/teacher-app/lessons/${lessonId}/photos`, {
+        method: 'POST',
+        headers: {
+          'X-Telegram-Init-Data': initData,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Помилка завантаження фото');
+      }
+
+      const result = await response.json();
+      setPhotoFolder(result.photoFolder || null);
+      setPhotos(result.photos || []);
+      pendingPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+      setPendingPhotos([]);
+    } catch (uploadError) {
+      console.error('Photo upload error:', uploadError);
+      alert(uploadError instanceof Error ? uploadError.message : 'Не вдалося завантажити фото заняття');
+    } finally {
+      setUploadingPhotos(false);
     }
   };
 
@@ -486,6 +595,148 @@ export default function LessonDetailPage() {
           </p>
         )}
       </div>
+
+      {lesson.group_id !== null && (
+        <div style={{ marginBottom: 'var(--space-xl)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)', gap: 'var(--space-sm)' }}>
+            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CameraIcon size={16} /> Фото заняття
+            </span>
+            {photoFolder?.url ? (
+              <a
+                href={photoFolder.url}
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: '13px', color: 'var(--tg-link-color)', textDecoration: 'none', fontWeight: 500 }}
+              >
+                Відкрити папку
+              </a>
+            ) : null}
+          </div>
+
+          {!topic.trim() && (
+            <div style={{
+              marginBottom: 'var(--space-md)',
+              padding: 'var(--space-md)',
+              background: '#fff7ed',
+              border: '1px solid #fed7aa',
+              borderRadius: 'var(--radius-md)',
+              color: '#9a3412',
+              fontSize: '13px',
+            }}>
+              Папка заняття буде створена з тимчасовою назвою <strong>{lesson.lesson_date ? 'Без теми' : 'Без теми'}</strong>, а після збереження теми автоматично перейменується.
+            </div>
+          )}
+
+          <div style={{
+            background: 'var(--tg-primary-bg)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--tg-border)',
+            padding: 'var(--space-md)',
+            marginBottom: 'var(--space-md)',
+          }}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                width: '100%',
+                padding: '12px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px dashed var(--tg-link-color)',
+                color: 'var(--tg-link-color)',
+                cursor: uploadingPhotos ? 'not-allowed' : 'pointer',
+                opacity: uploadingPhotos ? 0.6 : 1,
+                marginBottom: pendingPhotos.length > 0 ? '12px' : 0,
+              }}
+            >
+              <UploadIcon size={16} />
+              <span>{pendingPhotos.length > 0 ? 'Додати ще фото' : 'Вибрати фото'}</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoSelection}
+                disabled={uploadingPhotos}
+                style={{ display: 'none' }}
+              />
+            </label>
+
+            {pendingPhotos.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
+                  {pendingPhotos.map((photo) => (
+                    <div key={photo.id} style={{ position: 'relative' }}>
+                      <img
+                        src={photo.previewUrl}
+                        alt={photo.file.name}
+                        style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePendingPhoto(photo.id)}
+                        style={{
+                          position: 'absolute',
+                          top: '6px',
+                          right: '6px',
+                          border: 'none',
+                          borderRadius: '999px',
+                          width: '22px',
+                          height: '22px',
+                          background: 'rgba(0,0,0,0.65)',
+                          color: 'white',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={uploadSelectedPhotos}
+                  disabled={uploadingPhotos}
+                  className="tg-button"
+                  style={{ width: '100%', marginTop: '12px' }}
+                >
+                  {uploadingPhotos ? 'Завантаження фото...' : `Завантажити фото (${pendingPhotos.length})`}
+                </button>
+              </div>
+            )}
+
+            {photos.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
+                {photos.map((photo) => (
+                  <a
+                    key={photo.id}
+                    href={photo.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <img
+                      src={photo.thumbnailUrl}
+                      alt={photo.fileName}
+                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)' }}
+                    />
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--tg-hint-color)', fontStyle: 'italic' }}>
+                Фото ще не завантажені.
+              </p>
+            )}
+
+            {photos.length > 0 && (
+              <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--tg-text-secondary)' }}>
+                Завантажено: {photos.length}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Students attendance */}
       <div style={{ marginBottom: 'var(--space-xl)' }}>

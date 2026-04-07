@@ -28,6 +28,7 @@
     "db:add-notification-clears": "node scripts/add-notification-clears.js",
     "db:add-notifications-dedup-key": "node scripts/add-notifications-dedup-key.js",
     "db:add-media-tables": "node scripts/add-media-tables.js",
+    "db:add-lesson-photos": "node scripts/add-lesson-photos.js",
     "db:add-media-indexes": "node scripts/add-media-indexes.js",
     "db:add-core-indexes": "node scripts/add-core-performance-indexes.js",
     "db:add-weather-city": "node scripts/add-weather-city.js",
