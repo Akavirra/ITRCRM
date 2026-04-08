@@ -298,7 +298,7 @@ export async function makeFilePublic(fileId: string): Promise<void> {
 // Delete a file from Drive
 export async function deleteFileFromDrive(fileId: string): Promise<void> {
   const token = await getAccessToken();
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
