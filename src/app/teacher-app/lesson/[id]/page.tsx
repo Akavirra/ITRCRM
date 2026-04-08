@@ -862,31 +862,22 @@ export default function LessonDetailPage() {
 
         {photos.length > 0 ? (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
-              {visibleUploadedPhotos.map((photo) => (
-                <div
-                  key={photo.id}
-                  style={{ position: 'relative', cursor: 'pointer' }}
-                  role="button"
-                  tabIndex={0}
-                  onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
-                  onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
-                  onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      handleMediaPreviewActivate(event, photo.id);
-                    }
-                  }}
-                >
-                  {isVideoFile(photo) ? (
-                    <>
-                      <video
-                        src={getLessonMediaStreamUrl(photo.driveFileId)}
-                        preload="metadata"
-                        muted
-                        onLoadedData={() => {
-                          setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
-                          setProcessingVideoIds((prev) => {
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
+                {visibleUploadedPhotos.map((photo) => (
+                  <div
+                    key={photo.id}
+                    style={{ position: 'relative', cursor: 'pointer' }}
+                  >
+                    {isVideoFile(photo) ? (
+                      <>
+                        <video
+                          src={getLessonMediaStreamUrl(photo.driveFileId)}
+                          preload="metadata"
+                          muted
+                          poster={photo.thumbnailUrl}
+                          onLoadedData={() => {
+                            setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                            setProcessingVideoIds((prev) => {
                             if (!prev[photo.id]) return prev;
                             const next = { ...prev };
                             delete next[photo.id];
@@ -937,11 +928,11 @@ export default function LessonDetailPage() {
                       style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', pointerEvents: 'none' }}
                     />
                   )}
-                  <button
-                    type="button"
-                    aria-label={`Відкрити ${photo.fileName}`}
-                    onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
-                    onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
+                    <button
+                      type="button"
+                      aria-label={`Відкрити ${photo.fileName}`}
+                      onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
+                      onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
                     onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
                     style={{
                       position: 'absolute',
@@ -958,9 +949,9 @@ export default function LessonDetailPage() {
                       touchAction: 'manipulation',
                       WebkitTapHighlightColor: 'transparent',
                     }}
-                  >
-                    {isVideoFile(photo) ? 'Відкрити відео' : 'Відкрити фото'}
-                  </button>
+                    >
+                      {isVideoFile(photo) ? 'Відкрити відео' : 'Відкрити фото'}
+                    </button>
                   <button
                     type="button"
                     aria-label={`Видалити ${photo.fileName}`}
