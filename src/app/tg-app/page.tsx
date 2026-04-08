@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TelegramWebAppProvider, useTelegramInitData, saveInitData } from '@/components/TelegramWebAppProvider';
 import { CpuIcon, ShieldIcon, BookOpenIcon, XCircleIcon } from '@/components/Icons';
+import { ensureTeacherAppVersion } from '@/lib/teacher-app-version';
 
 const ROLE_KEY = 'tg_app_role';
-const APP_VERSION = (process.env.NEXT_PUBLIC_TEACHER_APP_VERSION || process.env.NEXT_PUBLIC_APP_VERSION || '1').slice(0, 12);
 
 function RoleSwitcher() {
   const router = useRouter();
@@ -19,10 +19,8 @@ function RoleSwitcher() {
   const [teacherName, setTeacherName] = useState('');
   const buildDestination = useMemo(() => {
     return (role: 'admin' | 'teacher') => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.set('v', APP_VERSION);
       const targetPath = role === 'admin' ? '/admin-app' : '/teacher-app';
-      const query = nextParams.toString();
+      const query = ensureTeacherAppVersion(searchParams);
       return query ? `${targetPath}?${query}` : targetPath;
     };
   }, [searchParams]);

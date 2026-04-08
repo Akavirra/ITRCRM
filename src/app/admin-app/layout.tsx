@@ -1,13 +1,17 @@
 'use client';
 
 import { ReactNode, useCallback, useEffect, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { TelegramWebAppProvider, useTelegramWebApp, useTelegramInitData } from '@/components/TelegramWebAppProvider';
 import AdminAppNavbar from '@/components/AdminAppNavbar';
 import RoleToggle from '@/components/RoleToggle';
+import { ensureTeacherAppVersion } from '@/lib/teacher-app-version';
 
 function AdminAppContent({ children }: { children: ReactNode }) {
   const { isLoading, colorScheme } = useTelegramWebApp();
   const { initData, isLoading: initLoading } = useTelegramInitData();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchUnreadCount = useCallback(async () => {
@@ -30,6 +34,23 @@ function AdminAppContent({ children }: { children: ReactNode }) {
       return () => clearInterval(interval);
     }
   }, [initData, initLoading, fetchUnreadCount]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (searchParams.get('v')) {
+      return;
+    }
+
+    const targetUrl = `${pathname}?${ensureTeacherAppVersion(searchParams)}`;
+    if (window.location.pathname + window.location.search === targetUrl) {
+      return;
+    }
+
+    window.location.replace(targetUrl);
+  }, [pathname, searchParams]);
 
   useEffect(() => {
     const root = document.documentElement;

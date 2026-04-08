@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { saveInitData, useTelegramInitData } from '@/components/TelegramWebAppProvider';
+import { ensureTeacherAppVersion } from '@/lib/teacher-app-version';
 
 const ROLES_KEY = 'tg_app_roles';
-const APP_VERSION = (process.env.NEXT_PUBLIC_TEACHER_APP_VERSION || process.env.NEXT_PUBLIC_APP_VERSION || '1').slice(0, 12);
 
 interface RoleToggleProps {
   currentRole: 'admin' | 'teacher';
@@ -18,10 +18,8 @@ export default function RoleToggle({ currentRole }: RoleToggleProps) {
   const [hasBothRoles, setHasBothRoles] = useState(false);
   const buildDestination = useMemo(() => {
     return (role: 'admin' | 'teacher') => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.set('v', APP_VERSION);
       const targetPath = role === 'admin' ? '/admin-app' : '/teacher-app';
-      const query = nextParams.toString();
+      const query = ensureTeacherAppVersion(searchParams);
       return query ? `${targetPath}?${query}` : targetPath;
     };
   }, [searchParams]);

@@ -3,6 +3,7 @@ import { getAuthUser, unauthorized, forbidden } from '@/lib/api-utils';
 import { get, run } from '@/db';
 import { sendMessage } from '@/lib/telegram';
 import { formatDateKyiv, formatTimeKyiv } from '@/lib/date-utils';
+import { getTeacherAppVersionSeed } from '@/lib/teacher-app-version';
 
 export const dynamic = 'force-dynamic';
 
@@ -168,8 +169,8 @@ export async function POST(request: NextRequest) {
 
       // Create inline keyboard with Mini App button
       const WEB_APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
-      const teacherAppVersion = (process.env.NEXT_PUBLIC_TEACHER_APP_VERSION || process.env.VERCEL_GIT_COMMIT_SHA || '1').slice(0, 12);
-      const miniAppUrl = `${WEB_APP_URL}/teacher-app?v=${encodeURIComponent(teacherAppVersion)}`;
+      const teacherAppVersion = `${getTeacherAppVersionSeed()}-${Date.now().toString(36)}`;
+      const miniAppUrl = `${WEB_APP_URL}/tg-app?v=${encodeURIComponent(teacherAppVersion)}`;
       
       const keyboard: { inline_keyboard: Array<Array<{ text: string; web_app: { url: string } }>> } = {
         inline_keyboard: [
