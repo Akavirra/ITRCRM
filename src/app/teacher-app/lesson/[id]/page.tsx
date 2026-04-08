@@ -857,10 +857,17 @@ export default function LessonDetailPage() {
                     <div key={photo.id} style={{ position: 'relative' }}>
                       {isVideoFile(photo) ? (
                         <>
-                          <button
-                            type="button"
+                          <div
+                            role="button"
+                            tabIndex={0}
                             onClick={() => openMediaViewer(photo.id)}
-                            style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                openMediaViewer(photo.id);
+                              }
+                            }}
+                            style={{ display: 'block', width: '100%', cursor: 'pointer' }}
                           >
                             <video
                               src={photo.downloadUrl}
@@ -890,9 +897,9 @@ export default function LessonDetailPage() {
                                   return next;
                                 });
                               }}
-                              style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000' }}
+                              style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000', pointerEvents: 'none' }}
                             />
-                          </button>
+                          </div>
                           {isDriveVideoProcessing(photo, Boolean(processingVideoIds[photo.id]), Boolean(readyVideoIds[photo.id])) && (
                             <div style={{
                               position: 'absolute',
@@ -920,17 +927,24 @@ export default function LessonDetailPage() {
                           )}
                         </>
                       ) : (
-                        <button
-                          type="button"
+                        <div
+                          role="button"
+                          tabIndex={0}
                           onClick={() => openMediaViewer(photo.id)}
-                          style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              openMediaViewer(photo.id);
+                            }
+                          }}
+                          style={{ display: 'block', width: '100%', cursor: 'pointer' }}
                         >
                           <img
                             src={photo.thumbnailUrl}
                             alt={photo.fileName}
-                            style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)' }}
+                            style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', pointerEvents: 'none' }}
                           />
-                        </button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -1064,7 +1078,7 @@ export default function LessonDetailPage() {
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 1000,
+            zIndex: 9999,
             background: 'rgba(2, 6, 23, 0.96)',
             display: 'flex',
             flexDirection: 'column',
@@ -1132,7 +1146,7 @@ export default function LessonDetailPage() {
             ) : (
               <img
                 key={photos[viewerIndex].id}
-                src={photos[viewerIndex].url}
+                src={photos[viewerIndex].downloadUrl}
                 alt={photos[viewerIndex].fileName}
                 style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '16px' }}
               />
