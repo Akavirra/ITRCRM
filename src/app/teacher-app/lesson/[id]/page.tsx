@@ -140,6 +140,7 @@ export default function LessonDetailPage() {
   const pendingPhotosRef = useRef<PendingPhotoPreview[]>([]);
   const viewerTouchStartXRef = useRef<number | null>(null);
   const viewerTouchStartYRef = useRef<number | null>(null);
+  const viewerVideoRef = useRef<HTMLVideoElement | null>(null);
 
   // Check if lesson is from a past day
   useEffect(() => {
@@ -235,6 +236,34 @@ export default function LessonDetailPage() {
       pendingPhotosRef.current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
     };
   }, []);
+
+  useEffect(() => {
+    if (viewerIndex === null) {
+      return;
+    }
+
+    const currentPhoto = photos[viewerIndex];
+    if (!currentPhoto || !isVideoFile(currentPhoto) || !viewerVideoRef.current) {
+      return;
+    }
+
+    const video = viewerVideoRef.current;
+    const attemptPlay = () => {
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {
+          // Ignore autoplay rejection inside WebView; manual controls remain available.
+        });
+      }
+    };
+
+    attemptPlay();
+    video.addEventListener('loadeddata', attemptPlay);
+
+    return () => {
+      video.removeEventListener('loadeddata', attemptPlay);
+    };
+  }, [viewerIndex, photos]);
 
   // Format time - use proper timezone handling
   const formatTime = (datetime: string): string => {
@@ -1221,6 +1250,7 @@ export default function LessonDetailPage() {
                             src={getLessonMediaStreamUrl(photo.driveFileId)}
                             preload="metadata"
                             muted
+                            poster={photo.thumbnailUrl}
                             onLoadedData={() => {
                               setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
                               setProcessingVideoIds((prev) => {
@@ -1498,11 +1528,14 @@ export default function LessonDetailPage() {
 
             {isVideoFile(photos[viewerIndex]) ? (
               <video
+                ref={viewerVideoRef}
                 key={photos[viewerIndex].id}
                 src={getLessonMediaStreamUrl(photos[viewerIndex].driveFileId)}
                 controls
+                autoPlay
                 playsInline
                 preload="metadata"
+                poster={photos[viewerIndex].thumbnailUrl}
                 style={{ width: '100%', height: '100%', border: 'none', borderRadius: '16px', background: '#000' }}
               />
             ) : (

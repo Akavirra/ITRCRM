@@ -2522,6 +2522,7 @@ export default function LessonModalsManager() {
                                           src={photo.downloadUrl}
                                           preload="metadata"
                                           muted
+                                          poster={photo.thumbnailUrl}
                                           onLoadedData={() => {
                                             setReadyLessonVideos((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
                                             setProcessingLessonVideos((prev) => {

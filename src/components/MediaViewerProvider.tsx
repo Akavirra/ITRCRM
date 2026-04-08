@@ -163,6 +163,7 @@ function MediaViewerModal({ files, index, onClose, onNavigate }: {
   const isAudio = isAudioType(file.file_type, file.file_name);
   const mediaType = isAudio ? 'audio' : isVideo ? 'video' : 'image';
   const hasNav = files.length > 1;
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const [modalSize, setModalSize] = useState<{ width: number; height: number }>(() => {
     if (typeof window === 'undefined') return { width: 760, height: 520 };
@@ -204,6 +205,29 @@ function MediaViewerModal({ files, index, onClose, onNavigate }: {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose, onNavigate, index, files.length]);
+
+  useEffect(() => {
+    if (!isVideo || !videoRef.current) {
+      return;
+    }
+
+    const video = videoRef.current;
+    const attemptPlay = () => {
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {
+          // Ignore autoplay rejection; controls stay available for manual start.
+        });
+      }
+    };
+
+    attemptPlay();
+    video.addEventListener('loadeddata', attemptPlay);
+
+    return () => {
+      video.removeEventListener('loadeddata', attemptPlay);
+    };
+  }, [file.drive_file_id, isVideo]);
 
   function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     if (file.media_width && file.media_height) return;
@@ -314,11 +338,14 @@ function MediaViewerModal({ files, index, onClose, onNavigate }: {
           />
         ) : isVideo ? (
           <video
+            ref={videoRef}
             key={file.drive_file_id}
             src={lessonMediaStreamUrl(file.drive_file_id)}
             controls
+            autoPlay
             playsInline
             preload="metadata"
+            poster={thumbUrl(file.drive_file_id, 1600)}
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', animation: 'mediaFadeIn 0.2s ease', background: '#000' }}
           />
         ) : (
