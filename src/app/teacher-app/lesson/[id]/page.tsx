@@ -432,9 +432,8 @@ export default function LessonDetailPage() {
 
     try {
       const preparedPhotos = await prepareImageFilesForUpload(pendingPhotos.map((photo) => photo.file));
-      const videoFiles = preparedPhotos.filter((file) => isVideoMimeType(file.type));
-      const imageFiles = preparedPhotos.filter((file) => !isVideoMimeType(file.type));
-      const batches = imageFiles.map((file) => [file]);
+      const batches = preparedPhotos.map((file) => [file]);
+      const videoFiles: File[] = [];
       let latestResult: { photoFolder?: LessonData['photoFolder']; photos?: LessonPhoto[] } | null = null;
       let uploadedCount = 0;
       let knownPhotoIds = new Set(photos.map((photo) => photo.id));
@@ -503,6 +502,24 @@ export default function LessonDetailPage() {
         }
 
         latestResult = errorData;
+        const nextPhotos = latestResult?.photos || [];
+        const newVideoIds = nextPhotos
+          .filter((photo) => isVideoFile(photo) && !knownPhotoIds.has(photo.id))
+          .map((photo) => photo.id);
+
+        if (newVideoIds.length > 0) {
+          setProcessingVideoIds((prev) => {
+            const next = { ...prev };
+            newVideoIds.forEach((photoId) => {
+              if (!readyVideoIds[photoId]) {
+                next[photoId] = true;
+              }
+            });
+            return next;
+          });
+        }
+
+        knownPhotoIds = new Set(nextPhotos.map((photo) => photo.id));
         uploadedCount += batch.length;
         setUploadProgress({ current: uploadedCount, total: preparedPhotos.length });
       }
@@ -543,13 +560,6 @@ export default function LessonDetailPage() {
 
   const visibleUploadedPhotos = showAllUploadedPhotos ? photos : photos.slice(0, 3);
 
-  const openMediaViewer = (photoId: number) => {
-    const index = photos.findIndex((photo) => photo.id === photoId);
-    if (index !== -1) {
-      setViewerIndex(index);
-    }
-  };
-
   const closeMediaViewer = () => {
     setViewerIndex(null);
   };
@@ -572,7 +582,7 @@ export default function LessonDetailPage() {
   ) => {
     event.preventDefault();
     event.stopPropagation();
-    openMediaViewer(photoId);
+    router.push(`/teacher-app/lesson/${lessonId}/media/${photoId}${versionSuffix}`);
   };
 
   return (
@@ -951,16 +961,24 @@ export default function LessonDetailPage() {
                         onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
                         style={{
                           position: 'absolute',
-                          inset: 0,
-                          zIndex: 4,
-                          padding: 0,
+                          left: '8px',
+                          right: '8px',
+                          bottom: '8px',
+                          zIndex: 5,
+                          padding: '6px 8px',
                           border: 'none',
-                          background: 'transparent',
+                          borderRadius: '10px',
+                          background: 'rgba(15, 23, 42, 0.78)',
+                          color: '#fff',
+                          fontSize: '12px',
+                          fontWeight: 600,
                           cursor: 'pointer',
                           touchAction: 'manipulation',
                           WebkitTapHighlightColor: 'transparent',
                         }}
-                      />
+                      >
+                        {isVideoFile(photo) ? 'Переглянути відео' : 'Переглянути фото'}
+                      </button>
                     </div>
                   ))}
                 </div>
