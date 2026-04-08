@@ -878,50 +878,36 @@ export default function LessonDetailPage() {
                     <div key={photo.id} style={{ position: 'relative' }}>
                       {isVideoFile(photo) ? (
                         <>
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
-                            onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
-                            onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                handleMediaPreviewActivate(event, photo.id);
-                              }
+                          <video
+                            src={photo.downloadUrl}
+                            preload="metadata"
+                            muted
+                            onLoadedData={() => {
+                              setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                              setProcessingVideoIds((prev) => {
+                                if (!prev[photo.id]) {
+                                  return prev;
+                                }
+
+                                const next = { ...prev };
+                                delete next[photo.id];
+                                return next;
+                              });
                             }}
-                            style={{ display: 'block', width: '100%', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', userSelect: 'none' }}
-                          >
-                            <video
-                              src={photo.downloadUrl}
-                              preload="metadata"
-                              muted
-                              onLoadedData={() => {
-                                setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
-                                setProcessingVideoIds((prev) => {
-                                  if (!prev[photo.id]) {
-                                    return prev;
-                                  }
+                            onCanPlay={() => {
+                              setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                              setProcessingVideoIds((prev) => {
+                                if (!prev[photo.id]) {
+                                  return prev;
+                                }
 
-                                  const next = { ...prev };
-                                  delete next[photo.id];
-                                  return next;
-                                });
-                              }}
-                              onCanPlay={() => {
-                                setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
-                                setProcessingVideoIds((prev) => {
-                                  if (!prev[photo.id]) {
-                                    return prev;
-                                  }
-
-                                  const next = { ...prev };
-                                  delete next[photo.id];
-                                  return next;
-                                });
-                              }}
-                              style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000', pointerEvents: 'none' }}
-                            />
-                          </div>
+                                const next = { ...prev };
+                                delete next[photo.id];
+                                return next;
+                              });
+                            }}
+                            style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000', pointerEvents: 'none' }}
+                          />
                           {isDriveVideoProcessing(photo, Boolean(processingVideoIds[photo.id]), Boolean(readyVideoIds[photo.id])) && (
                             <div style={{
                               position: 'absolute',
@@ -949,26 +935,30 @@ export default function LessonDetailPage() {
                           )}
                         </>
                       ) : (
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
-                          onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
-                          onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              handleMediaPreviewActivate(event, photo.id);
-                            }
-                          }}
-                          style={{ display: 'block', width: '100%', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', userSelect: 'none' }}
-                        >
-                          <img
-                            src={photo.thumbnailUrl}
-                            alt={photo.fileName}
-                            style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', pointerEvents: 'none' }}
-                          />
-                        </div>
+                        <img
+                          src={photo.thumbnailUrl}
+                          alt={photo.fileName}
+                          style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', pointerEvents: 'none' }}
+                        />
                       )}
+                      <button
+                        type="button"
+                        aria-label={`Відкрити ${photo.fileName}`}
+                        onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
+                        onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
+                        onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          zIndex: 4,
+                          padding: 0,
+                          border: 'none',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          touchAction: 'manipulation',
+                          WebkitTapHighlightColor: 'transparent',
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
