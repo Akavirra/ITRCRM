@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { TelegramWebAppProvider, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import TeacherAppNavbar from '@/components/TeacherAppNavbar';
 import RoleToggle from '@/components/RoleToggle';
@@ -8,6 +9,9 @@ import RoleToggle from '@/components/RoleToggle';
 // Inner component that uses the context
 function TeacherAppContent({ children }: { children: ReactNode }) {
   const { isLoading, isReady, error, colorScheme } = useTelegramWebApp();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const teacherAppVersion = (process.env.NEXT_PUBLIC_TEACHER_APP_VERSION || process.env.NEXT_PUBLIC_APP_VERSION || '1').slice(0, 12);
 
   useEffect(() => {
     // Apply Telegram theme colors to CSS variables
@@ -47,6 +51,27 @@ function TeacherAppContent({ children }: { children: ReactNode }) {
       root.style.setProperty('--tg-danger', '#ef4444');
     }
   }, [colorScheme]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const currentVersion = searchParams.get('v');
+    if (currentVersion === teacherAppVersion) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set('v', teacherAppVersion);
+    const targetUrl = `${pathname}?${nextParams.toString()}`;
+
+    if (window.location.pathname + window.location.search === targetUrl) {
+      return;
+    }
+
+    window.location.replace(targetUrl);
+  }, [pathname, searchParams, teacherAppVersion]);
 
   if (isLoading) {
     return (
