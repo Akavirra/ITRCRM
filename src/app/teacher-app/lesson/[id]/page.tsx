@@ -1220,10 +1220,12 @@ export default function LessonDetailPage() {
             )}
 
             {isVideoFile(photos[viewerIndex]) ? (
-              <iframe
+              <video
                 key={photos[viewerIndex].id}
-                src={getDrivePreviewEmbedUrl(photos[viewerIndex].driveFileId)}
-                allow="autoplay"
+                src={photos[viewerIndex].downloadUrl}
+                controls
+                playsInline
+                preload="metadata"
                 style={{ width: '100%', height: '100%', border: 'none', borderRadius: '16px', background: '#000' }}
               />
             ) : (

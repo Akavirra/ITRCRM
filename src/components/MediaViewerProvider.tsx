@@ -249,12 +249,21 @@ function MediaViewerModal({ files, index, onClose, onNavigate }: {
           </button>
         )}
 
-        {isAudio || isVideo ? (
+        {isAudio ? (
           <iframe
             key={file.drive_file_id}
             src={`https://drive.google.com/file/d/${file.drive_file_id}/preview`}
             allow="autoplay"
-            style={{ ...(isAudio ? { width: '100%', height: '100%' } : { position: 'absolute', inset: 0, width: '100%', height: '100%' }), border: 'none', animation: 'mediaFadeIn 0.2s ease' }}
+            style={{ width: '100%', height: '100%', border: 'none', animation: 'mediaFadeIn 0.2s ease' }}
+          />
+        ) : isVideo ? (
+          <video
+            key={file.drive_file_id}
+            src={file.drive_download_url}
+            controls
+            playsInline
+            preload="metadata"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', animation: 'mediaFadeIn 0.2s ease', background: '#000' }}
           />
         ) : (
           <img
