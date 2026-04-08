@@ -1,6 +1,7 @@
 import { run, get, all, transaction } from '@/db';
 import { addDays, addMonths, setHours, setMinutes, format, parse, isAfter, isBefore, startOfDay, endOfMonth } from 'date-fns';
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
+import { deleteLessonPhotoFolder } from '@/lib/lesson-photos';
 
 // Character set for generating random alphanumeric strings (uppercase only)
 const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -293,6 +294,12 @@ export async function cancelLesson(lessonId: number): Promise<void> {
     `UPDATE lessons SET status = 'canceled', updated_at = NOW() WHERE id = $1`,
     [lessonId]
   );
+
+  try {
+    await deleteLessonPhotoFolder(lessonId, { id: null, name: 'System', via: 'admin' });
+  } catch (error) {
+    console.error('Failed to delete lesson photo folder on cancel:', error);
+  }
 }
 
 // Update lesson topic
@@ -402,6 +409,17 @@ export async function checkAndAutoCancelLesson(
     `UPDATE lessons SET status = 'canceled', notes = $1, updated_at = NOW() WHERE id = $2`,
     [newNotes, lessonId]
   );
+
+  try {
+    await deleteLessonPhotoFolder(lessonId, {
+      id: userId,
+      name: userName,
+      via: source,
+      telegramId: telegramId ?? null,
+    });
+  } catch (error) {
+    console.error('Failed to delete lesson photo folder on auto-cancel:', error);
+  }
 
   await logLessonChange(lessonId, 'notes', lesson.notes ?? null, cancelNote, userId, userName, source, telegramId ?? null);
 

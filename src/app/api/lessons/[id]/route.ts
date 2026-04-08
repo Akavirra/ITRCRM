@@ -7,7 +7,7 @@ import { addGroupHistoryEntry, formatLessonConductedDescription } from '@/lib/gr
 import { formatDateTimeKyiv, formatTimeKyiv } from '@/lib/date-utils';
 import { logLessonChange, getLessonChangeHistory } from '@/lib/lessons';
 import { useIndividualLesson } from '@/lib/individual-payments';
-import { getLessonPhotoPayload, syncLessonPhotoFolderName } from '@/lib/lesson-photos';
+import { deleteLessonPhotoFolder, getLessonPhotoPayload, syncLessonPhotoFolderName } from '@/lib/lesson-photos';
 
 export const dynamic = 'force-dynamic';
 
@@ -474,7 +474,13 @@ export async function PATCH(
     let photos: Awaited<ReturnType<typeof getLessonPhotoPayload>>['photos'] = [];
 
     if (lesson.group_id !== null) {
-      if (topic !== undefined || lesson_date !== undefined) {
+      if (status === 'canceled') {
+        try {
+          await deleteLessonPhotoFolder(lessonId, { id: user.id, name: user.name, via: 'admin' });
+        } catch (deleteError) {
+          console.error('Failed to delete lesson photo folder:', deleteError);
+        }
+      } else if (topic !== undefined || lesson_date !== undefined) {
         try {
           await syncLessonPhotoFolderName(lessonId);
         } catch (syncError) {
@@ -482,12 +488,14 @@ export async function PATCH(
         }
       }
 
-      try {
-        const photoPayload = await getLessonPhotoPayload(lessonId);
-        photoFolder = photoPayload.photoFolder;
-        photos = photoPayload.photos;
-      } catch (photoError) {
-        console.error('Failed to load lesson photo payload:', photoError);
+      if (status !== 'canceled') {
+        try {
+          const photoPayload = await getLessonPhotoPayload(lessonId);
+          photoFolder = photoPayload.photoFolder;
+          photos = photoPayload.photos;
+        } catch (photoError) {
+          console.error('Failed to load lesson photo payload:', photoError);
+        }
       }
     }
 

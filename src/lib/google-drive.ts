@@ -188,6 +188,18 @@ export async function renameDriveFolder(folderId: string, newName: string): Prom
   };
 }
 
+export async function deleteDriveFolder(folderId: string): Promise<void> {
+  const token = await getAccessToken();
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${folderId}?supportsAllDrives=true`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Drive deleteDriveFolder failed: ${await res.text()}`);
+  }
+}
+
 // Upload a file buffer to a Drive folder
 export async function uploadFileToDrive(
   buffer: Buffer,

@@ -3,6 +3,7 @@ import { getAuthUser, unauthorized, checkGroupAccess, forbidden } from '@/lib/ap
 import { get, run } from '@/db';
 import { rescheduleLesson } from '@/lib/lessons';
 import { formatTimeKyiv } from '@/lib/date-utils';
+import { syncLessonPhotoFolderName } from '@/lib/lesson-photos';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,6 +74,14 @@ export async function PATCH(
         `UPDATE lessons SET status = 'scheduled', updated_at = NOW() WHERE id = $1`,
         [lessonId]
       );
+    }
+
+    if (lessonInfo.group_id !== null) {
+      try {
+        await syncLessonPhotoFolderName(lessonId);
+      } catch (syncError) {
+        console.error('Failed to sync lesson photo folder after reschedule:', syncError);
+      }
     }
 
     // Return formatted lesson (same shape as GET /api/lessons/[id])

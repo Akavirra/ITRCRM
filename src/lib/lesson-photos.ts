@@ -9,6 +9,7 @@ import {
   sanitizeDriveFolderName,
   uploadFileToDrive,
   deleteFileFromDrive,
+  deleteDriveFolder,
   getDriveViewUrl,
 } from '@/lib/google-drive';
 
@@ -43,6 +44,7 @@ interface LessonPhotoFileRow {
 interface LessonPhotoContext {
   lessonId: number;
   groupId: number;
+  status: string | null;
   courseTitle: string;
   groupTitle: string;
   lessonDate: string | Date | { toString(): string } | null;
@@ -146,6 +148,7 @@ async function getLessonPhotoContext(lessonId: number): Promise<LessonPhotoConte
     `SELECT
        l.id as "lessonId",
        l.group_id as "groupId",
+       l.status as status,
        l.lesson_date as "lessonDate",
        l.topic as topic,
        c.title as "courseTitle",
@@ -200,6 +203,10 @@ export async function ensureLessonPhotoFolder(lessonId: number): Promise<LessonP
     return null;
   }
 
+  if (lesson.status === 'canceled') {
+    return null;
+  }
+
   const existing = await getStoredLessonPhotoFolder(lessonId);
   if (existing) {
     const expectedName = buildLessonFolderName(lesson.lessonDate, lesson.topic);
@@ -250,6 +257,10 @@ export async function syncLessonPhotoFolderName(lessonId: number): Promise<Lesso
   const lesson = await getLessonPhotoContext(lessonId);
 
   if (!lesson?.groupId) {
+    return null;
+  }
+
+  if (lesson.status === 'canceled') {
     return null;
   }
 
@@ -444,10 +455,62 @@ export async function deleteLessonPhoto(
   return true;
 }
 
+export async function deleteLessonPhotoFolder(
+  lessonId: number,
+  actor?: { id: number | null; name: string | null; via?: UploadVia; telegramId?: string | null }
+): Promise<boolean> {
+  const storedFolder = await getStoredLessonPhotoFolder(lessonId);
+  const storedFiles = await all<{ drive_file_id: string; file_name: string }>(
+    `SELECT drive_file_id, file_name
+     FROM lesson_photo_files
+     WHERE lesson_id = $1`,
+    [lessonId]
+  );
+
+  if (!storedFolder && storedFiles.length === 0) {
+    return false;
+  }
+
+  if (storedFolder?.lesson_folder_id) {
+    await deleteDriveFolder(storedFolder.lesson_folder_id);
+  } else {
+    for (const file of storedFiles) {
+      await deleteFileFromDrive(file.drive_file_id);
+    }
+  }
+
+  await run(`DELETE FROM lesson_photo_files WHERE lesson_id = $1`, [lessonId]);
+  await run(`DELETE FROM lesson_photo_folders WHERE lesson_id = $1`, [lessonId]);
+  await run(
+    `INSERT INTO lesson_change_logs
+      (lesson_id, field_name, old_value, new_value, changed_by, changed_by_name, changed_by_telegram_id, changed_via)
+     VALUES ($1, 'photos', $2, $3, $4, $5, $6, $7)`,
+    [
+      lessonId,
+      storedFolder?.lesson_folder_name ?? 'Папка медіа',
+      'Видалено папку медіа заняття',
+      actor?.id ?? null,
+      actor?.name ?? 'System',
+      actor?.telegramId ?? null,
+      actor?.via ?? 'admin',
+    ]
+  );
+
+  return true;
+}
+
 export async function getLessonPhotoPayload(lessonId: number): Promise<{
   photoFolder: LessonPhotoFolderInfo | null;
   photos: LessonPhotoFileInfo[];
 }> {
+  const lesson = await getLessonPhotoContext(lessonId);
+  if (!lesson?.groupId || lesson.status === 'canceled') {
+    return {
+      photoFolder: null,
+      photos: [],
+    };
+  }
+
   const photoFolder = await ensureLessonPhotoFolder(lessonId);
   const photos = await listLessonPhotos(lessonId);
 
