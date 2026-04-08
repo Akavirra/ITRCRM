@@ -148,7 +148,7 @@ export function formatDateTimeKyiv(dateStr: string | Date | null | undefined): s
 }
 
 /**
- * Format a date string with short month name (e.g., "18 лют")
+ * Format a date string with short month name (e.g., "18 Р»СЋС‚")
  * @param dateStr - Date string from database (stored as UTC)
  * @returns Formatted date string with short month name
  */
@@ -167,7 +167,7 @@ export function formatDateShortMonthKyiv(dateStr: string | Date | null | undefin
 export function formatTimeKyiv(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return '';
 
-  // If Date object, use Intl formatter directly (converts UTC → Kyiv)
+  // If Date object, use Intl formatter directly (converts UTC в†’ Kyiv)
   if (dateStr instanceof Date) {
     return dateStr.toLocaleTimeString(UKRAINIAN_LOCALE, kyivTimeOptions);
   }
@@ -182,6 +182,29 @@ export function formatTimeKyiv(dateStr: string | Date | null | undefined): strin
  */
 export function nowKyiv(): Date {
   return new Date(new Date().toLocaleString('en-US', { timeZone: KYIV_TIMEZONE }));
+}
+
+export function getTodayKyivDateString(): string {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: KYIV_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  return formatter.format(new Date());
+}
+
+export function normalizeDateOnly(value: string | Date | null | undefined): string {
+  if (!value) return '';
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  const raw = String(value).trim();
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : raw;
 }
 
 /**
@@ -201,3 +224,4 @@ export function createKyivFormatter(options: Intl.DateTimeFormatOptions): (dateS
     return formatter.format(parseDatabaseDate(dateStr));
   };
 }
+

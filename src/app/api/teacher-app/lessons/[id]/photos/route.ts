@@ -3,11 +3,16 @@ import { queryOne } from '@/db/neon';
 import crypto from 'crypto';
 import { addLessonPhotoRecord, getLessonPhotoPayload } from '@/lib/lesson-photos';
 import { isSupportedLessonMediaFile, resolveLessonMediaMimeType } from '@/lib/lesson-media';
+import { getTodayKyivDateString, normalizeDateOnly } from '@/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
+
+function isTeacherLessonEditable(lessonDate: string | Date | null | undefined): boolean {
+  return normalizeDateOnly(lessonDate) === getTodayKyivDateString();
+}
 
 function verifyInitData(initData: string): { valid: boolean; telegramId?: string } {
   if (!TELEGRAM_BOT_TOKEN) {
@@ -71,7 +76,7 @@ async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
     return {
       teacher: null,
       lesson: null,
-      response: NextResponse.json({ error: 'Заголовок X-Telegram-Init-Data обовʼязковий' }, { status: 401 }),
+      response: NextResponse.json({ error: 'Р—Р°РіРѕР»РѕРІРѕРє X-Telegram-Init-Data РѕР±РѕРІКјСЏР·РєРѕРІРёР№' }, { status: 401 }),
     };
   }
 
@@ -81,7 +86,7 @@ async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
     return {
       teacher: null,
       lesson: null,
-      response: NextResponse.json({ error: 'Невірний initData' }, { status: 401 }),
+      response: NextResponse.json({ error: 'РќРµРІС–СЂРЅРёР№ initData' }, { status: 401 }),
     };
   }
 
@@ -94,12 +99,12 @@ async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
     return {
       teacher: null,
       lesson: null,
-      response: NextResponse.json({ error: 'Викладача не знайдено' }, { status: 401 }),
+      response: NextResponse.json({ error: 'Р’РёРєР»Р°РґР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ' }, { status: 401 }),
     };
   }
 
   const lesson = await queryOne(
-    `SELECT l.id, l.group_id
+    `SELECT l.id, l.group_id, l.lesson_date
      FROM lessons l
      LEFT JOIN groups g ON l.group_id = g.id
      LEFT JOIN lesson_teacher_replacements ltr ON l.id = ltr.lesson_id
@@ -110,13 +115,13 @@ async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
          OR (l.group_id IS NULL AND l.teacher_id = $2)
        )`,
     [lessonId, teacher.id]
-  ) as { id: number; group_id: number | null } | null;
+  ) as { id: number; group_id: number | null; lesson_date: string | null } | null;
 
   if (!lesson) {
     return {
       teacher,
       lesson: null,
-      response: NextResponse.json({ error: 'Заняття не знайдено або доступ заборонено' }, { status: 404 }),
+      response: NextResponse.json({ error: 'Р—Р°РЅСЏС‚С‚СЏ РЅРµ Р·РЅР°Р№РґРµРЅРѕ Р°Р±Рѕ РґРѕСЃС‚СѓРї Р·Р°Р±РѕСЂРѕРЅРµРЅРѕ' }, { status: 404 }),
     };
   }
 
@@ -124,7 +129,7 @@ async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
     return {
       teacher,
       lesson,
-      response: NextResponse.json({ error: 'Фото доступні лише для групових занять' }, { status: 400 }),
+      response: NextResponse.json({ error: 'Р¤РѕС‚Рѕ РґРѕСЃС‚СѓРїРЅС– Р»РёС€Рµ РґР»СЏ РіСЂСѓРїРѕРІРёС… Р·Р°РЅСЏС‚СЊ' }, { status: 400 }),
     };
   }
 
@@ -143,7 +148,7 @@ export async function GET(
   const lessonId = parseInt(params.id, 10);
 
   if (Number.isNaN(lessonId)) {
-    return NextResponse.json({ error: 'Невірний ID заняття' }, { status: 400 });
+    return NextResponse.json({ error: 'РќРµРІС–СЂРЅРёР№ ID Р·Р°РЅСЏС‚С‚СЏ' }, { status: 400 });
   }
 
   const access = await getTeacherLessonAccess(request, lessonId);
@@ -156,13 +161,13 @@ export async function GET(
     payload = await getLessonPhotoPayload(lessonId);
   } catch (error) {
     console.error('Failed to load lesson photos payload:', error);
-    return NextResponse.json({ error: 'Не вдалося отримати фото заняття' }, { status: 500 });
+    return NextResponse.json({ error: 'РќРµ РІРґР°Р»РѕСЃСЏ РѕС‚СЂРёРјР°С‚Рё С„РѕС‚Рѕ Р·Р°РЅСЏС‚С‚СЏ' }, { status: 500 });
   }
 
   return NextResponse.json({
     photoFolder: payload.photoFolder,
     photos: payload.photos,
-    canManagePhotos: true,
+    canManagePhotos: isTeacherLessonEditable(access.lesson?.lesson_date),
   });
 }
 
@@ -173,12 +178,16 @@ export async function POST(
   const lessonId = parseInt(params.id, 10);
 
   if (Number.isNaN(lessonId)) {
-    return NextResponse.json({ error: 'Невірний ID заняття' }, { status: 400 });
+    return NextResponse.json({ error: 'РќРµРІС–СЂРЅРёР№ ID Р·Р°РЅСЏС‚С‚СЏ' }, { status: 400 });
   }
 
   const access = await getTeacherLessonAccess(request, lessonId);
   if (access.response) {
     return access.response;
+  }
+
+  if (!isTeacherLessonEditable(access.lesson?.lesson_date)) {
+    return NextResponse.json({ error: 'Р’РёРєР»Р°РґР°С‡ РјРѕР¶Рµ Р·РјС–РЅСЋРІР°С‚Рё РјРµРґС–Р° Р»РёС€Рµ РґР»СЏ СЃСЊРѕРіРѕРґРЅС–С€РЅС–С… Р·Р°РЅСЏС‚СЊ.' }, { status: 403 });
   }
 
   const formData = await request.formData();
@@ -188,16 +197,16 @@ export async function POST(
   ].filter((entry): entry is File => entry instanceof File);
 
   if (files.length === 0) {
-    return NextResponse.json({ error: 'Файли не вибрано' }, { status: 400 });
+    return NextResponse.json({ error: 'Р¤Р°Р№Р»Рё РЅРµ РІРёР±СЂР°РЅРѕ' }, { status: 400 });
   }
 
   for (const file of files) {
     if (!isSupportedLessonMediaFile(file)) {
-      return NextResponse.json({ error: `Непідтримуваний тип файлу: ${file.type}` }, { status: 400 });
+      return NextResponse.json({ error: `РќРµРїС–РґС‚СЂРёРјСѓРІР°РЅРёР№ С‚РёРї С„Р°Р№Р»Сѓ: ${file.type}` }, { status: 400 });
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: `Файл ${file.name} перевищує 15MB` }, { status: 400 });
+      return NextResponse.json({ error: `Р¤Р°Р№Р» ${file.name} РїРµСЂРµРІРёС‰СѓС” 15MB` }, { status: 400 });
     }
   }
 
@@ -225,10 +234,11 @@ export async function POST(
       uploaded,
       photoFolder: payload.photoFolder,
       photos: payload.photos,
-      canManagePhotos: true,
+      canManagePhotos: isTeacherLessonEditable(access.lesson?.lesson_date),
     });
   } catch (error) {
     console.error('Teacher lesson photos upload error:', error);
-    return NextResponse.json({ error: 'Не вдалося завантажити фото заняття' }, { status: 500 });
+    return NextResponse.json({ error: 'РќРµ РІРґР°Р»РѕСЃСЏ Р·Р°РІР°РЅС‚Р°Р¶РёС‚Рё С„РѕС‚Рѕ Р·Р°РЅСЏС‚С‚СЏ' }, { status: 500 });
   }
 }
+

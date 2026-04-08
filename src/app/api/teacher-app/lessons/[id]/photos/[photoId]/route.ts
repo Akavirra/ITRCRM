@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryOne } from '@/db/neon';
 import crypto from 'crypto';
 import { deleteLessonPhoto, getLessonPhotoPayload } from '@/lib/lesson-photos';
+import { getTodayKyivDateString, normalizeDateOnly } from '@/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+
+function isTeacherLessonEditable(lessonDate: string | Date | null | undefined): boolean {
+  return normalizeDateOnly(lessonDate) === getTodayKyivDateString();
+}
 
 function verifyInitData(initData: string): { valid: boolean; telegramId?: string } {
   if (!TELEGRAM_BOT_TOKEN) {
@@ -69,7 +74,7 @@ async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
     return {
       teacher: null,
       lesson: null,
-      response: NextResponse.json({ error: 'Заголовок X-Telegram-Init-Data обовʼязковий' }, { status: 401 }),
+      response: NextResponse.json({ error: 'Р—Р°РіРѕР»РѕРІРѕРє X-Telegram-Init-Data РѕР±РѕРІКјСЏР·РєРѕРІРёР№' }, { status: 401 }),
     };
   }
 
@@ -79,7 +84,7 @@ async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
     return {
       teacher: null,
       lesson: null,
-      response: NextResponse.json({ error: 'Невірний initData' }, { status: 401 }),
+      response: NextResponse.json({ error: 'РќРµРІС–СЂРЅРёР№ initData' }, { status: 401 }),
     };
   }
 
@@ -92,12 +97,12 @@ async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
     return {
       teacher: null,
       lesson: null,
-      response: NextResponse.json({ error: 'Викладача не знайдено' }, { status: 401 }),
+      response: NextResponse.json({ error: 'Р’РёРєР»Р°РґР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ' }, { status: 401 }),
     };
   }
 
   const lesson = await queryOne(
-    `SELECT l.id, l.group_id
+    `SELECT l.id, l.group_id, l.lesson_date
      FROM lessons l
      LEFT JOIN groups g ON l.group_id = g.id
      LEFT JOIN lesson_teacher_replacements ltr ON l.id = ltr.lesson_id
@@ -108,14 +113,14 @@ async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
          OR (l.group_id IS NULL AND l.teacher_id = $2)
        )`,
     [lessonId, teacher.id]
-  ) as { id: number; group_id: number | null } | null;
+  ) as { id: number; group_id: number | null; lesson_date: string | null } | null;
 
   if (!lesson) {
     return {
       teacher,
       lesson: null,
       telegramId: verification.telegramId,
-      response: NextResponse.json({ error: 'Заняття не знайдено або доступ заборонено' }, { status: 404 }),
+      response: NextResponse.json({ error: 'Р—Р°РЅСЏС‚С‚СЏ РЅРµ Р·РЅР°Р№РґРµРЅРѕ Р°Р±Рѕ РґРѕСЃС‚СѓРї Р·Р°Р±РѕСЂРѕРЅРµРЅРѕ' }, { status: 404 }),
     };
   }
 
@@ -124,7 +129,7 @@ async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
       teacher,
       lesson,
       telegramId: verification.telegramId,
-      response: NextResponse.json({ error: 'Медіа доступні лише для групових занять' }, { status: 400 }),
+      response: NextResponse.json({ error: 'РњРµРґС–Р° РґРѕСЃС‚СѓРїРЅС– Р»РёС€Рµ РґР»СЏ РіСЂСѓРїРѕРІРёС… Р·Р°РЅСЏС‚СЊ' }, { status: 400 }),
     };
   }
 
@@ -144,12 +149,16 @@ export async function DELETE(
   const photoId = parseInt(params.photoId, 10);
 
   if (Number.isNaN(lessonId) || Number.isNaN(photoId)) {
-    return NextResponse.json({ error: 'Невірні параметри' }, { status: 400 });
+    return NextResponse.json({ error: 'РќРµРІС–СЂРЅС– РїР°СЂР°РјРµС‚СЂРё' }, { status: 400 });
   }
 
   const access = await getTeacherLessonAccess(request, lessonId);
   if (access.response) {
     return access.response;
+  }
+
+  if (!isTeacherLessonEditable(access.lesson?.lesson_date)) {
+    return NextResponse.json({ error: 'Р’РёРєР»Р°РґР°С‡ РјРѕР¶Рµ Р·РјС–РЅСЋРІР°С‚Рё РјРµРґС–Р° Р»РёС€Рµ РґР»СЏ СЃСЊРѕРіРѕРґРЅС–С€РЅС–С… Р·Р°РЅСЏС‚СЊ.' }, { status: 403 });
   }
 
   try {
@@ -161,7 +170,7 @@ export async function DELETE(
     });
 
     if (!deleted) {
-      return NextResponse.json({ error: 'Медіа не знайдено' }, { status: 404 });
+      return NextResponse.json({ error: 'РњРµРґС–Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ' }, { status: 404 });
     }
 
     const payload = await getLessonPhotoPayload(lessonId);
@@ -170,10 +179,11 @@ export async function DELETE(
       success: true,
       photoFolder: payload.photoFolder,
       photos: payload.photos,
-      canManagePhotos: true,
+      canManagePhotos: isTeacherLessonEditable(access.lesson?.lesson_date),
     });
   } catch (error) {
     console.error('Teacher lesson photo delete error:', error);
-    return NextResponse.json({ error: 'Не вдалося видалити медіа заняття' }, { status: 500 });
+    return NextResponse.json({ error: 'РќРµ РІРґР°Р»РѕСЃСЏ РІРёРґР°Р»РёС‚Рё РјРµРґС–Р° Р·Р°РЅСЏС‚С‚СЏ' }, { status: 500 });
   }
 }
+

@@ -3,10 +3,15 @@ import { query, queryOne } from '@/db/neon';
 import crypto from 'crypto';
 import { logLessonChange, getLessonChangeHistory } from '@/lib/lessons';
 import { getLessonPhotoPayload, syncLessonPhotoFolderName } from '@/lib/lesson-photos';
+import { getTodayKyivDateString, normalizeDateOnly } from '@/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+
+function isTeacherLessonEditable(lessonDate: string | Date | null | undefined): boolean {
+  return normalizeDateOnly(lessonDate) === getTodayKyivDateString();
+}
 
 // Verify Telegram Mini App initData using HMAC-SHA256
 function verifyInitData(initData: string): { valid: boolean; telegramId?: string } {
@@ -75,7 +80,7 @@ export async function GET(
     
     if (!initData) {
       return NextResponse.json(
-        { error: 'Заголовок X-Telegram-Init-Data обов\'язковий' },
+        { error: 'Р—Р°РіРѕР»РѕРІРѕРє X-Telegram-Init-Data РѕР±РѕРІ\'СЏР·РєРѕРІРёР№' },
         { status: 401 }
       );
     }
@@ -84,7 +89,7 @@ export async function GET(
     
     if (!verification.valid || !verification.telegramId) {
       return NextResponse.json(
-        { error: 'Невірний initData' },
+        { error: 'РќРµРІС–СЂРЅРёР№ initData' },
         { status: 401 }
       );
     }
@@ -94,7 +99,7 @@ export async function GET(
 
     if (isNaN(lessonId)) {
       return NextResponse.json(
-        { error: 'Невірний ID заняття' },
+        { error: 'РќРµРІС–СЂРЅРёР№ ID Р·Р°РЅСЏС‚С‚СЏ' },
         { status: 400 }
       );
     }
@@ -107,7 +112,7 @@ export async function GET(
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Викладача не знайдено' },
+        { error: 'Р’РёРєР»Р°РґР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ' },
         { status: 401 }
       );
     }
@@ -139,7 +144,7 @@ export async function GET(
 
     if (!lesson) {
       return NextResponse.json(
-        { error: 'Заняття не знайдено або доступ заборонено' },
+        { error: 'Р—Р°РЅСЏС‚С‚СЏ РЅРµ Р·РЅР°Р№РґРµРЅРѕ Р°Р±Рѕ РґРѕСЃС‚СѓРї Р·Р°Р±РѕСЂРѕРЅРµРЅРѕ' },
         { status: 404 }
       );
     }
@@ -182,8 +187,8 @@ export async function GET(
           orig_l.id as original_lesson_id,
           orig_l.lesson_date as original_lesson_date,
           orig_l.topic as original_lesson_topic,
-          COALESCE(orig_g.title, 'Індивідуальне') as original_group_title,
-          COALESCE(oc_les.title, oc_grp.title, 'Без курсу') as original_course_title
+          COALESCE(orig_g.title, 'Р†РЅРґРёРІС–РґСѓР°Р»СЊРЅРµ') as original_group_title,
+          COALESCE(oc_les.title, oc_grp.title, 'Р‘РµР· РєСѓСЂСЃСѓ') as original_course_title
         FROM attendance orig_att
         JOIN lessons orig_l ON orig_att.lesson_id = orig_l.id
         LEFT JOIN groups orig_g ON orig_l.group_id = orig_g.id
@@ -224,13 +229,13 @@ export async function GET(
       students: studentsWithOriginal,
       photoFolder: photoPayload.photoFolder,
       photos: photoPayload.photos,
-      canManagePhotos: lesson.group_id !== null,
+      canManagePhotos: lesson.group_id !== null && isTeacherLessonEditable(lesson.lesson_date),
     });
 
   } catch (error) {
     console.error('Lesson details error:', error);
     return NextResponse.json(
-      { error: 'Не вдалося завантажити деталі заняття' },
+      { error: 'РќРµ РІРґР°Р»РѕСЃСЏ Р·Р°РІР°РЅС‚Р°Р¶РёС‚Рё РґРµС‚Р°Р»С– Р·Р°РЅСЏС‚С‚СЏ' },
       { status: 500 }
     );
   }
@@ -246,7 +251,7 @@ export async function PATCH(
     
     if (!initData) {
       return NextResponse.json(
-        { error: 'Заголовок X-Telegram-Init-Data обов\'язковий' },
+        { error: 'Р—Р°РіРѕР»РѕРІРѕРє X-Telegram-Init-Data РѕР±РѕРІ\'СЏР·РєРѕРІРёР№' },
         { status: 401 }
       );
     }
@@ -255,7 +260,7 @@ export async function PATCH(
     
     if (!verification.valid || !verification.telegramId) {
       return NextResponse.json(
-        { error: 'Невірний initData' },
+        { error: 'РќРµРІС–СЂРЅРёР№ initData' },
         { status: 401 }
       );
     }
@@ -265,7 +270,7 @@ export async function PATCH(
 
     if (isNaN(lessonId)) {
       return NextResponse.json(
-        { error: 'Невірний ID заняття' },
+        { error: 'РќРµРІС–СЂРЅРёР№ ID Р·Р°РЅСЏС‚С‚СЏ' },
         { status: 400 }
       );
     }
@@ -278,7 +283,7 @@ export async function PATCH(
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Викладача не знайдено' },
+        { error: 'Р’РёРєР»Р°РґР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ' },
         { status: 401 }
       );
     }
@@ -300,20 +305,14 @@ export async function PATCH(
 
     if (!lessonAccess) {
       return NextResponse.json(
-        { error: 'Заняття не знайдено або доступ заборонено' },
+        { error: 'Р—Р°РЅСЏС‚С‚СЏ РЅРµ Р·РЅР°Р№РґРµРЅРѕ Р°Р±Рѕ РґРѕСЃС‚СѓРї Р·Р°Р±РѕСЂРѕРЅРµРЅРѕ' },
         { status: 404 }
       );
     }
 
-    // Check if lesson is in the past (before today)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const lessonDate = new Date(lessonAccess.lesson_date);
-    lessonDate.setHours(0, 0, 0, 0);
-    
-    if (lessonDate < today) {
+    if (!isTeacherLessonEditable(lessonAccess.lesson_date)) {
       return NextResponse.json(
-        { error: 'Неможливо редагувати заняття минулих днів. Ви можете редагувати лише сьогоднішні та майбутні заняття.' },
+        { error: 'Викладач може редагувати лише сьогоднішні заняття.' },
         { status: 403 }
       );
     }
@@ -385,7 +384,7 @@ export async function PATCH(
 
     if (updates.length === 0) {
       return NextResponse.json(
-        { error: 'Немає полів для оновлення' },
+        { error: 'РќРµРјР°С” РїРѕР»С–РІ РґР»СЏ РѕРЅРѕРІР»РµРЅРЅСЏ' },
         { status: 400 }
       );
     }
@@ -455,14 +454,15 @@ export async function PATCH(
       lesson: result,
       photoFolder,
       photos,
-      canManagePhotos: lessonAccess.group_id !== null,
+      canManagePhotos: lessonAccess.group_id !== null && isTeacherLessonEditable(lessonAccess.lesson_date),
     });
 
   } catch (error) {
     console.error('Lesson update error:', error);
     return NextResponse.json(
-      { error: 'Не вдалося оновити заняття' },
+      { error: 'РќРµ РІРґР°Р»РѕСЃСЏ РѕРЅРѕРІРёС‚Рё Р·Р°РЅСЏС‚С‚СЏ' },
       { status: 500 }
     );
   }
 }
+

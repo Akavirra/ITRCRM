@@ -4,10 +4,15 @@ import crypto from 'crypto';
 import { logLessonChange, checkAndAutoCancelLesson } from '@/lib/lessons';
 import { safeCreateLessonDoneNotification } from '@/lib/notifications';
 import { useIndividualLesson } from '@/lib/individual-payments';
+import { getTodayKyivDateString, normalizeDateOnly } from '@/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+
+function isTeacherLessonEditable(lessonDate: string | Date | null | undefined): boolean {
+  return normalizeDateOnly(lessonDate) === getTodayKyivDateString();
+}
 
 // Verify Telegram Mini App initData using HMAC-SHA256
 function verifyInitData(initData: string): { valid: boolean; telegramId?: string } {
@@ -76,7 +81,7 @@ export async function POST(
     
     if (!initData) {
       return NextResponse.json(
-        { error: 'Заголовок X-Telegram-Init-Data обов\'язковий' },
+        { error: 'Р—Р°РіРѕР»РѕРІРѕРє X-Telegram-Init-Data РѕР±РѕРІ\'СЏР·РєРѕРІРёР№' },
         { status: 401 }
       );
     }
@@ -85,7 +90,7 @@ export async function POST(
     
     if (!verification.valid || !verification.telegramId) {
       return NextResponse.json(
-        { error: 'Невірний initData' },
+        { error: 'РќРµРІС–СЂРЅРёР№ initData' },
         { status: 401 }
       );
     }
@@ -95,7 +100,7 @@ export async function POST(
 
     if (isNaN(lessonId)) {
       return NextResponse.json(
-        { error: 'Невірний ID заняття' },
+        { error: 'РќРµРІС–СЂРЅРёР№ ID Р·Р°РЅСЏС‚С‚СЏ' },
         { status: 400 }
       );
     }
@@ -108,7 +113,7 @@ export async function POST(
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Викладача не знайдено' },
+        { error: 'Р’РёРєР»Р°РґР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ' },
         { status: 401 }
       );
     }
@@ -130,20 +135,14 @@ export async function POST(
 
     if (!lessonAccess) {
       return NextResponse.json(
-        { error: 'Заняття не знайдено або доступ заборонено' },
+        { error: 'Р—Р°РЅСЏС‚С‚СЏ РЅРµ Р·РЅР°Р№РґРµРЅРѕ Р°Р±Рѕ РґРѕСЃС‚СѓРї Р·Р°Р±РѕСЂРѕРЅРµРЅРѕ' },
         { status: 404 }
       );
     }
 
-    // Check if lesson is in the past (before today)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const lessonDate = new Date(lessonAccess.lesson_date);
-    lessonDate.setHours(0, 0, 0, 0);
-    
-    if (lessonDate < today) {
+    if (!isTeacherLessonEditable(lessonAccess.lesson_date)) {
       return NextResponse.json(
-        { error: 'Неможливо редагувати відвідуваність занять минулих днів. Ви можете редагувати лише сьогоднішні та майбутні заняття.' },
+        { error: 'Викладач може редагувати відвідуваність лише для сьогоднішніх занять.' },
         { status: 403 }
       );
     }
@@ -153,7 +152,7 @@ export async function POST(
 
     if (!studentId || !attendanceStatus) {
       return NextResponse.json(
-        { error: 'Параметри studentId та status обов\'язкові' },
+        { error: 'РџР°СЂР°РјРµС‚СЂРё studentId С‚Р° status РѕР±РѕРІ\'СЏР·РєРѕРІС–' },
         { status: 400 }
       );
     }
@@ -165,7 +164,7 @@ export async function POST(
     
     if (!['present', 'absent'].includes(dbStatus)) {
       return NextResponse.json(
-        { error: 'Невірний статус. Допустимі значення: present, absent або sick' },
+        { error: 'РќРµРІС–СЂРЅРёР№ СЃС‚Р°С‚СѓСЃ. Р”РѕРїСѓСЃС‚РёРјС– Р·РЅР°С‡РµРЅРЅСЏ: present, absent Р°Р±Рѕ sick' },
         { status: 400 }
       );
     }
@@ -196,7 +195,7 @@ export async function POST(
 
     if (!studentCheck) {
       return NextResponse.json(
-        { error: 'Учня не знайдено у цій групі' },
+        { error: 'РЈС‡РЅСЏ РЅРµ Р·РЅР°Р№РґРµРЅРѕ Сѓ С†С–Р№ РіСЂСѓРїС–' },
         { status: 404 }
       );
     }
@@ -231,7 +230,7 @@ export async function POST(
       ) as Array<{ lesson_id: number }>;
       const makeupDate = new Date(makeupLesson.lesson_date);
       const makeupDateStr = `${String(makeupDate.getUTCDate()).padStart(2,'0')}.${String(makeupDate.getUTCMonth()+1).padStart(2,'0')}.${makeupDate.getUTCFullYear()}`;
-      const studentLabel = studentName?.full_name || `Учень #${studentId}`;
+      const studentLabel = studentName?.full_name || `РЈС‡РµРЅСЊ #${studentId}`;
 
       if (dbStatus === 'present') {
         await query(
@@ -242,7 +241,7 @@ export async function POST(
         for (const rec of (origRecords || [])) {
           await logLessonChange(
             rec.lesson_id, 'attendance', null,
-            `${studentLabel}: відпрацював пропуск (відпрацювання від ${makeupDateStr})`,
+            `${studentLabel}: РІС–РґРїСЂР°С†СЋРІР°РІ РїСЂРѕРїСѓСЃРє (РІС–РґРїСЂР°С†СЋРІР°РЅРЅСЏ РІС–Рґ ${makeupDateStr})`,
             teacher.id, teacher.name, 'telegram', telegramId
           );
         }
@@ -255,7 +254,7 @@ export async function POST(
         for (const rec of (origRecords || [])) {
           await logLessonChange(
             rec.lesson_id, 'attendance', null,
-            `${studentLabel}: відпрацювання скасовано`,
+            `${studentLabel}: РІС–РґРїСЂР°С†СЋРІР°РЅРЅСЏ СЃРєР°СЃРѕРІР°РЅРѕ`,
             teacher.id, teacher.name, 'telegram', telegramId
           );
         }
@@ -267,7 +266,7 @@ export async function POST(
       lessonId,
       'attendance',
       null,
-      `${studentName?.full_name || `Учень #${studentId}`}: ${dbStatus === 'present' ? 'присутній' : 'відсутній'}`,
+      `${studentName?.full_name || `РЈС‡РµРЅСЊ #${studentId}`}: ${dbStatus === 'present' ? 'РїСЂРёСЃСѓС‚РЅС–Р№' : 'РІС–РґСЃСѓС‚РЅС–Р№'}`,
       teacher.id,
       teacher.name,
       'telegram',
@@ -330,8 +329,9 @@ export async function POST(
   } catch (error) {
     console.error('Attendance update error:', error);
     return NextResponse.json(
-      { error: 'Не вдалося оновити відвідуваність' },
+      { error: 'РќРµ РІРґР°Р»РѕСЃСЏ РѕРЅРѕРІРёС‚Рё РІС–РґРІС–РґСѓРІР°РЅС–СЃС‚СЊ' },
       { status: 500 }
     );
   }
 }
+

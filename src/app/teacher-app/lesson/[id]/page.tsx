@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type TouchEvent as ReactTouchEvent } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
-import { formatTimeKyiv, formatDateKyiv, formatDateTimeKyiv } from '@/lib/date-utils';
+import { formatTimeKyiv, formatDateKyiv, formatDateTimeKyiv, getTodayKyivDateString, normalizeDateOnly } from '@/lib/date-utils';
 import { getUploadErrorMessage, prepareImageFilesForUpload, uploadFileToMediaService } from '@/lib/client-photo-upload';
 import { isVideoMimeType } from '@/lib/lesson-media';
 import {
@@ -126,7 +126,7 @@ export default function LessonDetailPage() {
   const [editingTopic, setEditingTopic] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isPastLesson, setIsPastLesson] = useState(false);
+  const [isEditableToday, setIsEditableToday] = useState(false);
   const [photoFolder, setPhotoFolder] = useState<LessonData['photoFolder']>(null);
   const [photos, setPhotos] = useState<LessonPhoto[]>([]);
   const [showAllUploadedPhotos, setShowAllUploadedPhotos] = useState(false);
@@ -143,14 +143,12 @@ export default function LessonDetailPage() {
   const viewerTouchStartYRef = useRef<number | null>(null);
   const viewerVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Check if lesson is from a past day
+  // Teachers can edit only today's lessons.
   useEffect(() => {
     if (lesson?.lesson_date) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const lessonDate = new Date(lesson.lesson_date);
-      lessonDate.setHours(0, 0, 0, 0);
-      setIsPastLesson(lessonDate < today);
+      setIsEditableToday(normalizeDateOnly(lesson.lesson_date) === getTodayKyivDateString());
+    } else {
+      setIsEditableToday(false);
     }
   }, [lesson?.lesson_date]);
 
@@ -164,8 +162,8 @@ export default function LessonDetailPage() {
 
       if (!initData) {
         setError(!isInWebView 
-          ? 'Ця сторінка працює тільки в Telegram Mini App' 
-          : 'Telegram WebApp не ініціалізовано');
+          ? 'Р¦СЏ СЃС‚РѕСЂС–РЅРєР° РїСЂР°С†СЋС” С‚С–Р»СЊРєРё РІ Telegram Mini App' 
+          : 'Telegram WebApp РЅРµ С–РЅС–С†С–Р°Р»С–Р·РѕРІР°РЅРѕ');
         setLoading(false);
         return;
       }
@@ -176,7 +174,7 @@ export default function LessonDetailPage() {
         });
 
         if (!response.ok) {
-          throw new Error('Не вдалося завантажити дані заняття');
+          throw new Error('РќРµ РІРґР°Р»РѕСЃСЏ Р·Р°РІР°РЅС‚Р°Р¶РёС‚Рё РґР°РЅС– Р·Р°РЅСЏС‚С‚СЏ');
         }
 
         const data: LessonData = await response.json();
@@ -203,7 +201,7 @@ export default function LessonDetailPage() {
         };
       } catch (err) {
         console.error('Fetch error:', err);
-        setError('Помилка завантаження даних');
+        setError('РџРѕРјРёР»РєР° Р·Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ РґР°РЅРёС…');
         setLoading(false);
       }
     };
@@ -280,7 +278,7 @@ export default function LessonDetailPage() {
   const updateAttendance = async (studentId: number, status: 'present' | 'absent' | 'sick') => {
     if (!initData) return;
 
-    if (isPastLesson) return;
+    if (!isEditableToday) return;
 
     // Optimistic update
     setStudents(prev => prev.map(s => 
@@ -298,7 +296,7 @@ export default function LessonDetailPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Помилка збереження');
+        throw new Error('РџРѕРјРёР»РєР° Р·Р±РµСЂРµР¶РµРЅРЅСЏ');
       }
 
       // Update lesson status if needed
@@ -321,8 +319,8 @@ export default function LessonDetailPage() {
     if (!initData) return;
 
     // Prevent saving for past lessons
-    if (isPastLesson) {
-      alert('Неможливо редагувати заняття минулих днів.');
+    if (!isEditableToday) {
+      alert('Викладач може редагувати лише сьогоднішні заняття.');
       return;
     }
 
@@ -339,7 +337,7 @@ export default function LessonDetailPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Помилка збереження');
+        throw new Error('РџРѕРјРёР»РєР° Р·Р±РµСЂРµР¶РµРЅРЅСЏ');
       }
 
       const result = await response.json();
@@ -361,7 +359,7 @@ export default function LessonDetailPage() {
       setEditingNotes(false);
     } catch (err) {
       console.error('Save error:', err);
-      alert('Помилка збереження даних');
+      alert('РџРѕРјРёР»РєР° Р·Р±РµСЂРµР¶РµРЅРЅСЏ РґР°РЅРёС…');
     } finally {
       setSaving(false);
     }
@@ -372,8 +370,8 @@ export default function LessonDetailPage() {
     if (!initData || !webApp) return;
 
     // Prevent finishing past lessons
-    if (isPastLesson) {
-      alert('Неможливо редагувати заняття минулих днів.');
+    if (!isEditableToday) {
+      alert('Викладач може редагувати лише сьогоднішні заняття.');
       return;
     }
 
@@ -381,11 +379,11 @@ export default function LessonDetailPage() {
     const unmarkedStudents = students.filter(s => !s.attendance_status);
     if (unmarkedStudents.length > 0) {
       await webApp.showPopup({
-        title: 'Увага',
-        message: `${unmarkedStudents.length} студентів без віджки. Продовжити?`,
+        title: 'РЈРІР°РіР°',
+        message: `${unmarkedStudents.length} СЃС‚СѓРґРµРЅС‚С–РІ Р±РµР· РІС–РґР¶РєРё. РџСЂРѕРґРѕРІР¶РёС‚Рё?`,
         buttons: [
-          { id: 'cancel', type: 'default', text: 'Повернутися' },
-          { id: 'continue', type: 'ok', text: 'Продовжити' }
+          { id: 'cancel', type: 'default', text: 'РџРѕРІРµСЂРЅСѓС‚РёСЃСЏ' },
+          { id: 'continue', type: 'ok', text: 'РџСЂРѕРґРѕРІР¶РёС‚Рё' }
         ]
       });
     }
@@ -403,7 +401,7 @@ export default function LessonDetailPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Помилка збереження');
+        throw new Error('РџРѕРјРёР»РєР° Р·Р±РµСЂРµР¶РµРЅРЅСЏ');
       }
 
       const result = await response.json();
@@ -422,15 +420,15 @@ export default function LessonDetailPage() {
       setPhotos(result.photos || []);
 
       await webApp.showPopup({
-        title: 'Готово!',
-        message: 'Заняття успішно завершено та збережено.',
+        title: 'Р“РѕС‚РѕРІРѕ!',
+        message: 'Р—Р°РЅСЏС‚С‚СЏ СѓСЃРїС–С€РЅРѕ Р·Р°РІРµСЂС€РµРЅРѕ С‚Р° Р·Р±РµСЂРµР¶РµРЅРѕ.',
         buttons: [{ type: 'ok', text: 'OK' }]
       });
 
       router.push(`/teacher-app${versionSuffix}`);
     } catch (err) {
       console.error('Finish error:', err);
-      alert('Помилка завершення заняття');
+      alert('РџРѕРјРёР»РєР° Р·Р°РІРµСЂС€РµРЅРЅСЏ Р·Р°РЅСЏС‚С‚СЏ');
     } finally {
       setSaving(false);
     }
@@ -463,6 +461,11 @@ export default function LessonDetailPage() {
   const uploadSelectedPhotos = async () => {
     if (!initData || pendingPhotos.length === 0) return;
 
+    if (!isEditableToday) {
+      alert('Р’РёРєР»Р°РґР°С‡ РјРѕР¶Рµ Р·РјС–РЅСЋРІР°С‚Рё РјРµРґС–Р° Р»РёС€Рµ РґР»СЏ СЃСЊРѕРіРѕРґРЅС–С€РЅС–С… Р·Р°РЅСЏС‚СЊ.');
+      return;
+    }
+
     setUploadingPhotos(true);
     setUploadProgress({ current: 0, total: pendingPhotos.length });
 
@@ -492,7 +495,7 @@ export default function LessonDetailPage() {
 
         const startData = await startResponse.json().catch(() => ({}));
         if (!startResponse.ok) {
-          throw new Error(getUploadErrorMessage(startData, 'Не вдалося підготувати завантаження відео'));
+          throw new Error(getUploadErrorMessage(startData, 'РќРµ РІРґР°Р»РѕСЃСЏ РїС–РґРіРѕС‚СѓРІР°С‚Рё Р·Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ РІС–РґРµРѕ'));
         }
 
         latestResult = await uploadFileToMediaService(startData.uploadUrl, startData.uploadToken, Number(lessonId), file);
@@ -533,9 +536,9 @@ export default function LessonDetailPage() {
 
         if (!response.ok) {
           if (response.status === 413) {
-            throw new Error('Забагато фото за один пакет. Спробуйте ще раз: система відправить їх меншими частинами.');
+            throw new Error('Р—Р°Р±Р°РіР°С‚Рѕ С„РѕС‚Рѕ Р·Р° РѕРґРёРЅ РїР°РєРµС‚. РЎРїСЂРѕР±СѓР№С‚Рµ С‰Рµ СЂР°Р·: СЃРёСЃС‚РµРјР° РІС–РґРїСЂР°РІРёС‚СЊ С—С… РјРµРЅС€РёРјРё С‡Р°СЃС‚РёРЅР°РјРё.');
           }
-          throw new Error(getUploadErrorMessage(errorData, 'Помилка завантаження фото'));
+          throw new Error(getUploadErrorMessage(errorData, 'РџРѕРјРёР»РєР° Р·Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ С„РѕС‚Рѕ'));
         }
 
         latestResult = errorData;
@@ -567,7 +570,7 @@ export default function LessonDetailPage() {
       setPendingPhotos([]);
     } catch (uploadError) {
       console.error('Photo upload error:', uploadError);
-      alert(uploadError instanceof Error ? uploadError.message : 'Не вдалося завантажити медіа заняття');
+      alert(uploadError instanceof Error ? uploadError.message : 'РќРµ РІРґР°Р»РѕСЃСЏ Р·Р°РІР°РЅС‚Р°Р¶РёС‚Рё РјРµРґС–Р° Р·Р°РЅСЏС‚С‚СЏ');
     } finally {
       setUploadingPhotos(false);
       setUploadProgress(null);
@@ -586,10 +589,10 @@ export default function LessonDetailPage() {
     return (
       <div style={{ padding: 'var(--space-lg)', textAlign: 'center' }}>
         <p style={{ color: 'var(--tg-text-color)', marginBottom: 'var(--space-md)', fontSize: '15px' }}>
-          {error || 'Заняття не знайдено'}
+          {error || 'Р—Р°РЅСЏС‚С‚СЏ РЅРµ Р·РЅР°Р№РґРµРЅРѕ'}
         </p>
         <button onClick={() => router.push(`/teacher-app${versionSuffix}`)} className="tg-button" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 auto' }}>
-          <ArrowLeftIcon size={16} /> Назад
+          <ArrowLeftIcon size={16} /> РќР°Р·Р°Рґ
         </button>
       </div>
     );
@@ -669,6 +672,11 @@ export default function LessonDetailPage() {
     event.preventDefault();
     event.stopPropagation();
 
+    if (!isEditableToday) {
+      alert('Р’РёРєР»Р°РґР°С‡ РјРѕР¶Рµ Р·РјС–РЅСЋРІР°С‚Рё РјРµРґС–Р° Р»РёС€Рµ РґР»СЏ СЃСЊРѕРіРѕРґРЅС–С€РЅС–С… Р·Р°РЅСЏС‚СЊ.');
+      return;
+    }
+
     if (!initData || deletingPhotoId === photoId) {
       return;
     }
@@ -677,16 +685,16 @@ export default function LessonDetailPage() {
 
     if (webApp?.showPopup) {
       const result = await webApp.showPopup({
-        title: 'Видалити медіа?',
-        message: 'Файл буде видалено із заняття та з Google Drive.',
+        title: 'Р’РёРґР°Р»РёС‚Рё РјРµРґС–Р°?',
+        message: 'Р¤Р°Р№Р» Р±СѓРґРµ РІРёРґР°Р»РµРЅРѕ С–Р· Р·Р°РЅСЏС‚С‚СЏ С‚Р° Р· Google Drive.',
         buttons: [
-          { id: 'cancel', type: 'cancel', text: 'Скасувати' },
-          { id: 'delete', type: 'default', text: 'Видалити' },
+          { id: 'cancel', type: 'cancel', text: 'РЎРєР°СЃСѓРІР°С‚Рё' },
+          { id: 'delete', type: 'default', text: 'Р’РёРґР°Р»РёС‚Рё' },
         ],
       });
       confirmed = result === 'delete';
     } else {
-      confirmed = window.confirm('Видалити файл із заняття та з Google Drive?');
+      confirmed = window.confirm('Р’РёРґР°Р»РёС‚Рё С„Р°Р№Р» С–Р· Р·Р°РЅСЏС‚С‚СЏ С‚Р° Р· Google Drive?');
     }
 
     if (!confirmed) {
@@ -705,7 +713,7 @@ export default function LessonDetailPage() {
 
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(result.error || 'Не вдалося видалити медіа');
+        throw new Error(result.error || 'РќРµ РІРґР°Р»РѕСЃСЏ РІРёРґР°Р»РёС‚Рё РјРµРґС–Р°');
       }
 
       setPhotoFolder(result.photoFolder || null);
@@ -724,7 +732,7 @@ export default function LessonDetailPage() {
       });
     } catch (deleteError) {
       console.error('Teacher lesson media delete error:', deleteError);
-      alert(deleteError instanceof Error ? deleteError.message : 'Не вдалося видалити медіа заняття');
+      alert(deleteError instanceof Error ? deleteError.message : 'РќРµ РІРґР°Р»РѕСЃСЏ РІРёРґР°Р»РёС‚Рё РјРµРґС–Р° Р·Р°РЅСЏС‚С‚СЏ');
     } finally {
       setDeletingPhotoId(null);
     }
@@ -734,7 +742,7 @@ export default function LessonDetailPage() {
     <div style={{ marginBottom: 'var(--space-xl)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)', gap: 'var(--space-sm)' }}>
         <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <CameraIcon size={16} /> Медіа заняття
+          <CameraIcon size={16} /> РњРµРґС–Р° Р·Р°РЅСЏС‚С‚СЏ
         </span>
         {photoFolder?.url ? (
           <a
@@ -743,7 +751,7 @@ export default function LessonDetailPage() {
             rel="noreferrer"
             style={{ fontSize: '13px', color: 'var(--tg-link-color)', textDecoration: 'none', fontWeight: 500 }}
           >
-            Відкрити папку
+            Р’С–РґРєСЂРёС‚Рё РїР°РїРєСѓ
           </a>
         ) : null}
       </div>
@@ -758,7 +766,7 @@ export default function LessonDetailPage() {
           color: '#9a3412',
           fontSize: '13px',
         }}>
-          Папка заняття буде створена з тимчасовою назвою <strong>Без теми</strong>, а після збереження теми автоматично перейменується.
+          РџР°РїРєР° Р·Р°РЅСЏС‚С‚СЏ Р±СѓРґРµ СЃС‚РІРѕСЂРµРЅР° Р· С‚РёРјС‡Р°СЃРѕРІРѕСЋ РЅР°Р·РІРѕСЋ <strong>Р‘РµР· С‚РµРјРё</strong>, Р° РїС–СЃР»СЏ Р·Р±РµСЂРµР¶РµРЅРЅСЏ С‚РµРјРё Р°РІС‚РѕРјР°С‚РёС‡РЅРѕ РїРµСЂРµР№РјРµРЅСѓС”С‚СЊСЃСЏ.
         </div>
       )}
 
@@ -786,13 +794,13 @@ export default function LessonDetailPage() {
           }}
         >
           <UploadIcon size={16} />
-          <span>{pendingPhotos.length > 0 ? 'Додати ще медіа' : 'Вибрати медіа'}</span>
+          <span>{pendingPhotos.length > 0 ? 'Р”РѕРґР°С‚Рё С‰Рµ РјРµРґС–Р°' : 'Р’РёР±СЂР°С‚Рё РјРµРґС–Р°'}</span>
           <input
             type="file"
             accept="image/*,video/*"
             multiple
             onChange={handlePhotoSelection}
-            disabled={uploadingPhotos}
+            disabled={uploadingPhotos || !isEditableToday}
             style={{ display: 'none' }}
           />
         </label>
@@ -805,7 +813,7 @@ export default function LessonDetailPage() {
             color: 'var(--tg-text-secondary)',
             textAlign: 'center',
           }}>
-            {`Завантаження медіа: ${uploadProgress?.current ?? 0} з ${uploadProgress?.total ?? 0}`}
+            {`Р—Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ РјРµРґС–Р°: ${uploadProgress?.current ?? 0} Р· ${uploadProgress?.total ?? 0}`}
           </div>
         )}
 
@@ -844,18 +852,18 @@ export default function LessonDetailPage() {
                       cursor: 'pointer',
                     }}
                   >
-                    Г—
+                    Р“вЂ”
                   </button>
                 </div>
               ))}
             </div>
             <button
               onClick={uploadSelectedPhotos}
-              disabled={uploadingPhotos}
+              disabled={uploadingPhotos || !isEditableToday}
               className="tg-button"
               style={{ width: '100%', marginTop: '12px' }}
             >
-              {uploadingPhotos ? 'Завантаження медіа...' : `Завантажити медіа (${pendingPhotos.length})`}
+              {uploadingPhotos ? 'Р—Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ РјРµРґС–Р°...' : `Р—Р°РІР°РЅС‚Р°Р¶РёС‚Рё РјРµРґС–Р° (${pendingPhotos.length})`}
             </button>
           </div>
         )}
@@ -914,8 +922,8 @@ export default function LessonDetailPage() {
                           <RefreshIcon size={18} style={{ animation: 'spin 1s linear infinite' }} />
                           {!isCompactViewport && (
                             <>
-                              <div style={{ fontSize: '12px', fontWeight: 600 }}>Google Drive обробляє відео</div>
-                              <div style={{ fontSize: '11px', opacity: 0.9 }}>Попередній перегляд може з'явитися не одразу</div>
+                              <div style={{ fontSize: '12px', fontWeight: 600 }}>Google Drive РѕР±СЂРѕР±Р»СЏС” РІС–РґРµРѕ</div>
+                              <div style={{ fontSize: '11px', opacity: 0.9 }}>РџРѕРїРµСЂРµРґРЅС–Р№ РїРµСЂРµРіР»СЏРґ РјРѕР¶Рµ Р·'СЏРІРёС‚РёСЃСЏ РЅРµ РѕРґСЂР°Р·Сѓ</div>
                             </>
                           )}
                         </div>
@@ -930,7 +938,7 @@ export default function LessonDetailPage() {
                   )}
                     <button
                       type="button"
-                      aria-label={`Відкрити ${photo.fileName}`}
+                      aria-label={`Р’С–РґРєСЂРёС‚Рё ${photo.fileName}`}
                       onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
                       onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
                     onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
@@ -950,13 +958,13 @@ export default function LessonDetailPage() {
                       WebkitTapHighlightColor: 'transparent',
                     }}
                     >
-                      {isVideoFile(photo) ? 'Відкрити відео' : 'Відкрити фото'}
+                      {isVideoFile(photo) ? 'Р’С–РґРєСЂРёС‚Рё РІС–РґРµРѕ' : 'Р’С–РґРєСЂРёС‚Рё С„РѕС‚Рѕ'}
                     </button>
                   <button
                     type="button"
-                    aria-label={`Видалити ${photo.fileName}`}
+                    aria-label={`Р’РёРґР°Р»РёС‚Рё ${photo.fileName}`}
                     onClick={(event) => handlePhotoDelete(event, photo.id)}
-                    disabled={deletingPhotoId === photo.id}
+                    disabled={deletingPhotoId === photo.id || !isEditableToday}
                     style={{
                       position: 'absolute',
                       top: '6px',
@@ -971,8 +979,8 @@ export default function LessonDetailPage() {
                       borderRadius: '999px',
                       background: 'rgba(15, 23, 42, 0.78)',
                       color: 'white',
-                      cursor: deletingPhotoId === photo.id ? 'wait' : 'pointer',
-                      opacity: deletingPhotoId === photo.id ? 0.7 : 1,
+                      cursor: deletingPhotoId === photo.id ? 'wait' : !isEditableToday ? 'not-allowed' : 'pointer',
+                      opacity: deletingPhotoId === photo.id ? 0.7 : !isEditableToday ? 0.6 : 1,
                     }}
                   >
                     <TrashIcon size={12} />
@@ -997,19 +1005,19 @@ export default function LessonDetailPage() {
                   cursor: 'pointer',
                 }}
               >
-                {showAllUploadedPhotos ? 'Сховати зайве медіа' : `Показати ще ${photos.length - 3} елементів`}
+                {showAllUploadedPhotos ? 'РЎС…РѕРІР°С‚Рё Р·Р°Р№РІРµ РјРµРґС–Р°' : `РџРѕРєР°Р·Р°С‚Рё С‰Рµ ${photos.length - 3} РµР»РµРјРµРЅС‚С–РІ`}
               </button>
             )}
           </>
         ) : (
           <p style={{ margin: 0, fontSize: '13px', color: 'var(--tg-hint-color)', fontStyle: 'italic' }}>
-            Медіа заняття ще не завантажені.
+            РњРµРґС–Р° Р·Р°РЅСЏС‚С‚СЏ С‰Рµ РЅРµ Р·Р°РІР°РЅС‚Р°Р¶РµРЅС–.
           </p>
         )}
 
         {photos.length > 0 && (
           <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--tg-text-secondary)' }}>
-            Завантажено медіа: {photos.length}
+            Р—Р°РІР°РЅС‚Р°Р¶РµРЅРѕ РјРµРґС–Р°: {photos.length}
           </div>
         )}
       </div>
@@ -1036,14 +1044,14 @@ export default function LessonDetailPage() {
               marginBottom: 'var(--space-sm)'
             }}
           >
-            <ArrowLeftIcon size={14} /> До розкладу
+            <ArrowLeftIcon size={14} /> Р”Рѕ СЂРѕР·РєР»Р°РґСѓ
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
             <span style={{ fontSize: '14px', color: 'var(--tg-text-secondary)' }}>
               {formatDate(lesson.lesson_date)}
             </span>
             <span className={`tg-badge ${lesson.status === 'done' ? 'tg-badge-done' : 'tg-badge-scheduled'}`}>
-              {lesson.status === 'done' ? 'Проведено' : 'Заплановано'}
+              {lesson.status === 'done' ? 'РџСЂРѕРІРµРґРµРЅРѕ' : 'Р—Р°РїР»Р°РЅРѕРІР°РЅРѕ'}
             </span>
           </div>
         </div>
@@ -1055,7 +1063,7 @@ export default function LessonDetailPage() {
       {lesson.is_makeup ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-xs)' }}>
           <span style={{ fontSize: '15px', color: 'var(--tg-text-color)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <RefreshIcon size={16} /> Відпрацювання
+            <RefreshIcon size={16} /> Р’С–РґРїСЂР°С†СЋРІР°РЅРЅСЏ
           </span>
         </div>
       ) : (
@@ -1074,7 +1082,7 @@ export default function LessonDetailPage() {
       )}
 
       {/* Past lesson warning */}
-      {isPastLesson && (
+      {!isEditableToday && (
         <div style={{ 
           background: '#fff3cd', 
           color: '#856404',
@@ -1084,20 +1092,20 @@ export default function LessonDetailPage() {
           fontSize: '14px',
           border: '1px solid #ffeeba'
         }}>
-          Це заняття з минулого дня. Редагування теми, приміток та відвідуваності недоступне.
+          Р¦Рµ Р·Р°РЅСЏС‚С‚СЏ Р· РјРёРЅСѓР»РѕРіРѕ РґРЅСЏ. Р РµРґР°РіСѓРІР°РЅРЅСЏ С‚РµРјРё, РїСЂРёРјС–С‚РѕРє С‚Р° РІС–РґРІС–РґСѓРІР°РЅРѕСЃС‚С– РЅРµРґРѕСЃС‚СѓРїРЅРµ.
         </div>
       )}
 
       {/* Topic - hidden for makeup lessons */}
       {!lesson.is_makeup && (<div style={{ marginBottom: 'var(--space-xl)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
-          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}><FileTextIcon size={16} /> Тема заняття</span>
-          {!editingTopic && !isPastLesson && (
+          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}><FileTextIcon size={16} /> РўРµРјР° Р·Р°РЅСЏС‚С‚СЏ</span>
+          {!editingTopic && isEditableToday && (
             <button 
               onClick={() => setEditingTopic(true)}
               style={{ fontSize: '13px', color: 'var(--tg-link-color)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
             >
-              Редагувати
+              Р РµРґР°РіСѓРІР°С‚Рё
             </button>
           )}
         </div>
@@ -1107,12 +1115,12 @@ export default function LessonDetailPage() {
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="Введіть тему заняття..."
+              placeholder="Р’РІРµРґС–С‚СЊ С‚РµРјСѓ Р·Р°РЅСЏС‚С‚СЏ..."
               className="tg-input"
             />
             <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
               <button onClick={saveLessonDetails} disabled={saving} className="tg-button" style={{ flex: 1 }}>
-                {saving ? 'Збереження...' : 'Зберегти'}
+                {saving ? 'Р—Р±РµСЂРµР¶РµРЅРЅСЏ...' : 'Р—Р±РµСЂРµРіС‚Рё'}
               </button>
               <button 
                 onClick={() => {
@@ -1121,7 +1129,7 @@ export default function LessonDetailPage() {
                 }}
                 className="tg-button tg-button-secondary"
               >
-                Скасувати
+                РЎРєР°СЃСѓРІР°С‚Рё
               </button>
             </div>
           </div>
@@ -1133,7 +1141,7 @@ export default function LessonDetailPage() {
             borderLeft: '3px solid var(--tg-link-color)'
           }}>
             <p style={{ fontSize: '14px', color: topic ? 'var(--tg-text-color)' : 'var(--tg-hint-color)', fontStyle: topic ? 'normal' : 'italic' }}>
-              {topic || 'Тема не вказана'}
+              {topic || 'РўРµРјР° РЅРµ РІРєР°Р·Р°РЅР°'}
             </p>
           </div>
         )}
@@ -1142,13 +1150,13 @@ export default function LessonDetailPage() {
       {/* Notes */}
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
-          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}><ClipboardIcon size={16} /> Нотатка</span>
-          {!editingNotes && !isPastLesson && (
+          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}><ClipboardIcon size={16} /> РќРѕС‚Р°С‚РєР°</span>
+          {!editingNotes && isEditableToday && (
             <button 
               onClick={() => setEditingNotes(true)}
               style={{ fontSize: '13px', color: 'var(--tg-link-color)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
             >
-              Редагувати
+              Р РµРґР°РіСѓРІР°С‚Рё
             </button>
           )}
         </div>
@@ -1157,14 +1165,14 @@ export default function LessonDetailPage() {
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Введіть нотатку..."
+              placeholder="Р’РІРµРґС–С‚СЊ РЅРѕС‚Р°С‚РєСѓ..."
               rows={3}
               className="tg-input"
               style={{ resize: 'vertical', minHeight: '100px' }}
             />
             <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
               <button onClick={saveLessonDetails} disabled={saving} className="tg-button" style={{ flex: 1 }}>
-                {saving ? 'Збереження...' : 'Зберегти'}
+                {saving ? 'Р—Р±РµСЂРµР¶РµРЅРЅСЏ...' : 'Р—Р±РµСЂРµРіС‚Рё'}
               </button>
               <button 
                 onClick={() => {
@@ -1173,13 +1181,13 @@ export default function LessonDetailPage() {
                 }}
                 className="tg-button tg-button-secondary"
               >
-                Скасувати
+                РЎРєР°СЃСѓРІР°С‚Рё
               </button>
             </div>
           </div>
         ) : (
           <p style={{ fontSize: '14px', color: notes ? 'var(--tg-text-color)' : 'var(--tg-hint-color)', fontStyle: notes ? 'normal' : 'italic' }}>
-            {notes || 'Нотатка відсутня'}
+            {notes || 'РќРѕС‚Р°С‚РєР° РІС–РґСЃСѓС‚РЅСЏ'}
           </p>
         )}
       </div>
@@ -1188,7 +1196,7 @@ export default function LessonDetailPage() {
         <div style={{ marginBottom: 'var(--space-xl)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)', gap: 'var(--space-sm)' }}>
             <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CameraIcon size={16} /> Фото заняття
+              <CameraIcon size={16} /> Р¤РѕС‚Рѕ Р·Р°РЅСЏС‚С‚СЏ
             </span>
             {photoFolder?.url ? (
               <a
@@ -1197,7 +1205,7 @@ export default function LessonDetailPage() {
                 rel="noreferrer"
                 style={{ fontSize: '13px', color: 'var(--tg-link-color)', textDecoration: 'none', fontWeight: 500 }}
               >
-                Відкрити папку
+                Р’С–РґРєСЂРёС‚Рё РїР°РїРєСѓ
               </a>
             ) : null}
           </div>
@@ -1212,7 +1220,7 @@ export default function LessonDetailPage() {
               color: '#9a3412',
               fontSize: '13px',
             }}>
-              Папка заняття буде створена з тимчасовою назвою <strong>{lesson?.lesson_date ? 'Без теми' : 'Без теми'}</strong>, а після збереження теми автоматично перейменується.
+              РџР°РїРєР° Р·Р°РЅСЏС‚С‚СЏ Р±СѓРґРµ СЃС‚РІРѕСЂРµРЅР° Р· С‚РёРјС‡Р°СЃРѕРІРѕСЋ РЅР°Р·РІРѕСЋ <strong>{lesson?.lesson_date ? 'Р‘РµР· С‚РµРјРё' : 'Р‘РµР· С‚РµРјРё'}</strong>, Р° РїС–СЃР»СЏ Р·Р±РµСЂРµР¶РµРЅРЅСЏ С‚РµРјРё Р°РІС‚РѕРјР°С‚РёС‡РЅРѕ РїРµСЂРµР№РјРµРЅСѓС”С‚СЊСЃСЏ.
             </div>
           )}
 
@@ -1240,13 +1248,13 @@ export default function LessonDetailPage() {
               }}
             >
               <UploadIcon size={16} />
-              <span>{pendingPhotos.length > 0 ? 'Додати ще фото' : 'Вибрати фото'}</span>
+              <span>{pendingPhotos.length > 0 ? 'Р”РѕРґР°С‚Рё С‰Рµ С„РѕС‚Рѕ' : 'Р’РёР±СЂР°С‚Рё С„РѕС‚Рѕ'}</span>
               <input
                 type="file"
                 accept="image/*,video/*"
                 multiple
                 onChange={handlePhotoSelection}
-                disabled={uploadingPhotos}
+                disabled={uploadingPhotos || !isEditableToday}
                 style={{ display: 'none' }}
                 />
               </label>
@@ -1259,7 +1267,7 @@ export default function LessonDetailPage() {
                   color: 'var(--tg-text-secondary)',
                   textAlign: 'center',
                 }}>
-                  {`Завантаження фото: ${uploadProgress?.current ?? 0} з ${uploadProgress?.total ?? 0}`}
+                  {`Р—Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ С„РѕС‚Рѕ: ${uploadProgress?.current ?? 0} Р· ${uploadProgress?.total ?? 0}`}
                 </div>
               )}
 
@@ -1298,18 +1306,18 @@ export default function LessonDetailPage() {
                           cursor: 'pointer',
                         }}
                       >
-                        ×
+                        Г—
                       </button>
                     </div>
                   ))}
                 </div>
                 <button
                   onClick={uploadSelectedPhotos}
-                  disabled={uploadingPhotos}
+                  disabled={uploadingPhotos || !isEditableToday}
                   className="tg-button"
                   style={{ width: '100%', marginTop: '12px' }}
                 >
-                  {uploadingPhotos ? 'Завантаження фото...' : `Завантажити фото (${pendingPhotos.length})`}
+                  {uploadingPhotos ? 'Р—Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ С„РѕС‚Рѕ...' : `Р—Р°РІР°РЅС‚Р°Р¶РёС‚Рё С„РѕС‚Рѕ (${pendingPhotos.length})`}
                 </button>
               </div>
             )}
@@ -1384,8 +1392,8 @@ export default function LessonDetailPage() {
                               <RefreshIcon size={18} style={{ animation: 'spin 1s linear infinite' }} />
                               {!isCompactViewport && (
                                 <>
-                                  <div style={{ fontSize: '12px', fontWeight: 600 }}>Google Drive обробляє відео</div>
-                                  <div style={{ fontSize: '11px', opacity: 0.9 }}>Попередній перегляд може зʼявитися не одразу</div>
+                                  <div style={{ fontSize: '12px', fontWeight: 600 }}>Google Drive РѕР±СЂРѕР±Р»СЏС” РІС–РґРµРѕ</div>
+                                  <div style={{ fontSize: '11px', opacity: 0.9 }}>РџРѕРїРµСЂРµРґРЅС–Р№ РїРµСЂРµРіР»СЏРґ РјРѕР¶Рµ Р·КјСЏРІРёС‚РёСЃСЏ РЅРµ РѕРґСЂР°Р·Сѓ</div>
                                 </>
                               )}
                             </div>
@@ -1400,7 +1408,7 @@ export default function LessonDetailPage() {
                       )}
                       <button
                         type="button"
-                        aria-label={`Відкрити ${photo.fileName}`}
+                        aria-label={`Р’С–РґРєСЂРёС‚Рё ${photo.fileName}`}
                         onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
                         onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
                         onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
@@ -1420,7 +1428,7 @@ export default function LessonDetailPage() {
                           WebkitTapHighlightColor: 'transparent',
                         }}
                       >
-                        {isVideoFile(photo) ? 'Переглянути відео' : 'Переглянути фото'}
+                        {isVideoFile(photo) ? 'РџРµСЂРµРіР»СЏРЅСѓС‚Рё РІС–РґРµРѕ' : 'РџРµСЂРµРіР»СЏРЅСѓС‚Рё С„РѕС‚Рѕ'}
                       </button>
                     </div>
                   ))}
@@ -1442,19 +1450,19 @@ export default function LessonDetailPage() {
                     cursor: 'pointer',
                   }}
                 >
-                  {showAllUploadedPhotos ? 'Сховати зайві фото' : `Показати ще ${photos.length - 3} фото`}
+                  {showAllUploadedPhotos ? 'РЎС…РѕРІР°С‚Рё Р·Р°Р№РІС– С„РѕС‚Рѕ' : `РџРѕРєР°Р·Р°С‚Рё С‰Рµ ${photos.length - 3} С„РѕС‚Рѕ`}
                 </button>
               )}
               </>
             ) : (
               <p style={{ margin: 0, fontSize: '13px', color: 'var(--tg-hint-color)', fontStyle: 'italic' }}>
-                Фото ще не завантажені.
+                Р¤РѕС‚Рѕ С‰Рµ РЅРµ Р·Р°РІР°РЅС‚Р°Р¶РµРЅС–.
               </p>
             )}
 
             {photos.length > 0 && (
               <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--tg-text-secondary)' }}>
-                Завантажено: {photos.length}
+                Р—Р°РІР°РЅС‚Р°Р¶РµРЅРѕ: {photos.length}
               </div>
             )}
           </div>
@@ -1464,12 +1472,12 @@ export default function LessonDetailPage() {
       {/* Students attendance */}
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <h2 style={{ fontSize: '17px', fontWeight: 600, marginBottom: 'var(--space-md)', color: 'var(--tg-text-color)' }}>
-          Відвідуваність ({students.length})
+          Р’С–РґРІС–РґСѓРІР°РЅС–СЃС‚СЊ ({students.length})
         </h2>
         
         {students.length === 0 ? (
           <p style={{ color: 'var(--tg-hint-color)', fontStyle: 'italic', fontSize: '14px' }}>
-            Немає студентів у групі
+            РќРµРјР°С” СЃС‚СѓРґРµРЅС‚С–РІ Сѓ РіСЂСѓРїС–
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
@@ -1489,18 +1497,18 @@ export default function LessonDetailPage() {
                     <button
                       onClick={() => updateAttendance(student.id, 'present')}
                       className={`tg-action-btn tg-action-btn-success ${student.attendance_status === 'present' ? 'active' : ''}`}
-                      title="Присутній"
-                      disabled={isPastLesson}
+                      title="РџСЂРёСЃСѓС‚РЅС–Р№"
+                      disabled={!isEditableToday}
                     >
-                      ✓
+                      вњ“
                     </button>
                     <button
                       onClick={() => updateAttendance(student.id, 'absent')}
                       className={`tg-action-btn tg-action-btn-danger ${student.attendance_status === 'absent' ? 'active' : ''}`}
-                      title="Відсутній"
-                      disabled={isPastLesson}
+                      title="Р’С–РґСЃСѓС‚РЅС–Р№"
+                      disabled={!isEditableToday}
                     >
-                      ✗
+                      вњ—
                     </button>
                   </div>
                 </div>
@@ -1515,7 +1523,7 @@ export default function LessonDetailPage() {
                     color: 'var(--tg-text-secondary)',
                   }}>
                     <div style={{ marginBottom: '2px' }}>
-                      <strong>Відпрацьовує:</strong> {formatDate(student.original_lesson_date)}
+                      <strong>Р’С–РґРїСЂР°С†СЊРѕРІСѓС”:</strong> {formatDate(student.original_lesson_date)}
                     </div>
                     {student.original_course_title && (
                       <div style={{ marginBottom: '2px' }}>{student.original_course_title}</div>
@@ -1523,13 +1531,13 @@ export default function LessonDetailPage() {
                     {student.original_lesson_topic ? (
                       <div>{student.original_lesson_topic}</div>
                     ) : (
-                      <div style={{ fontStyle: 'italic' }}>Тема не вказана</div>
+                      <div style={{ fontStyle: 'italic' }}>РўРµРјР° РЅРµ РІРєР°Р·Р°РЅР°</div>
                     )}
                   </div>
                 )}
                 {lesson.is_makeup && !student.original_lesson_date && (
                   <div style={{ marginTop: 'var(--space-sm)', fontSize: '12px', color: 'var(--tg-hint-color)', fontStyle: 'italic' }}>
-                    Оригінальне заняття не вказано
+                    РћСЂРёРіС–РЅР°Р»СЊРЅРµ Р·Р°РЅСЏС‚С‚СЏ РЅРµ РІРєР°Р·Р°РЅРѕ
                   </div>
                 )}
               </div>
@@ -1543,10 +1551,10 @@ export default function LessonDetailPage() {
       {/* Report info - shown only after lesson is completed */}
       {lesson.reported_at && (
         <div className="tg-success-message" style={{ marginBottom: 'var(--space-lg)' }}>
-          <CheckCircleIcon size={16} /> <strong>Дані збережено:</strong><br/>
+          <CheckCircleIcon size={16} /> <strong>Р”Р°РЅС– Р·Р±РµСЂРµР¶РµРЅРѕ:</strong><br/>
           {formatDateTimeKyiv(lesson.reported_at)}
-          {lesson.reported_via === 'telegram' && ' через Telegram'}
-          {lesson.reported_by_name && <><br/>Викладач: {lesson.reported_by_name}</>}
+          {lesson.reported_via === 'telegram' && ' С‡РµСЂРµР· Telegram'}
+          {lesson.reported_by_name && <><br/>Р’РёРєР»Р°РґР°С‡: {lesson.reported_by_name}</>}
         </div>
       )}
 
@@ -1579,7 +1587,7 @@ export default function LessonDetailPage() {
                 {photos[viewerIndex].fileName}
               </div>
               <div style={{ fontSize: '12px', opacity: 0.75 }}>
-                {viewerIndex + 1} з {photos.length}
+                {viewerIndex + 1} Р· {photos.length}
               </div>
             </div>
             <button
@@ -1650,3 +1658,4 @@ export default function LessonDetailPage() {
     </div>
   );
 }
+
