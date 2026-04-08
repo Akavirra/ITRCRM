@@ -15,6 +15,7 @@ const PUBLIC_ROUTES = [
   '/admin-app',
   '/api/admin-app',
   '/api/tg-app',
+  '/api/lesson-media',
   '/api/internal',
   '/enroll',
   '/api/enroll',
