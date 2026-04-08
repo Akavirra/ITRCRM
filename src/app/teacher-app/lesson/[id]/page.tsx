@@ -438,8 +438,9 @@ export default function LessonDetailPage() {
 
     try {
       const preparedPhotos = await prepareImageFilesForUpload(pendingPhotos.map((photo) => photo.file));
-      const batches = preparedPhotos.map((file) => [file]);
-      const videoFiles: File[] = [];
+      const videoFiles = preparedPhotos.filter((file) => isVideoMimeType(file.type));
+      const imageFiles = preparedPhotos.filter((file) => !isVideoMimeType(file.type));
+      const batches = imageFiles.map((file) => [file]);
       let latestResult: { photoFolder?: LessonData['photoFolder']; photos?: LessonPhoto[] } | null = null;
       let uploadedCount = 0;
       let knownPhotoIds = new Set(photos.map((photo) => photo.id));
