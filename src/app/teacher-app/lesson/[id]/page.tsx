@@ -1089,7 +1089,6 @@ export default function LessonDetailPage() {
 
       {viewerIndex !== null && photos[viewerIndex] && (
         <div
-          onClick={closeMediaViewer}
           style={{
             position: 'fixed',
             inset: 0,
@@ -1100,7 +1099,6 @@ export default function LessonDetailPage() {
           }}
         >
           <div
-            onClick={(event) => event.stopPropagation()}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1129,7 +1127,6 @@ export default function LessonDetailPage() {
           </div>
 
           <div
-            onClick={(event) => event.stopPropagation()}
             style={{
               flex: 1,
               position: 'relative',
