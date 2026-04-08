@@ -115,8 +115,12 @@ function parseUploadedAt(value: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function isDriveVideoProcessing(photo: LessonPhotoFile): boolean {
+function isDriveVideoProcessing(photo: LessonPhotoFile, isReady: boolean = false): boolean {
   if (!isVideoLessonMedia(photo)) {
+    return false;
+  }
+
+  if (isReady) {
     return false;
   }
 
@@ -215,6 +219,7 @@ export default function LessonModalsManager() {
   const [photoUploading, setPhotoUploading] = useState<Record<number, boolean>>({});
   const [photoUploadProgress, setPhotoUploadProgress] = useState<Record<number, { current: number; total: number } | null>>({});
   const [photoDeleting, setPhotoDeleting] = useState<Record<number, number | null>>({});
+  const [readyLessonVideos, setReadyLessonVideos] = useState<Record<number, boolean>>({});
 
   // Load teachers list
   const loadTeachers = async (lessonId: number) => {
@@ -1386,9 +1391,15 @@ export default function LessonModalsManager() {
                                           src={photo.downloadUrl}
                                           controls
                                           preload="metadata"
+                                          onLoadedData={() => {
+                                            setReadyLessonVideos((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                                          }}
+                                          onCanPlay={() => {
+                                            setReadyLessonVideos((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                                          }}
                                           style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block', background: '#000' }}
                                         />
-                                        {isDriveVideoProcessing(photo) && (
+                                        {isDriveVideoProcessing(photo, Boolean(readyLessonVideos[photo.id])) && (
                                           <div style={{
                                             position: 'absolute',
                                             inset: '0',

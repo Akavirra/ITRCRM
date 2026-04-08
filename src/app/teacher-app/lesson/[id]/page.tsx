@@ -91,8 +91,12 @@ function parseUploadedAt(value: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function isDriveVideoProcessing(photo: LessonPhoto): boolean {
+function isDriveVideoProcessing(photo: LessonPhoto, isReady: boolean = false): boolean {
   if (!isVideoFile(photo)) {
+    return false;
+  }
+
+  if (isReady) {
     return false;
   }
 
@@ -129,6 +133,7 @@ export default function LessonDetailPage() {
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhotoPreview[]>([]);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
+  const [readyVideoIds, setReadyVideoIds] = useState<Record<number, boolean>>({});
   const pendingPhotosRef = useRef<PendingPhotoPreview[]>([]);
 
   // Check if lesson is from a past day
@@ -832,9 +837,15 @@ export default function LessonDetailPage() {
                             src={photo.downloadUrl}
                             controls
                             preload="metadata"
+                            onLoadedData={() => {
+                              setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                            }}
+                            onCanPlay={() => {
+                              setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                            }}
                             style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000' }}
                           />
-                          {isDriveVideoProcessing(photo) && (
+                          {isDriveVideoProcessing(photo, Boolean(readyVideoIds[photo.id])) && (
                             <div style={{
                               position: 'absolute',
                               inset: 0,
