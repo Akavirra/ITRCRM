@@ -28,6 +28,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-inline'" + (isDev ? " 'unsafe-eval'" : ""),
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://res.cloudinary.com https://drive.google.com https://lh3.googleusercontent.com https://api.dicebear.com",
+              "media-src 'self' blob: https://drive.google.com https://lh3.googleusercontent.com",
               "frame-src https://drive.google.com",
               "connect-src 'self' https://*.neon.tech https://www.googleapis.com https://*.up.railway.app",
               "font-src 'self' data:",
