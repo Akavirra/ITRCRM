@@ -5,8 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { TelegramWebAppProvider, useTelegramInitData, saveInitData } from '@/components/TelegramWebAppProvider';
 import { CpuIcon, ShieldIcon, BookOpenIcon, XCircleIcon } from '@/components/Icons';
 import { ensureTeacherAppVersion } from '@/lib/teacher-app-version';
-
-const ROLE_KEY = 'tg_app_role';
+import { readSavedTgAppRole, saveTgAppRole, TG_APP_ROLES_KEY, type TgAppRole } from '@/lib/tg-app-role';
 
 function RoleSwitcher() {
   const router = useRouter();
@@ -47,7 +46,7 @@ function RoleSwitcher() {
         if (teacherUser) setTeacherName(teacherUser.name || '');
 
         // Save detected roles for the toggle component
-        try { localStorage.setItem('tg_app_roles', JSON.stringify(detectedRoles)); } catch {}
+        try { localStorage.setItem(TG_APP_ROLES_KEY, JSON.stringify(detectedRoles)); } catch {}
 
         // If only one role — redirect immediately
         if (detectedRoles.length === 1) {
@@ -59,8 +58,8 @@ function RoleSwitcher() {
 
         // If both roles — check saved preference
         if (detectedRoles.length > 1) {
-          const saved = localStorage.getItem(ROLE_KEY);
-          if (saved === 'admin' || saved === 'teacher') {
+          const saved = readSavedTgAppRole();
+          if (saved) {
             if (initData) saveInitData(initData);
             router.replace(buildDestination(saved));
             return;
@@ -77,11 +76,11 @@ function RoleSwitcher() {
     detect();
   }, [buildDestination, initData, isLoading, router]);
 
-  const choose = (role: 'admin' | 'teacher') => {
+  const choose = (role: TgAppRole) => {
     // Explicitly re-save initData before cross-route-group navigation
     // (some WebViews like TDesktop may lose sessionStorage between route groups)
     if (initData) saveInitData(initData);
-    localStorage.setItem(ROLE_KEY, role);
+    saveTgAppRole(role);
     router.push(buildDestination(role));
   };
 

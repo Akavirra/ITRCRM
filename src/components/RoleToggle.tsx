@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { saveInitData, useTelegramInitData } from '@/components/TelegramWebAppProvider';
 import { ensureTeacherAppVersion } from '@/lib/teacher-app-version';
-
-const ROLES_KEY = 'tg_app_roles';
+import { saveTgAppRole, TG_APP_ROLES_KEY, type TgAppRole } from '@/lib/tg-app-role';
 
 interface RoleToggleProps {
   currentRole: 'admin' | 'teacher';
@@ -27,7 +26,7 @@ export default function RoleToggle({ currentRole }: RoleToggleProps) {
   useEffect(() => {
     // 1. Check localStorage cache first
     try {
-      const raw = localStorage.getItem(ROLES_KEY);
+      const raw = localStorage.getItem(TG_APP_ROLES_KEY);
       if (raw) {
         const roles = JSON.parse(raw) as string[];
         if (roles.includes('admin') && roles.includes('teacher')) {
@@ -46,7 +45,7 @@ export default function RoleToggle({ currentRole }: RoleToggleProps) {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data?.roles) return;
-        try { localStorage.setItem(ROLES_KEY, JSON.stringify(data.roles)); } catch {}
+        try { localStorage.setItem(TG_APP_ROLES_KEY, JSON.stringify(data.roles)); } catch {}
         if (data.roles.includes('admin') && data.roles.includes('teacher')) {
           setHasBothRoles(true);
         }
@@ -56,10 +55,10 @@ export default function RoleToggle({ currentRole }: RoleToggleProps) {
 
   if (!hasBothRoles) return null;
 
-  const switchTo = (role: 'admin' | 'teacher') => {
+  const switchTo = (role: TgAppRole) => {
     if (role === currentRole) return;
     if (initData) saveInitData(initData);
-    localStorage.setItem('tg_app_role', role);
+    saveTgAppRole(role);
     router.push(buildDestination(role));
   };
 
