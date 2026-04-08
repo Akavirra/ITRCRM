@@ -7,6 +7,7 @@ import { useStudentModals } from './StudentModalsContext';
 import { useGroupModals } from './GroupModalsContext';
 import { useCourseModals } from './CourseModalsContext';
 import { useTeacherModals } from './TeacherModalsContext';
+import { useMediaViewer, type MediaFile } from './MediaViewerProvider';
 import { Clock, BookOpen, User, Check, X, Calendar, Trash2, UserMinus, Users, MoreVertical, Edit2, Save, RefreshCw, ExternalLink, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
 import { getUploadErrorMessage, prepareImageFilesForUpload, uploadFileToMediaService } from '@/lib/client-photo-upload';
 import { isVideoMimeType } from '@/lib/lesson-media';
@@ -119,6 +120,24 @@ function isDriveVideoProcessing(photo: LessonPhotoFile, isPending: boolean = fal
   return isVideoLessonMedia(photo) && isPending && !isReady;
 }
 
+function toLessonMediaViewerFile(photo: LessonPhotoFile): MediaFile {
+  return {
+    id: photo.id,
+    topic_id: 0,
+    topic_name: 'Заняття',
+    file_name: photo.fileName,
+    file_type: isVideoLessonMedia(photo) ? 'video' : 'photo',
+    file_size: photo.size ?? 0,
+    drive_file_id: photo.driveFileId,
+    drive_view_url: photo.url,
+    drive_download_url: photo.downloadUrl,
+    uploaded_by_name: photo.uploadedBy,
+    created_at: photo.uploadedAt,
+    media_width: null,
+    media_height: null,
+  };
+}
+
 function formatDateTime(startTime: string, endTime: string): string {
   return `${startTime} - ${endTime}`;
 }
@@ -162,6 +181,7 @@ export default function LessonModalsManager() {
   const { openGroupModal } = useGroupModals();
   const { openCourseModal } = useCourseModals();
   const { openTeacherModal } = useTeacherModals();
+  const { openMediaViewer } = useMediaViewer();
   const [lessonData, setLessonData] = useState<Record<number, LessonData>>({});
   const [makeupForData, setMakeupForData] = useState<Record<number, MakeupForItem[]>>({});
   const [loadingLessons, setLoadingLessons] = useState<Record<number, boolean>>({});
@@ -380,6 +400,14 @@ export default function LessonModalsManager() {
   useEffect(() => {
     loadLessonDataRef.current = loadLessonData;
   }, [loadLessonData]);
+
+  const openLessonMediaGallery = useCallback((photos: LessonPhotoFile[], photoId: number) => {
+    const visualFiles = photos.map(toLessonMediaViewerFile);
+    const index = visualFiles.findIndex((photo) => photo.id === photoId);
+    if (index !== -1) {
+      openMediaViewer(visualFiles, index);
+    }
+  }, [openMediaViewer]);
 
   // Track which lesson IDs have been fetched since opening (reset when modal closes)
   const fetchedOnOpenRef = useRef<Set<number>>(new Set());
@@ -1409,36 +1437,42 @@ export default function LessonModalsManager() {
                                 <div key={photo.id} style={{ position: 'relative' }}>
                                     {isVideoLessonMedia(photo) ? (
                                       <>
-                                        <video
-                                          src={photo.downloadUrl}
-                                          controls
-                                          preload="metadata"
-                                          onLoadedData={() => {
-                                            setReadyLessonVideos((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
-                                            setProcessingLessonVideos((prev) => {
-                                              if (!prev[photo.id]) {
-                                                return prev;
-                                              }
+                                        <button
+                                          type="button"
+                                          onClick={() => openLessonMediaGallery(allLessonPhotos, photo.id)}
+                                          style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                        >
+                                          <video
+                                            src={photo.downloadUrl}
+                                            preload="metadata"
+                                            muted
+                                            onLoadedData={() => {
+                                              setReadyLessonVideos((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                                              setProcessingLessonVideos((prev) => {
+                                                if (!prev[photo.id]) {
+                                                  return prev;
+                                                }
 
-                                              const next = { ...prev };
-                                              delete next[photo.id];
-                                              return next;
-                                            });
-                                          }}
-                                          onCanPlay={() => {
-                                            setReadyLessonVideos((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
-                                            setProcessingLessonVideos((prev) => {
-                                              if (!prev[photo.id]) {
-                                                return prev;
-                                              }
+                                                const next = { ...prev };
+                                                delete next[photo.id];
+                                                return next;
+                                              });
+                                            }}
+                                            onCanPlay={() => {
+                                              setReadyLessonVideos((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                                              setProcessingLessonVideos((prev) => {
+                                                if (!prev[photo.id]) {
+                                                  return prev;
+                                                }
 
-                                              const next = { ...prev };
-                                              delete next[photo.id];
-                                              return next;
-                                            });
-                                          }}
-                                          style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block', background: '#000' }}
-                                        />
+                                                const next = { ...prev };
+                                                delete next[photo.id];
+                                                return next;
+                                              });
+                                            }}
+                                            style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block', background: '#000' }}
+                                          />
+                                        </button>
                                         {isDriveVideoProcessing(photo, Boolean(processingLessonVideos[photo.id]), Boolean(readyLessonVideos[photo.id])) && (
                                           <div style={{
                                             position: 'absolute',
@@ -1466,13 +1500,17 @@ export default function LessonModalsManager() {
                                         )}
                                       </>
                                     ) : (
-                                      <a href={photo.url} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
-                                      <img
-                                        src={photo.thumbnailUrl}
-                                        alt={photo.fileName}
-                                        style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block' }}
-                                      />
-                                      </a>
+                                      <button
+                                        type="button"
+                                        onClick={() => openLessonMediaGallery(allLessonPhotos, photo.id)}
+                                        style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                      >
+                                        <img
+                                          src={photo.thumbnailUrl}
+                                          alt={photo.fileName}
+                                          style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block' }}
+                                        />
+                                      </button>
                                     )}
                                   {canManagePhotos[modal.id] && (
                                     <button

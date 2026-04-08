@@ -9,7 +9,7 @@ import { isVideoMimeType } from '@/lib/lesson-media';
 import {
   CheckCircleIcon, ClipboardIcon, ClockIcon, RefreshIcon, UsersIcon,
   BookOpenIcon, AlertTriangleIcon, FileTextIcon, EditIcon, SaveIcon,
-  ArrowLeftIcon, UploadIcon, CameraIcon
+  ArrowLeftIcon, UploadIcon, CameraIcon, ChevronLeftIcon, ChevronRightIcon, XIcon
 } from '@/components/Icons';
 
 interface Lesson {
@@ -122,6 +122,7 @@ export default function LessonDetailPage() {
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [readyVideoIds, setReadyVideoIds] = useState<Record<number, boolean>>({});
   const [processingVideoIds, setProcessingVideoIds] = useState<Record<number, boolean>>({});
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const pendingPhotosRef = useRef<PendingPhotoPreview[]>([]);
 
   // Check if lesson is from a past day
@@ -532,6 +533,25 @@ export default function LessonDetailPage() {
 
   const visibleUploadedPhotos = showAllUploadedPhotos ? photos : photos.slice(0, 3);
 
+  const openMediaViewer = (photoId: number) => {
+    const index = photos.findIndex((photo) => photo.id === photoId);
+    if (index !== -1) {
+      setViewerIndex(index);
+    }
+  };
+
+  const closeMediaViewer = () => {
+    setViewerIndex(null);
+  };
+
+  const navigateMediaViewer = (nextIndex: number) => {
+    if (nextIndex < 0 || nextIndex >= photos.length) {
+      return;
+    }
+
+    setViewerIndex(nextIndex);
+  };
+
   return (
     <div>
       {/* Header */}
@@ -837,36 +857,42 @@ export default function LessonDetailPage() {
                     <div key={photo.id} style={{ position: 'relative' }}>
                       {isVideoFile(photo) ? (
                         <>
-                          <video
-                            src={photo.downloadUrl}
-                            controls
-                            preload="metadata"
-                            onLoadedData={() => {
-                              setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
-                              setProcessingVideoIds((prev) => {
-                                if (!prev[photo.id]) {
-                                  return prev;
-                                }
+                          <button
+                            type="button"
+                            onClick={() => openMediaViewer(photo.id)}
+                            style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                          >
+                            <video
+                              src={photo.downloadUrl}
+                              preload="metadata"
+                              muted
+                              onLoadedData={() => {
+                                setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                                setProcessingVideoIds((prev) => {
+                                  if (!prev[photo.id]) {
+                                    return prev;
+                                  }
 
-                                const next = { ...prev };
-                                delete next[photo.id];
-                                return next;
-                              });
-                            }}
-                            onCanPlay={() => {
-                              setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
-                              setProcessingVideoIds((prev) => {
-                                if (!prev[photo.id]) {
-                                  return prev;
-                                }
+                                  const next = { ...prev };
+                                  delete next[photo.id];
+                                  return next;
+                                });
+                              }}
+                              onCanPlay={() => {
+                                setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                                setProcessingVideoIds((prev) => {
+                                  if (!prev[photo.id]) {
+                                    return prev;
+                                  }
 
-                                const next = { ...prev };
-                                delete next[photo.id];
-                                return next;
-                              });
-                            }}
-                            style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000' }}
-                          />
+                                  const next = { ...prev };
+                                  delete next[photo.id];
+                                  return next;
+                                });
+                              }}
+                              style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000' }}
+                            />
+                          </button>
                           {isDriveVideoProcessing(photo, Boolean(processingVideoIds[photo.id]), Boolean(readyVideoIds[photo.id])) && (
                             <div style={{
                               position: 'absolute',
@@ -894,18 +920,17 @@ export default function LessonDetailPage() {
                           )}
                         </>
                       ) : (
-                        <a
-                          href={photo.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ textDecoration: 'none', display: 'block' }}
+                        <button
+                          type="button"
+                          onClick={() => openMediaViewer(photo.id)}
+                          style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
                         >
                           <img
                             src={photo.thumbnailUrl}
                             alt={photo.fileName}
                             style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)' }}
                           />
-                        </a>
+                        </button>
                       )}
                     </div>
                   ))}
@@ -1030,6 +1055,99 @@ export default function LessonDetailPage() {
           {formatDateTimeKyiv(lesson.reported_at)}
           {lesson.reported_via === 'telegram' && ' через Telegram'}
           {lesson.reported_by_name && <><br/>Викладач: {lesson.reported_by_name}</>}
+        </div>
+      )}
+
+      {viewerIndex !== null && photos[viewerIndex] && (
+        <div
+          onClick={closeMediaViewer}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            background: 'rgba(2, 6, 23, 0.96)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              padding: '12px 14px',
+              color: 'white',
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {photos[viewerIndex].fileName}
+              </div>
+              <div style={{ fontSize: '12px', opacity: 0.75 }}>
+                {viewerIndex + 1} з {photos.length}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={closeMediaViewer}
+              style={{ border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', width: '36px', height: '36px', borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <XIcon size={18} />
+            </button>
+          </div>
+
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              flex: 1,
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px 14px 28px',
+            }}
+          >
+            {photos.length > 1 && viewerIndex > 0 && (
+              <button
+                type="button"
+                onClick={() => navigateMediaViewer(viewerIndex - 1)}
+                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'rgba(255,255,255,0.12)', color: 'white', width: '40px', height: '40px', borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <ChevronLeftIcon size={18} />
+              </button>
+            )}
+
+            {isVideoFile(photos[viewerIndex]) ? (
+              <video
+                key={photos[viewerIndex].id}
+                src={photos[viewerIndex].downloadUrl}
+                controls
+                autoPlay
+                playsInline
+                style={{ width: '100%', maxHeight: '100%', borderRadius: '16px', background: '#000' }}
+              />
+            ) : (
+              <img
+                key={photos[viewerIndex].id}
+                src={photos[viewerIndex].url}
+                alt={photos[viewerIndex].fileName}
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '16px' }}
+              />
+            )}
+
+            {photos.length > 1 && viewerIndex < photos.length - 1 && (
+              <button
+                type="button"
+                onClick={() => navigateMediaViewer(viewerIndex + 1)}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'rgba(255,255,255,0.12)', color: 'white', width: '40px', height: '40px', borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <ChevronRightIcon size={18} />
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
