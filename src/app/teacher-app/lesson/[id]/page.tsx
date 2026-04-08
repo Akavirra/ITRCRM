@@ -628,6 +628,276 @@ export default function LessonDetailPage() {
     }
   };
 
+  const mediaSection = lesson && lesson.group_id !== null && (
+    <div style={{ marginBottom: 'var(--space-xl)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)', gap: 'var(--space-sm)' }}>
+        <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <CameraIcon size={16} /> Медіа заняття
+        </span>
+        {photoFolder?.url ? (
+          <a
+            href={photoFolder.url}
+            target="_blank"
+            rel="noreferrer"
+            style={{ fontSize: '13px', color: 'var(--tg-link-color)', textDecoration: 'none', fontWeight: 500 }}
+          >
+            Відкрити папку
+          </a>
+        ) : null}
+      </div>
+
+      {!topic.trim() && (
+        <div style={{
+          marginBottom: 'var(--space-md)',
+          padding: 'var(--space-md)',
+          background: '#fff7ed',
+          border: '1px solid #fed7aa',
+          borderRadius: 'var(--radius-md)',
+          color: '#9a3412',
+          fontSize: '13px',
+        }}>
+          Папка заняття буде створена з тимчасовою назвою <strong>Без теми</strong>, а після збереження теми автоматично перейменується.
+        </div>
+      )}
+
+      <div style={{
+        background: 'var(--tg-primary-bg)',
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--tg-border)',
+        padding: 'var(--space-md)',
+        marginBottom: 'var(--space-md)',
+      }}>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            width: '100%',
+            padding: '12px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px dashed var(--tg-link-color)',
+            color: 'var(--tg-link-color)',
+            cursor: uploadingPhotos ? 'not-allowed' : 'pointer',
+            opacity: uploadingPhotos ? 0.6 : 1,
+            marginBottom: pendingPhotos.length > 0 ? '12px' : 0,
+          }}
+        >
+          <UploadIcon size={16} />
+          <span>{pendingPhotos.length > 0 ? 'Додати ще медіа' : 'Вибрати медіа'}</span>
+          <input
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            onChange={handlePhotoSelection}
+            disabled={uploadingPhotos}
+            style={{ display: 'none' }}
+          />
+        </label>
+
+        {uploadProgress && (
+          <div style={{
+            marginTop: '10px',
+            marginBottom: pendingPhotos.length > 0 ? '12px' : 0,
+            fontSize: '13px',
+            color: 'var(--tg-text-secondary)',
+            textAlign: 'center',
+          }}>
+            {`Завантаження медіа: ${uploadProgress?.current ?? 0} з ${uploadProgress?.total ?? 0}`}
+          </div>
+        )}
+
+        {pendingPhotos.length > 0 && (
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
+              {pendingPhotos.map((photo) => (
+                <div key={photo.id} style={{ position: 'relative' }}>
+                  {isVideoFile(photo.file) ? (
+                    <video
+                      src={photo.previewUrl}
+                      controls
+                      preload="metadata"
+                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000' }}
+                    />
+                  ) : (
+                    <img
+                      src={photo.previewUrl}
+                      alt={photo.file.name}
+                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)' }}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removePendingPhoto(photo.id)}
+                    style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: '6px',
+                      border: 'none',
+                      borderRadius: '999px',
+                      width: '22px',
+                      height: '22px',
+                      background: 'rgba(0,0,0,0.65)',
+                      color: 'white',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Г—
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={uploadSelectedPhotos}
+              disabled={uploadingPhotos}
+              className="tg-button"
+              style={{ width: '100%', marginTop: '12px' }}
+            >
+              {uploadingPhotos ? 'Завантаження медіа...' : `Завантажити медіа (${pendingPhotos.length})`}
+            </button>
+          </div>
+        )}
+
+        {photos.length > 0 ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
+              {visibleUploadedPhotos.map((photo) => (
+                <div
+                  key={photo.id}
+                  style={{ position: 'relative', cursor: 'pointer' }}
+                  role="button"
+                  tabIndex={0}
+                  onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
+                  onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
+                  onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      handleMediaPreviewActivate(event, photo.id);
+                    }
+                  }}
+                >
+                  {isVideoFile(photo) ? (
+                    <>
+                      <video
+                        src={getLessonMediaStreamUrl(photo.driveFileId)}
+                        preload="metadata"
+                        muted
+                        onLoadedData={() => {
+                          setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                          setProcessingVideoIds((prev) => {
+                            if (!prev[photo.id]) return prev;
+                            const next = { ...prev };
+                            delete next[photo.id];
+                            return next;
+                          });
+                        }}
+                        onCanPlay={() => {
+                          setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                          setProcessingVideoIds((prev) => {
+                            if (!prev[photo.id]) return prev;
+                            const next = { ...prev };
+                            delete next[photo.id];
+                            return next;
+                          });
+                        }}
+                        style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000', pointerEvents: 'none' }}
+                      />
+                      {isDriveVideoProcessing(photo, Boolean(processingVideoIds[photo.id]), Boolean(readyVideoIds[photo.id])) && (
+                        <div style={{
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          padding: '12px',
+                          borderRadius: '10px',
+                          background: 'rgba(15, 23, 42, 0.68)',
+                          color: 'white',
+                          textAlign: 'center',
+                          pointerEvents: 'none',
+                        }}>
+                          <RefreshIcon size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                          {!isCompactViewport && (
+                            <>
+                              <div style={{ fontSize: '12px', fontWeight: 600 }}>Google Drive обробляє відео</div>
+                              <div style={{ fontSize: '11px', opacity: 0.9 }}>Попередній перегляд може з'явитися не одразу</div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <img
+                      src={photo.thumbnailUrl}
+                      alt={photo.fileName}
+                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', pointerEvents: 'none' }}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    aria-label={`Відкрити ${photo.fileName}`}
+                    onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
+                    onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
+                    onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      zIndex: 6,
+                      padding: 0,
+                      border: 'none',
+                      borderRadius: '10px',
+                      background: 'transparent',
+                      color: 'transparent',
+                      fontSize: 0,
+                      fontWeight: 400,
+                      cursor: 'pointer',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                    }}
+                  >
+                    {isVideoFile(photo) ? 'Відкрити відео' : 'Відкрити фото'}
+                  </button>
+                </div>
+              ))}
+            </div>
+            {photos.length > 3 && (
+              <button
+                type="button"
+                onClick={() => setShowAllUploadedPhotos((prev) => !prev)}
+                style={{
+                  width: '100%',
+                  marginTop: '10px',
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  border: '1px solid var(--tg-border)',
+                  background: 'var(--tg-primary-bg)',
+                  color: 'var(--tg-link-color)',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                {showAllUploadedPhotos ? 'Сховати зайве медіа' : `Показати ще ${photos.length - 3} елементів`}
+              </button>
+            )}
+          </>
+        ) : (
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--tg-hint-color)', fontStyle: 'italic' }}>
+            Медіа заняття ще не завантажені.
+          </p>
+        )}
+
+        {photos.length > 0 && (
+          <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--tg-text-secondary)' }}>
+            Завантажено медіа: {photos.length}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div>
       {/* Header */}
@@ -796,7 +1066,7 @@ export default function LessonDetailPage() {
         )}
       </div>
 
-      {lesson.group_id !== null && (
+      {false && lesson?.group_id !== null && (
         <div style={{ marginBottom: 'var(--space-xl)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)', gap: 'var(--space-sm)' }}>
             <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tg-text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -804,7 +1074,7 @@ export default function LessonDetailPage() {
             </span>
             {photoFolder?.url ? (
               <a
-                href={photoFolder.url}
+                href={photoFolder?.url ?? '#'}
                 target="_blank"
                 rel="noreferrer"
                 style={{ fontSize: '13px', color: 'var(--tg-link-color)', textDecoration: 'none', fontWeight: 500 }}
@@ -824,7 +1094,7 @@ export default function LessonDetailPage() {
               color: '#9a3412',
               fontSize: '13px',
             }}>
-              Папка заняття буде створена з тимчасовою назвою <strong>{lesson.lesson_date ? 'Без теми' : 'Без теми'}</strong>, а після збереження теми автоматично перейменується.
+              Папка заняття буде створена з тимчасовою назвою <strong>{lesson?.lesson_date ? 'Без теми' : 'Без теми'}</strong>, а після збереження теми автоматично перейменується.
             </div>
           )}
 
@@ -871,7 +1141,7 @@ export default function LessonDetailPage() {
                   color: 'var(--tg-text-secondary)',
                   textAlign: 'center',
                 }}>
-                  {`Завантаження фото: ${uploadProgress.current} з ${uploadProgress.total}`}
+                  {`Завантаження фото: ${uploadProgress?.current ?? 0} з ${uploadProgress?.total ?? 0}`}
                 </div>
               )}
 
@@ -1148,6 +1418,8 @@ export default function LessonDetailPage() {
           </div>
         )}
       </div>
+
+      {mediaSection}
 
       {/* Report info - shown only after lesson is completed */}
       {lesson.reported_at && (
