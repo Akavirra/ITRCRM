@@ -81,7 +81,7 @@ export async function POST(
     
     if (!initData) {
       return NextResponse.json(
-        { error: 'Р—Р°РіРѕР»РѕРІРѕРє X-Telegram-Init-Data РѕР±РѕРІ\'СЏР·РєРѕРІРёР№' },
+        { error: 'Заголовок X-Telegram-Init-Data обов\'язковий' },
         { status: 401 }
       );
     }
@@ -90,7 +90,7 @@ export async function POST(
     
     if (!verification.valid || !verification.telegramId) {
       return NextResponse.json(
-        { error: 'РќРµРІС–СЂРЅРёР№ initData' },
+        { error: 'Невірний initData' },
         { status: 401 }
       );
     }
@@ -100,7 +100,7 @@ export async function POST(
 
     if (isNaN(lessonId)) {
       return NextResponse.json(
-        { error: 'РќРµРІС–СЂРЅРёР№ ID Р·Р°РЅСЏС‚С‚СЏ' },
+        { error: 'Невірний ID заняття' },
         { status: 400 }
       );
     }
@@ -113,7 +113,7 @@ export async function POST(
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Р’РёРєР»Р°РґР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ' },
+        { error: 'Викладача не знайдено' },
         { status: 401 }
       );
     }
@@ -135,7 +135,7 @@ export async function POST(
 
     if (!lessonAccess) {
       return NextResponse.json(
-        { error: 'Р—Р°РЅСЏС‚С‚СЏ РЅРµ Р·РЅР°Р№РґРµРЅРѕ Р°Р±Рѕ РґРѕСЃС‚СѓРї Р·Р°Р±РѕСЂРѕРЅРµРЅРѕ' },
+        { error: 'Заняття не знайдено або доступ заборонено' },
         { status: 404 }
       );
     }
@@ -152,7 +152,7 @@ export async function POST(
 
     if (!studentId || !attendanceStatus) {
       return NextResponse.json(
-        { error: 'РџР°СЂР°РјРµС‚СЂРё studentId С‚Р° status РѕР±РѕРІ\'СЏР·РєРѕРІС–' },
+        { error: 'Параметри studentId та status обов\'язкові' },
         { status: 400 }
       );
     }
@@ -164,7 +164,7 @@ export async function POST(
     
     if (!['present', 'absent'].includes(dbStatus)) {
       return NextResponse.json(
-        { error: 'РќРµРІС–СЂРЅРёР№ СЃС‚Р°С‚СѓСЃ. Р”РѕРїСѓСЃС‚РёРјС– Р·РЅР°С‡РµРЅРЅСЏ: present, absent Р°Р±Рѕ sick' },
+        { error: 'Невірний статус. Допустимі значення: present, absent або sick' },
         { status: 400 }
       );
     }
@@ -195,7 +195,7 @@ export async function POST(
 
     if (!studentCheck) {
       return NextResponse.json(
-        { error: 'РЈС‡РЅСЏ РЅРµ Р·РЅР°Р№РґРµРЅРѕ Сѓ С†С–Р№ РіСЂСѓРїС–' },
+        { error: 'Учня не знайдено у цій групі' },
         { status: 404 }
       );
     }
@@ -230,7 +230,7 @@ export async function POST(
       ) as Array<{ lesson_id: number }>;
       const makeupDate = new Date(makeupLesson.lesson_date);
       const makeupDateStr = `${String(makeupDate.getUTCDate()).padStart(2,'0')}.${String(makeupDate.getUTCMonth()+1).padStart(2,'0')}.${makeupDate.getUTCFullYear()}`;
-      const studentLabel = studentName?.full_name || `РЈС‡РµРЅСЊ #${studentId}`;
+      const studentLabel = studentName?.full_name || `Учень #${studentId}`;
 
       if (dbStatus === 'present') {
         await query(
@@ -241,7 +241,7 @@ export async function POST(
         for (const rec of (origRecords || [])) {
           await logLessonChange(
             rec.lesson_id, 'attendance', null,
-            `${studentLabel}: РІС–РґРїСЂР°С†СЋРІР°РІ РїСЂРѕРїСѓСЃРє (РІС–РґРїСЂР°С†СЋРІР°РЅРЅСЏ РІС–Рґ ${makeupDateStr})`,
+            `${studentLabel}: відпрацював пропуск (відпрацювання від ${makeupDateStr})`,
             teacher.id, teacher.name, 'telegram', telegramId
           );
         }
@@ -254,7 +254,7 @@ export async function POST(
         for (const rec of (origRecords || [])) {
           await logLessonChange(
             rec.lesson_id, 'attendance', null,
-            `${studentLabel}: РІС–РґРїСЂР°С†СЋРІР°РЅРЅСЏ СЃРєР°СЃРѕРІР°РЅРѕ`,
+            `${studentLabel}: відпрацювання скасовано`,
             teacher.id, teacher.name, 'telegram', telegramId
           );
         }
@@ -266,7 +266,7 @@ export async function POST(
       lessonId,
       'attendance',
       null,
-      `${studentName?.full_name || `РЈС‡РµРЅСЊ #${studentId}`}: ${dbStatus === 'present' ? 'РїСЂРёСЃСѓС‚РЅС–Р№' : 'РІС–РґСЃСѓС‚РЅС–Р№'}`,
+      `${studentName?.full_name || `Учень #${studentId}`}: ${dbStatus === 'present' ? 'присутній' : 'відсутній'}`,
       teacher.id,
       teacher.name,
       'telegram',
@@ -329,9 +329,8 @@ export async function POST(
   } catch (error) {
     console.error('Attendance update error:', error);
     return NextResponse.json(
-      { error: 'РќРµ РІРґР°Р»РѕСЃСЏ РѕРЅРѕРІРёС‚Рё РІС–РґРІС–РґСѓРІР°РЅС–СЃС‚СЊ' },
+      { error: 'Не вдалося оновити відвідуваність' },
       { status: 500 }
     );
   }
 }
-

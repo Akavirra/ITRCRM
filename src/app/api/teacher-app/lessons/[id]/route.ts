@@ -80,7 +80,7 @@ export async function GET(
     
     if (!initData) {
       return NextResponse.json(
-        { error: 'Р—Р°РіРѕР»РѕРІРѕРє X-Telegram-Init-Data РѕР±РѕРІ\'СЏР·РєРѕРІРёР№' },
+        { error: 'Заголовок X-Telegram-Init-Data обов\'язковий' },
         { status: 401 }
       );
     }
@@ -89,7 +89,7 @@ export async function GET(
     
     if (!verification.valid || !verification.telegramId) {
       return NextResponse.json(
-        { error: 'РќРµРІС–СЂРЅРёР№ initData' },
+        { error: 'Невірний initData' },
         { status: 401 }
       );
     }
@@ -99,7 +99,7 @@ export async function GET(
 
     if (isNaN(lessonId)) {
       return NextResponse.json(
-        { error: 'РќРµРІС–СЂРЅРёР№ ID Р·Р°РЅСЏС‚С‚СЏ' },
+        { error: 'Невірний ID заняття' },
         { status: 400 }
       );
     }
@@ -112,7 +112,7 @@ export async function GET(
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Р’РёРєР»Р°РґР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ' },
+        { error: 'Викладача не знайдено' },
         { status: 401 }
       );
     }
@@ -144,7 +144,7 @@ export async function GET(
 
     if (!lesson) {
       return NextResponse.json(
-        { error: 'Р—Р°РЅСЏС‚С‚СЏ РЅРµ Р·РЅР°Р№РґРµРЅРѕ Р°Р±Рѕ РґРѕСЃС‚СѓРї Р·Р°Р±РѕСЂРѕРЅРµРЅРѕ' },
+        { error: 'Заняття не знайдено або доступ заборонено' },
         { status: 404 }
       );
     }
@@ -187,8 +187,8 @@ export async function GET(
           orig_l.id as original_lesson_id,
           orig_l.lesson_date as original_lesson_date,
           orig_l.topic as original_lesson_topic,
-          COALESCE(orig_g.title, 'Р†РЅРґРёРІС–РґСѓР°Р»СЊРЅРµ') as original_group_title,
-          COALESCE(oc_les.title, oc_grp.title, 'Р‘РµР· РєСѓСЂСЃСѓ') as original_course_title
+          COALESCE(orig_g.title, 'Індивідуальне') as original_group_title,
+          COALESCE(oc_les.title, oc_grp.title, 'Без курсу') as original_course_title
         FROM attendance orig_att
         JOIN lessons orig_l ON orig_att.lesson_id = orig_l.id
         LEFT JOIN groups orig_g ON orig_l.group_id = orig_g.id
@@ -235,7 +235,7 @@ export async function GET(
   } catch (error) {
     console.error('Lesson details error:', error);
     return NextResponse.json(
-      { error: 'РќРµ РІРґР°Р»РѕСЃСЏ Р·Р°РІР°РЅС‚Р°Р¶РёС‚Рё РґРµС‚Р°Р»С– Р·Р°РЅСЏС‚С‚СЏ' },
+      { error: 'Не вдалося завантажити деталі заняття' },
       { status: 500 }
     );
   }
@@ -251,7 +251,7 @@ export async function PATCH(
     
     if (!initData) {
       return NextResponse.json(
-        { error: 'Р—Р°РіРѕР»РѕРІРѕРє X-Telegram-Init-Data РѕР±РѕРІ\'СЏР·РєРѕРІРёР№' },
+        { error: 'Заголовок X-Telegram-Init-Data обов\'язковий' },
         { status: 401 }
       );
     }
@@ -260,7 +260,7 @@ export async function PATCH(
     
     if (!verification.valid || !verification.telegramId) {
       return NextResponse.json(
-        { error: 'РќРµРІС–СЂРЅРёР№ initData' },
+        { error: 'Невірний initData' },
         { status: 401 }
       );
     }
@@ -270,7 +270,7 @@ export async function PATCH(
 
     if (isNaN(lessonId)) {
       return NextResponse.json(
-        { error: 'РќРµРІС–СЂРЅРёР№ ID Р·Р°РЅСЏС‚С‚СЏ' },
+        { error: 'Невірний ID заняття' },
         { status: 400 }
       );
     }
@@ -283,7 +283,7 @@ export async function PATCH(
 
     if (!teacher) {
       return NextResponse.json(
-        { error: 'Р’РёРєР»Р°РґР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ' },
+        { error: 'Викладача не знайдено' },
         { status: 401 }
       );
     }
@@ -305,7 +305,7 @@ export async function PATCH(
 
     if (!lessonAccess) {
       return NextResponse.json(
-        { error: 'Р—Р°РЅСЏС‚С‚СЏ РЅРµ Р·РЅР°Р№РґРµРЅРѕ Р°Р±Рѕ РґРѕСЃС‚СѓРї Р·Р°Р±РѕСЂРѕРЅРµРЅРѕ' },
+        { error: 'Заняття не знайдено або доступ заборонено' },
         { status: 404 }
       );
     }
@@ -384,7 +384,7 @@ export async function PATCH(
 
     if (updates.length === 0) {
       return NextResponse.json(
-        { error: 'РќРµРјР°С” РїРѕР»С–РІ РґР»СЏ РѕРЅРѕРІР»РµРЅРЅСЏ' },
+        { error: 'Немає полів для оновлення' },
         { status: 400 }
       );
     }
@@ -460,9 +460,8 @@ export async function PATCH(
   } catch (error) {
     console.error('Lesson update error:', error);
     return NextResponse.json(
-      { error: 'РќРµ РІРґР°Р»РѕСЃСЏ РѕРЅРѕРІРёС‚Рё Р·Р°РЅСЏС‚С‚СЏ' },
+      { error: 'Не вдалося оновити заняття' },
       { status: 500 }
     );
   }
 }
-

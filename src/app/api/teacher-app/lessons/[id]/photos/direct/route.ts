@@ -52,12 +52,12 @@ function verifyInitData(initData: string): { valid: boolean; telegramId?: string
 async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
   const initData = request.headers.get('X-Telegram-Init-Data');
   if (!initData) {
-    return { teacher: null, lesson: null, telegramId: null, response: NextResponse.json({ error: 'X-Telegram-Init-Data РѕР±РѕРІКјСЏР·РєРѕРІРёР№' }, { status: 401 }) };
+    return { teacher: null, lesson: null, telegramId: null, response: NextResponse.json({ error: 'X-Telegram-Init-Data обовʼязковий' }, { status: 401 }) };
   }
 
   const verification = verifyInitData(initData);
   if (!verification.valid || !verification.telegramId) {
-    return { teacher: null, lesson: null, telegramId: null, response: NextResponse.json({ error: 'РќРµРІС–СЂРЅРёР№ initData' }, { status: 401 }) };
+    return { teacher: null, lesson: null, telegramId: null, response: NextResponse.json({ error: 'Невірний initData' }, { status: 401 }) };
   }
 
   const teacher = await queryOne(
@@ -66,7 +66,7 @@ async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
   ) as { id: number; name: string } | null;
 
   if (!teacher) {
-    return { teacher: null, lesson: null, telegramId: null, response: NextResponse.json({ error: 'Р’РёРєР»Р°РґР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ' }, { status: 401 }) };
+    return { teacher: null, lesson: null, telegramId: null, response: NextResponse.json({ error: 'Викладача не знайдено' }, { status: 401 }) };
   }
 
   const lesson = await queryOne(
@@ -84,11 +84,11 @@ async function getTeacherLessonAccess(request: NextRequest, lessonId: number) {
   ) as { id: number; group_id: number | null; lesson_date: string | null } | null;
 
   if (!lesson) {
-    return { teacher, lesson: null, telegramId: verification.telegramId, response: NextResponse.json({ error: 'Р—Р°РЅСЏС‚С‚СЏ РЅРµ Р·РЅР°Р№РґРµРЅРѕ Р°Р±Рѕ РґРѕСЃС‚СѓРї Р·Р°Р±РѕСЂРѕРЅРµРЅРѕ' }, { status: 404 }) };
+    return { teacher, lesson: null, telegramId: verification.telegramId, response: NextResponse.json({ error: 'Заняття не знайдено або доступ заборонено' }, { status: 404 }) };
   }
 
   if (lesson.group_id === null) {
-    return { teacher, lesson, telegramId: verification.telegramId, response: NextResponse.json({ error: 'РњРµРґС–Р° РґРѕСЃС‚СѓРїРЅС– Р»РёС€Рµ РґР»СЏ РіСЂСѓРїРѕРІРёС… Р·Р°РЅСЏС‚СЊ' }, { status: 400 }) };
+    return { teacher, lesson, telegramId: verification.telegramId, response: NextResponse.json({ error: 'Медіа доступні лише для групових занять' }, { status: 400 }) };
   }
 
   return { teacher, lesson, telegramId: verification.telegramId, response: null };
@@ -100,7 +100,7 @@ export async function POST(
 ) {
   const lessonId = parseInt(params.id, 10);
   if (Number.isNaN(lessonId)) {
-    return NextResponse.json({ error: 'РќРµРІС–СЂРЅРёР№ ID Р·Р°РЅСЏС‚С‚СЏ' }, { status: 400 });
+    return NextResponse.json({ error: 'Невірний ID заняття' }, { status: 400 });
   }
 
   const access = await getTeacherLessonAccess(request, lessonId);
@@ -109,7 +109,7 @@ export async function POST(
   }
 
   if (!isTeacherLessonEditable(access.lesson?.lesson_date)) {
-    return NextResponse.json({ error: 'Р’РёРєР»Р°РґР°С‡ РјРѕР¶Рµ Р·РјС–РЅСЋРІР°С‚Рё РјРµРґС–Р° Р»РёС€Рµ РґР»СЏ СЃСЊРѕРіРѕРґРЅС–С€РЅС–С… Р·Р°РЅСЏС‚СЊ.' }, { status: 403 });
+    return NextResponse.json({ error: 'Викладач може змінювати медіа лише для сьогоднішніх занять.' }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null);
@@ -122,11 +122,11 @@ export async function POST(
     const fileLike = { name: fileName, type: mimeType } as File;
 
     if (!fileName || !mimeType || !isSupportedLessonMediaFile(fileLike)) {
-      return NextResponse.json({ error: 'РќРµРїС–РґС‚СЂРёРјСѓРІР°РЅРёР№ С‚РёРї РјРµРґС–Р°С„Р°Р№Р»Сѓ' }, { status: 400 });
+      return NextResponse.json({ error: 'Непідтримуваний тип медіафайлу' }, { status: 400 });
     }
 
     if (typeof fileSize === 'number' && fileSize > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: 'Р¤Р°Р№Р» РїРµСЂРµРІРёС‰СѓС” 1GB' }, { status: 400 });
+      return NextResponse.json({ error: 'Файл перевищує 1GB' }, { status: 400 });
     }
 
     const uploadToken = createUploadServiceToken({
@@ -137,7 +137,7 @@ export async function POST(
       telegramId: access.telegramId ?? null,
     });
     if (false) {
-      return NextResponse.json({ error: 'РњРµРґС–Р° РґРѕСЃС‚СѓРїРЅС– Р»РёС€Рµ РґР»СЏ РіСЂСѓРїРѕРІРёС… Р·Р°РЅСЏС‚СЊ' }, { status: 400 });
+      return NextResponse.json({ error: 'Медіа доступні лише для групових занять' }, { status: 400 });
     }
 
     return NextResponse.json({
@@ -155,7 +155,7 @@ export async function POST(
     const fileSize = typeof body?.fileSize === 'number' ? body.fileSize : 0;
 
     if (!driveFileId || !fileName || !mimeType || !fileSize) {
-      return NextResponse.json({ error: 'РќРµРґРѕСЃС‚Р°С‚РЅСЊРѕ РґР°РЅРёС… РґР»СЏ Р·Р°РІРµСЂС€РµРЅРЅСЏ Р·Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ' }, { status: 400 });
+      return NextResponse.json({ error: 'Недостатньо даних для завершення завантаження' }, { status: 400 });
     }
 
     await registerLessonDriveFile({
@@ -178,6 +178,5 @@ export async function POST(
     });
   }
 
-  return NextResponse.json({ error: 'РќРµРІС–РґРѕРјР° РґС–СЏ' }, { status: 400 });
+  return NextResponse.json({ error: 'Невідома дія' }, { status: 400 });
 }
-
