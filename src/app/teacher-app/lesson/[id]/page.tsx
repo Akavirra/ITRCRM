@@ -9,7 +9,7 @@ import { isVideoMimeType } from '@/lib/lesson-media';
 import {
   CheckCircleIcon, ClipboardIcon, ClockIcon, RefreshIcon, UsersIcon,
   BookOpenIcon, AlertTriangleIcon, FileTextIcon, EditIcon, SaveIcon,
-  ArrowLeftIcon, UploadIcon, CameraIcon, ChevronLeftIcon, ChevronRightIcon, XIcon
+  ArrowLeftIcon, UploadIcon, CameraIcon, ChevronLeftIcon, ChevronRightIcon, XIcon, TrashIcon
 } from '@/components/Icons';
 
 interface Lesson {
@@ -136,6 +136,7 @@ export default function LessonDetailPage() {
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [readyVideoIds, setReadyVideoIds] = useState<Record<number, boolean>>({});
   const [processingVideoIds, setProcessingVideoIds] = useState<Record<number, boolean>>({});
+  const [deletingPhotoId, setDeletingPhotoId] = useState<number | null>(null);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const pendingPhotosRef = useRef<PendingPhotoPreview[]>([]);
   const viewerTouchStartXRef = useRef<number | null>(null);
@@ -658,6 +659,77 @@ export default function LessonDetailPage() {
     }
   };
 
+  const handlePhotoDelete = async (
+    event:
+      | ReactMouseEvent<HTMLElement>
+      | ReactPointerEvent<HTMLElement>
+      | ReactTouchEvent<HTMLElement>,
+    photoId: number,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!initData || deletingPhotoId === photoId) {
+      return;
+    }
+
+    let confirmed = false;
+
+    if (webApp?.showPopup) {
+      const result = await webApp.showPopup({
+        title: 'Видалити медіа?',
+        message: 'Файл буде видалено із заняття та з Google Drive.',
+        buttons: [
+          { id: 'cancel', type: 'cancel', text: 'Скасувати' },
+          { id: 'delete', type: 'default', text: 'Видалити' },
+        ],
+      });
+      confirmed = result === 'delete';
+    } else {
+      confirmed = window.confirm('Видалити файл із заняття та з Google Drive?');
+    }
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingPhotoId(photoId);
+
+    try {
+      const response = await fetch(`/api/teacher-app/lessons/${lessonId}/photos/${photoId}`, {
+        method: 'DELETE',
+        headers: {
+          'X-Telegram-Init-Data': initData,
+        },
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Не вдалося видалити медіа');
+      }
+
+      setPhotoFolder(result.photoFolder || null);
+      setPhotos(result.photos || []);
+      setViewerIndex((currentIndex) => {
+        if (currentIndex === null) {
+          return null;
+        }
+
+        const nextPhotos = result.photos || [];
+        if (nextPhotos.length === 0) {
+          return null;
+        }
+
+        return Math.min(currentIndex, nextPhotos.length - 1);
+      });
+    } catch (deleteError) {
+      console.error('Teacher lesson media delete error:', deleteError);
+      alert(deleteError instanceof Error ? deleteError.message : 'Не вдалося видалити медіа заняття');
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  };
+
   const mediaSection = lesson && lesson.group_id !== null && (
     <div style={{ marginBottom: 'var(--space-xl)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)', gap: 'var(--space-sm)' }}>
@@ -888,6 +960,31 @@ export default function LessonDetailPage() {
                     }}
                   >
                     {isVideoFile(photo) ? 'Відкрити відео' : 'Відкрити фото'}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Видалити ${photo.fileName}`}
+                    onClick={(event) => handlePhotoDelete(event, photo.id)}
+                    disabled={deletingPhotoId === photo.id}
+                    style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: '6px',
+                      zIndex: 7,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '24px',
+                      height: '24px',
+                      border: 'none',
+                      borderRadius: '999px',
+                      background: 'rgba(15, 23, 42, 0.78)',
+                      color: 'white',
+                      cursor: deletingPhotoId === photo.id ? 'wait' : 'pointer',
+                      opacity: deletingPhotoId === photo.id ? 0.7 : 1,
+                    }}
+                  >
+                    <TrashIcon size={12} />
                   </button>
                 </div>
               ))}
