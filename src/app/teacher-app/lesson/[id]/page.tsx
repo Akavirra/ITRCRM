@@ -95,6 +95,14 @@ function isDriveVideoProcessing(photo: LessonPhoto, isPending: boolean = false, 
   return isVideoFile(photo) && isPending && !isReady;
 }
 
+function getDrivePreviewEmbedUrl(fileId: string): string {
+  return `https://drive.google.com/file/d/${fileId}/preview`;
+}
+
+function getDriveLargeThumbnailUrl(fileId: string): string {
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
+}
+
 export default function LessonDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -1147,18 +1155,16 @@ export default function LessonDetailPage() {
             )}
 
             {isVideoFile(photos[viewerIndex]) ? (
-              <video
+              <iframe
                 key={photos[viewerIndex].id}
-                src={photos[viewerIndex].downloadUrl}
-                controls
-                autoPlay
-                playsInline
-                style={{ width: '100%', maxHeight: '100%', borderRadius: '16px', background: '#000' }}
+                src={getDrivePreviewEmbedUrl(photos[viewerIndex].driveFileId)}
+                allow="autoplay"
+                style={{ width: '100%', height: '100%', border: 'none', borderRadius: '16px', background: '#000' }}
               />
             ) : (
               <img
                 key={photos[viewerIndex].id}
-                src={photos[viewerIndex].downloadUrl}
+                src={getDriveLargeThumbnailUrl(photos[viewerIndex].driveFileId)}
                 alt={photos[viewerIndex].fileName}
                 style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '16px' }}
               />
