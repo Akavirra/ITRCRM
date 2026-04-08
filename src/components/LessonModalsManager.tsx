@@ -106,6 +106,28 @@ function isVideoLessonMedia(photo: LessonPhotoFile): boolean {
   return isVideoMimeType(photo.mimeType);
 }
 
+function parseUploadedAt(value: string): Date | null {
+  const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/);
+  if (!match) return null;
+
+  const [, dd, mm, yyyy, hh, min] = match;
+  const parsed = new Date(Number(yyyy), Number(mm) - 1, Number(dd), Number(hh), Number(min));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isDriveVideoProcessing(photo: LessonPhotoFile): boolean {
+  if (!isVideoLessonMedia(photo)) {
+    return false;
+  }
+
+  const uploadedAt = parseUploadedAt(photo.uploadedAt);
+  if (!uploadedAt) {
+    return false;
+  }
+
+  return Date.now() - uploadedAt.getTime() < 15 * 60 * 1000;
+}
+
 function formatDateTime(startTime: string, endTime: string): string {
   return `${startTime} - ${endTime}`;
 }
@@ -1358,12 +1380,35 @@ export default function LessonModalsManager() {
                               {visibleLessonPhotos.map((photo) => (
                                 <div key={photo.id} style={{ position: 'relative' }}>
                                     {isVideoLessonMedia(photo) ? (
-                                      <video
-                                        src={photo.downloadUrl}
-                                        controls
-                                        preload="metadata"
-                                        style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block', background: '#000' }}
-                                      />
+                                      <>
+                                        <video
+                                          src={photo.downloadUrl}
+                                          controls
+                                          preload="metadata"
+                                          style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block', background: '#000' }}
+                                        />
+                                        {isDriveVideoProcessing(photo) && (
+                                          <div style={{
+                                            position: 'absolute',
+                                            inset: '0',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.375rem',
+                                            background: 'rgba(17, 24, 39, 0.68)',
+                                            color: 'white',
+                                            borderRadius: '0.5rem',
+                                            textAlign: 'center',
+                                            padding: '0.75rem',
+                                            pointerEvents: 'none',
+                                          }}>
+                                            <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+                                            <div style={{ fontSize: '0.75rem', fontWeight: 600 }}>Google Drive обробляє відео</div>
+                                            <div style={{ fontSize: '0.6875rem', opacity: 0.9 }}>Попередній перегляд може зʼявитися не одразу</div>
+                                          </div>
+                                        )}
+                                      </>
                                     ) : (
                                       <a href={photo.url} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
                                       <img

@@ -82,6 +82,28 @@ function isVideoFile(file: File | LessonPhoto): boolean {
   return isVideoMimeType(mimeType);
 }
 
+function parseUploadedAt(value: string): Date | null {
+  const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/);
+  if (!match) return null;
+
+  const [, dd, mm, yyyy, hh, min] = match;
+  const parsed = new Date(Number(yyyy), Number(mm) - 1, Number(dd), Number(hh), Number(min));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isDriveVideoProcessing(photo: LessonPhoto): boolean {
+  if (!isVideoFile(photo)) {
+    return false;
+  }
+
+  const uploadedAt = parseUploadedAt(photo.uploadedAt);
+  if (!uploadedAt) {
+    return false;
+  }
+
+  return Date.now() - uploadedAt.getTime() < 15 * 60 * 1000;
+}
+
 export default function LessonDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -785,14 +807,37 @@ export default function LessonDetailPage() {
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
                   {visibleUploadedPhotos.map((photo) => (
-                    <div key={photo.id}>
+                    <div key={photo.id} style={{ position: 'relative' }}>
                       {isVideoFile(photo) ? (
-                        <video
-                          src={photo.downloadUrl}
-                          controls
-                          preload="metadata"
-                          style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000' }}
-                        />
+                        <>
+                          <video
+                            src={photo.downloadUrl}
+                            controls
+                            preload="metadata"
+                            style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000' }}
+                          />
+                          {isDriveVideoProcessing(photo) && (
+                            <div style={{
+                              position: 'absolute',
+                              inset: 0,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px',
+                              padding: '12px',
+                              borderRadius: '10px',
+                              background: 'rgba(15, 23, 42, 0.68)',
+                              color: 'white',
+                              textAlign: 'center',
+                              pointerEvents: 'none',
+                            }}>
+                              <RefreshIcon size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                              <div style={{ fontSize: '12px', fontWeight: 600 }}>Google Drive обробляє відео</div>
+                              <div style={{ fontSize: '11px', opacity: 0.9 }}>Попередній перегляд може зʼявитися не одразу</div>
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <a
                           href={photo.url}
