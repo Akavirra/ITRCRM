@@ -50,6 +50,10 @@ export function thumbUrl(fileId: string, size = 400) {
   return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size}`;
 }
 
+export function lessonMediaStreamUrl(fileId: string) {
+  return `/api/lesson-media/${encodeURIComponent(fileId)}`;
+}
+
 export function formatSize(bytes: number): string {
   if (!bytes) return '';
   if (bytes < 1024) return `${bytes} Б`;
@@ -259,7 +263,7 @@ function MediaViewerModal({ files, index, onClose, onNavigate }: {
         ) : isVideo ? (
           <video
             key={file.drive_file_id}
-            src={file.drive_download_url}
+            src={lessonMediaStreamUrl(file.drive_file_id)}
             controls
             playsInline
             preload="metadata"

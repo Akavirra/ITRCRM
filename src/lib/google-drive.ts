@@ -51,6 +51,10 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
+export async function getGoogleDriveAccessToken(): Promise<string> {
+  return getAccessToken();
+}
+
 // Find a folder by name inside a parent folder (returns null if not found)
 async function findFolder(name: string, parentId: string): Promise<string | null> {
   const token = await getAccessToken();
@@ -278,6 +282,19 @@ export async function getDriveFileMetadata(fileId: string): Promise<DriveFile> {
   }
 
   return res.json();
+}
+
+export async function fetchDriveFileContent(fileId: string, range?: string | null): Promise<Response> {
+  const token = await getAccessToken();
+  return fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(range ? { Range: range } : {}),
+      },
+    }
+  );
 }
 
 // Make a file publicly readable (so anyone with link can view/download)

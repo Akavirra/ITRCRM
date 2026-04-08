@@ -103,6 +103,10 @@ function getDriveLargeThumbnailUrl(fileId: string): string {
   return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
 }
 
+function getLessonMediaStreamUrl(fileId: string): string {
+  return `/api/lesson-media/${encodeURIComponent(fileId)}`;
+}
+
 export default function LessonDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -943,7 +947,7 @@ export default function LessonDetailPage() {
                       {isVideoFile(photo) ? (
                         <>
                           <video
-                            src={photo.downloadUrl}
+                            src={getLessonMediaStreamUrl(photo.driveFileId)}
                             preload="metadata"
                             muted
                             onLoadedData={() => {
@@ -1222,7 +1226,7 @@ export default function LessonDetailPage() {
             {isVideoFile(photos[viewerIndex]) ? (
               <video
                 key={photos[viewerIndex].id}
-                src={photos[viewerIndex].downloadUrl}
+                src={getLessonMediaStreamUrl(photos[viewerIndex].driveFileId)}
                 controls
                 playsInline
                 preload="metadata"
