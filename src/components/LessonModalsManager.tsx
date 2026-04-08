@@ -1295,6 +1295,7 @@ export default function LessonModalsManager() {
                   const isPhotosExpanded = Boolean(showAllPhotos[modal.id]);
                   const visibleLessonPhotos = isPhotosExpanded ? allLessonPhotos : allLessonPhotos.slice(0, 3);
                   const hiddenPhotosCount = Math.max(0, allLessonPhotos.length - visibleLessonPhotos.length);
+                  const compactDriveProcessingUi = (modal.size?.width ?? 640) < 560;
 
                   return lesson.groupId !== null && (
                     <div style={{ marginBottom: '1rem' }}>
@@ -1404,8 +1405,12 @@ export default function LessonModalsManager() {
                                             pointerEvents: 'none',
                                           }}>
                                             <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
-                                            <div style={{ fontSize: '0.75rem', fontWeight: 600 }}>Google Drive обробляє відео</div>
-                                            <div style={{ fontSize: '0.6875rem', opacity: 0.9 }}>Попередній перегляд може зʼявитися не одразу</div>
+                                            {!compactDriveProcessingUi && (
+                                              <>
+                                                <div style={{ fontSize: '0.75rem', fontWeight: 600 }}>Google Drive обробляє відео</div>
+                                                <div style={{ fontSize: '0.6875rem', opacity: 0.9 }}>Попередній перегляд може зʼявитися не одразу</div>
+                                              </>
+                                            )}
                                           </div>
                                         )}
                                       </>

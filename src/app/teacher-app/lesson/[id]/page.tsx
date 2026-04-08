@@ -128,6 +128,7 @@ export default function LessonDetailPage() {
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhotoPreview[]>([]);
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
   const pendingPhotosRef = useRef<PendingPhotoPreview[]>([]);
 
   // Check if lesson is from a past day
@@ -201,6 +202,23 @@ export default function LessonDetailPage() {
   useEffect(() => {
     pendingPhotosRef.current = pendingPhotos;
   }, [pendingPhotos]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const updateViewportState = () => {
+      setIsCompactViewport(window.innerWidth < 420);
+    };
+
+    updateViewportState();
+    window.addEventListener('resize', updateViewportState);
+
+    return () => {
+      window.removeEventListener('resize', updateViewportState);
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -833,8 +851,12 @@ export default function LessonDetailPage() {
                               pointerEvents: 'none',
                             }}>
                               <RefreshIcon size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                              <div style={{ fontSize: '12px', fontWeight: 600 }}>Google Drive обробляє відео</div>
-                              <div style={{ fontSize: '11px', opacity: 0.9 }}>Попередній перегляд може зʼявитися не одразу</div>
+                              {!isCompactViewport && (
+                                <>
+                                  <div style={{ fontSize: '12px', fontWeight: 600 }}>Google Drive обробляє відео</div>
+                                  <div style={{ fontSize: '11px', opacity: 0.9 }}>Попередній перегляд може зʼявитися не одразу</div>
+                                </>
+                              )}
                             </div>
                           )}
                         </>
