@@ -582,7 +582,10 @@ export default function LessonDetailPage() {
   ) => {
     event.preventDefault();
     event.stopPropagation();
-    router.push(`/teacher-app/lesson/${lessonId}/media/${photoId}${versionSuffix}`);
+    const nextIndex = photos.findIndex((photo) => photo.id === photoId);
+    if (nextIndex !== -1) {
+      setViewerIndex(nextIndex);
+    }
   };
 
   return (
@@ -887,7 +890,20 @@ export default function LessonDetailPage() {
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
                   {visibleUploadedPhotos.map((photo) => (
-                    <div key={photo.id} style={{ position: 'relative' }}>
+                    <div
+                      key={photo.id}
+                      style={{ position: 'relative', cursor: 'pointer' }}
+                      role="button"
+                      tabIndex={0}
+                      onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
+                      onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
+                      onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          handleMediaPreviewActivate(event, photo.id);
+                        }
+                      }}
+                    >
                       {isVideoFile(photo) ? (
                         <>
                           <video
@@ -961,17 +977,15 @@ export default function LessonDetailPage() {
                         onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
                         style={{
                           position: 'absolute',
-                          left: '8px',
-                          right: '8px',
-                          bottom: '8px',
-                          zIndex: 5,
-                          padding: '6px 8px',
+                          inset: 0,
+                          zIndex: 6,
+                          padding: 0,
                           border: 'none',
                           borderRadius: '10px',
-                          background: 'rgba(15, 23, 42, 0.78)',
-                          color: '#fff',
-                          fontSize: '12px',
-                          fontWeight: 600,
+                          background: 'transparent',
+                          color: 'transparent',
+                          fontSize: 0,
+                          fontWeight: 400,
                           cursor: 'pointer',
                           touchAction: 'manipulation',
                           WebkitTapHighlightColor: 'transparent',
@@ -1107,6 +1121,7 @@ export default function LessonDetailPage() {
 
       {viewerIndex !== null && photos[viewerIndex] && (
         <div
+          onClick={closeMediaViewer}
           style={{
             position: 'fixed',
             inset: 0,
@@ -1117,6 +1132,7 @@ export default function LessonDetailPage() {
           }}
         >
           <div
+            onClick={(event) => event.stopPropagation()}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1145,6 +1161,7 @@ export default function LessonDetailPage() {
           </div>
 
           <div
+            onClick={(event) => event.stopPropagation()}
             style={{
               flex: 1,
               position: 'relative',
