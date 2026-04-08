@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { saveInitData, useTelegramInitData } from '@/components/TelegramWebAppProvider';
 
 const ROLES_KEY = 'tg_app_roles';
+const APP_VERSION = (process.env.NEXT_PUBLIC_TEACHER_APP_VERSION || process.env.NEXT_PUBLIC_APP_VERSION || '1').slice(0, 12);
 
 interface RoleToggleProps {
   currentRole: 'admin' | 'teacher';
@@ -12,8 +13,18 @@ interface RoleToggleProps {
 
 export default function RoleToggle({ currentRole }: RoleToggleProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { initData } = useTelegramInitData();
   const [hasBothRoles, setHasBothRoles] = useState(false);
+  const buildDestination = useMemo(() => {
+    return (role: 'admin' | 'teacher') => {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.set('v', APP_VERSION);
+      const targetPath = role === 'admin' ? '/admin-app' : '/teacher-app';
+      const query = nextParams.toString();
+      return query ? `${targetPath}?${query}` : targetPath;
+    };
+  }, [searchParams]);
 
   useEffect(() => {
     // 1. Check localStorage cache first
@@ -51,7 +62,7 @@ export default function RoleToggle({ currentRole }: RoleToggleProps) {
     if (role === currentRole) return;
     if (initData) saveInitData(initData);
     localStorage.setItem('tg_app_role', role);
-    router.push(role === 'admin' ? '/admin-app' : '/teacher-app');
+    router.push(buildDestination(role));
   };
 
   return (

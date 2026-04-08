@@ -7,6 +7,42 @@ const nextConfig = {
     const isDev = process.env.NODE_ENV === 'development';
     return [
       {
+        source: '/tg-app',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }
+        ]
+      },
+      {
+        source: '/tg-app/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }
+        ]
+      },
+      {
+        source: '/teacher-app',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }
+        ]
+      },
+      {
+        source: '/teacher-app/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }
+        ]
+      },
+      {
+        source: '/admin-app',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }
+        ]
+      },
+      {
+        source: '/admin-app/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }
+        ]
+      },
+      {
         source: '/api/notifications/telegram',
         headers: [
           { key: 'Cache-Control', value: 'no-cache, no-transform, must-revalidate' }

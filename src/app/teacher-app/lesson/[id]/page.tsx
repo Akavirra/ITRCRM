@@ -391,7 +391,7 @@ export default function LessonDetailPage() {
         buttons: [{ type: 'ok', text: 'OK' }]
       });
 
-      router.push('/teacher-app');
+      router.push(`/teacher-app${versionSuffix}`);
     } catch (err) {
       console.error('Finish error:', err);
       alert('Помилка завершення заняття');
@@ -534,7 +534,7 @@ export default function LessonDetailPage() {
         <p style={{ color: 'var(--tg-text-color)', marginBottom: 'var(--space-md)', fontSize: '15px' }}>
           {error || 'Заняття не знайдено'}
         </p>
-        <button onClick={() => router.push('/teacher-app')} className="tg-button" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 auto' }}>
+        <button onClick={() => router.push(`/teacher-app${versionSuffix}`)} className="tg-button" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 auto' }}>
           <ArrowLeftIcon size={16} /> Назад
         </button>
       </div>
