@@ -30,6 +30,17 @@ const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  const legacyTelegramLessonMatch = pathname.match(/^\/telegram\/lesson\/([^/]+)$/)
+  if (legacyTelegramLessonMatch) {
+    const url = request.nextUrl.clone()
+    const versionSeed = (process.env.NEXT_PUBLIC_TEACHER_APP_VERSION || process.env.NEXT_PUBLIC_APP_VERSION || '1').slice(0, 12)
+    if (!url.searchParams.get('v')) {
+      url.searchParams.set('v', versionSeed)
+    }
+    url.pathname = `/teacher-app/lesson/${legacyTelegramLessonMatch[1]}`
+    return NextResponse.redirect(url)
+  }
+
   // Пропускаємо публічні маршрути
   if (isPublicRoute(pathname)) {
     return NextResponse.next()

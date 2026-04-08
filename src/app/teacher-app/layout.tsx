@@ -85,6 +85,21 @@ function TeacherAppContent({ children }: { children: ReactNode }) {
   return (
     <div className="teacher-app-layout has-navbar">
       <main>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+          <div
+            style={{
+              fontSize: '10px',
+              lineHeight: 1,
+              padding: '4px 6px',
+              borderRadius: '999px',
+              background: 'var(--tg-primary-bg)',
+              color: 'var(--tg-text-secondary)',
+              border: '1px solid var(--tg-border)',
+            }}
+          >
+            build {searchParams.get('v')?.slice(0, 12) || 'none'}
+          </div>
+        </div>
         <RoleToggle currentRole="teacher" />
         {children}
       </main>
