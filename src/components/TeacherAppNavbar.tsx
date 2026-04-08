@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { CalendarIcon, BookOpenIcon, UserIcon } from '@/components/Icons';
 
 interface NavbarProps {
@@ -10,22 +10,24 @@ interface NavbarProps {
 
 export default function TeacherAppNavbar({ teacherName }: NavbarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const versionSuffix = searchParams.get('v') ? `?v=${encodeURIComponent(searchParams.get('v')!)}` : '';
 
   const navItems = [
     {
-      href: '/teacher-app',
+      href: `/teacher-app${versionSuffix}`,
       label: 'Розклад',
       icon: CalendarIcon,
       active: pathname === '/teacher-app',
     },
     {
-      href: '/teacher-app/groups',
+      href: `/teacher-app/groups${versionSuffix}`,
       label: 'Групи',
       icon: BookOpenIcon,
       active: pathname === '/teacher-app/groups',
     },
     {
-      href: '/teacher-app/profile',
+      href: `/teacher-app/profile${versionSuffix}`,
       label: 'Профіль',
       icon: UserIcon,
       active: pathname === '/teacher-app/profile',

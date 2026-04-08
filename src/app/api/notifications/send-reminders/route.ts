@@ -168,7 +168,8 @@ export async function POST(request: NextRequest) {
 
       // Create inline keyboard with Mini App button
       const WEB_APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
-      const miniAppUrl = `${WEB_APP_URL}/teacher-app`;
+      const teacherAppVersion = (process.env.NEXT_PUBLIC_TEACHER_APP_VERSION || process.env.VERCEL_GIT_COMMIT_SHA || '1').slice(0, 12);
+      const miniAppUrl = `${WEB_APP_URL}/teacher-app?v=${encodeURIComponent(teacherAppVersion)}`;
       
       const keyboard: { inline_keyboard: Array<Array<{ text: string; web_app: { url: string } }>> } = {
         inline_keyboard: [

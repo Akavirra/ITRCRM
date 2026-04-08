@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useTelegramInitData } from '@/components/TelegramWebAppProvider';
 import {
   UserIcon, BarChartIcon, BookOpenIcon, DollarIcon, SparklesIcon,
@@ -85,6 +86,8 @@ function getRoleDisplay(role: string): string {
 
 export default function TeacherProfilePage() {
   const { initData, isLoading: initLoading } = useTelegramInitData();
+  const searchParams = useSearchParams();
+  const versionSuffix = searchParams.get('v') ? `?v=${encodeURIComponent(searchParams.get('v')!)}` : '';
 
   // Profile state
   const [data, setData] = useState<ProfileData | null>(null);
@@ -656,7 +659,7 @@ export default function TeacherProfilePage() {
                     {monthStats.lessons.map(lesson => (
                       <Link
                         key={lesson.lesson_id}
-                        href={`/teacher-app/lesson/${lesson.lesson_id}`}
+                        href={`/teacher-app/lesson/${lesson.lesson_id}${versionSuffix}`}
                         style={{
                           display: 'flex',
                           alignItems: 'center',

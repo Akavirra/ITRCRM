@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv } from '@/lib/date-utils';
 import { AlertTriangleIcon, CalendarIcon, UsersIcon, FileTextIcon, CheckCircleIcon, RefreshIcon } from '@/components/Icons';
@@ -41,6 +41,7 @@ interface ScheduleData {
 
 export default function TeacherAppPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { initData, isLoading: initLoading, error: initError, refresh } = useTelegramInitData();
   const { isInWebView, retryCount } = useTelegramWebApp();
   
@@ -208,6 +209,8 @@ export default function TeacherAppPage() {
     }
   };
 
+  const versionSuffix = searchParams.get('v') ? `?v=${encodeURIComponent(searchParams.get('v')!)}` : '';
+
   if (loading) {
     return (
       <div className="tg-loading">
@@ -336,7 +339,7 @@ export default function TeacherAppPage() {
           dayLessons.map(lesson => (
             <div
               key={lesson.id}
-              onClick={() => router.push(`/teacher-app/lesson/${lesson.id}`)}
+              onClick={() => router.push(`/teacher-app/lesson/${lesson.id}${versionSuffix}`)}
               className="tg-lesson-card"
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>

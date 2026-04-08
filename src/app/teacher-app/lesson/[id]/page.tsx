@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type TouchEvent as ReactTouchEvent } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv, formatDateTimeKyiv } from '@/lib/date-utils';
 import { getUploadErrorMessage, prepareImageFilesForUpload, uploadFileToMediaService } from '@/lib/client-photo-upload';
@@ -106,7 +106,9 @@ function getDriveLargeThumbnailUrl(fileId: string): string {
 export default function LessonDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const lessonId = params.id as string;
+  const versionSuffix = searchParams.get('v') ? `?v=${encodeURIComponent(searchParams.get('v')!)}` : '';
   
   const { initData, isLoading: initLoading, error: initError } = useTelegramInitData();
   const { webApp, isInWebView } = useTelegramWebApp();
@@ -182,7 +184,7 @@ export default function LessonDetailPage() {
         if (webApp?.BackButton) {
           webApp.BackButton.show();
           webApp.BackButton.onClick(() => {
-            router.push('/teacher-app');
+            router.push(`/teacher-app${versionSuffix}`);
           });
         }
 
@@ -579,7 +581,7 @@ export default function LessonDetailPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-xl)' }}>
         <div>
           <button 
-            onClick={() => router.push('/teacher-app')}
+            onClick={() => router.push(`/teacher-app${versionSuffix}`)}
             style={{ 
               background: 'none', 
               border: 'none', 
