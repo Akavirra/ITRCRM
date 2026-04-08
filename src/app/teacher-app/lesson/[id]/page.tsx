@@ -134,6 +134,8 @@ export default function LessonDetailPage() {
   const [processingVideoIds, setProcessingVideoIds] = useState<Record<number, boolean>>({});
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const pendingPhotosRef = useRef<PendingPhotoPreview[]>([]);
+  const viewerTouchStartXRef = useRef<number | null>(null);
+  const viewerTouchStartYRef = useRef<number | null>(null);
 
   // Check if lesson is from a past day
   useEffect(() => {
@@ -570,6 +572,40 @@ export default function LessonDetailPage() {
     }
 
     setViewerIndex(nextIndex);
+  };
+
+  const handleViewerTouchStart = (event: ReactTouchEvent<HTMLElement>) => {
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    viewerTouchStartXRef.current = touch.clientX;
+    viewerTouchStartYRef.current = touch.clientY;
+  };
+
+  const handleViewerTouchEnd = (event: ReactTouchEvent<HTMLElement>) => {
+    const startX = viewerTouchStartXRef.current;
+    const startY = viewerTouchStartYRef.current;
+    const touch = event.changedTouches[0];
+
+    viewerTouchStartXRef.current = null;
+    viewerTouchStartYRef.current = null;
+
+    if (!touch || startX === null || startY === null || viewerIndex === null) {
+      return;
+    }
+
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+
+    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) <= Math.abs(deltaY)) {
+      return;
+    }
+
+    if (deltaX < 0) {
+      navigateMediaViewer(viewerIndex + 1);
+      return;
+    }
+
+    navigateMediaViewer(viewerIndex - 1);
   };
 
   const handleMediaPreviewActivate = (
@@ -1162,6 +1198,8 @@ export default function LessonDetailPage() {
 
           <div
             onClick={(event) => event.stopPropagation()}
+            onTouchStart={handleViewerTouchStart}
+            onTouchEnd={handleViewerTouchEnd}
             style={{
               flex: 1,
               position: 'relative',

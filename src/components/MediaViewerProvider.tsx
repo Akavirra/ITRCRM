@@ -132,6 +132,8 @@ function MediaViewerModal({ files, index, onClose, onNavigate }: {
     if (typeof window === 'undefined') return { width: 760, height: 520 };
     return calcMediaSize(file.media_width, file.media_height, mediaType);
   });
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
 
   useEffect(() => {
     setModalSize(calcMediaSize(file.media_width, file.media_height, mediaType));
@@ -152,6 +154,42 @@ function MediaViewerModal({ files, index, onClose, onNavigate }: {
     const img = e.currentTarget;
     if (!img.naturalWidth || !img.naturalHeight) return;
     setModalSize(calcMediaSize(img.naturalWidth, img.naturalHeight, 'image'));
+  }
+
+  function handleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+  }
+
+  function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    const startX = touchStartXRef.current;
+    const startY = touchStartYRef.current;
+    const touch = event.changedTouches[0];
+
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    if (!touch || startX === null || startY === null) {
+      return;
+    }
+
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+
+    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) <= Math.abs(deltaY)) {
+      return;
+    }
+
+    if (deltaX < 0 && index < files.length - 1) {
+      onNavigate(index + 1);
+      return;
+    }
+
+    if (deltaX > 0 && index > 0) {
+      onNavigate(index - 1);
+    }
   }
 
   const headerAction = (
@@ -198,7 +236,11 @@ function MediaViewerModal({ files, index, onClose, onNavigate }: {
       contentStyle={{ padding: 0, background: isAudio ? '#f8fafc' : '#0f172a', overflow: 'hidden', position: 'relative' }}
     >
       <style>{`@keyframes mediaFadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
 
         {!isAudio && hasNav && index > 0 && (
           <button onClick={() => onNavigate(index - 1)}
