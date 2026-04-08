@@ -8,7 +8,7 @@ import { useGroupModals } from './GroupModalsContext';
 import { useCourseModals } from './CourseModalsContext';
 import { useTeacherModals } from './TeacherModalsContext';
 import { Clock, BookOpen, User, Check, X, Calendar, Trash2, UserMinus, Users, MoreVertical, Edit2, Save, RefreshCw, ExternalLink, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
-import { getUploadErrorMessage, prepareImageFilesForUpload, uploadFileToDriveResumableSession } from '@/lib/client-photo-upload';
+import { getUploadErrorMessage, prepareImageFilesForUpload, uploadFileToMediaService } from '@/lib/client-photo-upload';
 import { isVideoMimeType } from '@/lib/lesson-media';
 
 interface Teacher {
@@ -562,26 +562,7 @@ export default function LessonModalsManager() {
           throw new Error(getUploadErrorMessage(startData, 'Не вдалося підготувати завантаження відео'));
         }
 
-        const uploadedDriveFile = await uploadFileToDriveResumableSession(startData.uploadUrl, file);
-
-        const finalizeRes = await fetch(`/api/lessons/${lessonId}/photos/direct`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'finalize',
-            driveFileId: uploadedDriveFile.id,
-            fileName: uploadedDriveFile.name || file.name,
-            mimeType: uploadedDriveFile.mimeType || file.type || 'application/octet-stream',
-            fileSize: Number(uploadedDriveFile.size ?? file.size),
-          }),
-        });
-
-        const finalizeData = await finalizeRes.json().catch(() => ({}));
-        if (!finalizeRes.ok) {
-          throw new Error(getUploadErrorMessage(finalizeData, 'Не вдалося завершити завантаження відео'));
-        }
-
-        latestData = finalizeData;
+        latestData = await uploadFileToMediaService(startData.uploadUrl, startData.uploadToken, lessonId, file);
         uploadedCount += 1;
         setPhotoUploadProgress(prev => ({ ...prev, [lessonId]: { current: uploadedCount, total: preparedFiles.length } }));
       }

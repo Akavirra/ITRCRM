@@ -110,6 +110,68 @@ export async function uploadFileToDriveResumableSession(
   });
 }
 
+export async function uploadFileToMediaService(
+  uploadUrl: string,
+  token: string,
+  lessonId: number,
+  file: File,
+  onProgress?: (loaded: number, total: number) => void
+): Promise<{
+  photoFolder?: { id: string; name: string; url: string; exists: boolean } | null;
+  photos?: Array<{
+    id: number;
+    driveFileId: string;
+    url: string;
+    downloadUrl: string;
+    thumbnailUrl: string;
+    fileName: string;
+    mimeType: string | null;
+    size: number | null;
+    uploadedAt: string;
+    uploadedBy: string | null;
+    uploadedVia: 'admin' | 'telegram';
+  }>;
+  canManagePhotos?: boolean;
+}> {
+  return await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', uploadUrl);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        onProgress?.(event.loaded, event.total);
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Не вдалося завантажити медіа через upload service'));
+    xhr.onabort = () => reject(new Error('Завантаження файлу було скасовано'));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error('Upload service повернув некоректну відповідь'));
+        }
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(xhr.responseText);
+        reject(new Error(getUploadErrorMessage(parsed, 'Не вдалося завантажити медіа через upload service')));
+      } catch {
+        reject(new Error(`Upload service upload failed with status ${xhr.status}`));
+      }
+    };
+
+    const formData = new FormData();
+    formData.append('token', token);
+    formData.append('lessonId', String(lessonId));
+    formData.append('file', file);
+
+    xhr.send(formData);
+  });
+}
+
 function shouldCompressImage(file: File): boolean {
   if (!file.type.startsWith('image/')) {
     return false;

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne } from '@/db/neon';
 import crypto from 'crypto';
-import { ensureLessonPhotoFolder, getLessonPhotoPayload, registerLessonDriveFile } from '@/lib/lesson-photos';
-import { createDriveResumableUploadSession } from '@/lib/google-drive';
+import { getLessonPhotoPayload, registerLessonDriveFile } from '@/lib/lesson-photos';
 import { isSupportedLessonMediaFile, resolveLessonMediaMimeType } from '@/lib/lesson-media';
+import { createUploadServiceToken, getUploadServiceUrl } from '@/lib/upload-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -120,19 +120,23 @@ export async function POST(
       return NextResponse.json({ error: 'Файл перевищує 1GB' }, { status: 400 });
     }
 
-    const folder = await ensureLessonPhotoFolder(lessonId);
-    if (!folder) {
+    const uploadToken = createUploadServiceToken({
+      lessonId,
+      userId: access.teacher!.id,
+      userName: access.teacher!.name,
+      via: 'telegram',
+      telegramId: access.telegramId ?? null,
+    });
+    if (false) {
       return NextResponse.json({ error: 'Медіа доступні лише для групових занять' }, { status: 400 });
     }
 
-    const uploadUrl = await createDriveResumableUploadSession({
+    return NextResponse.json({
+      uploadUrl: `${getUploadServiceUrl()}/upload/lesson-media`,
+      uploadToken,
       fileName,
       mimeType: resolveLessonMediaMimeType(fileLike),
-      folderId: folder.id,
-      fileSize,
     });
-
-    return NextResponse.json({ uploadUrl, photoFolder: folder });
   }
 
   if (action === 'finalize') {

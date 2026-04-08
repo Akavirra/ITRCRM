@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv, formatDateTimeKyiv } from '@/lib/date-utils';
-import { getUploadErrorMessage, prepareImageFilesForUpload, uploadFileToDriveResumableSession } from '@/lib/client-photo-upload';
+import { getUploadErrorMessage, prepareImageFilesForUpload, uploadFileToMediaService } from '@/lib/client-photo-upload';
 import { isVideoMimeType } from '@/lib/lesson-media';
 import {
   CheckCircleIcon, ClipboardIcon, ClockIcon, RefreshIcon, UsersIcon,
@@ -414,29 +414,7 @@ export default function LessonDetailPage() {
           throw new Error(getUploadErrorMessage(startData, 'Не вдалося підготувати завантаження відео'));
         }
 
-        const uploadedDriveFile = await uploadFileToDriveResumableSession(startData.uploadUrl, file);
-
-        const finalizeResponse = await fetch(`/api/teacher-app/lessons/${lessonId}/photos/direct`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': initData,
-          },
-          body: JSON.stringify({
-            action: 'finalize',
-            driveFileId: uploadedDriveFile.id,
-            fileName: uploadedDriveFile.name || file.name,
-            mimeType: uploadedDriveFile.mimeType || file.type || 'application/octet-stream',
-            fileSize: Number(uploadedDriveFile.size ?? file.size),
-          }),
-        });
-
-        const finalizeData = await finalizeResponse.json().catch(() => ({}));
-        if (!finalizeResponse.ok) {
-          throw new Error(getUploadErrorMessage(finalizeData, 'Не вдалося завершити завантаження відео'));
-        }
-
-        latestResult = finalizeData;
+        latestResult = await uploadFileToMediaService(startData.uploadUrl, startData.uploadToken, Number(lessonId), file);
         uploadedCount += 1;
         setUploadProgress({ current: uploadedCount, total: preparedPhotos.length });
       }
