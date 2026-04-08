@@ -29,7 +29,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://res.cloudinary.com https://drive.google.com https://lh3.googleusercontent.com https://api.dicebear.com",
               "frame-src https://drive.google.com",
-              "connect-src 'self' https://*.neon.tech https://www.googleapis.com",
+              "connect-src 'self' https://*.neon.tech https://www.googleapis.com https://*.up.railway.app",
               "font-src 'self' data:",
             ].join('; ')
           }
