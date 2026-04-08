@@ -91,21 +91,8 @@ function parseUploadedAt(value: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function isDriveVideoProcessing(photo: LessonPhoto, isReady: boolean = false): boolean {
-  if (!isVideoFile(photo)) {
-    return false;
-  }
-
-  if (isReady) {
-    return false;
-  }
-
-  const uploadedAt = parseUploadedAt(photo.uploadedAt);
-  if (!uploadedAt) {
-    return false;
-  }
-
-  return Date.now() - uploadedAt.getTime() < 15 * 60 * 1000;
+function isDriveVideoProcessing(photo: LessonPhoto, isPending: boolean = false, isReady: boolean = false): boolean {
+  return isVideoFile(photo) && isPending && !isReady;
 }
 
 export default function LessonDetailPage() {
@@ -134,6 +121,7 @@ export default function LessonDetailPage() {
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhotoPreview[]>([]);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [readyVideoIds, setReadyVideoIds] = useState<Record<number, boolean>>({});
+  const [processingVideoIds, setProcessingVideoIds] = useState<Record<number, boolean>>({});
   const pendingPhotosRef = useRef<PendingPhotoPreview[]>([]);
 
   // Check if lesson is from a past day
@@ -438,6 +426,7 @@ export default function LessonDetailPage() {
       const batches = imageFiles.map((file) => [file]);
       let latestResult: { photoFolder?: LessonData['photoFolder']; photos?: LessonPhoto[] } | null = null;
       let uploadedCount = 0;
+      let knownPhotoIds = new Set(photos.map((photo) => photo.id));
 
       for (const file of videoFiles) {
         const startResponse = await fetch(`/api/teacher-app/lessons/${lessonId}/photos/direct`, {
@@ -460,6 +449,21 @@ export default function LessonDetailPage() {
         }
 
         latestResult = await uploadFileToMediaService(startData.uploadUrl, startData.uploadToken, Number(lessonId), file);
+        const newVideoIds = (latestResult.photos || [])
+          .filter((photo) => isVideoFile(photo) && !knownPhotoIds.has(photo.id))
+          .map((photo) => photo.id);
+
+        if (newVideoIds.length > 0) {
+          setProcessingVideoIds((prev) => {
+            const next = { ...prev };
+            newVideoIds.forEach((photoId) => {
+              next[photoId] = true;
+            });
+            return next;
+          });
+        }
+
+        knownPhotoIds = new Set((latestResult.photos || []).map((photo) => photo.id));
         uploadedCount += 1;
         setUploadProgress({ current: uploadedCount, total: preparedPhotos.length });
       }
@@ -839,13 +843,31 @@ export default function LessonDetailPage() {
                             preload="metadata"
                             onLoadedData={() => {
                               setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                              setProcessingVideoIds((prev) => {
+                                if (!prev[photo.id]) {
+                                  return prev;
+                                }
+
+                                const next = { ...prev };
+                                delete next[photo.id];
+                                return next;
+                              });
                             }}
                             onCanPlay={() => {
                               setReadyVideoIds((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                              setProcessingVideoIds((prev) => {
+                                if (!prev[photo.id]) {
+                                  return prev;
+                                }
+
+                                const next = { ...prev };
+                                delete next[photo.id];
+                                return next;
+                              });
                             }}
                             style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', background: '#000' }}
                           />
-                          {isDriveVideoProcessing(photo, Boolean(readyVideoIds[photo.id])) && (
+                          {isDriveVideoProcessing(photo, Boolean(processingVideoIds[photo.id]), Boolean(readyVideoIds[photo.id])) && (
                             <div style={{
                               position: 'absolute',
                               inset: 0,

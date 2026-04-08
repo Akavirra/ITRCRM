@@ -115,21 +115,8 @@ function parseUploadedAt(value: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function isDriveVideoProcessing(photo: LessonPhotoFile, isReady: boolean = false): boolean {
-  if (!isVideoLessonMedia(photo)) {
-    return false;
-  }
-
-  if (isReady) {
-    return false;
-  }
-
-  const uploadedAt = parseUploadedAt(photo.uploadedAt);
-  if (!uploadedAt) {
-    return false;
-  }
-
-  return Date.now() - uploadedAt.getTime() < 15 * 60 * 1000;
+function isDriveVideoProcessing(photo: LessonPhotoFile, isPending: boolean = false, isReady: boolean = false): boolean {
+  return isVideoLessonMedia(photo) && isPending && !isReady;
 }
 
 function formatDateTime(startTime: string, endTime: string): string {
@@ -220,6 +207,7 @@ export default function LessonModalsManager() {
   const [photoUploadProgress, setPhotoUploadProgress] = useState<Record<number, { current: number; total: number } | null>>({});
   const [photoDeleting, setPhotoDeleting] = useState<Record<number, number | null>>({});
   const [readyLessonVideos, setReadyLessonVideos] = useState<Record<number, boolean>>({});
+  const [processingLessonVideos, setProcessingLessonVideos] = useState<Record<number, boolean>>({});
 
   // Load teachers list
   const loadTeachers = async (lessonId: number) => {
@@ -571,6 +559,7 @@ export default function LessonModalsManager() {
       const batches = imageFiles.map((file) => [file]);
       let latestData: { photoFolder?: LessonPhotoFolder | null; photos?: LessonPhotoFile[]; canManagePhotos?: boolean } | null = null;
       let uploadedCount = 0;
+      let knownPhotoIds = new Set((lessonPhotos[lessonId] || []).map((photo) => photo.id));
 
       for (const file of videoFiles) {
         const startRes = await fetch(`/api/lessons/${lessonId}/photos/direct`, {
@@ -590,6 +579,21 @@ export default function LessonModalsManager() {
         }
 
         latestData = await uploadFileToMediaService(startData.uploadUrl, startData.uploadToken, lessonId, file);
+        const newVideoIds = (latestData.photos || [])
+          .filter((photo) => isVideoLessonMedia(photo) && !knownPhotoIds.has(photo.id))
+          .map((photo) => photo.id);
+
+        if (newVideoIds.length > 0) {
+          setProcessingLessonVideos((prev) => {
+            const next = { ...prev };
+            newVideoIds.forEach((photoId) => {
+              next[photoId] = true;
+            });
+            return next;
+          });
+        }
+
+        knownPhotoIds = new Set((latestData.photos || []).map((photo) => photo.id));
         uploadedCount += 1;
         setPhotoUploadProgress(prev => ({ ...prev, [lessonId]: { current: uploadedCount, total: preparedFiles.length } }));
       }
@@ -653,6 +657,24 @@ export default function LessonModalsManager() {
         ...prev,
         [lessonId]: (prev[lessonId] || []).filter((photo) => photo.id !== photoId),
       }));
+      setProcessingLessonVideos((prev) => {
+        if (!(photoId in prev)) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
+      setReadyLessonVideos((prev) => {
+        if (!(photoId in prev)) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
       await loadLessonDataRef.current(lessonId);
     } catch (error) {
       console.error('Failed to delete lesson photo:', error);
@@ -1393,13 +1415,31 @@ export default function LessonModalsManager() {
                                           preload="metadata"
                                           onLoadedData={() => {
                                             setReadyLessonVideos((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                                            setProcessingLessonVideos((prev) => {
+                                              if (!prev[photo.id]) {
+                                                return prev;
+                                              }
+
+                                              const next = { ...prev };
+                                              delete next[photo.id];
+                                              return next;
+                                            });
                                           }}
                                           onCanPlay={() => {
                                             setReadyLessonVideos((prev) => prev[photo.id] ? prev : { ...prev, [photo.id]: true });
+                                            setProcessingLessonVideos((prev) => {
+                                              if (!prev[photo.id]) {
+                                                return prev;
+                                              }
+
+                                              const next = { ...prev };
+                                              delete next[photo.id];
+                                              return next;
+                                            });
                                           }}
                                           style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'block', background: '#000' }}
                                         />
-                                        {isDriveVideoProcessing(photo, Boolean(readyLessonVideos[photo.id])) && (
+                                        {isDriveVideoProcessing(photo, Boolean(processingLessonVideos[photo.id]), Boolean(readyLessonVideos[photo.id])) && (
                                           <div style={{
                                             position: 'absolute',
                                             inset: '0',
