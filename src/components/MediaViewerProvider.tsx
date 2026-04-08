@@ -120,6 +120,38 @@ function calcMediaSize(
   return { width: 760, height: 520 };
 }
 
+function readVideoMetadata(src: string): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+
+    const cleanup = () => {
+      video.removeAttribute('src');
+      video.load();
+    };
+
+    video.onloadedmetadata = () => {
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+      cleanup();
+      if (!width || !height) {
+        resolve(null);
+        return;
+      }
+      resolve({ width, height });
+    };
+
+    video.onerror = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    video.src = src;
+  });
+}
+
 function MediaViewerModal({ files, index, onClose, onNavigate }: {
   files: MediaFile[];
   index: number;
@@ -142,6 +174,26 @@ function MediaViewerModal({ files, index, onClose, onNavigate }: {
   useEffect(() => {
     setModalSize(calcMediaSize(file.media_width, file.media_height, mediaType));
   }, [file.id, mediaType, file.media_width, file.media_height]);
+
+  useEffect(() => {
+    if (!isVideo || (file.media_width && file.media_height)) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    readVideoMetadata(lessonMediaStreamUrl(file.drive_file_id)).then((metadata) => {
+      if (isCancelled || !metadata) {
+        return;
+      }
+
+      setModalSize(calcMediaSize(metadata.width, metadata.height, 'video'));
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [file.drive_file_id, file.media_height, file.media_width, isVideo]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
