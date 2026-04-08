@@ -782,7 +782,7 @@ export default function LessonDetailPage() {
             color: 'var(--tg-link-color)',
             cursor: uploadingPhotos ? 'not-allowed' : 'pointer',
             opacity: uploadingPhotos ? 0.6 : 1,
-            marginBottom: pendingPhotos.length > 0 ? '16px' : 0,
+            marginBottom: pendingPhotos.length > 0 || photos.length > 0 ? '16px' : 0,
           }}
         >
           <UploadIcon size={16} />
