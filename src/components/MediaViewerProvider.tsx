@@ -313,10 +313,12 @@ function MediaViewerModal({ files, index, onClose, onNavigate }: {
             style={{ width: '100%', height: '100%', border: 'none', animation: 'mediaFadeIn 0.2s ease' }}
           />
         ) : isVideo ? (
-          <iframe
+          <video
             key={file.drive_file_id}
-            src={`https://drive.google.com/file/d/${file.drive_file_id}/preview`}
-            allow="autoplay"
+            src={lessonMediaStreamUrl(file.drive_file_id)}
+            controls
+            playsInline
+            preload="metadata"
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', animation: 'mediaFadeIn 0.2s ease', background: '#000' }}
           />
         ) : (
