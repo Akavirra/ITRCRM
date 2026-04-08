@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type TouchEvent as ReactTouchEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTelegramInitData, useTelegramWebApp } from '@/components/TelegramWebAppProvider';
 import { formatTimeKyiv, formatDateKyiv, formatDateTimeKyiv } from '@/lib/date-utils';
@@ -552,6 +552,19 @@ export default function LessonDetailPage() {
     setViewerIndex(nextIndex);
   };
 
+  const handleMediaPreviewActivate = (
+    event:
+      | ReactMouseEvent<HTMLElement>
+      | ReactPointerEvent<HTMLElement>
+      | ReactTouchEvent<HTMLElement>
+      | ReactKeyboardEvent<HTMLElement>,
+    photoId: number,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openMediaViewer(photoId);
+  };
+
   return (
     <div>
       {/* Header */}
@@ -860,14 +873,15 @@ export default function LessonDetailPage() {
                           <div
                             role="button"
                             tabIndex={0}
-                            onClick={() => openMediaViewer(photo.id)}
+                            onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
+                            onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
+                            onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
                             onKeyDown={(event) => {
                               if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                openMediaViewer(photo.id);
+                                handleMediaPreviewActivate(event, photo.id);
                               }
                             }}
-                            style={{ display: 'block', width: '100%', cursor: 'pointer' }}
+                            style={{ display: 'block', width: '100%', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', userSelect: 'none' }}
                           >
                             <video
                               src={photo.downloadUrl}
@@ -930,14 +944,15 @@ export default function LessonDetailPage() {
                         <div
                           role="button"
                           tabIndex={0}
-                          onClick={() => openMediaViewer(photo.id)}
+                          onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
+                          onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
+                          onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              openMediaViewer(photo.id);
+                              handleMediaPreviewActivate(event, photo.id);
                             }
                           }}
-                          style={{ display: 'block', width: '100%', cursor: 'pointer' }}
+                          style={{ display: 'block', width: '100%', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', userSelect: 'none' }}
                         >
                           <img
                             src={photo.thumbnailUrl}
