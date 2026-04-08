@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { get } from '@/db';
 import { assertInternalApiSecret } from '@/lib/upload-service';
+import { ensureLessonPhotoFolder } from '@/lib/lesson-photos';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,11 +48,19 @@ export async function GET(
     return NextResponse.json({ error: 'Media uploads are available only for group lessons' }, { status: 400 });
   }
 
+  const photoFolder = await ensureLessonPhotoFolder(lessonId);
+  if (!photoFolder) {
+    return NextResponse.json({ error: 'Lesson media folder is unavailable' }, { status: 400 });
+  }
+
   return NextResponse.json({
     lessonId: lesson.lessonId,
     courseTitle: lesson.courseTitle,
     groupTitle: lesson.groupTitle,
     lessonDate: lesson.lessonDate,
     topic: lesson.topic,
+    folderId: photoFolder.id,
+    folderName: photoFolder.name,
+    folderUrl: photoFolder.url,
   });
 }
