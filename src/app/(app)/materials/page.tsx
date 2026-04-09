@@ -71,6 +71,10 @@ type BrowserFile = MediaFile & {
   thumbnail_url?: string;
 };
 
+const MATERIALS_SIDEBAR_WIDTH_KEY = 'materials_sidebar_width';
+const MATERIALS_SIDEBAR_MIN = 250;
+const MATERIALS_SIDEBAR_MAX = 520;
+
 function KebabMenu({ items, counter }: { items: KebabItem[]; counter?: string }) {
   const [open, setOpen] = useState(false);
   const [dropPos, setDropPos] = useState({ top: 0, right: 0 });
@@ -213,7 +217,10 @@ export default function MaterialsPage() {
   const [editingTopicId, setEditingTopicId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(MATERIALS_SIDEBAR_MIN);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sidebarResizeStartRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const loadTopics = useCallback(async () => {
     const res = await fetch('/api/media/topics');
@@ -278,6 +285,54 @@ export default function MaterialsPage() {
   }, [loadLessonFolders, loadTopics]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const stored = window.localStorage.getItem(MATERIALS_SIDEBAR_WIDTH_KEY);
+    if (!stored) return;
+
+    const parsed = Number(stored);
+    if (!Number.isNaN(parsed)) {
+      setSidebarWidth(Math.max(MATERIALS_SIDEBAR_MIN, Math.min(MATERIALS_SIDEBAR_MAX, parsed)));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(MATERIALS_SIDEBAR_WIDTH_KEY, String(sidebarWidth));
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (!isResizingSidebar) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const start = sidebarResizeStartRef.current;
+      if (!start) return;
+
+      const nextWidth = start.startWidth + (event.clientX - start.startX);
+      setSidebarWidth(Math.max(MATERIALS_SIDEBAR_MIN, Math.min(MATERIALS_SIDEBAR_MAX, nextWidth)));
+    };
+
+    const stopResize = () => {
+      setIsResizingSidebar(false);
+      sidebarResizeStartRef.current = null;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', stopResize);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', stopResize);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizingSidebar]);
+
+  useEffect(() => {
     if (source === 'telegram') loadTelegramFiles();
     else loadLessonFiles();
   }, [loadLessonFiles, loadTelegramFiles, source]);
@@ -286,6 +341,14 @@ export default function MaterialsPage() {
     setSearchInput(value);
     if (searchTimer.current) clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => setSearch(value), 350);
+  }
+
+  function startSidebarResize(event: React.MouseEvent<HTMLDivElement>) {
+    sidebarResizeStartRef.current = {
+      startX: event.clientX,
+      startWidth: sidebarWidth,
+    };
+    setIsResizingSidebar(true);
   }
 
   async function renameTopic(id: number, name: string) {
@@ -354,8 +417,8 @@ export default function MaterialsPage() {
         <button type="button" onClick={() => setSource('telegram')} style={{ padding: '8px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', background: source === 'telegram' ? '#fff' : 'transparent', color: source === 'telegram' ? '#1e293b' : '#64748b', fontWeight: 600, boxShadow: source === 'telegram' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>Файли з Telegram</button>
         <button type="button" onClick={() => setSource('lesson')} style={{ padding: '8px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', background: source === 'lesson' ? '#fff' : 'transparent', color: source === 'lesson' ? '#1e293b' : '#64748b', fontWeight: 600, boxShadow: source === 'lesson' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>Медіа занять</button>
       </div>
-      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-        <div style={{ width: 250, flexShrink: 0, background: '#fff', borderRadius: 16, border: '1px solid #f0f0f0', padding: '10px 8px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+      <div style={{ display: 'flex', gap: 0, alignItems: 'stretch' }}>
+        <div style={{ width: sidebarWidth, minWidth: sidebarWidth, flexShrink: 0, background: '#fff', borderRadius: 16, border: '1px solid #f0f0f0', padding: '10px 8px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
           {source === 'telegram' ? (
             <>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', padding: '4px 12px 8px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Теми</div>
@@ -443,6 +506,32 @@ export default function MaterialsPage() {
               })}
             </>
           )}
+        </div>
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Змінити ширину панелі папок"
+          onMouseDown={startSidebarResize}
+          style={{
+            width: 18,
+            margin: '0 10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'col-resize',
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              width: 4,
+              height: '100%',
+              maxHeight: 420,
+              borderRadius: 999,
+              background: isResizingSidebar ? '#3b82f6' : '#e2e8f0',
+              transition: 'background 0.15s ease',
+            }}
+          />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -604,7 +693,7 @@ function ListView({ files, showContextLabel, onOpenLightbox, onDelete, deletingI
                 <FileTypeIcon type={file.file_type} size={22} />
               )}
               {file.file_type === 'video' && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)' }}><Video size={14} color="#fff" /></div>}
-            </div>
+        </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 500, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.file_name}</div>
