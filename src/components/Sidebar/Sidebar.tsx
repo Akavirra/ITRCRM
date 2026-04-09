@@ -105,6 +105,8 @@ interface SidebarEventsData {
   upcomingHolidays: SidebarHolidayEvent[];
   birthdaysToday: SidebarBirthdayEvent[];
   upcomingBirthdays: SidebarBirthdayEvent[];
+  calendarHolidays: SidebarHolidayEvent[];
+  calendarBirthdays: SidebarBirthdayEvent[];
 }
 
 interface SeasonalUiState {
@@ -176,6 +178,15 @@ function padDateValue(value: number): string {
   return String(value).padStart(2, '0');
 }
 
+function buildCalendarTooltip(
+  holidays: SidebarHolidayEvent[],
+  birthdays: SidebarBirthdayEvent[]
+): string {
+  const holidayLines = holidays.map((holiday) => `Свято: ${holiday.name}`);
+  const birthdayLines = birthdays.map((birthday) => `День народження: ${birthday.full_name} (${birthday.ageLabel})`);
+  return [...holidayLines, ...birthdayLines].join('\n');
+}
+
 // divider removed for minimalist design
 
 function SidebarInfoWidget() {
@@ -191,8 +202,8 @@ function SidebarInfoWidget() {
   const weatherBtnRef = useRef<HTMLButtonElement>(null);
   const weatherPopRef = useRef<HTMLDivElement>(null);
   const [weatherPopPos, setWeatherPopPos] = useState({ left: 0, bottom: 20 });
-  const loadEvents = useCallback(() => {
-    fetch('/api/sidebar/events')
+  const loadEvents = useCallback((year: number, month: number) => {
+    fetch(`/api/sidebar/events?year=${year}&month=${month + 1}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(d => setEvents(d))
       .catch(() => { });
@@ -215,10 +226,11 @@ function SidebarInfoWidget() {
   }, []);
 
   useEffect(() => {
-    loadEvents();
-    const id = setInterval(loadEvents, 60 * 60 * 1000);
+    if (calYear < 1000) return;
+    loadEvents(calYear, calMonth);
+    const id = setInterval(() => loadEvents(calYear, calMonth), 60 * 60 * 1000);
     return () => clearInterval(id);
-  }, [loadEvents]);
+  }, [calMonth, calYear, loadEvents]);
 
   useEffect(() => {
     if (!calOpen) return;
@@ -280,13 +292,24 @@ function SidebarInfoWidget() {
   const nextBirthday = events?.upcomingBirthdays[0] ?? null;
   const hasEventSummary = totalEventsToday > 0 || nextHoliday || nextBirthday;
   const holidayDates = new Set([
-    ...(events?.holidaysToday.map((holiday) => holiday.date) ?? []),
-    ...(events?.upcomingHolidays.map((holiday) => holiday.date) ?? []),
+    ...(events?.calendarHolidays.map((holiday) => holiday.date) ?? []),
   ]);
   const birthdayDates = new Set([
-    ...(events?.birthdaysToday.map((birthday) => birthday.next_birthday) ?? []),
-    ...(events?.upcomingBirthdays.map((birthday) => birthday.next_birthday) ?? []),
+    ...(events?.calendarBirthdays.map((birthday) => birthday.next_birthday) ?? []),
   ]);
+  const calendarEventsByDate = new Map<string, { holidays: SidebarHolidayEvent[]; birthdays: SidebarBirthdayEvent[] }>();
+
+  for (const holiday of events?.calendarHolidays ?? []) {
+    const existing = calendarEventsByDate.get(holiday.date) ?? { holidays: [], birthdays: [] };
+    existing.holidays.push(holiday);
+    calendarEventsByDate.set(holiday.date, existing);
+  }
+
+  for (const birthday of events?.calendarBirthdays ?? []) {
+    const existing = calendarEventsByDate.get(birthday.next_birthday) ?? { holidays: [], birthdays: [] };
+    existing.birthdays.push(birthday);
+    calendarEventsByDate.set(birthday.next_birthday, existing);
+  }
 
   let eventSummary = 'Подій немає';
   if (totalEventsToday > 0) {
@@ -513,6 +536,12 @@ function SidebarInfoWidget() {
                 : `${calYear}-${padDateValue(calMonth + 1)}-${padDateValue(day)}`;
               const hasHoliday = dateKey ? holidayDates.has(dateKey) : false;
               const hasBirthday = dateKey ? birthdayDates.has(dateKey) : false;
+              const tooltipText = dateKey
+                ? buildCalendarTooltip(
+                    calendarEventsByDate.get(dateKey)?.holidays ?? [],
+                    calendarEventsByDate.get(dateKey)?.birthdays ?? []
+                  )
+                : '';
               return (
                 <div key={i} style={{
                   textAlign: 'center',
@@ -525,8 +554,11 @@ function SidebarInfoWidget() {
                   lineHeight: '16px',
                   minWidth: 0,
                   position: 'relative',
+                  cursor: tooltipText ? 'help' : 'default',
                 }}>
-                  {day ?? ''}
+                  <span title={tooltipText || undefined}>
+                    {day ?? ''}
+                  </span>
                   {day !== null && (hasHoliday || hasBirthday) && (
                     <span style={{
                       position: 'absolute',

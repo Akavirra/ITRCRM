@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { all } from '@/db';
 import { getAuthUser, unauthorized } from '@/lib/api-utils';
 import { getUkrainianHolidaysInRange } from '@/lib/ukrainian-holidays';
-import { addDays, differenceInCalendarDays, format } from 'date-fns';
+import { addDays, differenceInCalendarDays, endOfMonth, format, startOfMonth } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +13,16 @@ interface StudentBirthdayRow {
   id: number;
   full_name: string;
   birth_date: string | Date;
+}
+
+interface SidebarBirthdayEventResponse {
+  id: number;
+  full_name: string;
+  birth_date: string | Date;
+  next_birthday: string;
+  dayDiff: number;
+  age: number;
+  label: string;
 }
 
 function pad(value: number): string {
@@ -64,8 +74,7 @@ function getNextBirthdayDate(birthDate: string | Date, today: Date): Date {
 
 function getAgeOnBirthday(birthDate: string | Date, birthdayDate: Date): number {
   const { year } = normalizeBirthDateParts(birthDate);
-  const birthYear = Number(year);
-  return birthdayDate.getUTCFullYear() - birthYear;
+  return birthdayDate.getUTCFullYear() - Number(year);
 }
 
 function ageWord(age: number): string {
@@ -93,14 +102,37 @@ function formatBirthdayLabel(date: Date, dayDiff: number): string {
   }).format(date);
 }
 
+function buildBirthdayEvent(student: StudentBirthdayRow, eventDate: Date, today: Date): SidebarBirthdayEventResponse {
+  const dayDiff = differenceInCalendarDays(eventDate, today);
+
+  return {
+    id: student.id,
+    full_name: student.full_name,
+    birth_date: student.birth_date,
+    next_birthday: format(eventDate, 'yyyy-MM-dd'),
+    dayDiff,
+    age: getAgeOnBirthday(student.birth_date, eventDate),
+    label: formatBirthdayLabel(eventDate, dayDiff),
+  };
+}
+
 export async function GET(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return unauthorized();
+
+  const url = new URL(request.url);
+  const requestedYear = Number(url.searchParams.get('year'));
+  const requestedMonth = Number(url.searchParams.get('month'));
 
   const kyivNow = toZonedTime(new Date(), KYIV_TIME_ZONE);
   const today = new Date(Date.UTC(kyivNow.getFullYear(), kyivNow.getMonth(), kyivNow.getDate()));
   const endDate = addDays(today, 7);
   const todayKey = formatDateKey(today);
+
+  const calendarYear = Number.isFinite(requestedYear) ? requestedYear : today.getUTCFullYear();
+  const calendarMonthIndex = Number.isFinite(requestedMonth) ? requestedMonth - 1 : today.getUTCMonth();
+  const monthStart = startOfMonth(new Date(Date.UTC(calendarYear, calendarMonthIndex, 1)));
+  const monthEnd = endOfMonth(monthStart);
 
   const students = await all<StudentBirthdayRow>(
     `SELECT id, full_name, birth_date
@@ -110,23 +142,24 @@ export async function GET(request: NextRequest) {
   );
 
   const birthdays = students
-    .map((student) => {
-      const nextBirthday = getNextBirthdayDate(student.birth_date, today);
-      const dayDiff = differenceInCalendarDays(nextBirthday, today);
-
-      return {
-        id: student.id,
-        full_name: student.full_name,
-        birth_date: student.birth_date,
-        next_birthday: format(nextBirthday, 'yyyy-MM-dd'),
-        dayDiff,
-        age: getAgeOnBirthday(student.birth_date, nextBirthday),
-        label: formatBirthdayLabel(nextBirthday, dayDiff),
-      };
-    })
+    .map((student) => buildBirthdayEvent(student, getNextBirthdayDate(student.birth_date, today), today))
     .filter((student) => student.dayDiff >= 0 && student.dayDiff <= 7)
     .sort((a, b) => {
       if (a.dayDiff !== b.dayDiff) return a.dayDiff - b.dayDiff;
+      return a.full_name.localeCompare(b.full_name, 'uk-UA');
+    });
+
+  const calendarBirthdays = students
+    .map((student) => {
+      const birthdayInMonth = getBirthdayDateForYear(student.birth_date, calendarYear);
+      if (birthdayInMonth < monthStart || birthdayInMonth > monthEnd) {
+        return null;
+      }
+      return buildBirthdayEvent(student, birthdayInMonth, today);
+    })
+    .filter((student): student is SidebarBirthdayEventResponse => student !== null)
+    .sort((a, b) => {
+      if (a.next_birthday !== b.next_birthday) return a.next_birthday.localeCompare(b.next_birthday);
       return a.full_name.localeCompare(b.full_name, 'uk-UA');
     });
 
@@ -135,7 +168,21 @@ export async function GET(request: NextRequest) {
     dayDiff: differenceInCalendarDays(new Date(`${holiday.date}T00:00:00.000Z`), today),
     label: holiday.date === todayKey
       ? 'Сьогодні'
-      : formatBirthdayLabel(new Date(`${holiday.date}T00:00:00.000Z`), differenceInCalendarDays(new Date(`${holiday.date}T00:00:00.000Z`), today)),
+      : formatBirthdayLabel(
+          new Date(`${holiday.date}T00:00:00.000Z`),
+          differenceInCalendarDays(new Date(`${holiday.date}T00:00:00.000Z`), today)
+        ),
+  }));
+
+  const calendarHolidays = getUkrainianHolidaysInRange(monthStart, monthEnd).map((holiday) => ({
+    ...holiday,
+    dayDiff: differenceInCalendarDays(new Date(`${holiday.date}T00:00:00.000Z`), today),
+    label: holiday.date === todayKey
+      ? 'Сьогодні'
+      : formatBirthdayLabel(
+          new Date(`${holiday.date}T00:00:00.000Z`),
+          differenceInCalendarDays(new Date(`${holiday.date}T00:00:00.000Z`), today)
+        ),
   }));
 
   return NextResponse.json({
@@ -154,5 +201,10 @@ export async function GET(request: NextRequest) {
         ...student,
         ageLabel: `${student.age} ${ageWord(student.age)}`,
       })),
+    calendarHolidays,
+    calendarBirthdays: calendarBirthdays.map((student) => ({
+      ...student,
+      ageLabel: `${student.age} ${ageWord(student.age)}`,
+    })),
   });
 }
