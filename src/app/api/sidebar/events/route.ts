@@ -12,7 +12,7 @@ const KYIV_TIME_ZONE = 'Europe/Kyiv';
 interface StudentBirthdayRow {
   id: number;
   full_name: string;
-  birth_date: string;
+  birth_date: string | Date;
 }
 
 function pad(value: number): string {
@@ -23,14 +23,37 @@ function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
 
-function getBirthdayDateForYear(birthDate: string, year: number): Date {
-  const [, monthRaw, dayRaw] = birthDate.slice(0, 10).split('-').map(Number);
-  const month = monthRaw;
-  const day = month === 2 && dayRaw === 29 && !isLeapYear(year) ? 28 : dayRaw;
+function normalizeBirthDateParts(birthDate: string | Date): { year: number; month: number; day: number } {
+  if (birthDate instanceof Date) {
+    const kyivDate = toZonedTime(birthDate, KYIV_TIME_ZONE);
+    return {
+      year: kyivDate.getFullYear(),
+      month: kyivDate.getMonth() + 1,
+      day: kyivDate.getDate(),
+    };
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+    const [year, month, day] = birthDate.split('-').map(Number);
+    return { year, month, day };
+  }
+
+  const parsed = new Date(birthDate);
+  const kyivDate = toZonedTime(parsed, KYIV_TIME_ZONE);
+  return {
+    year: kyivDate.getFullYear(),
+    month: kyivDate.getMonth() + 1,
+    day: kyivDate.getDate(),
+  };
+}
+
+function getBirthdayDateForYear(birthDate: string | Date, year: number): Date {
+  const { month, day: rawDay } = normalizeBirthDateParts(birthDate);
+  const day = month === 2 && rawDay === 29 && !isLeapYear(year) ? 28 : rawDay;
   return new Date(Date.UTC(year, month - 1, day));
 }
 
-function getNextBirthdayDate(birthDate: string, today: Date): Date {
+function getNextBirthdayDate(birthDate: string | Date, today: Date): Date {
   const year = today.getUTCFullYear();
   const currentYearBirthday = getBirthdayDateForYear(birthDate, year);
   if (currentYearBirthday >= today) {
@@ -39,8 +62,9 @@ function getNextBirthdayDate(birthDate: string, today: Date): Date {
   return getBirthdayDateForYear(birthDate, year + 1);
 }
 
-function getAgeOnBirthday(birthDate: string, birthdayDate: Date): number {
-  const birthYear = Number(birthDate.slice(0, 4));
+function getAgeOnBirthday(birthDate: string | Date, birthdayDate: Date): number {
+  const { year } = normalizeBirthDateParts(birthDate);
+  const birthYear = Number(year);
   return birthdayDate.getUTCFullYear() - birthYear;
 }
 
