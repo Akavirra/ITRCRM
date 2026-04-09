@@ -1223,9 +1223,25 @@ export default function MaterialsPage() {
             </span>
 
             {source === 'lesson' && selectedLessonScope.driveUrl && (
-              <a href={selectedLessonScope.driveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>
-                <ExternalLink size={14} />
-                Відкрити папку на Drive
+              <a
+                href={selectedLessonScope.driveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Відкрити папку на Drive"
+                aria-label="Відкрити папку на Drive"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  color: '#2563eb',
+                  textDecoration: 'none',
+                  flexShrink: 0,
+                }}
+              >
+                <ExternalLink size={16} />
               </a>
             )}
 
