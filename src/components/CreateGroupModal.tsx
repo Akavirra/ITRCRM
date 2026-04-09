@@ -59,6 +59,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [titlePreview, setTitlePreview] = useState('');
+  const [groupFormStep, setGroupFormStep] = useState<'schedule' | 'students' | 'extra'>('schedule');
 
   // Use ref to avoid infinite re-render loop when initialStudents changes reference
   const initialStudentsRef = useRef(initialStudents);
@@ -69,6 +70,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
     if (isOpen) {
       setSelectedStudents([...initialStudentsRef.current]);
       resetForm();
+      setGroupFormStep('schedule');
       const today = new Date().toISOString().split('T')[0];
       setNewGroupStartDate(today);
       fetchData();
@@ -173,7 +175,13 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
     setSearchQuery('');
     setDropdownStudents([]);
     setIsDropdownOpen(false);
+    setGroupFormStep('schedule');
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+  };
+
+  const closeModal = () => {
+    setGroupFormStep('schedule');
+    onClose();
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -212,7 +220,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
       const data = await res.json();
 
       if (res.ok) {
-        onClose();
+        closeModal();
         if (onSuccess) {
           onSuccess(data.id);
         } else {
@@ -232,8 +240,20 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 100 }}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '90vh' }}>
+    <div className="modal-overlay" onClick={closeModal} style={{ zIndex: 100 }}>
+      <div
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '760px',
+          maxHeight: '92vh',
+          overflow: 'hidden',
+          borderRadius: '24px',
+          border: '1px solid #e2e8f0',
+          backgroundColor: '#f7f9fc',
+          boxShadow: '0 28px 70px rgba(15, 23, 42, 0.16)',
+        }}
+      >
         <div className="modal-header" style={{ 
           padding: '1.25rem 1.5rem', 
           borderBottom: '1px solid #e5e7eb',
