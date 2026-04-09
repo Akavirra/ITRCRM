@@ -1,5 +1,12 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
+
+const inter = Inter({
+  subsets: ['latin', 'cyrillic'],
+  display: 'swap',
+  variable: '--font-inter',
+});
 import { GroupModalsProvider } from '@/components/GroupModalsProvider';
 import GroupModalsWrapper from '@/components/GroupModalsWrapper';
 import { StudentModalsProvider } from '@/components/StudentModalsProvider';
@@ -29,8 +36,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="uk">
-      <body>
+    <html lang="uk" className={inter.variable}>
+      <body className={inter.className}>
         <ErrorBoundary>
           <MediaViewerProvider>
           <CalculatorProvider>

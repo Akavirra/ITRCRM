@@ -66,9 +66,11 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   ]);
 
   const schedulePromise = all<DashboardStatsPayload['todaySchedule'][number]>(
-    `SELECT 
+    `SELECT
       l.id, l.start_datetime, l.end_datetime, l.status, l.topic,
-      g.title as group_title, c.title as course_title, u.name as teacher_name
+      l.group_id, l.is_makeup, l.is_trial, l.original_date,
+      g.title as group_title, c.title as course_title, u.name as teacher_name,
+      CASE WHEN l.teacher_id IS NOT NULL AND g.teacher_id IS NOT NULL AND l.teacher_id != g.teacher_id THEN true ELSE false END as is_replaced
      FROM lessons l
      LEFT JOIN groups g ON l.group_id = g.id
      LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id

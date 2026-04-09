@@ -17,9 +17,14 @@
     endTimeLabel: string;
     status: string;
     topic?: string;
+    group_id: number | null;
     group_title: string;
     course_title: string;
     teacher_name: string;
+    is_makeup: boolean;
+    is_trial: boolean;
+    original_date: string | null;
+    is_replaced: boolean;
   }>;
   upcomingBirthdays: Array<{
     id: number;
