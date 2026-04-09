@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
-import { createSingleLesson, createIndividualGroup } from '@/lib/lessons';
+import { getAuthUser, unauthorized, forbidden } from '@/lib/api-utils';
+import {
+  createLessonsBatch,
+  findTeacherScheduleConflicts,
+  type ManualLessonSlot,
+} from '@/lib/lessons';
 import { get, run } from '@/db';
-import { format } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
-// Ukrainian error messages
 const ERROR_MESSAGES = {
   missingRequiredFields: "Відсутні обов'язкові поля",
   invalidDate: 'Некоректна дата',
@@ -18,12 +20,11 @@ const ERROR_MESSAGES = {
   createFailed: 'Не вдалося створити заняття',
 };
 
-// Validation helpers
 function validateDate(dateStr: string): boolean {
   const regex = /^\d{4}-\d{2}-\d{2}$/;
   if (!regex.test(dateStr)) return false;
   const date = new Date(dateStr);
-  return !isNaN(date.getTime());
+  return !Number.isNaN(date.getTime());
 }
 
 function validateTime(timeStr: string): boolean {
@@ -35,78 +36,165 @@ function validateDuration(duration: number): boolean {
   return Number.isInteger(duration) && duration >= 1 && duration <= 480;
 }
 
-// POST /api/lessons/single - Create a single lesson
+function normalizeSlots(body: any): ManualLessonSlot[] {
+  if (Array.isArray(body?.slots) && body.slots.length > 0) {
+    return body.slots;
+  }
+
+  return [{
+    lessonDate: body?.lessonDate,
+    startTime: body?.startTime,
+    durationMinutes: body?.durationMinutes,
+  }];
+}
+
+function buildAttendanceInsertParams(lessonId: number, studentIds: number[]) {
+  const placeholders: string[] = [];
+  const params: Array<number | null> = [];
+
+  studentIds.forEach((studentId, index) => {
+    const offset = index * 3;
+    placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3})`);
+    params.push(lessonId, studentId, null);
+  });
+
+  return { placeholders, params };
+}
+
+function findOverlappingRequestSlots(slots: ManualLessonSlot[]) {
+  const normalized = slots
+    .map((slot, index) => {
+      const start = new Date(`${slot.lessonDate}T${slot.startTime}:00`);
+      const end = new Date(start.getTime() + slot.durationMinutes * 60 * 1000);
+
+      return {
+        ...slot,
+        index,
+        start,
+        end,
+      };
+    })
+    .sort((left, right) => left.start.getTime() - right.start.getTime());
+
+  for (let index = 1; index < normalized.length; index++) {
+    const previous = normalized[index - 1];
+    const current = normalized[index];
+
+    if (previous.start.getTime() === current.start.getTime()) {
+      return `Слоти ${previous.index + 1} і ${current.index + 1} дублюють один одного`;
+    }
+
+    if (previous.end > current.start) {
+      return `Слоти ${previous.index + 1} і ${current.index + 1} перетинаються в часі`;
+    }
+  }
+
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request);
-  
+
   if (!user) {
     return unauthorized();
   }
-  
+
   if (user.role !== 'admin') {
     return forbidden();
   }
-  
+
   try {
     const body = await request.json();
     const {
-      lessonDate,
-      startTime,
-      durationMinutes,
       courseId,
       teacherId,
       groupId,
       studentIds,
       isTrial,
     } = body;
-    
-    // Validate required fields
-    if (!lessonDate || !startTime || !durationMinutes || !teacherId) {
+
+    const slots = normalizeSlots(body);
+
+    if (!teacherId || slots.length === 0) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.missingRequiredFields },
         { status: 400 }
       );
     }
-    
-    // Course is required when no group is selected
+
+    if (isTrial && slots.length > 1) {
+      return NextResponse.json(
+        { error: 'Пробне заняття можна запланувати лише як один слот' },
+        { status: 400 }
+      );
+    }
+
+    for (let index = 0; index < slots.length; index++) {
+      const slot = slots[index];
+      if (!slot?.lessonDate || !slot?.startTime || !slot?.durationMinutes) {
+        return NextResponse.json(
+          { error: `Заповніть усі обов'язкові поля для слоту ${index + 1}` },
+          { status: 400 }
+        );
+      }
+
+      if (!validateDate(slot.lessonDate)) {
+        return NextResponse.json(
+          { error: `${ERROR_MESSAGES.invalidDate} у слоті ${index + 1}` },
+          { status: 400 }
+        );
+      }
+
+      if (!validateTime(slot.startTime)) {
+        return NextResponse.json(
+          { error: `${ERROR_MESSAGES.invalidTime} у слоті ${index + 1}` },
+          { status: 400 }
+        );
+      }
+
+      if (!validateDuration(Number(slot.durationMinutes))) {
+        return NextResponse.json(
+          { error: `${ERROR_MESSAGES.invalidDuration} у слоті ${index + 1}` },
+          { status: 400 }
+        );
+      }
+    }
+
     if (!groupId && !studentIds?.length && !courseId) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.missingRequiredFields },
         { status: 400 }
       );
     }
-    
-    // Validate date format
-    if (!validateDate(lessonDate)) {
+
+    if (!groupId && (!studentIds || studentIds.length === 0)) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.invalidDate },
+        { error: 'Потрібно обрати групу або учнів' },
         { status: 400 }
       );
     }
-    
-    // Validate time format
-    if (!validateTime(startTime)) {
+
+    const uniqueStudentIds = Array.isArray(studentIds)
+      ? Array.from(new Set(
+          studentIds
+            .map((studentId: unknown) => Number(studentId))
+            .filter((studentId: number) => Number.isInteger(studentId) && studentId > 0)
+        ))
+      : [];
+
+    if (!groupId && uniqueStudentIds.length === 0) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.invalidTime },
+        { error: 'Потрібно обрати хоча б одного учня' },
         { status: 400 }
       );
     }
-    
-    // Validate duration
-    if (!validateDuration(durationMinutes)) {
-      return NextResponse.json(
-        { error: ERROR_MESSAGES.invalidDuration },
-        { status: 400 }
-      );
-    }
-    
-    // Check course exists (only if provided)
-    let course = null;
+
     if (courseId) {
-      course = await get<{ id: number }>(
+      const course = await get<{ id: number }>(
         'SELECT id FROM courses WHERE id = $1',
         [courseId]
       );
+
       if (!course) {
         return NextResponse.json(
           { error: ERROR_MESSAGES.courseNotFound },
@@ -114,39 +202,25 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    
-    // Check teacher exists
+
     const teacher = await get<{ id: number }>(
       'SELECT id FROM users WHERE id = $1 AND role = $2',
       [teacherId, 'teacher']
     );
+
     if (!teacher) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.teacherNotFound },
         { status: 404 }
       );
     }
-    
-    let finalGroupId = groupId;
-    
-    // For individual lessons (studentIds provided without groupId), we don't create a group
-    // Instead, we'll create the lesson without a group and track students in attendance
-    // Note: This is the new behavior - individual lessons are NOT attached to groups
-    
-    // If still no groupId, we need either groupId or studentIds for tracking
-    if (!finalGroupId && (!studentIds || studentIds.length === 0)) {
-      return NextResponse.json(
-        { error: 'Потрібно обрати групу або учнів' },
-        { status: 400 }
-      );
-    }
-    
-    // If group is provided, verify it exists
-    if (finalGroupId) {
+
+    if (groupId) {
       const group = await get<{ id: number }>(
         'SELECT id FROM groups WHERE id = $1',
-        [finalGroupId]
+        [groupId]
       );
+
       if (!group) {
         return NextResponse.json(
           { error: ERROR_MESSAGES.groupNotFound },
@@ -154,35 +228,62 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    
-    // Create the lesson (may or may not have a group)
-    const lesson = await createSingleLesson({
-      groupId: finalGroupId,
-      courseId: courseId,
-      lessonDate,
-      startTime,
-      durationMinutes,
-      teacherId,
-      isTrial: !!isTrial,
-    }, user.id);
-    
-    // If we have studentIds but no group, add attendance records for these students (without status - to be marked by teacher)
-    if (!finalGroupId && studentIds && studentIds.length > 0) {
-      for (const studentId of studentIds) {
+
+    const overlapError = findOverlappingRequestSlots(slots);
+    if (overlapError) {
+      return NextResponse.json(
+        { error: overlapError },
+        { status: 400 }
+      );
+    }
+
+    const teacherConflicts = await findTeacherScheduleConflicts(teacherId, slots);
+    if (teacherConflicts.length > 0) {
+      const firstConflict = teacherConflicts[0];
+      const lessonLabel = firstConflict.group_title || firstConflict.course_title || 'іншим заняттям';
+
+      return NextResponse.json(
+        {
+          error: `Викладач уже зайнятий ${firstConflict.lesson_date} о ${firstConflict.start_time}-${firstConflict.end_time} (${lessonLabel})`,
+        },
+        { status: 409 }
+      );
+    }
+
+    const lessons = await createLessonsBatch(
+      {
+        groupId: groupId ?? null,
+        courseId: courseId ?? null,
+        teacherId,
+        isTrial: !!isTrial,
+        slots,
+      },
+      user.id
+    );
+
+    if (!groupId && uniqueStudentIds.length > 0) {
+      for (const lesson of lessons) {
+        const { placeholders, params } = buildAttendanceInsertParams(lesson.id, uniqueStudentIds);
+
         await run(
           `INSERT INTO attendance (lesson_id, student_id, status)
-           VALUES ($1, $2, NULL)`,
-          [lesson.id, studentId]
+           VALUES ${placeholders.join(', ')}
+           ON CONFLICT (lesson_id, student_id) DO NOTHING`,
+          params
         );
       }
     }
-    
+
     return NextResponse.json({
-      message: 'Заняття успішно створено',
-      lessonId: lesson.id,
-      publicId: lesson.publicId
+      message: lessons.length === 1
+        ? 'Заняття успішно створено'
+        : `Успішно створено ${lessons.length} занять`,
+      lessonId: lessons[0]?.id ?? null,
+      lessonIds: lessons.map(lesson => lesson.id),
+      publicId: lessons[0]?.publicId ?? null,
+      publicIds: lessons.map(lesson => lesson.publicId),
+      createdCount: lessons.length,
     });
-    
   } catch (error) {
     console.error('[Create Single Lesson] Error:', error);
     return NextResponse.json(
@@ -191,3 +292,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

@@ -401,8 +401,8 @@ export async function checkAndAutoCancelLesson(
   if (Number(counts.recorded) < Number(counts.total)) return false;
   if (Number(counts.absent) < Number(counts.total)) return false;
 
-  // All students absent — cancel the lesson and add a note
-  const cancelNote = 'Автоматично скасовано: всі учні відсутні';
+  // All students absent вЂ” cancel the lesson and add a note
+  const cancelNote = 'РђРІС‚РѕРјР°С‚РёС‡РЅРѕ СЃРєР°СЃРѕРІР°РЅРѕ: РІСЃС– СѓС‡РЅС– РІС–РґСЃСѓС‚РЅС–';
   const newNotes = lesson.notes ? `${lesson.notes}\n${cancelNote}` : cancelNote;
 
   await run(
@@ -477,6 +477,127 @@ export async function getLessonChangeHistory(
   }));
 }
 
+export interface ManualLessonSlot {
+  lessonDate: string;
+  startTime: string;
+  durationMinutes: number;
+}
+
+interface NormalizedManualLessonSlot extends ManualLessonSlot {
+  startUtc: Date;
+  endUtc: Date;
+  startStr: string;
+  endStr: string;
+}
+
+export interface TeacherLessonConflict {
+  id: number;
+  lesson_date: string;
+  start_time: string;
+  end_time: string;
+  group_title: string | null;
+  course_title: string | null;
+}
+
+function normalizeManualLessonSlot(
+  slot: ManualLessonSlot,
+  timezone: string
+): NormalizedManualLessonSlot {
+  const [hours, minutes] = slot.startTime.split(':').map(Number);
+  const localDate = new Date(slot.lessonDate);
+  localDate.setHours(hours, minutes, 0, 0);
+
+  const startUtc = fromZonedTime(localDate, timezone);
+  const endUtc = new Date(startUtc.getTime() + slot.durationMinutes * 60 * 1000);
+
+  return {
+    ...slot,
+    startUtc,
+    endUtc,
+    startStr: formatInTimeZone(startUtc, 'UTC', 'yyyy-MM-dd HH:mm:ss'),
+    endStr: formatInTimeZone(endUtc, 'UTC', 'yyyy-MM-dd HH:mm:ss'),
+  };
+}
+
+function rangesOverlap(
+  leftStart: Date,
+  leftEnd: Date,
+  rightStart: Date,
+  rightEnd: Date
+): boolean {
+  return leftStart < rightEnd && leftEnd > rightStart;
+}
+
+export async function findTeacherScheduleConflicts(
+  teacherId: number,
+  slots: ManualLessonSlot[],
+  timezone: string = 'Europe/Kyiv'
+): Promise<TeacherLessonConflict[]> {
+  if (slots.length === 0) {
+    return [];
+  }
+
+  const normalizedSlots = slots.map(slot => normalizeManualLessonSlot(slot, timezone));
+  const orderedDates = normalizedSlots
+    .map(slot => slot.lessonDate)
+    .sort((left, right) => left.localeCompare(right));
+
+  const minDate = orderedDates[0];
+  const maxDate = orderedDates[orderedDates.length - 1];
+
+  const existingLessons = await all<{
+    id: number;
+    lesson_date: string;
+    start_datetime: string;
+    end_datetime: string;
+    start_time: string;
+    end_time: string;
+    group_title: string | null;
+    course_title: string | null;
+  }>(
+    `SELECT
+       l.id,
+       l.lesson_date::text as lesson_date,
+       l.start_datetime,
+       l.end_datetime,
+       TO_CHAR(l.start_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as start_time,
+       TO_CHAR(l.end_datetime AT TIME ZONE COALESCE(g.timezone, 'Europe/Kyiv'), 'HH24:MI') as end_time,
+       g.title as group_title,
+       c.title as course_title
+     FROM lessons l
+     LEFT JOIN groups g ON l.group_id = g.id
+     LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
+     WHERE l.status != 'canceled'
+       AND COALESCE(l.teacher_id, g.teacher_id) = $1
+       AND l.lesson_date BETWEEN $2 AND $3`,
+    [teacherId, minDate, maxDate]
+  );
+
+  const conflicts: TeacherLessonConflict[] = [];
+
+  for (const existing of existingLessons) {
+    const existingStart = new Date(existing.start_datetime);
+    const existingEnd = new Date(existing.end_datetime);
+
+    if (
+      normalizedSlots.some(slot =>
+        rangesOverlap(slot.startUtc, slot.endUtc, existingStart, existingEnd)
+      )
+    ) {
+      conflicts.push({
+        id: existing.id,
+        lesson_date: existing.lesson_date,
+        start_time: existing.start_time,
+        end_time: existing.end_time,
+        group_title: existing.group_title,
+        course_title: existing.course_title,
+      });
+    }
+  }
+
+  return conflicts;
+}
+
 // Create a single lesson (for admin manual scheduling)
 export async function createSingleLesson(
   lessonData: {
@@ -509,26 +630,16 @@ export async function createSingleLesson(
     );
     
     if (!group) {
-      throw new Error('Групу не знайдено');
+      throw new Error('Р“СЂСѓРїСѓ РЅРµ Р·РЅР°Р№РґРµРЅРѕ');
     }
     
     timezone = group.timezone || 'Europe/Kyiv';
   }
-  
-  // Parse time
-  const [hours, minutes] = startTime.split(':').map(Number);
-  
-  // Create datetime in the timezone (default to Kyiv if no group)
-  const localDate = new Date(lessonDate);
-  localDate.setHours(hours, minutes, 0, 0);
-  
-  // Convert to the group's timezone and then to UTC
-  const utcDate = fromZonedTime(localDate, timezone);
-  const startStr = formatInTimeZone(utcDate, 'UTC', 'yyyy-MM-dd HH:mm:ss');
 
-  // End time
-  const endUtcDate = new Date(utcDate.getTime() + durationMinutes * 60 * 1000);
-  const endStr = formatInTimeZone(endUtcDate, 'UTC', 'yyyy-MM-dd HH:mm:ss');
+  const normalizedSlot = normalizeManualLessonSlot(
+    { lessonDate, startTime, durationMinutes },
+    timezone
+  );
   
   // Generate public ID
   const publicId = generatePublicId('LSN');
@@ -544,13 +655,49 @@ export async function createSingleLesson(
     `INSERT INTO lessons (public_id, group_id, course_id, lesson_date, start_datetime, end_datetime, status, created_by, teacher_id, is_trial)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING id`,
-    [publicId, groupId || null, finalCourseId, lessonDate, startStr, endStr, 'scheduled', createdBy, finalTeacherId, isTrial ?? false]
+    [publicId, groupId || null, finalCourseId, lessonDate, normalizedSlot.startStr, normalizedSlot.endStr, 'scheduled', createdBy, finalTeacherId, isTrial ?? false]
   );
   
   return {
     id: result?.id || 0,
     publicId
   };
+}
+
+export async function createLessonsBatch(
+  lessonData: {
+    groupId?: number | null;
+    courseId?: number | null;
+    teacherId?: number;
+    isTrial?: boolean;
+    slots: ManualLessonSlot[];
+  },
+  createdBy: number
+): Promise<Array<{ id: number; publicId: string; lessonDate: string; startTime: string }>> {
+  const createdLessons: Array<{ id: number; publicId: string; lessonDate: string; startTime: string }> = [];
+
+  for (const slot of lessonData.slots) {
+    const lesson = await createSingleLesson(
+      {
+        groupId: lessonData.groupId,
+        courseId: lessonData.courseId,
+        lessonDate: slot.lessonDate,
+        startTime: slot.startTime,
+        durationMinutes: slot.durationMinutes,
+        teacherId: lessonData.teacherId,
+        isTrial: lessonData.isTrial,
+      },
+      createdBy
+    );
+
+    createdLessons.push({
+      ...lesson,
+      lessonDate: slot.lessonDate,
+      startTime: slot.startTime,
+    });
+  }
+
+  return createdLessons;
 }
 
 // Create an individual (ad-hoc) group for selected students
