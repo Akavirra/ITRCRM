@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -43,55 +43,37 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   return (
     <>
       <div className={styles.page}>
+        {/* Hero — clean greeting + quick actions */}
         <section className={styles.hero}>
-          <div className={styles.heroMain}>
-            <div className={styles.heroDate}>Огляд школи на {initialData.generatedAtLabel}</div>
+          <div className={styles.heroLeft}>
             <h1 className={styles.heroTitle}>{initialData.greeting}!</h1>
-            <p className={styles.heroText}>
-              Усе важливе на одному екрані: ключові цифри, розклад на сьогодні та останні фінансові й системні зміни.
-            </p>
+            <span className={styles.heroDate}>{initialData.generatedAtLabel}</span>
           </div>
 
-          <div className={styles.actionsPanel}>
-            <div className={styles.actionsHeader}>
-              <div>
-                <div className={styles.panelLabel}>Швидкі дії</div>
-                <h2 className={styles.panelTitle}>Що потрібно зробити зараз</h2>
-              </div>
-            </div>
+          <div className={styles.actionsStrip}>
+            <TransitionLink href="/students?create=1" className={styles.actionChip}>
+              <span className={styles.actionChipIcon}><Plus size={14} /></span>
+              Учень
+            </TransitionLink>
 
-            <div className={styles.actionsGrid}>
-              <TransitionLink href="/students?create=1" className={styles.actionButton}>
-                <span className={styles.actionIcon}>
-                  <Plus size={16} />
-                </span>
-                <span className={styles.actionText}>Створити учня</span>
-              </TransitionLink>
+            <button type="button" className={styles.actionChip} onClick={() => setShowCreateGroupModal(true)}>
+              <span className={styles.actionChipIcon}><Users2 size={14} /></span>
+              Група
+            </button>
 
-              <button type="button" className={styles.actionButton} onClick={() => setShowCreateGroupModal(true)}>
-                <span className={styles.actionIcon}>
-                  <Users2 size={16} />
-                </span>
-                <span className={styles.actionText}>Створити групу</span>
-              </button>
+            <button type="button" className={styles.actionChip} onClick={() => setShowCreateLessonModal(true)}>
+              <span className={styles.actionChipIcon}><Calendar size={14} /></span>
+              Заняття
+            </button>
 
-              <button type="button" className={styles.actionButton} onClick={() => setShowCreateLessonModal(true)}>
-                <span className={styles.actionIcon}>
-                  <Calendar size={16} />
-                </span>
-                <span className={styles.actionText}>Запланувати заняття</span>
-              </button>
-
-              <TransitionLink href="/payments?newPayment=1" className={styles.actionButton}>
-                <span className={styles.actionIcon}>
-                  <CreditCard size={16} />
-                </span>
-                <span className={styles.actionText}>Внести оплату</span>
-              </TransitionLink>
-            </div>
+            <TransitionLink href="/payments?newPayment=1" className={styles.actionChip}>
+              <span className={styles.actionChipIcon}><CreditCard size={14} /></span>
+              Оплата
+            </TransitionLink>
           </div>
         </section>
 
+        {/* Stats */}
         <section className={styles.statsGrid}>
           {statCards.map((card) => {
             const Icon = card.icon;
@@ -101,17 +83,17 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               card.key === 'todayLessons'
                 ? `${completedLessons} із ${initialData.stats.todayLessons} завершено`
                 : card.key === 'monthlyRevenue'
-                  ? 'Надходження за поточний місяць'
+                  ? 'За поточний місяць'
                   : card.key === 'activeGroups'
-                    ? 'Групи, що зараз працюють'
-                    : 'Поточна активна база школи';
+                    ? 'Зараз працюють'
+                    : 'Активна база';
 
             return (
               <article key={card.key} className={styles.statCard}>
                 <div className={styles.statTop}>
                   <span className={styles.statLabel}>{card.label}</span>
                   <span className={styles.statIcon}>
-                    <Icon size={18} />
+                    <Icon size={16} />
                   </span>
                 </div>
                 <div className={styles.statValue}>{value}</div>
@@ -121,114 +103,119 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
           })}
         </section>
 
-        <section className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <div className={styles.panelLabel}>Сьогодні</div>
-              <h2 className={styles.panelTitle}>Розклад</h2>
-            </div>
-            <TransitionLink href="/schedule" className={styles.textLink}>
-              Відкрити розклад
-            </TransitionLink>
-          </div>
-
-          {initialData.todaySchedule.length === 0 ? (
-            <div className={styles.emptyState}>
-              <BookOpen size={24} />
-              <div className={styles.emptyTitle}>На сьогодні занять немає</div>
-              <div className={styles.emptyText}>
-                Можна зосередитись на платежах, групах або плануванні наступних уроків.
+        {/* Two-column: Schedule + Activity */}
+        <div className={styles.columns}>
+          {/* Schedule */}
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <div>
+                <div className={styles.panelLabel}>Сьогодні</div>
+                <h2 className={styles.panelTitle}>Розклад</h2>
               </div>
+              <TransitionLink href="/schedule" className={styles.textLink}>
+                Відкрити розклад
+              </TransitionLink>
             </div>
-          ) : (
-            <div className={styles.timeline}>
-              {initialData.todaySchedule.slice(0, 10).map((lesson) => (
-                <div key={lesson.id} className={styles.timelineItem}>
-                  <div className={styles.timelineTime}>
-                    <div>{lesson.startTimeLabel}</div>
-                    <div>{lesson.endTimeLabel}</div>
-                  </div>
 
-                  <div className={styles.timelineBody}>
-                    <div className={styles.timelineTop}>
-                      <div className={styles.timelineTitle}>{lesson.group_title}</div>
-                      <span className={`${styles.statusBadge} ${getStatusClass(lesson.status)}`}>
-                        {getStatusLabel(lesson.status)}
-                      </span>
-                    </div>
-
-                    <div className={styles.timelineMeta}>
-                      <span>{lesson.course_title}</span>
-                      <span>Викладач: {lesson.teacher_name}</span>
-                      {lesson.topic ? <span>Тема: {lesson.topic}</span> : null}
-                    </div>
-                  </div>
+            {initialData.todaySchedule.length === 0 ? (
+              <div className={styles.emptyState}>
+                <BookOpen size={20} />
+                <div className={styles.emptyTitle}>На сьогодні занять немає</div>
+                <div className={styles.emptyText}>
+                  Можна зосередитись на платежах, групах або плануванні наступних уроків.
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
+              </div>
+            ) : (
+              <div className={styles.timeline}>
+                {initialData.todaySchedule.slice(0, 10).map((lesson) => (
+                  <div key={lesson.id} className={styles.timelineItem}>
+                    <div className={styles.timelineTime}>
+                      <span className={styles.timelineTimeStart}>{lesson.startTimeLabel}</span>
+                      <span className={styles.timelineTimeEnd}>{lesson.endTimeLabel}</span>
+                    </div>
 
-        <section className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <div className={styles.panelLabel}>Операції</div>
-              <h2 className={styles.panelTitle}>Останні зміни</h2>
-            </div>
+                    <div className={styles.timelineBody}>
+                      <div className={styles.timelineTop}>
+                        <div className={styles.timelineTitle}>{lesson.group_title}</div>
+                        <span className={`${styles.statusBadge} ${getStatusClass(lesson.status)}`}>
+                          {getStatusLabel(lesson.status)}
+                        </span>
+                      </div>
 
-            <div className={styles.segmented}>
-              <button
-                type="button"
-                className={`${styles.segmentButton} ${activeTab === 'payments' ? styles.segmentButtonActive : ''}`}
-                onClick={() => setActiveTab('payments')}
-              >
-                Платежі
-              </button>
-              <button
-                type="button"
-                className={`${styles.segmentButton} ${activeTab === 'history' ? styles.segmentButtonActive : ''}`}
-                onClick={() => setActiveTab('history')}
-              >
-                Історія
-              </button>
-            </div>
-          </div>
-
-          <div className={styles.activityList}>
-            {activeTab === 'payments' ? (
-              visiblePayments.length > 0 ? (
-                visiblePayments.map((payment, index) => (
-                  <div key={`${payment.student_public_id}-${index}`} className={styles.activityItem}>
-                    <div>
-                      <div className={styles.activityTitle}>{payment.student_name}</div>
-                      <div className={styles.activityMeta}>
-                        {payment.student_public_id} · {payment.paidAtLabel}
+                      <div className={styles.timelineMeta}>
+                        <span>{lesson.course_title}</span>
+                        <span>{lesson.teacher_name}</span>
+                        {lesson.topic ? <span>{lesson.topic}</span> : null}
                       </div>
                     </div>
-                    <div className={styles.activityAmount}>{payment.amountLabel}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Activity */}
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <div>
+                <div className={styles.panelLabel}>Операції</div>
+                <h2 className={styles.panelTitle}>Останні зміни</h2>
+              </div>
+
+              <div className={styles.segmented}>
+                <button
+                  type="button"
+                  className={`${styles.segmentButton} ${activeTab === 'payments' ? styles.segmentButtonActive : ''}`}
+                  onClick={() => setActiveTab('payments')}
+                >
+                  Платежі
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.segmentButton} ${activeTab === 'history' ? styles.segmentButtonActive : ''}`}
+                  onClick={() => setActiveTab('history')}
+                >
+                  Історія
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.activityList}>
+              {activeTab === 'payments' ? (
+                visiblePayments.length > 0 ? (
+                  visiblePayments.map((payment, index) => (
+                    <div key={`${payment.student_public_id}-${index}`} className={styles.activityItem}>
+                      <div>
+                        <div className={styles.activityTitle}>{payment.student_name}</div>
+                        <div className={styles.activityMeta}>
+                          {payment.student_public_id} · {payment.paidAtLabel}
+                        </div>
+                      </div>
+                      <div className={styles.activityAmount}>{payment.amountLabel}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className={styles.compactEmpty}>Немає недавніх платежів.</div>
+                )
+              ) : visibleHistory.length > 0 ? (
+                visibleHistory.map((history, index) => (
+                  <div key={`${history.student_public_id}-${index}`} className={styles.activityItem}>
+                    <div>
+                      <div className={styles.activityTitle}>{history.student_name}</div>
+                      <div className={styles.activityMeta}>
+                        {history.createdAtLabel} · {history.user_name}
+                      </div>
+                      <div className={styles.activityDescription}>{history.action_description}</div>
+                    </div>
+                    <div className={styles.historyType}>{history.action_type}</div>
                   </div>
                 ))
               ) : (
-                <div className={styles.compactEmpty}>Немає недавніх платежів.</div>
-              )
-            ) : visibleHistory.length > 0 ? (
-              visibleHistory.map((history, index) => (
-                <div key={`${history.student_public_id}-${index}`} className={styles.activityItem}>
-                  <div>
-                    <div className={styles.activityTitle}>{history.student_name}</div>
-                    <div className={styles.activityMeta}>
-                      {history.createdAtLabel} · {history.user_name}
-                    </div>
-                    <div className={styles.activityDescription}>{history.action_description}</div>
-                  </div>
-                  <div className={styles.historyType}>{history.action_type}</div>
-                </div>
-              ))
-            ) : (
-              <div className={styles.compactEmpty}>Історія змін поки порожня.</div>
-            )}
-          </div>
-        </section>
+                <div className={styles.compactEmpty}>Історія змін поки порожня.</div>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
 
       <CreateGroupModal
