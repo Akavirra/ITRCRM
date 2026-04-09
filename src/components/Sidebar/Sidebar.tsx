@@ -20,7 +20,9 @@ import {
   CloudRain,
   CloudSnow,
   Zap,
-  EyeOff
+  EyeOff,
+  Gift,
+  Flag
 } from 'lucide-react';
 import TransitionLink from '@/components/TransitionLink';
 
@@ -76,6 +78,33 @@ interface ForecastDay {
   temp_min: number;
   temp_max: number;
   code: number;
+}
+
+interface SidebarHolidayEvent {
+  date: string;
+  name: string;
+  category: 'state' | 'religious';
+  dayDiff: number;
+  label: string;
+}
+
+interface SidebarBirthdayEvent {
+  id: number;
+  full_name: string;
+  birth_date: string;
+  next_birthday: string;
+  dayDiff: number;
+  age: number;
+  ageLabel: string;
+  label: string;
+}
+
+interface SidebarEventsData {
+  today: string;
+  holidaysToday: SidebarHolidayEvent[];
+  upcomingHolidays: SidebarHolidayEvent[];
+  birthdaysToday: SidebarBirthdayEvent[];
+  upcomingBirthdays: SidebarBirthdayEvent[];
 }
 
 interface SeasonalUiState {
@@ -134,6 +163,19 @@ function buildCalendarDays(year: number, month: number): (number | null)[] {
   return cells;
 }
 
+function eventWord(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 19) return 'подій';
+  if (mod10 === 1) return 'подія';
+  if (mod10 >= 2 && mod10 <= 4) return 'події';
+  return 'подій';
+}
+
+function padDateValue(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
 // divider removed for minimalist design
 
 function SidebarInfoWidget() {
@@ -144,9 +186,17 @@ function SidebarInfoWidget() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherOpen, setWeatherOpen] = useState(false);
   const [forecast, setForecast] = useState<ForecastDay[] | null>(null);
+  const [events, setEvents] = useState<SidebarEventsData | null>(null);
+  const [eventsOpen, setEventsOpen] = useState(false);
   const weatherBtnRef = useRef<HTMLButtonElement>(null);
   const weatherPopRef = useRef<HTMLDivElement>(null);
   const [weatherPopPos, setWeatherPopPos] = useState({ left: 0, bottom: 20 });
+  const loadEvents = useCallback(() => {
+    fetch('/api/sidebar/events')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => setEvents(d))
+      .catch(() => { });
+  }, []);
 
   useEffect(() => {
     const d = new Date();
@@ -163,6 +213,12 @@ function SidebarInfoWidget() {
       .then(d => setWeather(d))
       .catch(() => { });
   }, []);
+
+  useEffect(() => {
+    loadEvents();
+    const id = setInterval(loadEvents, 60 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [loadEvents]);
 
   useEffect(() => {
     if (!calOpen) return;
@@ -187,6 +243,16 @@ function SidebarInfoWidget() {
     return () => document.removeEventListener('mousedown', handler);
   }, [weatherOpen]);
 
+  useEffect(() => {
+    if (!eventsOpen) return;
+    const handler = (e: MouseEvent) => {
+      const el = document.getElementById('sidebar-info-widget');
+      if (el && !el.contains(e.target as Node)) setEventsOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [eventsOpen]);
+
   if (!now) return null;
 
   const h = String(now.getHours()).padStart(2, '0');
@@ -209,6 +275,27 @@ function SidebarInfoWidget() {
 
   const cells = buildCalendarDays(calYear, calMonth);
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+  const totalEventsToday = (events?.holidaysToday.length ?? 0) + (events?.birthdaysToday.length ?? 0);
+  const nextHoliday = events?.upcomingHolidays[0] ?? null;
+  const nextBirthday = events?.upcomingBirthdays[0] ?? null;
+  const hasEventSummary = totalEventsToday > 0 || nextHoliday || nextBirthday;
+  const holidayDates = new Set([
+    ...(events?.holidaysToday.map((holiday) => holiday.date) ?? []),
+    ...(events?.upcomingHolidays.map((holiday) => holiday.date) ?? []),
+  ]);
+  const birthdayDates = new Set([
+    ...(events?.birthdaysToday.map((birthday) => birthday.next_birthday) ?? []),
+    ...(events?.upcomingBirthdays.map((birthday) => birthday.next_birthday) ?? []),
+  ]);
+
+  let eventSummary = 'Подій немає';
+  if (totalEventsToday > 0) {
+    eventSummary = `${totalEventsToday} ${eventWord(totalEventsToday)} сьогодні`;
+  } else if (nextHoliday) {
+    eventSummary = `${nextHoliday.label}: ${nextHoliday.name}`;
+  } else if (nextBirthday) {
+    eventSummary = `${nextBirthday.label}: день народження`;
+  }
 
   const handleWeatherClick = () => {
     if (!weatherOpen && weatherBtnRef.current) {
@@ -338,6 +425,55 @@ function SidebarInfoWidget() {
             {dateStr}
           </button>
         </div>
+
+        <button
+          onClick={() => setEventsOpen(o => !o)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            width: '100%',
+            marginTop: '6px',
+            padding: '8px 10px',
+            borderRadius: '12px',
+            border: '1px solid rgba(59, 130, 246, 0.08)',
+            background: eventsOpen ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.45)',
+            color: '#334155',
+            cursor: 'pointer',
+            textAlign: 'left',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseOver={e => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.78)';
+          }}
+          onMouseOut={e => {
+            e.currentTarget.style.background = eventsOpen ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.45)';
+          }}
+        >
+          <span style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '999px',
+            background: totalEventsToday > 0 ? '#f97316' : hasEventSummary ? '#3b82f6' : '#cbd5e1',
+            flexShrink: 0,
+          }} />
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span style={{ display: 'block', fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>
+              Події
+            </span>
+            <span style={{
+              display: 'block',
+              fontSize: '11px',
+              fontWeight: '500',
+              color: '#0f172a',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {eventSummary}
+            </span>
+          </span>
+        </button>
       </div>
 
       {/* Calendar popover */}
@@ -372,6 +508,11 @@ function SidebarInfoWidget() {
             {cells.map((day, i) => {
               const isToday = day !== null && day === todayD && calMonth === todayM && calYear === todayY;
               const isWeekend = i % 7 >= 5;
+              const dateKey = day === null
+                ? null
+                : `${calYear}-${padDateValue(calMonth + 1)}-${padDateValue(day)}`;
+              const hasHoliday = dateKey ? holidayDates.has(dateKey) : false;
+              const hasBirthday = dateKey ? birthdayDates.has(dateKey) : false;
               return (
                 <div key={i} style={{
                   textAlign: 'center',
@@ -383,12 +524,137 @@ function SidebarInfoWidget() {
                   padding: '4px 2px',
                   lineHeight: '16px',
                   minWidth: 0,
+                  position: 'relative',
                 }}>
                   {day ?? ''}
+                  {day !== null && (hasHoliday || hasBirthday) && (
+                    <span style={{
+                      position: 'absolute',
+                      left: '50%',
+                      bottom: '1px',
+                      transform: 'translateX(-50%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '2px',
+                    }}>
+                      {hasHoliday && (
+                        <span style={{
+                          width: '4px',
+                          height: '4px',
+                          borderRadius: '999px',
+                          background: isToday ? 'rgba(255,255,255,0.95)' : '#2563eb',
+                        }} />
+                      )}
+                      {hasBirthday && (
+                        <span style={{
+                          width: '4px',
+                          height: '4px',
+                          borderRadius: '999px',
+                          background: isToday ? 'rgba(255,255,255,0.75)' : '#f97316',
+                        }} />
+                      )}
+                    </span>
+                  )}
                 </div>
               );
             })}
           </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '8px', fontSize: '9px', color: '#94a3b8' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '5px', height: '5px', borderRadius: '999px', background: '#2563eb' }} />
+              Свято
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '5px', height: '5px', borderRadius: '999px', background: '#f97316' }} />
+              День народження
+            </span>
+          </div>
+        </div>
+      )}
+
+      {eventsOpen && (
+        <div style={{
+          position: 'absolute',
+          bottom: 'calc(100% + 8px)',
+          left: 0,
+          right: 0,
+          background: '#fff',
+          borderRadius: '14px',
+          boxShadow: '0 8px 32px rgba(30,58,95,0.12), 0 1px 4px rgba(30,58,95,0.06)',
+          border: '1px solid rgba(59,130,246,0.1)',
+          padding: '12px',
+          zIndex: 55,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+        }}>
+          <div>
+            <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+              Сьогодні
+            </div>
+            {events && totalEventsToday > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {events.holidaysToday.map((holiday) => (
+                  <div key={`holiday-today-${holiday.date}-${holiday.name}`} style={eventCardStyle}>
+                    <Flag size={14} color="#2563eb" style={{ flexShrink: 0, marginTop: '1px' }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={eventTitleStyle}>{holiday.name}</div>
+                      <div style={eventMetaStyle}>Свято України</div>
+                    </div>
+                  </div>
+                ))}
+                {events.birthdaysToday.map((birthday) => (
+                  <TransitionLink
+                    key={`birthday-today-${birthday.id}`}
+                    href={`/students/${birthday.id}`}
+                    style={{ ...eventCardStyle, textDecoration: 'none' }}
+                  >
+                    <Gift size={14} color="#f97316" style={{ flexShrink: 0, marginTop: '1px' }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={eventTitleStyle}>{birthday.full_name}</div>
+                      <div style={eventMetaStyle}>{birthday.ageLabel}</div>
+                    </div>
+                  </TransitionLink>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                На сьогодні подій немає
+              </div>
+            )}
+          </div>
+
+          {events && (events.upcomingHolidays.length > 0 || events.upcomingBirthdays.length > 0) && (
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+                Найближчі
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {events.upcomingHolidays.slice(0, 3).map((holiday) => (
+                  <div key={`holiday-upcoming-${holiday.date}-${holiday.name}`} style={eventCardStyle}>
+                    <Flag size={14} color="#2563eb" style={{ flexShrink: 0, marginTop: '1px' }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={eventTitleStyle}>{holiday.name}</div>
+                      <div style={eventMetaStyle}>{holiday.label}</div>
+                    </div>
+                  </div>
+                ))}
+                {events.upcomingBirthdays.slice(0, 4).map((birthday) => (
+                  <TransitionLink
+                    key={`birthday-upcoming-${birthday.id}`}
+                    href={`/students/${birthday.id}`}
+                    style={{ ...eventCardStyle, textDecoration: 'none' }}
+                  >
+                    <Gift size={14} color="#f97316" style={{ flexShrink: 0, marginTop: '1px' }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={eventTitleStyle}>{birthday.full_name}</div>
+                      <div style={eventMetaStyle}>{birthday.label} · {birthday.ageLabel}</div>
+                    </div>
+                  </TransitionLink>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -470,6 +736,31 @@ const calNavBtn: React.CSSProperties = {
   borderRadius: '6px',
   lineHeight: 1,
   transition: 'background 0.15s, color 0.15s',
+};
+
+const eventCardStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: '8px',
+  padding: '8px 9px',
+  borderRadius: '10px',
+  background: '#f8fafc',
+  border: '1px solid #eef2ff',
+};
+
+const eventTitleStyle: React.CSSProperties = {
+  fontSize: '11px',
+  fontWeight: '600',
+  color: '#0f172a',
+  lineHeight: 1.35,
+  wordBreak: 'break-word',
+};
+
+const eventMetaStyle: React.CSSProperties = {
+  fontSize: '10px',
+  color: '#64748b',
+  marginTop: '2px',
+  lineHeight: 1.3,
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
