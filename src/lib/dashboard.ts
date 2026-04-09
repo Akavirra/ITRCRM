@@ -66,30 +66,11 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   ]);
 
   const schedulePromise = all<DashboardStatsPayload['todaySchedule'][number]>(
-    `SELECT 
-      l.id,
-      l.start_datetime,
-      l.end_datetime,
-      CASE
-        WHEN l.status = 'completed' THEN 'done'
-        WHEN l.status = 'cancelled' THEN 'canceled'
-        ELSE l.status
-      END as status,
-      l.topic,
-      l.group_id as "groupId",
-      g.title as "groupTitle",
-      COALESCE(l.course_id, g.course_id) as "courseId",
-      c.title as "courseTitle",
-      COALESCE(l.teacher_id, g.teacher_id) as "teacherId",
-      u.name as "teacherName",
-      COALESCE(l.is_makeup, FALSE) as "isMakeup",
-      COALESCE(l.is_trial, FALSE) as "isTrial",
-      l.original_date as "originalDate",
-      (l.original_date IS NOT NULL) as "isRescheduled",
-      CASE
-        WHEN l.teacher_id IS NOT NULL AND g.teacher_id IS NOT NULL AND l.teacher_id <> g.teacher_id THEN TRUE
-        ELSE FALSE
-      END as "isReplaced"
+    `SELECT
+      l.id, l.start_datetime, l.end_datetime, l.status, l.topic,
+      l.group_id, l.is_makeup, l.is_trial, l.original_date,
+      g.title as group_title, c.title as course_title, u.name as teacher_name,
+      CASE WHEN l.teacher_id IS NOT NULL AND g.teacher_id IS NOT NULL AND l.teacher_id != g.teacher_id THEN true ELSE false END as is_replaced
      FROM lessons l
      LEFT JOIN groups g ON l.group_id = g.id
      LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id

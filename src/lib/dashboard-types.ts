@@ -16,18 +16,15 @@
     startTimeLabel: string;
     endTimeLabel: string;
     status: string;
-    groupId: number | null;
-    groupTitle: string;
-    courseId: number | null;
-    courseTitle: string;
-    teacherId: number | null;
-    teacherName: string;
-    isMakeup?: boolean | null;
-    isTrial?: boolean | null;
-    isReplaced?: boolean;
-    originalDate?: string | null;
-    isRescheduled?: boolean;
     topic?: string;
+    group_id: number | null;
+    group_title: string;
+    course_title: string;
+    teacher_name: string;
+    is_makeup: boolean;
+    is_trial: boolean;
+    original_date: string | null;
+    is_replaced: boolean;
   }>;
   upcomingBirthdays: Array<{
     id: number;
