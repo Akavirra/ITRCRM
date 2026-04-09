@@ -261,42 +261,42 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
         <div
           className="modal-header"
           style={{
+            position: 'relative',
             padding: '1.4rem 1.5rem 1.2rem',
             borderBottom: '1px solid #e2e8f0',
             background: 'linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '700', color: '#111827' }}>
-                {uk.modals.newGroup}
-              </h2>
-            </div>
+          <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '700', color: '#111827', whiteSpace: 'nowrap', paddingRight: '3rem' }}>
+            {uk.modals.newGroup}
+          </h2>
 
-            <button
-              className="modal-close"
-              onClick={closeModal}
-              style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '999px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.35rem',
-                color: '#6b7280',
-                backgroundColor: '#ffffff',
-                border: 'none',
-                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08)',
-                cursor: 'pointer',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
+          <button
+            className="modal-close"
+            onClick={closeModal}
+            style={{
+              position: 'absolute',
+              top: '1.2rem',
+              right: '1.2rem',
+              width: '36px',
+              height: '36px',
+              borderRadius: '999px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.35rem',
+              color: '#6b7280',
+              backgroundColor: '#ffffff',
+              border: 'none',
+              boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08)',
+              cursor: 'pointer',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem', marginTop: '1.15rem' }}>
             {([
@@ -352,7 +352,15 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
         </div>
 
         <form onSubmit={(e) => e.preventDefault()}>
-          <div className="modal-body" style={{ padding: '1.5rem', overflowY: 'auto', maxHeight: 'calc(92vh - 235px)' }}>
+          <div
+            className="modal-body"
+            style={{
+              padding: '1.5rem',
+              overflowY: groupFormStep === 'students' ? 'visible' : 'auto',
+              maxHeight: 'calc(92vh - 235px)',
+              paddingBottom: groupFormStep === 'students' && isDropdownOpen ? '14rem' : '1.5rem',
+            }}
+          >
             {error && (
               <div
                 style={{
