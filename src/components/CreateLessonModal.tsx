@@ -8,7 +8,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { uk } from 'date-fns/locale';
 
-// РІвЂќР‚РІвЂќР‚РІвЂќР‚ Types РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Student {
   id: number;
@@ -53,7 +53,7 @@ interface CreateLessonModalProps {
 
 type ModalTab = 'lesson' | 'makeup';
 
-// РІвЂќР‚РІвЂќР‚РІвЂќР‚ Helpers РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatLessonDate(isoDate: string) {
   try {
@@ -72,7 +72,7 @@ function formatStartTime(isoDatetime: string | null) {
   }
 }
 
-// РІвЂќР‚РІвЂќР‚РІвЂќР‚ Shared styles (static РІР‚вЂќ defined outside to avoid recreation) РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ─── Shared styles (static — defined outside to avoid recreation) ─────────────
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -125,7 +125,7 @@ const dropdownItemStyle = (active: boolean): React.CSSProperties => ({
   gap: '0.5rem',
 });
 
-// РІвЂќР‚РІвЂќР‚РІвЂќР‚ Sub-components (defined outside to prevent remount on parent re-render) РІвЂќР‚РІвЂќР‚
+// ─── Sub-components (defined outside to prevent remount on parent re-render) ──
 
 function DateTimeRow({
   date, onDate, time, onTime, duration, onDuration,
@@ -137,7 +137,7 @@ function DateTimeRow({
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
       <div>
-        <label style={labelStyle}>Р вЂќР В°РЎвЂљР В° <span style={{ color: '#ef4444' }}>*</span></label>
+        <label style={labelStyle}>Дата <span style={{ color: '#ef4444' }}>*</span></label>
         <div style={{ position: 'relative' }}>
           <Calendar size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
           <input
@@ -149,7 +149,7 @@ function DateTimeRow({
         </div>
       </div>
       <div>
-        <label style={labelStyle}>Р В§Р В°РЎРѓ <span style={{ color: '#ef4444' }}>*</span></label>
+        <label style={labelStyle}>Час <span style={{ color: '#ef4444' }}>*</span></label>
         <div style={{ position: 'relative' }}>
           <Clock size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
           <input
@@ -161,18 +161,18 @@ function DateTimeRow({
         </div>
       </div>
       <div>
-        <label style={labelStyle}>Р СћРЎР‚Р С‘Р Р†Р В°Р В»РЎвЂ“РЎРѓРЎвЂљРЎРЉ <span style={{ color: '#ef4444' }}>*</span></label>
+        <label style={labelStyle}>Тривалість <span style={{ color: '#ef4444' }}>*</span></label>
         <select
           value={duration}
           onChange={e => onDuration(Number(e.target.value))}
           style={{ ...inputStyle, cursor: 'pointer' }}
         >
-          <option value={30}>30 РЎвЂ¦Р Р†</option>
-          <option value={45}>45 РЎвЂ¦Р Р†</option>
-          <option value={60}>1 Р С–Р С•Р Т‘</option>
-          <option value={90}>1.5 Р С–Р С•Р Т‘</option>
-          <option value={120}>2 Р С–Р С•Р Т‘</option>
-          <option value={180}>3 Р С–Р С•Р Т‘</option>
+          <option value={30}>30 хв</option>
+          <option value={45}>45 хв</option>
+          <option value={60}>1 год</option>
+          <option value={90}>1.5 год</option>
+          <option value={120}>2 год</option>
+          <option value={180}>3 год</option>
         </select>
       </div>
     </div>
@@ -206,7 +206,7 @@ function TeacherDropdown({
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <User size={14} style={{ color: '#9ca3af' }} />
           <span style={{ color: selected ? '#111827' : '#9ca3af' }}>
-            {selected ? selected.name : 'Р С›Р В±Р ВµРЎР‚РЎвЂ“РЎвЂљРЎРЉ Р Р†Р С‘Р С”Р В»Р В°Р Т‘Р В°РЎвЂЎР В°'}
+            {selected ? selected.name : 'Оберіть викладача'}
           </span>
         </span>
         <ChevronDown size={16} style={{ color: '#9ca3af' }} />
@@ -214,7 +214,7 @@ function TeacherDropdown({
       {show && (
         <div style={dropdownContainerStyle}>
           {teachers.length === 0
-            ? <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>Р СњР ВµР СР В°РЎвЂќ Р Р†Р С‘Р С”Р В»Р В°Р Т‘Р В°РЎвЂЎРЎвЂ“Р Р†</div>
+            ? <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>Немає викладачів</div>
             : teachers.map(t => (
               <button
                 key={t.id}
@@ -260,7 +260,7 @@ function CourseDropdown({
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <BookOpen size={14} style={{ color: '#9ca3af' }} />
           <span style={{ color: selected ? '#111827' : '#9ca3af' }}>
-            {selected ? selected.title : "Р С›Р В±Р ВµРЎР‚РЎвЂ“РЎвЂљРЎРЉ Р С”РЎС“РЎР‚РЎРѓ (Р Р…Р ВµР С•Р В±Р С•Р Р†'РЎРЏР В·Р С”Р С•Р Р†Р С•)"}
+            {selected ? selected.title : "Оберіть курс (необов'язково)"}
           </span>
         </span>
         <ChevronDown size={16} style={{ color: '#9ca3af' }} />
@@ -272,7 +272,7 @@ function CourseDropdown({
             onClick={() => onChange(null)}
             style={dropdownItemStyle(value === null)}
           >
-            <span style={{ color: '#9ca3af' }}>РІР‚вЂќ Р вЂР ВµР В· Р С”РЎС“РЎР‚РЎРѓРЎС“ РІР‚вЂќ</span>
+            <span style={{ color: '#9ca3af' }}>— Без курсу —</span>
           </button>
           {courses.map(c => (
             <button
@@ -290,7 +290,7 @@ function CourseDropdown({
   );
 }
 
-// РІвЂќР‚РІвЂќР‚РІвЂќР‚ Component РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CreateLessonModal({
   isOpen,
@@ -305,11 +305,11 @@ export default function CreateLessonModal({
 }: CreateLessonModalProps) {
   const [tab, setTab] = useState<ModalTab>('lesson');
 
-  // РІвЂќР‚РІвЂќР‚ Shared data РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+  // ── Shared data ──────────────────────────────────────────────────────────────
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
 
-  // РІвЂќР‚РІвЂќР‚ "Р СњР С•Р Р†Р Вµ Р В·Р В°Р Р…РЎРЏРЎвЂљРЎвЂљРЎРЏ" tab state РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+  // ── "Нове заняття" tab state ─────────────────────────────────────────────────
   const [lessonLoading, setLessonLoading] = useState(false);
   const [lessonError, setLessonError] = useState<string | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -318,16 +318,16 @@ export default function CreateLessonModal({
   const [lessonDate, setLessonDate] = useState(initialDate || format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState('10:00');
   const [durationMinutes, setDurationMinutes] = useState(60);
-  const [additionalLessonSlotsText, setAdditionalLessonSlotsText] = useState('');
   const [courseId, setCourseId] = useState<number | null>(null);
   const [teacherId, setTeacherId] = useState<number | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
+  const [additionalLessonSlotsText, setAdditionalLessonSlotsText] = useState('');
   const [isTrial, setIsTrial] = useState(false);
   const [showCourseDropdown, setShowCourseDropdown] = useState(false);
   const [showTeacherDropdown, setShowTeacherDropdown] = useState(false);
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
 
-  // РІвЂќР‚РІвЂќР‚ "Р вЂ™РЎвЂ“Р Т‘Р С—РЎР‚Р В°РЎвЂ РЎР‹Р Р†Р В°Р Р…Р Р…РЎРЏ" tab state РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+  // ── "Відпрацювання" tab state ─────────────────────────────────────────────────
   const [absences, setAbsences] = useState<AbsenceRecord[]>([]);
   const [absencesLoading, setAbsencesLoading] = useState(false);
   const [absenceSearch, setAbsenceSearch] = useState('');
@@ -341,7 +341,7 @@ export default function CreateLessonModal({
   const [makeupError, setMakeupError] = useState<string | null>(null);
   const [showMakeupTeacherDropdown, setShowMakeupTeacherDropdown] = useState(false);
 
-  // РІвЂќР‚РІвЂќР‚ Load shared data on open РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+  // ── Load shared data on open ──────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     loadCourses();
@@ -375,10 +375,6 @@ export default function CreateLessonModal({
     if (!isOpen) return;
     if (initialTab) setTab(initialTab);
     if (initialAbsenceIds?.length) setSelectedAbsenceIds(initialAbsenceIds);
-    setLessonDate(initialDate || format(new Date(), 'yyyy-MM-dd'));
-    setStartTime('10:00');
-    setDurationMinutes(60);
-    setAdditionalLessonSlotsText('');
     if (initialTeacherId != null) {
       setTeacherId(initialTeacherId);
       setMakeupTeacherId(initialTeacherId);
@@ -395,7 +391,7 @@ export default function CreateLessonModal({
     }
   }, [isOpen, tab]);
 
-  // РІвЂќР‚РІвЂќР‚ Data loaders РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+  // ── Data loaders ──────────────────────────────────────────────────────────────
 
   const loadAllStudents = async () => {
     setStudentsLoading(true);
@@ -463,7 +459,7 @@ export default function CreateLessonModal({
     return () => clearTimeout(t);
   }, [studentSearch, loadStudentsBySearch]);
 
-  // РІвЂќР‚РІвЂќР‚ Derived values РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+  // ── Derived values ────────────────────────────────────────────────────────────
 
   const selectedStudents = students.filter(s => selectedStudentIds.includes(s.id));
 
@@ -477,70 +473,78 @@ export default function CreateLessonModal({
   const selectedAbsences = absences.filter(a => selectedAbsenceIds.includes(a.attendance_id));
   const selectedStudentNames = Array.from(new Set(selectedAbsences.map(a => a.student_name)));
 
-  // РІвЂќР‚РІвЂќР‚ Handlers: new lesson tab РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+  // ── Handlers: new lesson tab ──────────────────────────────────────────────────
 
   const toggleStudent = (id: number) =>
     setSelectedStudentIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
 
+  const parseAdditionalLessonSlots = () => {
+    const lines = additionalLessonSlotsText
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    const slots: Array<{ lessonDate: string; startTime: string; durationMinutes?: number }> = [];
+
+    for (const line of lines) {
+      const match = line.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})(?:\s+(\d+))?$/);
+      if (!match) {
+        throw new Error(`РќРµРІС–СЂРЅРёР№ С„РѕСЂРјР°С‚ СЂСЏРґРєР°: ${line}`);
+      }
+
+      const [, lessonDateValue, startTimeValue, durationValue] = match;
+      const parsedDuration = durationValue ? Number(durationValue) : undefined;
+
+      if (parsedDuration !== undefined && (!Number.isFinite(parsedDuration) || parsedDuration <= 0)) {
+        throw new Error(`РќРµРІС–СЂРЅР° С‚СЂРёРІР°Р»С–СЃС‚СЊ Сѓ СЂСЏРґРєСѓ: ${line}`);
+      }
+
+      slots.push({
+        lessonDate: lessonDateValue,
+        startTime: startTimeValue,
+        ...(parsedDuration ? { durationMinutes: parsedDuration } : {}),
+      });
+    }
+
+    return slots;
+  };
+
   const handleLessonSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLessonError(null);
     if (!lessonDate || !startTime || !durationMinutes || !teacherId) {
-      setLessonError("Р—Р°РїРѕРІРЅС–С‚СЊ РІСЃС– РѕР±РѕРІ'СЏР·РєРѕРІС– РїРѕР»СЏ");
+      setLessonError("Заповніть всі обов'язкові поля");
       return;
     }
     if (selectedStudentIds.length === 0) {
-      setLessonError('РћР±РµСЂС–С‚СЊ С…РѕС‡Р° Р± РѕРґРЅРѕРіРѕ СѓС‡РЅСЏ');
+      setLessonError('Оберіть хоча б одного учня');
       return;
     }
-
-    let additionalSlots: Array<{ lessonDate: string; startTime: string; durationMinutes: number }> = [];
-    try {
-      additionalSlots = additionalLessonSlotsText
-        .split(/\r?\n/)
-        .map(line => line.trim())
-        .filter(Boolean)
-        .map((line, index) => {
-          const match = line.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})(?:\s+(\d+))?$/);
-          if (!match) {
-            throw new Error(`РќРµРІС–СЂРЅРёР№ С„РѕСЂРјР°С‚ Сѓ РґРѕРґР°С‚РєРѕРІРѕРјСѓ СЃР»РѕС‚С– ${index + 1}`);
-          }
-
-          return {
-            lessonDate: match[1],
-            startTime: match[2],
-            durationMinutes: match[3] ? Number(match[3]) : durationMinutes,
-          };
-        });
-    } catch (error) {
-      setLessonError(error instanceof Error ? error.message : 'РќРµ РІРґР°Р»РѕСЃСЏ СЂРѕР·С–Р±СЂР°С‚Рё РґРѕРґР°С‚РєРѕРІС– Р·Р°РЅСЏС‚С‚СЏ');
-      return;
-    }
-
-    const slots = [
-      { lessonDate, startTime, durationMinutes },
-      ...additionalSlots,
-    ];
-
-    if (isTrial && slots.length > 1) {
-      setLessonError('РџСЂРѕР±РЅРµ Р·Р°РЅСЏС‚С‚СЏ РјРѕР¶РЅР° Р·Р°РїР»Р°РЅСѓРІР°С‚Рё Р»РёС€Рµ СЏРє РѕРґРЅРµ Р·Р°РЅСЏС‚С‚СЏ');
-      return;
-    }
-
     setLessonLoading(true);
     try {
+      const additionalSlots = parseAdditionalLessonSlots();
       const res = await fetch('/api/lessons/single', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          lessonDate,
+          startTime,
+          durationMinutes,
           courseId,
           teacherId,
           groupId: null,
           studentIds: selectedStudentIds,
           isTrial,
-          slots,
+          ...(additionalSlots.length > 0
+            ? {
+              slots: [
+                { lessonDate, startTime, durationMinutes },
+                ...additionalSlots,
+              ],
+            }
+            : {}),
         }),
       });
       const data = await res.json();
@@ -549,16 +553,16 @@ export default function CreateLessonModal({
         onClose();
         resetAll();
       } else {
-        setLessonError(data.error || 'РќРµ РІРґР°Р»РѕСЃСЏ СЃС‚РІРѕСЂРёС‚Рё Р·Р°РЅСЏС‚С‚СЏ');
+        setLessonError(data.error || 'Не вдалося створити заняття');
       }
     } catch {
-      setLessonError('РЎС‚Р°Р»Р°СЃСЏ РїРѕРјРёР»РєР° РїСЂРё СЃС‚РІРѕСЂРµРЅРЅС– Р·Р°РЅСЏС‚С‚СЏ');
+      setLessonError('Сталася помилка при створенні заняття');
     } finally {
       setLessonLoading(false);
     }
   };
 
-  // РІвЂќР‚РІвЂќР‚ Handlers: makeup tab РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+  // ── Handlers: makeup tab ──────────────────────────────────────────────────────
 
   const toggleAbsence = (id: number) =>
     setSelectedAbsenceIds(prev =>
@@ -579,11 +583,11 @@ export default function CreateLessonModal({
     e.preventDefault();
     setMakeupError(null);
     if (!makeupDate || !makeupTime || !makeupDuration || !makeupTeacherId) {
-      setMakeupError("Р вЂ”Р В°Р С—Р С•Р Р†Р Р…РЎвЂ“РЎвЂљРЎРЉ Р Р†РЎРѓРЎвЂ“ Р С•Р В±Р С•Р Р†'РЎРЏР В·Р С”Р С•Р Р†РЎвЂ“ Р С—Р С•Р В»РЎРЏ");
+      setMakeupError("Заповніть всі обов'язкові поля");
       return;
     }
     if (selectedAbsenceIds.length === 0) {
-      setMakeupError('Р С›Р В±Р ВµРЎР‚РЎвЂ“РЎвЂљРЎРЉ РЎвЂ¦Р С•РЎвЂЎР В° Р В± Р С•Р Т‘Р С‘Р Р… Р С—РЎР‚Р С•Р С—РЎС“РЎРѓР С”');
+      setMakeupError('Оберіть хоча б один пропуск');
       return;
     }
     setMakeupLoading(true);
@@ -605,26 +609,26 @@ export default function CreateLessonModal({
         onClose();
         resetAll();
       } else {
-        setMakeupError(data.error || 'Р СњР Вµ Р Р†Р Т‘Р В°Р В»Р С•РЎРѓРЎРЏ РЎРѓРЎвЂљР Р†Р С•РЎР‚Р С‘РЎвЂљР С‘ Р Р†РЎвЂ“Р Т‘Р С—РЎР‚Р В°РЎвЂ РЎР‹Р Р†Р В°Р Р…Р Р…РЎРЏ');
+        setMakeupError(data.error || 'Не вдалося створити відпрацювання');
       }
     } catch {
-      setMakeupError('Р РЋРЎвЂљР В°Р В»Р В°РЎРѓРЎРЏ Р С—Р С•Р СР С‘Р В»Р С”Р В° Р С—РЎР‚Р С‘ РЎРѓРЎвЂљР Р†Р С•РЎР‚Р ВµР Р…Р Р…РЎвЂ“ Р Р†РЎвЂ“Р Т‘Р С—РЎР‚Р В°РЎвЂ РЎР‹Р Р†Р В°Р Р…Р Р…РЎРЏ');
+      setMakeupError('Сталася помилка при створенні відпрацювання');
     } finally {
       setMakeupLoading(false);
     }
   };
 
-  // РІвЂќР‚РІвЂќР‚ Reset РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+  // ── Reset ─────────────────────────────────────────────────────────────────────
 
   const resetAll = () => {
     const today = format(new Date(), 'yyyy-MM-dd');
     setLessonDate(today);
     setStartTime('10:00');
     setDurationMinutes(60);
-    setAdditionalLessonSlotsText('');
     setCourseId(null);
     setTeacherId(null);
     setSelectedStudentIds([]);
+    setAdditionalLessonSlotsText('');
     setStudentSearch('');
     setIsTrial(false);
     setLessonError(null);
@@ -646,7 +650,7 @@ export default function CreateLessonModal({
 
   if (!isOpen) return null;
 
-  // РІвЂќР‚РІвЂќР‚РІвЂќР‚ Render РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div
@@ -668,7 +672,7 @@ export default function CreateLessonModal({
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#111827', margin: 0 }}>
-              Р РЋРЎвЂљР Р†Р С•РЎР‚Р С‘РЎвЂљР С‘ Р В·Р В°Р Р…РЎРЏРЎвЂљРЎвЂљРЎРЏ
+              Створити заняття
             </h3>
             <button
               onClick={handleClose}
@@ -683,8 +687,8 @@ export default function CreateLessonModal({
           {/* Tab switcher */}
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', background: '#f3f4f6', borderRadius: '0.625rem', padding: '0.25rem' }}>
             {([
-              { key: 'lesson', label: 'Р СњР С•Р Р†Р Вµ Р В·Р В°Р Р…РЎРЏРЎвЂљРЎвЂљРЎРЏ', icon: <Plus size={15} /> },
-              { key: 'makeup', label: 'Р вЂ™РЎвЂ“Р Т‘Р С—РЎР‚Р В°РЎвЂ РЎР‹Р Р†Р В°Р Р…Р Р…РЎРЏ', icon: <RefreshCw size={15} /> },
+              { key: 'lesson', label: 'Нове заняття', icon: <Plus size={15} /> },
+              { key: 'makeup', label: 'Відпрацювання', icon: <RefreshCw size={15} /> },
             ] as { key: ModalTab; label: string; icon: React.ReactNode }[]).map(t => (
               <button
                 key={t.key}
@@ -714,7 +718,7 @@ export default function CreateLessonModal({
             ))}
           </div>
 
-          {/* РІвЂќР‚РІвЂќР‚ TAB: Р СњР С•Р Р†Р Вµ Р В·Р В°Р Р…РЎРЏРЎвЂљРЎвЂљРЎРЏ РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚ */}
+          {/* ── TAB: Нове заняття ────────────────────────────────────────────── */}
           {tab === 'lesson' && (
             <form onSubmit={handleLessonSubmit}>
               {lessonError && <ErrorBanner msg={lessonError} />}
@@ -722,7 +726,7 @@ export default function CreateLessonModal({
               {/* Students */}
               <div style={{ marginBottom: '1.25rem' }}>
                 <label style={labelStyle}>
-                  Р Р€РЎвЂЎР Р…РЎвЂ“ <span style={{ color: '#ef4444' }}>*</span>
+                  Учні <span style={{ color: '#ef4444' }}>*</span>
                   {selectedStudentIds.length > 0 && (
                     <span style={{ marginLeft: '0.5rem', background: '#3b82f6', color: 'white', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem' }}>
                       {selectedStudentIds.length}
@@ -741,7 +745,7 @@ export default function CreateLessonModal({
                         ))}
                       </div>
                     ) : (
-                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Р С›Р В±Р ВµРЎР‚РЎвЂ“РЎвЂљРЎРЉ РЎС“РЎвЂЎР Р…РЎвЂ“Р Р†</span>
+                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Оберіть учнів</span>
                     )}
                   </div>
                   <button
@@ -758,7 +762,7 @@ export default function CreateLessonModal({
                           <Search size={13} style={{ position: 'absolute', left: '0.625rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
                           <input
                             type="text"
-                            placeholder="Р СџР С•РЎв‚¬РЎС“Р С”..."
+                            placeholder="Пошук..."
                             value={studentSearch}
                             onChange={e => setStudentSearch(e.target.value)}
                             style={{ ...inputStyle, paddingLeft: '2rem', padding: '0.4rem 0.75rem 0.4rem 2rem' }}
@@ -767,9 +771,9 @@ export default function CreateLessonModal({
                       </div>
                       <div style={{ maxHeight: '180px', overflow: 'auto' }}>
                         {studentsLoading
-                          ? <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>Р вЂ”Р В°Р Р†Р В°Р Р…РЎвЂљР В°Р В¶Р ВµР Р…Р Р…РЎРЏ...</div>
+                          ? <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>Завантаження...</div>
                           : students.length === 0
-                            ? <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>Р СњР Вµ Р В·Р Р…Р В°Р в„–Р Т‘Р ВµР Р…Р С•</div>
+                            ? <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>Не знайдено</div>
                             : students.map(s => (
                               <button key={s.id} type="button" onClick={() => toggleStudent(s.id)}
                                 style={dropdownItemStyle(selectedStudentIds.includes(s.id))}>
@@ -791,29 +795,30 @@ export default function CreateLessonModal({
               />
 
               <div style={{ marginBottom: '1.25rem' }}>
-                <label style={labelStyle}>Додаткові заняття</label>
+                <label style={labelStyle}>Р”РѕРґР°С‚РєРѕРІС– Р·Р°РЅСЏС‚С‚СЏ</label>
                 <textarea
                   value={additionalLessonSlotsText}
                   onChange={e => setAdditionalLessonSlotsText(e.target.value)}
-                  placeholder={"Кожен рядок: YYYY-MM-DD HH:MM або YYYY-MM-DD HH:MM 90\n2026-04-15 10:00\n2026-04-22 10:00\n2026-04-24 16:30 90"}
+                  rows={5}
+                  placeholder={'РљРѕР¶РµРЅ СЂСЏРґРѕРє: YYYY-MM-DD HH:MM Р°Р±Рѕ YYYY-MM-DD HH:MM 90\n2026-04-15 10:00\n2026-04-22 10:00\n2026-04-24 16:30 90'}
                   style={{
                     ...inputStyle,
-                    minHeight: '110px',
+                    minHeight: '132px',
                     resize: 'vertical',
-                    fontFamily: 'monospace',
                     lineHeight: 1.5,
+                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                   }}
                 />
-                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.5 }}>
-                  Перше заняття вище лишається одноразовим за замовчуванням.
-                  Тут можна додати ще кілька занять одразу: у різні дати й години або, наприклад, щотижня в той самий час.
-                  Якщо тривалість у рядку не вказати, буде використано тривалість основного заняття.
-                </div>
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', lineHeight: 1.5, color: '#6b7280' }}>
+                  РџРµСЂС€Рµ Р·Р°РЅСЏС‚С‚СЏ РІРёС‰Рµ Р·Р°Р»РёС€Р°С”С‚СЊСЃСЏ РѕРґРЅРѕСЂР°Р·РѕРІРёРј Р·Р° Р·Р°РјРѕРІС‡СѓРІР°РЅРЅСЏРј. РўСѓС‚ РјРѕР¶РЅР° РґРѕРґР°С‚Рё С‰Рµ РєС–Р»СЊРєР°
+                  Р·Р°РїРёСЃС–РІ РѕРґСЂР°Р·Сѓ: Сѓ СЂС–Р·РЅС– РґР°С‚Рё Р№ РіРѕРґРёРЅРё Р°Р±Рѕ, РЅР°РїСЂРёРєР»Р°Рґ, С‰РѕС‚РёР¶РЅСЏ РІ С‚РѕР№ СЃР°РјРёР№ С‡Р°СЃ. РЇРєС‰Рѕ С‚СЂРёРІР°Р»С–СЃС‚СЊ
+                  Сѓ СЂСЏРґРєСѓ РЅРµ РІРєР°Р·Р°С‚Рё, Р±СѓРґРµ РІРёРєРѕСЂРёСЃС‚Р°РЅРѕ С‚СЂРёРІР°Р»С–СЃС‚СЊ РѕСЃРЅРѕРІРЅРѕРіРѕ Р·Р°РЅСЏС‚С‚СЏ.
+                </p>
               </div>
 
               {/* Course */}
               <div style={{ marginBottom: '1.25rem' }}>
-                <label style={labelStyle}>Р С™РЎС“РЎР‚РЎРѓ</label>
+                <label style={labelStyle}>Курс</label>
                 <CourseDropdown
                   courses={courses}
                   value={courseId}
@@ -825,7 +830,7 @@ export default function CreateLessonModal({
 
               {/* Teacher */}
               <div style={{ marginBottom: '1.25rem' }}>
-                <label style={labelStyle}>Р вЂ™Р С‘Р С”Р В»Р В°Р Т‘Р В°РЎвЂЎ <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={labelStyle}>Викладач <span style={{ color: '#ef4444' }}>*</span></label>
                 <TeacherDropdown
                   teachers={teachers}
                   value={teacherId}
@@ -845,7 +850,7 @@ export default function CreateLessonModal({
                     style={{ width: '1rem', height: '1rem', cursor: 'pointer', accentColor: '#15803d' }}
                   />
                   <span style={{ fontSize: '0.875rem', color: '#374151', fontWeight: 500 }}>
-                    Р СџРЎР‚Р С•Р В±Р Р…Р Вµ Р В·Р В°Р Р…РЎРЏРЎвЂљРЎвЂљРЎРЏ
+                    Пробне заняття
                   </span>
                   {isTrial && (
                     <span style={{
@@ -854,7 +859,7 @@ export default function CreateLessonModal({
                       borderRadius: '0.25rem', padding: '0.125rem 0.375rem',
                       textTransform: 'uppercase', letterSpacing: '0.4px',
                     }}>
-                      Р СџРЎР‚Р С•Р В±Р Р…Р Вµ
+                      Пробне
                     </span>
                   )}
                 </label>
@@ -864,19 +869,19 @@ export default function CreateLessonModal({
                 <button type="submit" disabled={lessonLoading} className="btn btn-primary"
                   style={{ flex: 1, fontSize: '0.875rem', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                   {lessonLoading
-                    ? <><Spinner /> Р РЋРЎвЂљР Р†Р С•РЎР‚Р ВµР Р…Р Р…РЎРЏ...</>
-                    : <><Plus size={16} /> Р РЋРЎвЂљР Р†Р С•РЎР‚Р С‘РЎвЂљР С‘ Р В·Р В°Р Р…РЎРЏРЎвЂљРЎвЂљРЎРЏ</>
+                    ? <><Spinner /> Створення...</>
+                    : <><Plus size={16} /> Створити заняття</>
                   }
                 </button>
                 <button type="button" onClick={handleClose} className="btn btn-secondary"
                   style={{ fontSize: '0.875rem', padding: '0.75rem 1.25rem' }}>
-                  Р РЋР С”Р В°РЎРѓРЎС“Р Р†Р В°РЎвЂљР С‘
+                  Скасувати
                 </button>
               </div>
             </form>
           )}
 
-          {/* РІвЂќР‚РІвЂќР‚ TAB: Р вЂ™РЎвЂ“Р Т‘Р С—РЎР‚Р В°РЎвЂ РЎР‹Р Р†Р В°Р Р…Р Р…РЎРЏ РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚ */}
+          {/* ── TAB: Відпрацювання ───────────────────────────────────────────── */}
           {tab === 'makeup' && (
             <form onSubmit={handleMakeupSubmit}>
               {makeupError && <ErrorBanner msg={makeupError} />}
@@ -887,7 +892,7 @@ export default function CreateLessonModal({
                   <Search size={13} style={{ position: 'absolute', left: '0.625rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
                   <input
                     type="text"
-                    placeholder="Р СџР С•РЎв‚¬РЎС“Р С” РЎС“РЎвЂЎР Р…РЎРЏ..."
+                    placeholder="Пошук учня..."
                     value={absenceSearch}
                     onChange={e => setAbsenceSearch(e.target.value)}
                     style={{ ...inputStyle, paddingLeft: '2rem' }}
@@ -898,14 +903,14 @@ export default function CreateLessonModal({
                   onChange={e => setAbsenceStatusFilter(e.target.value as typeof absenceStatusFilter)}
                   style={{ ...inputStyle, width: 'auto', cursor: 'pointer', flexShrink: 0 }}
                 >
-                  <option value="all">Р вЂ™РЎРѓРЎвЂ“ Р С—РЎР‚Р С•Р С—РЎС“РЎРѓР С”Р С‘</option>
-                  <option value="absent">Р вЂ™РЎвЂ“Р Т‘РЎРѓРЎС“РЎвЂљР Р…РЎвЂ“Р в„–</option>
-                  <option value="makeup_planned">Р вЂ”Р В°Р С—. Р Р†РЎвЂ“Р Т‘Р С—РЎР‚Р В°РЎвЂ .</option>
+                  <option value="all">Всі пропуски</option>
+                  <option value="absent">Відсутній</option>
+                  <option value="makeup_planned">Зап. відпрац.</option>
                 </select>
                 <button
                   type="button"
                   onClick={loadAbsences}
-                  title="Р С›Р Р…Р С•Р Р†Р С‘РЎвЂљР С‘ РЎРѓР С—Р С‘РЎРѓР С•Р С”"
+                  title="Оновити список"
                   style={{ background: 'none', border: '1.5px solid #e5e7eb', borderRadius: '0.5rem', cursor: 'pointer', padding: '0.5rem', color: '#6b7280', display: 'flex', flexShrink: 0 }}
                 >
                   <RefreshCw size={14} />
@@ -937,10 +942,10 @@ export default function CreateLessonModal({
                     checked={filteredAbsences.length > 0 && filteredAbsences.every(a => selectedAbsenceIds.includes(a.attendance_id))}
                     onChange={toggleAllFiltered}
                     style={{ cursor: 'pointer' }}
-                    title="Р вЂ™Р С‘Р В±РЎР‚Р В°РЎвЂљР С‘ Р Р†РЎРѓРЎвЂ“"
+                    title="Вибрати всі"
                   />
-                  <span>Р Р€РЎвЂЎР ВµР Р…РЎРЉ / Р вЂ”Р В°Р Р…РЎРЏРЎвЂљРЎвЂљРЎРЏ</span>
-                  <span>Р РЋРЎвЂљР В°РЎвЂљРЎС“РЎРѓ</span>
+                  <span>Учень / Заняття</span>
+                  <span>Статус</span>
                 </div>
 
                 {/* List body */}
@@ -948,12 +953,12 @@ export default function CreateLessonModal({
                   {absencesLoading ? (
                     <div style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
                       <RefreshCw size={18} style={{ marginBottom: '0.5rem', opacity: 0.4 }} />
-                      <div>Р вЂ”Р В°Р Р†Р В°Р Р…РЎвЂљР В°Р В¶Р ВµР Р…Р Р…РЎРЏ...</div>
+                      <div>Завантаження...</div>
                     </div>
                   ) : filteredAbsences.length === 0 ? (
                     <div style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
                       <AlertCircle size={18} style={{ marginBottom: '0.5rem', opacity: 0.4 }} />
-                      <div>Р СџРЎР‚Р С•Р С—РЎС“РЎРѓР С”РЎвЂ“Р Р† Р Р…Р Вµ Р В·Р Р…Р В°Р в„–Р Т‘Р ВµР Р…Р С•</div>
+                      <div>Пропусків не знайдено</div>
                     </div>
                   ) : (
                     filteredAbsences.map(a => {
@@ -992,7 +997,7 @@ export default function CreateLessonModal({
                               )}
                               {(a.group_title || a.course_title) && (
                                 <>
-                                  <span style={{ marginLeft: '0.25rem', color: '#d1d5db' }}>Р’В·</span>
+                                  <span style={{ marginLeft: '0.25rem', color: '#d1d5db' }}>·</span>
                                   <Users size={10} />
                                   <span>{a.group_title || a.course_title}</span>
                                 </>
@@ -1018,10 +1023,10 @@ export default function CreateLessonModal({
                     justifyContent: 'space-between',
                     alignItems: 'center',
                   }}>
-                    <span>Р вЂ™РЎРѓРЎРЉР С•Р С–Р С•: {filteredAbsences.length}</span>
+                    <span>Всього: {filteredAbsences.length}</span>
                     {selectedAbsenceIds.length > 0 && (
                       <span style={{ color: '#3b82f6', fontWeight: 600 }}>
-                        Р вЂ™Р С‘Р В±РЎР‚Р В°Р Р…Р С•: {selectedAbsenceIds.length} ({selectedStudentNames.length} РЎС“РЎвЂЎР Р…{selectedStudentNames.length === 1 ? 'РЎРЏ' : 'РЎвЂ“Р Р†'})
+                        Вибрано: {selectedAbsenceIds.length} ({selectedStudentNames.length} учн{selectedStudentNames.length === 1 ? 'я' : 'ів'})
                       </span>
                     )}
                   </div>
@@ -1033,14 +1038,14 @@ export default function CreateLessonModal({
                 <div style={{ marginBottom: '1rem', padding: '0.625rem 0.875rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '0.5rem', fontSize: '0.8125rem', color: '#166534' }}>
                   <div style={{ fontWeight: 600, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                     <Check size={14} />
-                    Р вЂ™Р С‘Р В±РЎР‚Р В°Р Р…РЎвЂ“ Р С—РЎР‚Р С•Р С—РЎС“РЎРѓР С”Р С‘:
+                    Вибрані пропуски:
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
                     {selectedStudentNames.map(name => {
                       const count = selectedAbsences.filter(a => a.student_name === name).length;
                       return (
                         <span key={name} style={{ background: '#dcfce7', padding: '0.125rem 0.5rem', borderRadius: '0.25rem' }}>
-                          {name}{count > 1 ? ` Р“вЂ”${count}` : ''}
+                          {name}{count > 1 ? ` ×${count}` : ''}
                         </span>
                       );
                     })}
@@ -1056,7 +1061,7 @@ export default function CreateLessonModal({
 
               {/* Teacher */}
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={labelStyle}>Р вЂ™Р С‘Р С”Р В»Р В°Р Т‘Р В°РЎвЂЎ <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={labelStyle}>Викладач <span style={{ color: '#ef4444' }}>*</span></label>
                 <TeacherDropdown
                   teachers={teachers}
                   value={makeupTeacherId}
@@ -1078,13 +1083,13 @@ export default function CreateLessonModal({
                   }}
                 >
                   {makeupLoading
-                    ? <><Spinner /> Р РЋРЎвЂљР Р†Р С•РЎР‚Р ВµР Р…Р Р…РЎРЏ...</>
-                    : <><RefreshCw size={16} /> Р РЋРЎвЂљР Р†Р С•РЎР‚Р С‘РЎвЂљР С‘ Р Р†РЎвЂ“Р Т‘Р С—РЎР‚Р В°РЎвЂ РЎР‹Р Р†Р В°Р Р…Р Р…РЎРЏ{selectedAbsenceIds.length > 0 ? ` (${selectedAbsenceIds.length})` : ''}</>
+                    ? <><Spinner /> Створення...</>
+                    : <><RefreshCw size={16} /> Створити відпрацювання{selectedAbsenceIds.length > 0 ? ` (${selectedAbsenceIds.length})` : ''}</>
                   }
                 </button>
                 <button type="button" onClick={handleClose} className="btn btn-secondary"
                   style={{ fontSize: '0.875rem', padding: '0.75rem 1.25rem' }}>
-                  Р РЋР С”Р В°РЎРѓРЎС“Р Р†Р В°РЎвЂљР С‘
+                  Скасувати
                 </button>
               </div>
             </form>
@@ -1103,7 +1108,7 @@ export default function CreateLessonModal({
   );
 }
 
-// РІвЂќР‚РІвЂќР‚РІвЂќР‚ Small helpers РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ─── Small helpers ─────────────────────────────────────────────────────────────
 
 function ErrorBanner({ msg }: { msg: string }) {
   return (
@@ -1122,13 +1127,13 @@ function StatusBadge({ status }: { status: 'absent' | 'makeup_planned' }) {
   if (status === 'absent') {
     return (
       <span style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '0.25rem', fontSize: '0.6875rem', padding: '0.125rem 0.375rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-        Р вЂ™РЎвЂ“Р Т‘РЎРѓРЎС“РЎвЂљР Р…РЎвЂ“Р в„–
+        Відсутній
       </span>
     );
   }
   return (
     <span style={{ background: '#fff7ed', color: '#d97706', border: '1px solid #fed7aa', borderRadius: '0.25rem', fontSize: '0.6875rem', padding: '0.125rem 0.375rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-      Р вЂ”Р В°Р С—. Р Р†РЎвЂ“Р Т‘Р С—РЎР‚Р В°РЎвЂ .
+      Зап. відпрац.
     </span>
   );
 }
