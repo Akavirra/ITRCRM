@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { BookOpen, Calendar, CreditCard, DollarSign, Plus, Users, Users2 } from 'lucide-react';
 import CreateGroupModal from '@/components/CreateGroupModal';
 import CreateLessonModal from '@/components/CreateLessonModal';
+import ScheduleLessonCard from '@/components/ScheduleLessonCard';
 import TransitionLink from '@/components/TransitionLink';
 import type { DashboardStatsPayload } from '@/lib/dashboard-types';
 import styles from './dashboard.module.css';
@@ -18,25 +19,13 @@ const statCards = [
   { key: 'monthlyRevenue', label: 'Дохід за місяць', icon: DollarSign },
 ] as const;
 
-function getStatusLabel(status: string) {
-  if (status === 'completed') return 'Завершено';
-  if (status === 'cancelled' || status === 'canceled') return 'Скасовано';
-  return 'Заплановано';
-}
-
-function getStatusClass(status: string) {
-  if (status === 'completed') return styles.statusDone;
-  if (status === 'cancelled' || status === 'canceled') return styles.statusCanceled;
-  return styles.statusPlanned;
-}
-
 export default function DashboardPageClient({ initialData }: { initialData: DashboardStatsPayload }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ActivityTab>('payments');
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showCreateLessonModal, setShowCreateLessonModal] = useState(false);
 
-  const completedLessons = initialData.todaySchedule.filter((lesson) => lesson.status === 'completed').length;
+  const completedLessons = initialData.todaySchedule.filter((lesson) => lesson.status === 'done').length;
   const visiblePayments = initialData.recentPayments.slice(0, 6);
   const visibleHistory = initialData.recentHistory.slice(0, 6);
 
@@ -126,29 +115,30 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 </div>
               </div>
             ) : (
-              <div className={styles.timeline}>
+              <div className={styles.scheduleCards}>
                 {initialData.todaySchedule.slice(0, 10).map((lesson) => (
-                  <div key={lesson.id} className={styles.timelineItem}>
-                    <div className={styles.timelineTime}>
-                      <span className={styles.timelineTimeStart}>{lesson.startTimeLabel}</span>
-                      <span className={styles.timelineTimeEnd}>{lesson.endTimeLabel}</span>
-                    </div>
-
-                    <div className={styles.timelineBody}>
-                      <div className={styles.timelineTop}>
-                        <div className={styles.timelineTitle}>{lesson.group_title}</div>
-                        <span className={`${styles.statusBadge} ${getStatusClass(lesson.status)}`}>
-                          {getStatusLabel(lesson.status)}
-                        </span>
-                      </div>
-
-                      <div className={styles.timelineMeta}>
-                        <span>{lesson.course_title}</span>
-                        <span>{lesson.teacher_name}</span>
-                        {lesson.topic ? <span>{lesson.topic}</span> : null}
-                      </div>
-                    </div>
-                  </div>
+                  <ScheduleLessonCard
+                    key={lesson.id}
+                    lesson={{
+                      id: lesson.id,
+                      groupId: lesson.groupId,
+                      groupTitle: lesson.groupTitle || lesson.courseTitle,
+                      courseId: lesson.courseId,
+                      courseTitle: lesson.courseTitle,
+                      teacherId: lesson.teacherId,
+                      teacherName: lesson.teacherName,
+                      startTime: lesson.startTimeLabel,
+                      endTime: lesson.endTimeLabel,
+                      status: lesson.status as 'scheduled' | 'done' | 'canceled',
+                      topic: lesson.topic,
+                      originalDate: lesson.originalDate,
+                      isRescheduled: lesson.isRescheduled,
+                      isMakeup: lesson.isMakeup,
+                      isTrial: lesson.isTrial,
+                      isReplaced: lesson.isReplaced,
+                    }}
+                    onClick={() => router.push('/schedule')}
+                  />
                 ))}
               </div>
             )}
