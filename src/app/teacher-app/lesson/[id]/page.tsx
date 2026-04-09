@@ -138,10 +138,15 @@ export default function LessonDetailPage() {
   const [processingVideoIds, setProcessingVideoIds] = useState<Record<number, boolean>>({});
   const [deletingPhotoId, setDeletingPhotoId] = useState<number | null>(null);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [viewerPhotoScale, setViewerPhotoScale] = useState(1);
+  const [viewerPhotoOffset, setViewerPhotoOffset] = useState({ x: 0, y: 0 });
   const pendingPhotosRef = useRef<PendingPhotoPreview[]>([]);
   const viewerTouchStartXRef = useRef<number | null>(null);
   const viewerTouchStartYRef = useRef<number | null>(null);
   const viewerVideoRef = useRef<HTMLVideoElement | null>(null);
+  const viewerPinchDistanceRef = useRef<number | null>(null);
+  const viewerPinchScaleRef = useRef<number>(1);
+  const viewerDragStartRef = useRef<{ x: number; y: number; originX: number; originY: number } | null>(null);
 
   // Teachers can edit only today's lessons.
   useEffect(() => {
@@ -598,7 +603,16 @@ export default function LessonDetailPage() {
 
   const visibleUploadedPhotos = showAllUploadedPhotos ? photos : photos.slice(0, 3);
 
+  const resetViewerPhotoTransform = () => {
+    setViewerPhotoScale(1);
+    setViewerPhotoOffset({ x: 0, y: 0 });
+    viewerPinchDistanceRef.current = null;
+    viewerPinchScaleRef.current = 1;
+    viewerDragStartRef.current = null;
+  };
+
   const closeMediaViewer = () => {
+    resetViewerPhotoTransform();
     setViewerIndex(null);
   };
 
@@ -607,17 +621,138 @@ export default function LessonDetailPage() {
       return;
     }
 
+    resetViewerPhotoTransform();
     setViewerIndex(nextIndex);
   };
 
+  const getTouchDistance = (
+    firstTouch: { clientX: number; clientY: number },
+    secondTouch: { clientX: number; clientY: number },
+  ) => {
+    const deltaX = firstTouch.clientX - secondTouch.clientX;
+    const deltaY = firstTouch.clientY - secondTouch.clientY;
+    return Math.hypot(deltaX, deltaY);
+  };
+
   const handleViewerTouchStart = (event: ReactTouchEvent<HTMLElement>) => {
+    if (viewerIndex === null) {
+      return;
+    }
+
+    const currentPhoto = photos[viewerIndex];
+    if (!currentPhoto || isVideoFile(currentPhoto)) {
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      viewerTouchStartXRef.current = touch.clientX;
+      viewerTouchStartYRef.current = touch.clientY;
+      return;
+    }
+
+    if (event.touches.length === 2) {
+      viewerPinchDistanceRef.current = getTouchDistance(event.touches[0], event.touches[1]);
+      viewerPinchScaleRef.current = viewerPhotoScale;
+      viewerDragStartRef.current = null;
+      viewerTouchStartXRef.current = null;
+      viewerTouchStartYRef.current = null;
+      return;
+    }
+
     const touch = event.changedTouches[0];
     if (!touch) return;
+
+    if (viewerPhotoScale > 1) {
+      viewerDragStartRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        originX: viewerPhotoOffset.x,
+        originY: viewerPhotoOffset.y,
+      };
+      viewerTouchStartXRef.current = null;
+      viewerTouchStartYRef.current = null;
+      return;
+    }
+
     viewerTouchStartXRef.current = touch.clientX;
     viewerTouchStartYRef.current = touch.clientY;
   };
 
+  const handleViewerTouchMove = (event: ReactTouchEvent<HTMLElement>) => {
+    if (viewerIndex === null) {
+      return;
+    }
+
+    const currentPhoto = photos[viewerIndex];
+    if (!currentPhoto || isVideoFile(currentPhoto)) {
+      return;
+    }
+
+    if (event.touches.length === 2) {
+      const initialDistance = viewerPinchDistanceRef.current;
+      if (!initialDistance) {
+        viewerPinchDistanceRef.current = getTouchDistance(event.touches[0], event.touches[1]);
+        viewerPinchScaleRef.current = viewerPhotoScale;
+        return;
+      }
+
+      event.preventDefault();
+      const currentDistance = getTouchDistance(event.touches[0], event.touches[1]);
+      const rawScale = viewerPinchScaleRef.current * (currentDistance / initialDistance);
+      const nextScale = Math.max(1, Math.min(4, rawScale));
+      setViewerPhotoScale(nextScale);
+
+      if (nextScale <= 1.01) {
+        setViewerPhotoOffset({ x: 0, y: 0 });
+      }
+      return;
+    }
+
+    if (event.touches.length === 1 && viewerPhotoScale > 1 && viewerDragStartRef.current) {
+      event.preventDefault();
+      const touch = event.touches[0];
+      const maxOffset = ((viewerPhotoScale - 1) * 140);
+      const nextX = viewerDragStartRef.current.originX + (touch.clientX - viewerDragStartRef.current.x);
+      const nextY = viewerDragStartRef.current.originY + (touch.clientY - viewerDragStartRef.current.y);
+
+      setViewerPhotoOffset({
+        x: Math.max(-maxOffset, Math.min(maxOffset, nextX)),
+        y: Math.max(-maxOffset, Math.min(maxOffset, nextY)),
+      });
+    }
+  };
+
   const handleViewerTouchEnd = (event: ReactTouchEvent<HTMLElement>) => {
+    if (viewerIndex === null) {
+      viewerTouchStartXRef.current = null;
+      viewerTouchStartYRef.current = null;
+      viewerPinchDistanceRef.current = null;
+      viewerDragStartRef.current = null;
+      return;
+    }
+
+    const currentPhoto = photos[viewerIndex];
+    if (currentPhoto && !isVideoFile(currentPhoto)) {
+      if (event.touches.length === 1) {
+        const touch = event.touches[0];
+        viewerDragStartRef.current = viewerPhotoScale > 1
+          ? {
+              x: touch.clientX,
+              y: touch.clientY,
+              originX: viewerPhotoOffset.x,
+              originY: viewerPhotoOffset.y,
+            }
+          : null;
+      } else if (event.touches.length === 0) {
+        viewerPinchDistanceRef.current = null;
+        viewerDragStartRef.current = null;
+      }
+
+      if (viewerPhotoScale > 1.02) {
+        viewerTouchStartXRef.current = null;
+        viewerTouchStartYRef.current = null;
+        return;
+      }
+    }
+
     const startX = viewerTouchStartXRef.current;
     const startY = viewerTouchStartYRef.current;
     const touch = event.changedTouches[0];
@@ -1600,6 +1735,7 @@ export default function LessonDetailPage() {
           <div
             onClick={(event) => event.stopPropagation()}
             onTouchStart={handleViewerTouchStart}
+            onTouchMove={handleViewerTouchMove}
             onTouchEnd={handleViewerTouchEnd}
             style={{
               flex: 1,
@@ -1637,7 +1773,18 @@ export default function LessonDetailPage() {
                 key={photos[viewerIndex].id}
                 src={getDriveLargeThumbnailUrl(photos[viewerIndex].driveFileId)}
                 alt={photos[viewerIndex].fileName}
-                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '16px' }}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'contain',
+                  borderRadius: '16px',
+                  transform: `translate(${viewerPhotoOffset.x}px, ${viewerPhotoOffset.y}px) scale(${viewerPhotoScale})`,
+                  transformOrigin: 'center center',
+                  transition: viewerDragStartRef.current ? 'none' : 'transform 0.18s ease',
+                  touchAction: 'none',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                }}
               />
             )}
 
