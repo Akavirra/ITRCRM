@@ -691,7 +691,11 @@ export default function MaterialsPage() {
             if (!response.ok) {
               return null;
             }
-            const student = await response.json();
+            const data = await response.json();
+            const student = data?.student;
+            if (!student) {
+              return null;
+            }
             return {
               id: student.id,
               full_name: student.full_name,
@@ -955,7 +959,11 @@ export default function MaterialsPage() {
       }
 
       setRecentAvatarStudents((prev) => {
-        const next = [avatarSelectedStudent, ...prev.filter((item) => item.id !== avatarSelectedStudent.id)];
+        const nextStudent = {
+          ...avatarSelectedStudent,
+          photo: croppedDataUrl,
+        };
+        const next = [nextStudent, ...prev.filter((item) => item.id !== avatarSelectedStudent.id)];
         return next.slice(0, 6);
       });
 
