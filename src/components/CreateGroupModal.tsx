@@ -176,8 +176,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
     onClose();
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateGroup = async () => {
     setError(null);
 
     if (!newGroupCourseId) return setError(uk.validation.selectCourse);
@@ -236,6 +235,14 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
     extra: 'Крок 3 з 3 · Завершення',
   } as const;
 
+  const goToNextStep = () => {
+    setGroupFormStep((prev) => (prev === 'schedule' ? 'students' : 'extra'));
+  };
+
+  const goToPreviousStep = () => {
+    setGroupFormStep((prev) => (prev === 'extra' ? 'students' : 'schedule'));
+  };
+
   return (
     <div className="modal-overlay" onClick={closeModal} style={{ zIndex: 100 }}>
       <div
@@ -244,7 +251,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
         style={{
           maxWidth: '760px',
           maxHeight: '92vh',
-          overflow: 'hidden',
+          overflow: 'visible',
           borderRadius: '24px',
           border: '1px solid #e2e8f0',
           backgroundColor: '#f7f9fc',
@@ -261,23 +268,6 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
             <div>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: '999px',
-                  backgroundColor: '#eaf2ff',
-                  color: '#2563eb',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  marginBottom: '0.85rem',
-                }}
-              >
-                Нова група
-              </div>
               <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '700', color: '#111827' }}>
                 {uk.modals.newGroup}
               </h2>
@@ -301,7 +291,10 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
                 cursor: 'pointer',
               }}
             >
-              ?
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
             </button>
           </div>
 
@@ -358,7 +351,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
           </div>
         </div>
 
-        <form onSubmit={handleSave}>
+        <form onSubmit={(e) => e.preventDefault()}>
           <div className="modal-body" style={{ padding: '1.5rem', overflowY: 'auto', maxHeight: 'calc(92vh - 235px)' }}>
             {error && (
               <div
@@ -616,7 +609,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
                           borderRadius: '14px',
                           boxShadow: '0 16px 40px rgba(15, 23, 42, 0.12)',
                           zIndex: 10,
-                          maxHeight: '240px',
+                          maxHeight: '280px',
                           overflowY: 'auto',
                         }}
                       >
@@ -734,7 +727,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => setGroupFormStep(groupFormStep === 'extra' ? 'students' : 'schedule')}
+                  onClick={goToPreviousStep}
                   disabled={saving}
                   style={{ padding: '0.7rem 1.25rem', borderRadius: '12px', fontWeight: '600', fontSize: '0.92rem' }}
                 >
@@ -746,16 +739,17 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => setGroupFormStep(groupFormStep === 'schedule' ? 'students' : 'extra')}
+                  onClick={goToNextStep}
                   style={{ padding: '0.7rem 1.4rem', borderRadius: '12px', fontWeight: '600', fontSize: '0.92rem' }}
                 >
                   Далі
                 </button>
               ) : (
                 <button
-                  type="submit"
+                  type="button"
                   className="btn btn-primary"
                   disabled={saving}
+                  onClick={handleCreateGroup}
                   style={{ padding: '0.7rem 1.4rem', borderRadius: '12px', fontWeight: '600', fontSize: '0.92rem', backgroundColor: '#2563eb' }}
                 >
                   {saving ? uk.common.saving : uk.actions.create}
