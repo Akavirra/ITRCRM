@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FolderOpen, FileText, Image, Video, Music, File,
   Download, ExternalLink, Search, Trash2, LayoutGrid,
-  LayoutList, MoreVertical, ChevronDown, ChevronRight, UserRound, Sparkles,
+  LayoutList, MoreVertical, ChevronDown, ChevronRight, UserRound, Sparkles, BookOpen, Users,
 } from 'lucide-react';
 import { useUser } from '@/components/UserContext';
 import {
@@ -1135,7 +1135,7 @@ export default function MaterialsPage() {
                         style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minWidth: 0, padding: '7px 8px', borderRadius: 10, border: 'none', background: courseSelected ? '#e3f2fd' : 'transparent', color: courseSelected ? '#1565c0' : '#1e293b', cursor: 'pointer', textAlign: 'left', fontSize: 13, fontWeight: 600 }}
                         title={course.title}
                       >
-                        <FolderOpen size={15} />
+                        <BookOpen size={15} />
                         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{course.title}</span>
                         <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{course.fileCount}</span>
                       </button>
@@ -1163,7 +1163,7 @@ export default function MaterialsPage() {
                                   style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minWidth: 0, padding: '7px 8px', borderRadius: 10, border: 'none', background: groupSelected ? '#e3f2fd' : 'transparent', color: groupSelected ? '#1565c0' : '#334155', cursor: 'pointer', textAlign: 'left', fontSize: 12.5, fontWeight: groupSelected ? 600 : 500 }}
                                   title={group.title}
                                 >
-                                  <FolderOpen size={14} />
+                                  <Users size={14} />
                                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.title}</span>
                                   <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{group.fileCount}</span>
                                 </button>
