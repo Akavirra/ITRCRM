@@ -335,8 +335,8 @@ function SidebarInfoWidget() {
         }
       `}} />
       <div style={{
-        padding: '14px 16px 10px',
-        borderRadius: '20px',
+        padding: '10px 12px 8px',
+        borderRadius: '18px',
         background: widgetTheme.bg,
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
@@ -344,17 +344,17 @@ function SidebarInfoWidget() {
         border: 'none',
         display: 'flex',
         flexDirection: 'column',
-        gap: '6px',
+        gap: '4px',
         transition: 'background 1s ease, box-shadow 1s ease',
       }}>
         {/* Top row: Time + Weather */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {/* Time */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '2px' }}>
-            <span style={{ fontSize: '32px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+            <span style={{ fontSize: '24px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
               {h}<span style={{ opacity: 0.3, margin: '0 1px' }}>:</span>{m}
             </span>
-            <span style={{ fontSize: '12px', fontWeight: '400', color: '#94a3b8', fontVariantNumeric: 'tabular-nums', lineHeight: 1, marginTop: '2px' }}>
+            <span style={{ fontSize: '10px', fontWeight: '400', color: '#94a3b8', fontVariantNumeric: 'tabular-nums', lineHeight: 1, marginTop: '1px' }}>
               {s}
             </span>
           </div>
@@ -372,9 +372,9 @@ function SidebarInfoWidget() {
                 background: weatherOpen ? 'rgba(255, 255, 255, 0.6)' : 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                padding: '6px 8px',
-                margin: '-6px -8px',
-                borderRadius: '12px',
+                padding: '4px 6px',
+                margin: '-4px -6px',
+                borderRadius: '10px',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 opacity: weatherOpen ? 1 : 0.85,
                 flexShrink: 0,
@@ -390,8 +390,8 @@ function SidebarInfoWidget() {
                 e.currentTarget.style.transform = 'scale(1)';
               }}
             >
-              <span className="weather-icon-anim" style={{ lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code, 18)}</span>
-              <span style={{ fontSize: '18px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+              <span className="weather-icon-anim" style={{ lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code, 16)}</span>
+              <span style={{ fontSize: '16px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
                 {weather.temp}°
               </span>
             </button>
@@ -399,8 +399,8 @@ function SidebarInfoWidget() {
         </div>
 
         {/* Bottom row: Day + Date */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', whiteSpace: 'nowrap', paddingLeft: '2px' }}>
-          <span style={{ fontSize: '12px', fontWeight: '500', color: '#3b82f6', letterSpacing: '0.01em', lineHeight: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', whiteSpace: 'nowrap', paddingLeft: '1px' }}>
+          <span style={{ fontSize: '11px', fontWeight: '500', color: '#3b82f6', letterSpacing: '0.01em', lineHeight: 1 }}>
             {dayName}
           </span>
           <button
@@ -409,7 +409,7 @@ function SidebarInfoWidget() {
               setCalOpen(o => !o);
             }}
             style={{
-              fontSize: '11px',
+              fontSize: '10px',
               color: calOpen ? '#3b82f6' : '#64748b',
               fontWeight: '400',
               background: 'none',
@@ -433,9 +433,9 @@ function SidebarInfoWidget() {
             alignItems: 'center',
             gap: '8px',
             width: '100%',
-            marginTop: '6px',
-            padding: '8px 10px',
-            borderRadius: '12px',
+            marginTop: '4px',
+            padding: '6px 8px',
+            borderRadius: '10px',
             border: '1px solid rgba(59, 130, 246, 0.08)',
             background: eventsOpen ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.45)',
             color: '#334155',
@@ -458,12 +458,12 @@ function SidebarInfoWidget() {
             flexShrink: 0,
           }} />
           <span style={{ minWidth: 0, flex: 1 }}>
-            <span style={{ display: 'block', fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>
+            <span style={{ display: 'block', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '1px' }}>
               Події
             </span>
             <span style={{
               display: 'block',
-              fontSize: '11px',
+              fontSize: '10px',
               fontWeight: '500',
               color: '#0f172a',
               overflow: 'hidden',
