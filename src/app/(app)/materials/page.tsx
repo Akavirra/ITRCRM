@@ -65,6 +65,23 @@ interface StudentSearchOption {
   full_name: string;
   phone: string | null;
   parent_name: string | null;
+  groups?: Array<{
+    id: number;
+    title: string;
+    course_title?: string;
+  }>;
+}
+
+interface CourseFilterOption {
+  id: number;
+  title: string;
+}
+
+interface GroupFilterOption {
+  id: number;
+  title: string;
+  course_id: number;
+  course_title: string;
 }
 
 type BrowserFile = MediaFile & {
@@ -230,6 +247,12 @@ function StudentAvatarPickerModal({
   isOpen,
   search,
   onSearchChange,
+  selectedCourseId,
+  onCourseChange,
+  courseOptions,
+  selectedGroupId,
+  onGroupChange,
+  groupOptions,
   searchResults,
   recentStudents,
   loading,
@@ -240,6 +263,12 @@ function StudentAvatarPickerModal({
   isOpen: boolean;
   search: string;
   onSearchChange: (value: string) => void;
+  selectedCourseId: number | null;
+  onCourseChange: (value: number | null) => void;
+  courseOptions: CourseFilterOption[];
+  selectedGroupId: number | null;
+  onGroupChange: (value: number | null) => void;
+  groupOptions: GroupFilterOption[];
   searchResults: StudentSearchOption[];
   recentStudents: StudentSearchOption[];
   loading: boolean;
@@ -252,7 +281,11 @@ function StudentAvatarPickerModal({
   }
 
   const normalizedSearch = search.trim();
-  const studentsToShow = normalizedSearch ? searchResults : recentStudents;
+  const hasFilters = selectedCourseId !== null || selectedGroupId !== null;
+  const studentsToShow = normalizedSearch || hasFilters ? searchResults : recentStudents;
+  const visibleGroups = selectedCourseId === null
+    ? groupOptions
+    : groupOptions.filter((group) => group.course_id === selectedCourseId);
 
   return (
     <div
@@ -311,18 +344,58 @@ function StudentAvatarPickerModal({
               }}
             />
           </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: '0.75rem' }}>
+            <select
+              value={selectedCourseId ?? ''}
+              onChange={(e) => onCourseChange(e.target.value ? Number(e.target.value) : null)}
+              style={{
+                width: '100%',
+                padding: '0.78rem 0.85rem',
+                borderRadius: 12,
+                border: '1px solid #dbe3ee',
+                fontSize: '0.92rem',
+                outline: 'none',
+                background: '#fff',
+              }}
+            >
+              <option value="">Усі курси</option>
+              {courseOptions.map((course) => (
+                <option key={course.id} value={course.id}>{course.title}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedGroupId ?? ''}
+              onChange={(e) => onGroupChange(e.target.value ? Number(e.target.value) : null)}
+              style={{
+                width: '100%',
+                padding: '0.78rem 0.85rem',
+                borderRadius: 12,
+                border: '1px solid #dbe3ee',
+                fontSize: '0.92rem',
+                outline: 'none',
+                background: '#fff',
+              }}
+            >
+              <option value="">Усі групи</option>
+              {visibleGroups.map((group) => (
+                <option key={group.id} value={group.id}>{group.title}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div style={{ padding: '0.875rem 1rem 1rem', overflowY: 'auto' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 0.5rem 0.65rem' }}>
-            {normalizedSearch ? 'Результати пошуку' : 'Нещодавно обрані'}
+            {normalizedSearch || hasFilters ? 'Результати пошуку' : 'Нещодавно обрані'}
           </div>
 
           {loading ? (
             <div style={{ padding: '1.5rem 0.5rem', color: '#64748b', fontSize: '0.95rem' }}>Пошук учнів...</div>
           ) : studentsToShow.length === 0 ? (
             <div style={{ padding: '1.5rem 0.5rem', color: '#94a3b8', fontSize: '0.95rem' }}>
-              {normalizedSearch ? 'Учнів не знайдено. Спробуйте інший запит.' : 'Ще немає нещодавно обраних учнів.'}
+              {normalizedSearch || hasFilters ? 'Учнів не знайдено. Спробуйте змінити запит або фільтри.' : 'Ще немає нещодавно обраних учнів.'}
             </div>
           ) : (
             <div style={{ display: 'grid', gap: 8 }}>
@@ -355,6 +428,12 @@ function StudentAvatarPickerModal({
                     <div style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {student.phone || student.parent_name || 'Без додаткових даних'}
                     </div>
+                    {!!student.groups?.length && (
+                      <div style={{ fontSize: '0.77rem', color: '#94a3b8', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {student.groups.slice(0, 2).map((group) => group.title).join(' · ')}
+                        {student.groups.length > 2 ? ` +${student.groups.length - 2}` : ''}
+                      </div>
+                    )}
                   </div>
                   <div style={{ fontSize: '0.82rem', color: '#2563eb', fontWeight: 600, flexShrink: 0 }}>
                     {preparingStudentId === student.id ? 'Підготовка...' : 'Обрати'}
@@ -407,6 +486,10 @@ export default function MaterialsPage() {
   const [avatarPreparingStudentId, setAvatarPreparingStudentId] = useState<number | null>(null);
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [recentAvatarStudents, setRecentAvatarStudents] = useState<StudentSearchOption[]>([]);
+  const [avatarCourseOptions, setAvatarCourseOptions] = useState<CourseFilterOption[]>([]);
+  const [avatarGroupOptions, setAvatarGroupOptions] = useState<GroupFilterOption[]>([]);
+  const [avatarSelectedCourseId, setAvatarSelectedCourseId] = useState<number | null>(null);
+  const [avatarSelectedGroupId, setAvatarSelectedGroupId] = useState<number | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(MATERIALS_SIDEBAR_MIN);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -493,6 +576,51 @@ export default function MaterialsPage() {
   }, [sidebarWidth]);
 
   useEffect(() => {
+    if (!avatarPickerOpen) {
+      return;
+    }
+
+    const loadPickerFilters = async () => {
+      try {
+        const [coursesRes, groupsRes] = await Promise.all([
+          fetch('/api/courses?simple=true'),
+          fetch('/api/groups?basic=true'),
+        ]);
+
+        if (coursesRes.ok) {
+          const data = await coursesRes.json();
+          setAvatarCourseOptions(data.courses || []);
+        }
+
+        if (groupsRes.ok) {
+          const data = await groupsRes.json();
+          setAvatarGroupOptions(data.groups || []);
+        }
+      } catch (error) {
+        console.error('Failed to load avatar picker filters:', error);
+      }
+    };
+
+    if (avatarCourseOptions.length === 0 || avatarGroupOptions.length === 0) {
+      loadPickerFilters();
+    }
+  }, [avatarCourseOptions.length, avatarGroupOptions.length, avatarPickerOpen]);
+
+  useEffect(() => {
+    if (avatarSelectedCourseId === null) {
+      return;
+    }
+
+    const stillValid = avatarGroupOptions.some(
+      (group) => group.id === avatarSelectedGroupId && group.course_id === avatarSelectedCourseId
+    );
+
+    if (!stillValid && avatarSelectedGroupId !== null) {
+      setAvatarSelectedGroupId(null);
+    }
+  }, [avatarGroupOptions, avatarSelectedCourseId, avatarSelectedGroupId]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
       const raw = window.localStorage.getItem(RECENT_AVATAR_STUDENTS_KEY);
@@ -524,11 +652,12 @@ export default function MaterialsPage() {
     }
 
     const query = avatarStudentSearch.trim();
+    const hasFilters = avatarSelectedCourseId !== null || avatarSelectedGroupId !== null;
     if (avatarSearchTimer.current) {
       clearTimeout(avatarSearchTimer.current);
     }
 
-    if (query.length < 2) {
+    if (query.length < 2 && !hasFilters) {
       setAvatarSearchResults([]);
       setAvatarSearchLoading(false);
       return;
@@ -537,12 +666,32 @@ export default function MaterialsPage() {
     avatarSearchTimer.current = setTimeout(async () => {
       setAvatarSearchLoading(true);
       try {
-        const res = await fetch(`/api/students?autocomplete=true&search=${encodeURIComponent(query)}&limit=10`);
+        const params = new URLSearchParams({
+          withGroups: 'true',
+          limit: '24',
+        });
+        if (query.length >= 2) {
+          params.set('search', query);
+        }
+        if (avatarSelectedCourseId !== null) {
+          params.set('courseId', String(avatarSelectedCourseId));
+        }
+        if (avatarSelectedGroupId !== null) {
+          params.set('groupId', String(avatarSelectedGroupId));
+        }
+
+        const res = await fetch(`/api/students?${params.toString()}`);
         if (!res.ok) {
           throw new Error('Failed to search students');
         }
         const data = await res.json();
-        setAvatarSearchResults(data.students || []);
+        setAvatarSearchResults((data.students || []).map((student: any) => ({
+          id: student.id,
+          full_name: student.full_name,
+          phone: student.phone || null,
+          parent_name: student.parent_name || null,
+          groups: student.groups || [],
+        })));
       } catch (error) {
         console.error('Failed to search students for avatar:', error);
         setAvatarSearchResults([]);
@@ -556,7 +705,7 @@ export default function MaterialsPage() {
         clearTimeout(avatarSearchTimer.current);
       }
     };
-  }, [avatarPickerOpen, avatarStudentSearch]);
+  }, [avatarPickerOpen, avatarSelectedCourseId, avatarSelectedGroupId, avatarStudentSearch]);
 
   useEffect(() => {
     if (!isResizingSidebar) return;
@@ -649,6 +798,8 @@ export default function MaterialsPage() {
     setAvatarPreparingStudentId(null);
     setAvatarSaving(false);
     setAvatarStudentSearch('');
+    setAvatarSelectedCourseId(null);
+    setAvatarSelectedGroupId(null);
     setAvatarSearchResults([]);
   }
 
@@ -660,6 +811,8 @@ export default function MaterialsPage() {
     setAvatarSourceFile(file);
     setAvatarSelectedStudent(null);
     setAvatarStudentSearch('');
+    setAvatarSelectedCourseId(null);
+    setAvatarSelectedGroupId(null);
     setAvatarSearchResults([]);
     setAvatarPickerOpen(true);
   }
@@ -787,6 +940,12 @@ export default function MaterialsPage() {
         isOpen={avatarPickerOpen}
         search={avatarStudentSearch}
         onSearchChange={setAvatarStudentSearch}
+        selectedCourseId={avatarSelectedCourseId}
+        onCourseChange={setAvatarSelectedCourseId}
+        courseOptions={avatarCourseOptions}
+        selectedGroupId={avatarSelectedGroupId}
+        onGroupChange={setAvatarSelectedGroupId}
+        groupOptions={avatarGroupOptions}
         searchResults={avatarSearchResults}
         recentStudents={recentAvatarStudents}
         loading={avatarSearchLoading}
