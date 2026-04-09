@@ -650,12 +650,82 @@ export default function MaterialsPage() {
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        setRecentAvatarStudents(parsed.slice(0, 6));
+        const normalized = parsed
+          .slice(0, 6)
+          .filter((student: any) => student && typeof student.id === 'number' && typeof student.full_name === 'string')
+          .map((student: any) => ({
+            id: student.id,
+            full_name: student.full_name,
+            phone: student.phone || null,
+            parent_name: student.parent_name || null,
+            photo: student.photo || null,
+            groups: Array.isArray(student.groups) ? student.groups : [],
+          }));
+        setRecentAvatarStudents(normalized);
       }
     } catch (error) {
       console.warn('Failed to parse recent avatar students:', error);
     }
   }, []);
+
+  useEffect(() => {
+    if (!avatarPickerOpen || recentAvatarStudents.length === 0) {
+      return;
+    }
+
+    const missingPhotoIds = recentAvatarStudents
+      .filter((student) => !student.photo)
+      .map((student) => student.id);
+
+    if (missingPhotoIds.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const hydrateRecentStudents = async () => {
+      try {
+        const hydrated = await Promise.all(
+          missingPhotoIds.map(async (studentId) => {
+            const response = await fetch(`/api/students/${studentId}?withGroups=true`);
+            if (!response.ok) {
+              return null;
+            }
+            const student = await response.json();
+            return {
+              id: student.id,
+              full_name: student.full_name,
+              phone: student.phone || null,
+              parent_name: student.parent_name || null,
+              photo: student.photo || null,
+              groups: student.groups || [],
+            } satisfies StudentSearchOption;
+          })
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        const nextById = new Map(hydrated.filter(Boolean).map((student) => [student!.id, student!]));
+        if (nextById.size === 0) {
+          return;
+        }
+
+        setRecentAvatarStudents((prev) =>
+          prev.map((student) => nextById.get(student.id) ?? student)
+        );
+      } catch (error) {
+        console.warn('Failed to hydrate recent avatar students:', error);
+      }
+    };
+
+    hydrateRecentStudents();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [avatarPickerOpen, recentAvatarStudents]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
