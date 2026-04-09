@@ -1117,39 +1117,59 @@ export default function MaterialsPage() {
               {lessonCourses.map((course) => {
                 const courseKey = String(course.id ?? course.title);
                 const courseExpanded = expandedNodes[courseKey] ?? true;
+                const courseSelected = selectedLessonCourseId === course.id && selectedLessonGroupId === null && selectedLessonId === null;
                 return (
                   <div key={courseKey}>
-                    <button type="button" onClick={() => setExpandedNodes((prev) => ({ ...prev, [courseKey]: !courseExpanded }))} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 13, color: '#1e293b', fontWeight: 600 }}>
-                      {courseExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                      <FolderOpen size={15} />
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{course.title}</span>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{course.fileCount}</span>
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 4px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedNodes((prev) => ({ ...prev, [courseKey]: !courseExpanded }))}
+                        aria-label={courseExpanded ? 'Згорнути курс' : 'Розгорнути курс'}
+                        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, border: 'none', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: '#475569', flexShrink: 0 }}
+                      >
+                        {courseExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedLessonCourseId(course.id); setSelectedLessonGroupId(null); setSelectedLessonId(null); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minWidth: 0, padding: '7px 8px', borderRadius: 10, border: 'none', background: courseSelected ? '#e3f2fd' : 'transparent', color: courseSelected ? '#1565c0' : '#1e293b', cursor: 'pointer', textAlign: 'left', fontSize: 13, fontWeight: 600 }}
+                        title={course.title}
+                      >
+                        <FolderOpen size={15} />
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{course.title}</span>
+                        <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{course.fileCount}</span>
+                      </button>
+                    </div>
                     {courseExpanded && (
                       <div style={{ paddingLeft: 10 }}>
-                        <button type="button" onClick={() => { setSelectedLessonCourseId(course.id); setSelectedLessonGroupId(null); setSelectedLessonId(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', borderRadius: 10, border: 'none', background: selectedLessonCourseId === course.id && selectedLessonGroupId === null && selectedLessonId === null ? '#e3f2fd' : 'transparent', color: selectedLessonCourseId === course.id && selectedLessonGroupId === null && selectedLessonId === null ? '#1565c0' : '#475569', cursor: 'pointer', textAlign: 'left', fontSize: 12.5, fontWeight: selectedLessonCourseId === course.id && selectedLessonGroupId === null && selectedLessonId === null ? 600 : 400 }}>
-                          <FolderOpen size={14} />
-                          Усі медіа курсу
-                          <span style={{ marginLeft: 'auto', fontSize: 11, color: '#94a3b8' }}>{course.fileCount}</span>
-                        </button>
                         {course.groups.map((group) => {
                           const groupKey = `${courseKey}:${String(group.id ?? group.title)}`;
                           const groupExpanded = expandedNodes[groupKey] ?? false;
+                          const groupSelected = selectedLessonGroupId === group.id && selectedLessonId === null;
                           return (
                             <div key={groupKey}>
-                              <button type="button" onClick={() => setExpandedNodes((prev) => ({ ...prev, [groupKey]: !groupExpanded }))} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 12.5, color: '#334155', fontWeight: 500 }}>
-                                {groupExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                                <FolderOpen size={14} />
-                                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.title}</span>
-                                <span style={{ fontSize: 11, color: '#94a3b8' }}>{group.fileCount}</span>
-                              </button>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 4px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedNodes((prev) => ({ ...prev, [groupKey]: !groupExpanded }))}
+                                  aria-label={groupExpanded ? 'Згорнути групу' : 'Розгорнути групу'}
+                                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, border: 'none', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: '#64748b', flexShrink: 0 }}
+                                >
+                                  {groupExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setSelectedLessonCourseId(course.id); setSelectedLessonGroupId(group.id); setSelectedLessonId(null); }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minWidth: 0, padding: '7px 8px', borderRadius: 10, border: 'none', background: groupSelected ? '#e3f2fd' : 'transparent', color: groupSelected ? '#1565c0' : '#334155', cursor: 'pointer', textAlign: 'left', fontSize: 12.5, fontWeight: groupSelected ? 600 : 500 }}
+                                  title={group.title}
+                                >
+                                  <FolderOpen size={14} />
+                                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.title}</span>
+                                  <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{group.fileCount}</span>
+                                </button>
+                              </div>
                               {groupExpanded && (
                                 <div style={{ paddingLeft: 14 }}>
-                                  <button type="button" onClick={() => { setSelectedLessonCourseId(course.id); setSelectedLessonGroupId(group.id); setSelectedLessonId(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', borderRadius: 10, border: 'none', background: selectedLessonGroupId === group.id && selectedLessonId === null ? '#e3f2fd' : 'transparent', color: selectedLessonGroupId === group.id && selectedLessonId === null ? '#1565c0' : '#475569', cursor: 'pointer', textAlign: 'left', fontSize: 12, fontWeight: selectedLessonGroupId === group.id && selectedLessonId === null ? 600 : 400 }}>
-                                    <FolderOpen size={13} />
-                                    Усі медіа групи
-                                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#94a3b8' }}>{group.fileCount}</span>
-                                  </button>
                                   {group.lessons.map((lesson) => (
                                     <button key={lesson.id} type="button" onClick={() => { setSelectedLessonCourseId(course.id); setSelectedLessonGroupId(group.id); setSelectedLessonId(lesson.id); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', borderRadius: 10, border: 'none', background: selectedLessonId === lesson.id ? '#e3f2fd' : 'transparent', color: selectedLessonId === lesson.id ? '#1565c0' : '#475569', cursor: 'pointer', textAlign: 'left', fontSize: 12, fontWeight: selectedLessonId === lesson.id ? 600 : 400 }} title={lesson.folderName}>
                                       <FolderOpen size={12} />
