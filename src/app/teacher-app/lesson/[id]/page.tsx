@@ -147,6 +147,9 @@ export default function LessonDetailPage() {
   const viewerPinchDistanceRef = useRef<number | null>(null);
   const viewerPinchScaleRef = useRef<number>(1);
   const viewerDragStartRef = useRef<{ x: number; y: number; originX: number; originY: number } | null>(null);
+  const previewTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const previewTouchMovedRef = useRef(false);
+  const suppressPreviewClickUntilRef = useRef(0);
 
   // Teachers can edit only today's lessons.
   useEffect(() => {
@@ -795,6 +798,55 @@ export default function LessonDetailPage() {
     }
   };
 
+  const handleMediaPreviewTouchStart = (event: ReactTouchEvent<HTMLElement>) => {
+    const touch = event.touches[0];
+    if (!touch) {
+      return;
+    }
+
+    previewTouchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    previewTouchMovedRef.current = false;
+  };
+
+  const handleMediaPreviewTouchMove = (event: ReactTouchEvent<HTMLElement>) => {
+    const start = previewTouchStartRef.current;
+    const touch = event.touches[0];
+    if (!start || !touch) {
+      return;
+    }
+
+    if (Math.abs(touch.clientX - start.x) > 8 || Math.abs(touch.clientY - start.y) > 8) {
+      previewTouchMovedRef.current = true;
+    }
+  };
+
+  const handleMediaPreviewTouchEnd = (event: ReactTouchEvent<HTMLElement>, photoId: number) => {
+    suppressPreviewClickUntilRef.current = Date.now() + 500;
+
+    if (previewTouchMovedRef.current) {
+      previewTouchStartRef.current = null;
+      previewTouchMovedRef.current = false;
+      return;
+    }
+
+    handleMediaPreviewActivate(event, photoId);
+    previewTouchStartRef.current = null;
+    previewTouchMovedRef.current = false;
+  };
+
+  const handleMediaPreviewClick = (
+    event: ReactMouseEvent<HTMLElement> | ReactPointerEvent<HTMLElement>,
+    photoId: number,
+  ) => {
+    if (Date.now() < suppressPreviewClickUntilRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    handleMediaPreviewActivate(event, photoId);
+  };
+
   const handlePhotoDelete = async (
     event:
       | ReactMouseEvent<HTMLElement>
@@ -1069,12 +1121,13 @@ export default function LessonDetailPage() {
                       style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--tg-border)', pointerEvents: 'none' }}
                     />
                   )}
-                    <button
-                      type="button"
-                      aria-label={`Відкрити ${photo.fileName}`}
-                      onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
-                      onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
-                    onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
+                  <button
+                    type="button"
+                    aria-label={`Відкрити ${photo.fileName}`}
+                    onClick={(event) => handleMediaPreviewClick(event, photo.id)}
+                    onTouchStart={handleMediaPreviewTouchStart}
+                    onTouchMove={handleMediaPreviewTouchMove}
+                    onTouchEnd={(event) => handleMediaPreviewTouchEnd(event, photo.id)}
                     style={{
                       position: 'absolute',
                       inset: 0,
@@ -1090,9 +1143,9 @@ export default function LessonDetailPage() {
                       touchAction: 'manipulation',
                       WebkitTapHighlightColor: 'transparent',
                     }}
-                    >
-                      {isVideoFile(photo) ? 'Відкрити відео' : 'Відкрити фото'}
-                    </button>
+                  >
+                    {isVideoFile(photo) ? 'Відкрити відео' : 'Відкрити фото'}
+                  </button>
                   <button
                     type="button"
                     aria-label={`Видалити ${photo.fileName}`}
@@ -1461,17 +1514,7 @@ export default function LessonDetailPage() {
                   {visibleUploadedPhotos.map((photo) => (
                     <div
                       key={photo.id}
-                      style={{ position: 'relative', cursor: 'pointer' }}
-                      role="button"
-                      tabIndex={0}
-                      onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
-                      onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
-                      onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          handleMediaPreviewActivate(event, photo.id);
-                        }
-                      }}
+                      style={{ position: 'relative' }}
                     >
                       {isVideoFile(photo) ? (
                         <>
@@ -1542,9 +1585,10 @@ export default function LessonDetailPage() {
                       <button
                         type="button"
                         aria-label={`Відкрити ${photo.fileName}`}
-                        onClick={(event) => handleMediaPreviewActivate(event, photo.id)}
-                        onPointerUp={(event) => handleMediaPreviewActivate(event, photo.id)}
-                        onTouchEnd={(event) => handleMediaPreviewActivate(event, photo.id)}
+                        onClick={(event) => handleMediaPreviewClick(event, photo.id)}
+                        onTouchStart={handleMediaPreviewTouchStart}
+                        onTouchMove={handleMediaPreviewTouchMove}
+                        onTouchEnd={(event) => handleMediaPreviewTouchEnd(event, photo.id)}
                         style={{
                           position: 'absolute',
                           inset: 0,
@@ -1750,7 +1794,7 @@ export default function LessonDetailPage() {
               <button
                 type="button"
                 onClick={() => navigateMediaViewer(viewerIndex - 1)}
-                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'rgba(255,255,255,0.12)', color: 'white', width: '40px', height: '40px', borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', zIndex: 20, border: 'none', background: 'rgba(255,255,255,0.12)', color: 'white', width: '40px', height: '40px', borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 <ChevronLeftIcon size={18} />
               </button>
@@ -1792,7 +1836,7 @@ export default function LessonDetailPage() {
               <button
                 type="button"
                 onClick={() => navigateMediaViewer(viewerIndex + 1)}
-                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'rgba(255,255,255,0.12)', color: 'white', width: '40px', height: '40px', borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', zIndex: 20, border: 'none', background: 'rgba(255,255,255,0.12)', color: 'white', width: '40px', height: '40px', borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 <ChevronRightIcon size={18} />
               </button>
@@ -1803,3 +1847,4 @@ export default function LessonDetailPage() {
     </div>
   );
 }
+
