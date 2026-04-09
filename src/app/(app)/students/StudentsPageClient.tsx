@@ -2631,9 +2631,6 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                 <h3 className="modal-title" style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                   {editingStudent ? t('modals.editStudent') : t('modals.newStudent')}
                 </h3>
-                <p style={{ margin: 0, color: '#64748b', fontSize: '0.95rem', lineHeight: 1.45 }}>
-                  Заповнюйте дані поетапно: спочатку профіль, потім контакти, а наприкінці додаткова інформація.
-                </p>
                 </div>
               <button 
                 className="modal-close" 
