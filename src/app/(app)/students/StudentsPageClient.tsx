@@ -580,6 +580,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
     totalPages: 1,
   });
   const [showModal, setShowModal] = useState(false);
+  const [studentFormStep, setStudentFormStep] = useState<'profile' | 'contacts' | 'extra'>('profile');
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [formData, setFormData] = useState<StudentFormData>({
     first_name: '',
@@ -706,6 +707,15 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
   const [sortBy, setSortBy] = useState<'name' | 'created_at'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
+  const closeStudentFormModal = () => {
+    setShowModal(false);
+    setStudentFormStep('profile');
+    setShowSuggestions(false);
+    setShowLastNameSuggestions(false);
+    setShowSchoolSuggestions(false);
+    setCoursesDropdownOpen(false);
+  };
+
   const loadStudents = useCallback(async () => {
     const params = new URLSearchParams({
       withGroups: 'true',
@@ -801,6 +811,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
   useEffect(() => {
     if (searchParams.get('create') === '1') {
       setShowModal(true);
+      setStudentFormStep('profile');
     }
   }, [searchParams]);
 
@@ -1053,12 +1064,14 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
     setSchoolSuggestions([]);
     setShowSchoolSuggestions(false);
     setCoursesDropdownOpen(false);
+    setStudentFormStep('profile');
   };
 
   const handleCreate = () => {
     setEditingStudent(null);
     resetForm();
     setShowModal(true);
+    setStudentFormStep('profile');
     // Load courses and schools for autocomplete
     loadCourses();
     loadSchools();
@@ -1118,6 +1131,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
         source_other: '',
       });
       setShowModal(true);
+      setStudentFormStep('profile');
       loadCourses();
       loadSchools();
     } catch (error) {
@@ -1202,7 +1216,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
         return;
       }
       
-      setShowModal(false);
+      closeStudentFormModal();
       await loadStudents();
     } catch (error) {
       console.error('Failed to save student:', error);
@@ -2573,23 +2587,127 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
 
       {/* Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="modal-header" style={{ padding: '1rem 1.25rem' }}>
-              <h3 className="modal-title" style={{ fontSize: '1rem', fontWeight: 600 }}>
-                {editingStudent ? t('modals.editStudent') : t('modals.newStudent')}
-              </h3>
+        <div className="modal-overlay" onClick={closeStudentFormModal}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '760px',
+              maxHeight: '92vh',
+              overflow: 'hidden',
+              borderRadius: '24px',
+              border: '1px solid #e2e8f0',
+              backgroundColor: '#f7f9fc',
+              boxShadow: '0 28px 70px rgba(15, 23, 42, 0.16)',
+            }}
+          >
+            <div
+              className="modal-header"
+              style={{
+                padding: '1.4rem 1.5rem 1.2rem',
+                borderBottom: '1px solid #e2e8f0',
+                background: 'linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start' }}>
+                <div>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '999px',
+                    backgroundColor: '#eaf2ff',
+                    color: '#2563eb',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    marginBottom: '0.85rem',
+                  }}
+                >
+                  {editingStudent ? 'Редагування профілю' : 'Новий учень'}
+                </div>
+                <h3 className="modal-title" style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '0.35rem' }}>
+                  {editingStudent ? t('modals.editStudent') : t('modals.newStudent')}
+                </h3>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.95rem', lineHeight: 1.45 }}>
+                  Заповнюйте дані поетапно: спочатку профіль, потім контакти, а наприкінці додаткова інформація.
+                </p>
+                </div>
               <button 
                 className="modal-close" 
-                onClick={() => setShowModal(false)}
+                onClick={closeStudentFormModal}
                 style={{ fontSize: '1.5rem', lineHeight: 1, padding: '0.25rem' }}
               >
                 ×
               </button>
             </div>
-            <div className="modal-body" style={{ padding: '1.25rem' }}>
+            </div>
+            <div className="modal-body" style={{ padding: '1.5rem', overflowY: 'auto', maxHeight: 'calc(92vh - 235px)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+                {([
+                  { id: 'profile', index: '01', title: '\u041f\u0440\u043e\u0444\u0456\u043b\u044c', description: '\u0406\u043c\u2019\u044f, \u0448\u043a\u043e\u043b\u0430, \u0444\u043e\u0442\u043e' },
+                  { id: 'contacts', index: '02', title: '\u041a\u043e\u043d\u0442\u0430\u043a\u0442\u0438', description: '\u0422\u0435\u043b\u0435\u0444\u043e\u043d\u0438 \u0439 \u0440\u043e\u0434\u0438\u043d\u0430' },
+                  { id: 'extra', index: '03', title: '\u0414\u043e\u0434\u0430\u0442\u043a\u043e\u0432\u043e', description: '\u0406\u043d\u0442\u0435\u0440\u0435\u0441\u0438 \u0442\u0430 \u043d\u043e\u0442\u0430\u0442\u043a\u0438' },
+                ] as const).map((step) => {
+                  const isActive = studentFormStep === step.id;
+                  return (
+                    <button
+                      key={step.id}
+                      type="button"
+                      onClick={() => setStudentFormStep(step.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.8rem',
+                        width: '100%',
+                        padding: '0.95rem 1rem',
+                        borderRadius: '18px',
+                        border: isActive ? '1px solid #93c5fd' : '1px solid #dbe4f0',
+                        backgroundColor: isActive ? '#ffffff' : 'rgba(255,255,255,0.72)',
+                        boxShadow: isActive ? '0 10px 24px rgba(37, 99, 235, 0.12)' : 'none',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '38px',
+                          height: '38px',
+                          flexShrink: 0,
+                          borderRadius: '13px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          backgroundColor: isActive ? '#2563eb' : '#eaf2ff',
+                          color: isActive ? '#ffffff' : '#2563eb',
+                        }}
+                      >
+                        {step.index}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '0.94rem', fontWeight: 700, color: '#0f172a' }}>{step.title}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.35 }}>{step.description}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
               {/* Block 1: Основна інформація */}
-              <div style={{ marginBottom: '1.75rem' }}>
+              <div
+                style={{
+                  marginBottom: '1.75rem',
+                  display: studentFormStep === 'profile' ? 'block' : 'none',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '22px',
+                  padding: '1.25rem',
+                  boxShadow: '0 10px 28px rgba(15, 23, 42, 0.04)',
+                }}
+              >
                 <h4 style={{ 
                   fontSize: '0.75rem', 
                   fontWeight: 600, 
@@ -2847,7 +2965,17 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
               </div>
 
               {/* Block 2: Контактна інформація */}
-              <div style={{ marginBottom: '1.75rem' }}>
+              <div
+                style={{
+                  marginBottom: '1rem',
+                  display: studentFormStep === 'contacts' ? 'block' : 'none',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '22px',
+                  padding: '1.25rem',
+                  boxShadow: '0 10px 28px rgba(15, 23, 42, 0.04)',
+                }}
+              >
 
                 <div className="form-group">
                   <label className="form-label">{t('forms.mainPhone')} *</label>
@@ -2931,7 +3059,17 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
               </div>
 
               {/* Additional phone - optional */}
-              <div style={{ marginBottom: '1.75rem' }}>
+              <div
+                style={{
+                  marginBottom: '1.75rem',
+                  display: studentFormStep === 'contacts' ? 'block' : 'none',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '22px',
+                  padding: '1.25rem',
+                  boxShadow: '0 10px 28px rgba(15, 23, 42, 0.04)',
+                }}
+              >
 
                 <div className="form-group">
                   <label className="form-label">{t('forms.additionalPhone')}</label>
@@ -3012,7 +3150,16 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
               </div>
 
               {/* Block 3: Додаткова інформація */}
-              <div>
+              <div
+                style={{
+                  display: studentFormStep === 'extra' ? 'block' : 'none',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '22px',
+                  padding: '1.25rem',
+                  boxShadow: '0 10px 28px rgba(15, 23, 42, 0.04)',
+                }}
+              >
                 <h4 style={{ 
                   fontSize: '0.75rem', 
                   fontWeight: 600, 
@@ -3156,17 +3303,55 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                 )}
               </div>
             </div>
-            <div className="modal-footer" style={{ padding: '1rem 1.25rem' }}>
-              <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
-                {t('actions.cancel')}
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? t('common.saving') : t('actions.save')}
-              </button>
+            <div
+              className="modal-footer"
+              style={{
+                padding: '1rem 1.5rem 1.25rem',
+                borderTop: '1px solid #e2e8f0',
+                backgroundColor: 'rgba(255,255,255,0.92)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ color: '#64748b', fontSize: '0.9rem' }}>
+                {studentFormStep === 'profile' && '\u041a\u0440\u043e\u043a 1 \u0437 3 \u00b7 \u041e\u0441\u043d\u043e\u0432\u043d\u0456 \u0434\u0430\u043d\u0456'}
+                {studentFormStep === 'contacts' && '\u041a\u0440\u043e\u043a 2 \u0437 3 \u00b7 \u041a\u043e\u043d\u0442\u0430\u043a\u0442\u0438 \u0434\u043b\u044f \u0437\u0432\u2019\u044f\u0437\u043a\u0443'}
+                {studentFormStep === 'extra' && '\u041a\u0440\u043e\u043a 3 \u0437 3 \u00b7 \u0417\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043d\u044f \u043f\u0440\u043e\u0444\u0456\u043b\u044e'}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <button className="btn btn-secondary" onClick={closeStudentFormModal}>
+                  {t('actions.cancel')}
+                </button>
+                {studentFormStep !== 'profile' && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setStudentFormStep(studentFormStep === 'extra' ? 'contacts' : 'profile')}
+                  >
+                    {'\u041d\u0430\u0437\u0430\u0434'}
+                  </button>
+                )}
+                {studentFormStep !== 'extra' ? (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => setStudentFormStep(studentFormStep === 'profile' ? 'contacts' : 'extra')}
+                  >
+                    {'\u0414\u0430\u043b\u0456'}
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleSave}
+                    disabled={saving}
+                  >
+                    {saving ? t('common.saving') : t('actions.save')}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
