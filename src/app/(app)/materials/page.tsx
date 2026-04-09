@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FolderOpen, FileText, Image, Video, Music, File,
   Download, ExternalLink, Search, Trash2, LayoutGrid,
-  LayoutList, MoreVertical, ChevronDown, ChevronRight,
+  LayoutList, MoreVertical, ChevronDown, ChevronRight, UserRound, Sparkles,
 } from 'lucide-react';
 import { useUser } from '@/components/UserContext';
 import {
@@ -13,6 +13,7 @@ import {
   type MediaFile,
   isPreviewable, isAudioType, thumbUrl, formatSize, formatDate, effectiveCategory,
 } from '@/components/MediaViewerProvider';
+import StudentAvatarCropModal from '@/components/StudentAvatarCropModal';
 
 interface KebabItem {
   label: string;
@@ -57,6 +58,13 @@ interface LessonCourseNode {
   fileCount: number;
   lessonCount: number;
   groups: LessonGroupNode[];
+}
+
+interface StudentSearchOption {
+  id: number;
+  full_name: string;
+  phone: string | null;
+  parent_name: string | null;
 }
 
 type BrowserFile = MediaFile & {
@@ -196,6 +204,176 @@ function sortFiles(files: BrowserFile[], sortType: SortType) {
   });
   return next;
 }
+
+const RECENT_AVATAR_STUDENTS_KEY = 'recent_avatar_students';
+
+function canAssignAvatar(file: BrowserFile) {
+  return file.source === 'lesson' && effectiveCategory(file) === 'photo';
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error('Не вдалося підготувати зображення'));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('Не вдалося підготувати зображення'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function StudentAvatarPickerModal({
+  isOpen,
+  search,
+  onSearchChange,
+  searchResults,
+  recentStudents,
+  loading,
+  preparingStudentId,
+  onClose,
+  onSelect,
+}: {
+  isOpen: boolean;
+  search: string;
+  onSearchChange: (value: string) => void;
+  searchResults: StudentSearchOption[];
+  recentStudents: StudentSearchOption[];
+  loading: boolean;
+  preparingStudentId: number | null;
+  onClose: () => void;
+  onSelect: (student: StudentSearchOption) => void;
+}) {
+  if (!isOpen) {
+    return null;
+  }
+
+  const normalizedSearch = search.trim();
+  const studentsToShow = normalizedSearch ? searchResults : recentStudents;
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10040,
+        padding: '1.5rem',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 'min(92vw, 560px)',
+          maxHeight: '78vh',
+          background: '#fff',
+          borderRadius: 20,
+          boxShadow: '0 24px 60px rgba(15, 23, 42, 0.22)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ padding: '1.25rem 1.5rem 1rem', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <UserRound size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#111827' }}>Оберіть учня для аватарки</div>
+              <div style={{ fontSize: '0.925rem', color: '#6b7280', marginTop: 2 }}>
+                Знайдіть потрібного учня, а далі обріжете фото під аватар.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ position: 'relative', marginTop: '1rem' }}>
+            <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Пошук за іменем, прізвищем або телефоном..."
+              style={{
+                width: '100%',
+                padding: '0.8rem 0.9rem 0.8rem 2.3rem',
+                borderRadius: 14,
+                border: '1px solid #dbe3ee',
+                fontSize: '0.95rem',
+                outline: 'none',
+              }}
+            />
+          </div>
+        </div>
+
+        <div style={{ padding: '0.875rem 1rem 1rem', overflowY: 'auto' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 0.5rem 0.65rem' }}>
+            {normalizedSearch ? 'Результати пошуку' : 'Нещодавно обрані'}
+          </div>
+
+          {loading ? (
+            <div style={{ padding: '1.5rem 0.5rem', color: '#64748b', fontSize: '0.95rem' }}>Пошук учнів...</div>
+          ) : studentsToShow.length === 0 ? (
+            <div style={{ padding: '1.5rem 0.5rem', color: '#94a3b8', fontSize: '0.95rem' }}>
+              {normalizedSearch ? 'Учнів не знайдено. Спробуйте інший запит.' : 'Ще немає нещодавно обраних учнів.'}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 8 }}>
+              {studentsToShow.map((student) => (
+                <button
+                  key={student.id}
+                  type="button"
+                  onClick={() => onSelect(student)}
+                  disabled={preparingStudentId === student.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    width: '100%',
+                    padding: '0.9rem 1rem',
+                    borderRadius: 14,
+                    border: '1px solid #e5e7eb',
+                    background: '#fff',
+                    cursor: preparingStudentId === student.id ? 'wait' : 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#dbeafe', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700 }}>
+                    {student.full_name.trim().charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {student.full_name}
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {student.phone || student.parent_name || 'Без додаткових даних'}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: '#2563eb', fontWeight: 600, flexShrink: 0 }}>
+                    {preparingStudentId === student.id ? 'Підготовка...' : 'Обрати'}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 1rem 1rem' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            Скасувати
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function MaterialsPage() {
   const { openMediaViewer } = useMediaViewer();
   const { user } = useUser();
@@ -217,9 +395,22 @@ export default function MaterialsPage() {
   const [editingTopicId, setEditingTopicId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [avatarSourceFile, setAvatarSourceFile] = useState<BrowserFile | null>(null);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+  const [avatarCropOpen, setAvatarCropOpen] = useState(false);
+  const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null);
+  const [avatarSelectedStudent, setAvatarSelectedStudent] = useState<StudentSearchOption | null>(null);
+  const [avatarStudentSearch, setAvatarStudentSearch] = useState('');
+  const [avatarSearchResults, setAvatarSearchResults] = useState<StudentSearchOption[]>([]);
+  const [avatarSearchLoading, setAvatarSearchLoading] = useState(false);
+  const [avatarPreparingStudentId, setAvatarPreparingStudentId] = useState<number | null>(null);
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const [recentAvatarStudents, setRecentAvatarStudents] = useState<StudentSearchOption[]>([]);
   const [sidebarWidth, setSidebarWidth] = useState(MATERIALS_SIDEBAR_MIN);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const avatarSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sidebarResizeStartRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const loadTopics = useCallback(async () => {
@@ -300,6 +491,72 @@ export default function MaterialsPage() {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(MATERIALS_SIDEBAR_WIDTH_KEY, String(sidebarWidth));
   }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(RECENT_AVATAR_STUDENTS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setRecentAvatarStudents(parsed.slice(0, 6));
+      }
+    } catch (error) {
+      console.warn('Failed to parse recent avatar students:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(RECENT_AVATAR_STUDENTS_KEY, JSON.stringify(recentAvatarStudents.slice(0, 6)));
+  }, [recentAvatarStudents]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!avatarPickerOpen) {
+      setAvatarSearchLoading(false);
+      return;
+    }
+
+    const query = avatarStudentSearch.trim();
+    if (avatarSearchTimer.current) {
+      clearTimeout(avatarSearchTimer.current);
+    }
+
+    if (query.length < 2) {
+      setAvatarSearchResults([]);
+      setAvatarSearchLoading(false);
+      return;
+    }
+
+    avatarSearchTimer.current = setTimeout(async () => {
+      setAvatarSearchLoading(true);
+      try {
+        const res = await fetch(`/api/students?autocomplete=true&search=${encodeURIComponent(query)}&limit=10`);
+        if (!res.ok) {
+          throw new Error('Failed to search students');
+        }
+        const data = await res.json();
+        setAvatarSearchResults(data.students || []);
+      } catch (error) {
+        console.error('Failed to search students for avatar:', error);
+        setAvatarSearchResults([]);
+      } finally {
+        setAvatarSearchLoading(false);
+      }
+    }, 220);
+
+    return () => {
+      if (avatarSearchTimer.current) {
+        clearTimeout(avatarSearchTimer.current);
+      }
+    };
+  }, [avatarPickerOpen, avatarStudentSearch]);
 
   useEffect(() => {
     if (!isResizingSidebar) return;
@@ -383,10 +640,129 @@ export default function MaterialsPage() {
     }
   }
 
+  function closeAvatarFlow() {
+    setAvatarPickerOpen(false);
+    setAvatarCropOpen(false);
+    setAvatarCropSrc(null);
+    setAvatarSourceFile(null);
+    setAvatarSelectedStudent(null);
+    setAvatarPreparingStudentId(null);
+    setAvatarSaving(false);
+    setAvatarStudentSearch('');
+    setAvatarSearchResults([]);
+  }
+
+  function startAvatarFlow(file: BrowserFile) {
+    if (!canAssignAvatar(file)) {
+      return;
+    }
+
+    setAvatarSourceFile(file);
+    setAvatarSelectedStudent(null);
+    setAvatarStudentSearch('');
+    setAvatarSearchResults([]);
+    setAvatarPickerOpen(true);
+  }
+
+  async function prepareAvatarCrop(student: StudentSearchOption) {
+    if (!avatarSourceFile) {
+      return;
+    }
+
+    setAvatarPreparingStudentId(student.id);
+    try {
+      const response = await fetch(`/api/lesson-media/${encodeURIComponent(avatarSourceFile.drive_file_id)}`);
+      if (!response.ok) {
+        throw new Error('Failed to load lesson image');
+      }
+      const blob = await response.blob();
+      const dataUrl = await blobToDataUrl(blob);
+      setAvatarSelectedStudent(student);
+      setAvatarCropSrc(dataUrl);
+      setAvatarPickerOpen(false);
+      setAvatarCropOpen(true);
+    } catch (error) {
+      console.error('Failed to prepare avatar crop source:', error);
+      setToast({ type: 'error', message: 'Не вдалося підготувати фото для аватарки' });
+    } finally {
+      setAvatarPreparingStudentId(null);
+    }
+  }
+
+  async function applyStudentAvatar(croppedDataUrl: string) {
+    if (!avatarSelectedStudent) {
+      return;
+    }
+
+    setAvatarSaving(true);
+    try {
+      const response = await fetch(`/api/students/${avatarSelectedStudent.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photo: croppedDataUrl }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Не вдалося оновити аватарку' }));
+        throw new Error(data.error || 'Не вдалося оновити аватарку');
+      }
+
+      setRecentAvatarStudents((prev) => {
+        const next = [avatarSelectedStudent, ...prev.filter((item) => item.id !== avatarSelectedStudent.id)];
+        return next.slice(0, 6);
+      });
+
+      setToast({ type: 'success', message: `Аватарку оновлено для ${avatarSelectedStudent.full_name}` });
+      closeAvatarFlow();
+    } catch (error) {
+      console.error('Failed to save student avatar from lesson photo:', error);
+      setToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Не вдалося зберегти аватарку',
+      });
+    } finally {
+      setAvatarSaving(false);
+    }
+  }
+
   function openLightbox(file: BrowserFile) {
     const visualFiles = filteredFiles.filter((item) => isPreviewable(item.file_type, item.file_name));
     const idx = visualFiles.findIndex((item) => item.id === file.id);
-    if (idx !== -1) openMediaViewer(visualFiles, idx);
+    if (idx !== -1) {
+      openMediaViewer(visualFiles, idx, {
+        renderHeaderActions: (viewerFile) => {
+          const currentFile = viewerFile as BrowserFile;
+          if (!canAssignAvatar(currentFile)) {
+            return null;
+          }
+
+          return (
+            <button
+              type="button"
+              onClick={() => startAvatarFlow(currentFile)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                height: 28,
+                padding: '0 10px',
+                borderRadius: 8,
+                border: '1px solid #dbeafe',
+                background: '#eff6ff',
+                color: '#2563eb',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
+            >
+              <Sparkles size={13} />
+              Зробити аватар
+            </button>
+          );
+        },
+      });
+    }
   }
 
   const totalTelegramFiles = topics.reduce((sum, topic) => sum + topic.file_count, 0);
@@ -407,6 +783,32 @@ export default function MaterialsPage() {
 
   return (
     <div>
+      <StudentAvatarPickerModal
+        isOpen={avatarPickerOpen}
+        search={avatarStudentSearch}
+        onSearchChange={setAvatarStudentSearch}
+        searchResults={avatarSearchResults}
+        recentStudents={recentAvatarStudents}
+        loading={avatarSearchLoading}
+        preparingStudentId={avatarPreparingStudentId}
+        onClose={closeAvatarFlow}
+        onSelect={prepareAvatarCrop}
+      />
+
+      <StudentAvatarCropModal
+        isOpen={avatarCropOpen}
+        imageSrc={avatarCropSrc}
+        fileName={avatarSourceFile?.file_name || 'lesson-photo'}
+        title={avatarSelectedStudent ? `Аватарка для ${avatarSelectedStudent.full_name}` : 'Обрізати фото учня'}
+        description="Обріжте фото так, як воно має виглядати в аватарці учня."
+        onCancel={() => {
+          setAvatarCropOpen(false);
+          setAvatarCropSrc(null);
+          setAvatarPickerOpen(true);
+        }}
+        onApply={(croppedDataUrl) => void applyStudentAvatar(croppedDataUrl)}
+      />
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
         <FolderOpen size={26} color="#3b82f6" />
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1e293b', margin: 0 }}>Файли</h1>
@@ -599,37 +1001,59 @@ export default function MaterialsPage() {
               {search && <div style={{ fontSize: 13, marginTop: 4 }}>Спробуйте змінити пошуковий запит</div>}
             </div>
           ) : viewMode === 'grid' ? (
-            <GridView files={filteredFiles} showContextLabel={source === 'telegram' ? !selectedTopicId : selectedLessonId === null} onOpenLightbox={openLightbox} onDelete={deleteFile} deletingId={deletingId} />
+            <GridView files={filteredFiles} showContextLabel={source === 'telegram' ? !selectedTopicId : selectedLessonId === null} onOpenLightbox={openLightbox} onDelete={deleteFile} onMakeAvatar={startAvatarFlow} deletingId={deletingId} />
           ) : (
-            <ListView files={filteredFiles} showContextLabel={source === 'telegram' ? !selectedTopicId : selectedLessonId === null} onOpenLightbox={openLightbox} onDelete={deleteFile} deletingId={deletingId} />
+            <ListView files={filteredFiles} showContextLabel={source === 'telegram' ? !selectedTopicId : selectedLessonId === null} onOpenLightbox={openLightbox} onDelete={deleteFile} onMakeAvatar={startAvatarFlow} deletingId={deletingId} />
           )}
         </div>
       </div>
+
+      {toast && (
+        <div
+          style={{
+            position: 'fixed',
+            right: 24,
+            bottom: 24,
+            zIndex: 10060,
+            padding: '0.85rem 1rem',
+            borderRadius: 14,
+            background: toast.type === 'success' ? '#059669' : '#dc2626',
+            color: '#fff',
+            fontSize: '0.95rem',
+            fontWeight: 600,
+            boxShadow: '0 18px 36px rgba(15, 23, 42, 0.18)',
+          }}
+        >
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }
 
-function GridView({ files, showContextLabel, onOpenLightbox, onDelete, deletingId }: {
+function GridView({ files, showContextLabel, onOpenLightbox, onDelete, onMakeAvatar, deletingId }: {
   files: BrowserFile[];
   showContextLabel: boolean;
   onOpenLightbox: (f: BrowserFile) => void;
   onDelete: (file: BrowserFile) => void;
+  onMakeAvatar: (file: BrowserFile) => void;
   deletingId: number | null;
 }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
       {files.map((file) => (
-        <GridCard key={`${file.source || 'telegram'}-${file.id}`} file={file} showContextLabel={showContextLabel} onOpenLightbox={onOpenLightbox} onDelete={onDelete} deletingId={deletingId} />
+        <GridCard key={`${file.source || 'telegram'}-${file.id}`} file={file} showContextLabel={showContextLabel} onOpenLightbox={onOpenLightbox} onDelete={onDelete} onMakeAvatar={onMakeAvatar} deletingId={deletingId} />
       ))}
     </div>
   );
 }
 
-function GridCard({ file, showContextLabel, onOpenLightbox, onDelete, deletingId }: {
+function GridCard({ file, showContextLabel, onOpenLightbox, onDelete, onMakeAvatar, deletingId }: {
   file: BrowserFile;
   showContextLabel: boolean;
   onOpenLightbox: (f: BrowserFile) => void;
   onDelete: (file: BrowserFile) => void;
+  onMakeAvatar: (file: BrowserFile) => void;
   deletingId: number | null;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -661,6 +1085,7 @@ function GridCard({ file, showContextLabel, onOpenLightbox, onDelete, deletingId
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
           <KebabMenu items={[
             ...(file.folder_url ? [{ label: 'Відкрити папку на Drive', icon: <FolderOpen size={14} />, href: file.folder_url }] : []),
+            ...(canAssignAvatar(file) ? [{ label: 'Зробити аватар учня', icon: <Sparkles size={14} />, onClick: () => onMakeAvatar(file) }] : []),
             { label: 'Відкрити в Google Drive', icon: <ExternalLink size={14} />, href: file.drive_view_url },
             { label: 'Завантажити', icon: <Download size={14} />, href: file.drive_download_url },
             { label: deletingId === file.id ? 'Видалення...' : 'Видалити', icon: <Trash2 size={14} />, onClick: () => onDelete(file), danger: true },
@@ -671,11 +1096,12 @@ function GridCard({ file, showContextLabel, onOpenLightbox, onDelete, deletingId
   );
 }
 
-function ListView({ files, showContextLabel, onOpenLightbox, onDelete, deletingId }: {
+function ListView({ files, showContextLabel, onOpenLightbox, onDelete, onMakeAvatar, deletingId }: {
   files: BrowserFile[];
   showContextLabel: boolean;
   onOpenLightbox: (f: BrowserFile) => void;
   onDelete: (file: BrowserFile) => void;
+  onMakeAvatar: (file: BrowserFile) => void;
   deletingId: number | null;
 }) {
   return (
@@ -708,6 +1134,7 @@ function ListView({ files, showContextLabel, onOpenLightbox, onDelete, deletingI
 
             <KebabMenu items={[
               ...(file.folder_url ? [{ label: 'Відкрити папку на Drive', icon: <FolderOpen size={14} />, href: file.folder_url }] : []),
+              ...(canAssignAvatar(file) ? [{ label: 'Зробити аватар учня', icon: <Sparkles size={14} />, onClick: () => onMakeAvatar(file) }] : []),
               { label: 'Відкрити в Google Drive', icon: <ExternalLink size={14} />, href: file.drive_view_url },
               { label: 'Завантажити', icon: <Download size={14} />, href: file.drive_download_url },
               { label: deletingId === file.id ? 'Видалення...' : 'Видалити', icon: <Trash2 size={14} />, onClick: () => onDelete(file), danger: true },

@@ -24,6 +24,10 @@ export interface MediaFile {
   media_height: number | null;
 }
 
+export interface MediaViewerOptions {
+  renderHeaderActions?: (file: MediaFile) => ReactNode;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 export const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|bmp|svg|avif|tiff?)$/i;
@@ -81,7 +85,7 @@ export function effectiveCategory(f: MediaFile): 'photo' | 'video' | 'audio' | '
 // ── Context ───────────────────────────────────────────────────────────────────
 
 interface MediaViewerContextValue {
-  openMediaViewer: (files: MediaFile[], index: number) => void;
+  openMediaViewer: (files: MediaFile[], index: number, options?: MediaViewerOptions) => void;
 }
 
 const MediaViewerContext = createContext<MediaViewerContextValue>({
@@ -120,11 +124,12 @@ function calcMediaSize(
   return { width: 760, height: 520 };
 }
 
-function MediaViewerModal({ files, index, onClose, onNavigate }: {
+function MediaViewerModal({ files, index, onClose, onNavigate, options }: {
   files: MediaFile[];
   index: number;
   onClose: () => void;
   onNavigate: (idx: number) => void;
+  options?: MediaViewerOptions;
 }) {
   const file = files[index];
   const isVideo = file.file_type === 'video' || VIDEO_EXTENSIONS.test(file.file_name ?? '');
@@ -231,6 +236,7 @@ function MediaViewerModal({ files, index, onClose, onNavigate }: {
 
   const headerAction = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+      {options?.renderHeaderActions?.(file)}
       {hasNav && (
         <span style={{ fontSize: 12, color: '#94a3b8' }}>{index + 1} / {files.length}</span>
       )}
@@ -332,15 +338,18 @@ function MediaViewerModal({ files, index, onClose, onNavigate }: {
 export function MediaViewerProvider({ children }: { children: ReactNode }) {
   const [viewerFiles, setViewerFiles] = useState<MediaFile[]>([]);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [viewerOptions, setViewerOptions] = useState<MediaViewerOptions | undefined>(undefined);
 
-  const openMediaViewer = useCallback((files: MediaFile[], index: number) => {
+  const openMediaViewer = useCallback((files: MediaFile[], index: number, options?: MediaViewerOptions) => {
     setViewerFiles(files);
     setViewerIndex(index);
+    setViewerOptions(options);
   }, []);
 
   const closeMediaViewer = useCallback(() => {
     setViewerIndex(null);
     setViewerFiles([]);
+    setViewerOptions(undefined);
   }, []);
 
   return (
@@ -352,6 +361,7 @@ export function MediaViewerProvider({ children }: { children: ReactNode }) {
           index={viewerIndex}
           onClose={closeMediaViewer}
           onNavigate={setViewerIndex}
+          options={viewerOptions}
         />
       )}
     </MediaViewerContext.Provider>
