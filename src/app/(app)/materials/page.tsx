@@ -65,6 +65,7 @@ interface StudentSearchOption {
   full_name: string;
   phone: string | null;
   parent_name: string | null;
+  photo?: string | null;
   groups?: Array<{
     id: number;
     title: string;
@@ -418,8 +419,30 @@ function StudentAvatarPickerModal({
                     textAlign: 'left',
                   }}
                 >
-                  <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#dbeafe', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700 }}>
-                    {student.full_name.trim().charAt(0).toUpperCase()}
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: '50%',
+                      background: student.photo ? 'transparent' : '#dbeafe',
+                      color: '#2563eb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      fontWeight: 700,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {student.photo ? (
+                      <img
+                        src={student.photo}
+                        alt={student.full_name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      student.full_name.trim().charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -690,6 +713,7 @@ export default function MaterialsPage() {
           full_name: student.full_name,
           phone: student.phone || null,
           parent_name: student.parent_name || null,
+          photo: student.photo || null,
           groups: student.groups || [],
         })));
       } catch (error) {
