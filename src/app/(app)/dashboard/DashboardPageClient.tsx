@@ -51,14 +51,16 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const visiblePayments = initialData.recentPayments.slice(0, 6);
   const visibleHistory = initialData.recentHistory.slice(0, 6);
 
+  const formattedDate = format(new Date(initialData.todayDate), 'd MMMM, EEEE', { locale: uk });
+
   return (
     <>
       <div className={styles.page}>
         {/* Hero */}
         <section className={styles.hero}>
           <div className={styles.heroLeft}>
-            <h1 className={styles.heroTitle}>{initialData.greeting}!</h1>
-            <span className={styles.heroDate}>{initialData.generatedAtLabel}</span>
+            <div className={styles.heroGreeting}>{initialData.greeting}!</div>
+            <h1 className={styles.heroTitle}>{formattedDate}</h1>
           </div>
 
           <div className={styles.actionsStrip}>
@@ -82,28 +84,19 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
         </section>
 
         {/* Stats */}
-        <section className={styles.statsGrid}>
+        <section className={styles.statsRow}>
           {statCards.map((card) => {
             const Icon = card.icon;
             const value = card.key === 'monthlyRevenue' ? initialData.stats.monthlyRevenueLabel : initialData.stats[card.key];
-            const hint =
-              card.key === 'todayLessons'
-                ? `${completedLessons} із ${initialData.stats.todayLessons} завершено`
-                : card.key === 'monthlyRevenue'
-                  ? 'За поточний місяць'
-                  : card.key === 'activeGroups'
-                    ? 'Зараз працюють'
-                    : 'Активна база';
-
+            
             return (
-              <article key={card.key} className={styles.statCard}>
-                <div className={styles.statTop}>
-                  <span className={styles.statLabel}>{card.label}</span>
-                  <span className={styles.statIcon}><Icon size={16} /></span>
+              <div key={card.key} className={styles.statItem}>
+                <div className={styles.statItemLabel}>
+                  <Icon size={14} />
+                  {card.label}
                 </div>
-                <div className={styles.statValue}>{value}</div>
-                <div className={styles.statHint}>{hint}</div>
-              </article>
+                <div className={styles.statItemValue}>{value}</div>
+              </div>
             );
           })}
         </section>
@@ -115,7 +108,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
             <div className={styles.panelHeader}>
               <div>
                 <div className={styles.panelLabel}>Сьогодні</div>
-                <h2 className={styles.panelTitle}>Розклад</h2>
+                <h2 className={styles.panelTitle}>Розклад ({initialData.todaySchedule.length})</h2>
               </div>
               <TransitionLink href="/schedule" className={styles.textLink}>
                 Відкрити розклад
@@ -135,83 +128,62 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 {initialData.todaySchedule.slice(0, 10).map((lesson) => {
                   const ls = getLessonStyle(lesson.status, lesson.is_makeup, lesson.group_id);
                   return (
-                    <div
-                      key={lesson.id}
-                      className={styles.lessonCard}
-                      style={{
-                        borderLeft: `3px solid ${ls.borderColor}`,
-                        background: ls.background,
-                      }}
-                    >
-                      {/* Type badge */}
-                      {lesson.is_makeup ? (
-                        <span className={styles.typeBadge} style={{ background: '#fff7ed', color: '#c2410c', borderColor: '#fed7aa' }}>
-                          <RefreshCw size={8} /> Відпрацювання
-                        </span>
-                      ) : !lesson.group_id && lesson.is_trial ? (
-                        <span className={styles.typeBadge} style={{ background: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0' }}>
-                          <Check size={8} /> Пробне
-                        </span>
-                      ) : !lesson.group_id ? (
-                        <span className={styles.typeBadge} style={{ background: '#f5f3ff', color: '#6d28d9', borderColor: '#ddd6fe' }}>
-                          <UserIcon size={8} /> Індивідуальне
-                        </span>
-                      ) : null}
+                    <div key={lesson.id} className={styles.lessonCard}>
+                      <div className={styles.lessonCardIndicator} style={{ background: ls.borderColor }} />
+                      
+                      <div className={styles.typeBadgeWrapper}>
+                        {/* Time */}
+                        <div className={styles.lessonTime} style={{ color: ls.accentColor }}>
+                          {lesson.startTimeLabel} - {lesson.endTimeLabel}
+                        </div>
 
-                      {/* Time */}
-                      <div className={styles.lessonTime} style={{ color: ls.accentColor }}>
-                        <Clock size={10} />
-                        {lesson.startTimeLabel} - {lesson.endTimeLabel}
+                        {/* Type badge */}
+                        {lesson.is_makeup ? (
+                          <span className={styles.typeBadge} style={{ color: '#c2410c', background: '#fff7ed' }}>
+                            Відпрацювання
+                          </span>
+                        ) : !lesson.group_id && lesson.is_trial ? (
+                          <span className={styles.typeBadge} style={{ color: '#15803d', background: '#f0fdf4' }}>
+                            Пробне
+                          </span>
+                        ) : !lesson.group_id ? (
+                          <span className={styles.typeBadge} style={{ color: '#6d28d9', background: '#f5f3ff' }}>
+                            Інд.
+                          </span>
+                        ) : null}
                       </div>
 
-                      {/* Group */}
+                      {/* Group and Course */}
                       {lesson.group_id && !lesson.is_makeup && (
                         <div className={styles.lessonRow}>
-                          <Users size={10} />
-                          <span style={{ fontWeight: 600, color: '#111827' }}>{lesson.group_title}</span>
-                        </div>
-                      )}
-
-                      {/* Course */}
-                      {lesson.group_id && !lesson.is_makeup && (
-                        <div className={styles.lessonRow} style={{ color: ls.accentColor, opacity: 0.85 }}>
-                          <BookOpen size={9} />
-                          {lesson.course_title}
+                          <Users size={12} />
+                          <strong>{lesson.group_title}</strong> 
+                          <span style={{ opacity: 0.5 }}>·</span> 
+                          <span>{lesson.course_title}</span>
                         </div>
                       )}
 
                       {/* Teacher */}
-                      <div className={styles.lessonRow} style={{ color: lesson.is_replaced ? '#d97706' : '#9ca3af' }}>
-                        <UserIcon size={9} />
+                      <div className={styles.lessonRow}>
+                        <UserIcon size={12} />
                         {lesson.teacher_name}
                         {lesson.is_replaced && (
                           <span className={styles.replacedBadge}>(Зам.)</span>
                         )}
                       </div>
 
-                      {/* Rescheduled info */}
-                      {lesson.original_date && (
-                        <span className={styles.rescheduledBadge}>
-                          <RefreshCw size={8} />
-                          Перенесено з {format(new Date(lesson.original_date + 'T00:00:00'), 'd MMM', { locale: uk })}
-                        </span>
-                      )}
-
                       {/* Topic */}
                       {lesson.topic && (
                         <div className={styles.lessonTopic}>{lesson.topic}</div>
                       )}
 
-                      {/* Status badge */}
-                      <span
-                        className={styles.lessonStatusBadge}
-                        style={getStatusBadgeStyle(lesson.status, lesson.is_makeup, lesson.group_id)}
-                      >
-                        {lesson.status === 'done' && <Check size={8} />}
-                        {lesson.status === 'canceled' && <X size={8} />}
-                        {lesson.status === 'scheduled' && <Calendar size={8} />}
-                        {lesson.status === 'done' ? 'Проведено' : lesson.status === 'canceled' ? 'Скасовано' : 'Заплановано'}
-                      </span>
+                      {/* Rescheduled info */}
+                      {lesson.original_date && (
+                        <span className={styles.rescheduledBadge}>
+                          <RefreshCw size={10} />
+                          Перенесено з {format(new Date(lesson.original_date + 'T00:00:00'), 'd MMM', { locale: uk })}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
