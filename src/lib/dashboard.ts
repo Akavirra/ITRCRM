@@ -201,7 +201,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     course_title: string;
     start_time: string;
   }>(
-    `SELECT a.id, a.student_id, s.full_name, s.public_id, l.lesson_date,
+    `SELECT a.id, a.student_id, s.full_name, s.public_id, l.lesson_date::text as lesson_date,
        COALESCE(g.title, 'Інд.') as group_title,
        COALESCE(c.title, '') as course_title,
        TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as start_time
