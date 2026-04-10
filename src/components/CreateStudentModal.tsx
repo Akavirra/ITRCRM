@@ -34,13 +34,16 @@ type FormState = {
   phone: string;
   parent_name: string;
   parent_relation: string;
+  parent_relation_other: string;
   parent_phone: string;
   parent2_name: string;
   parent2_phone: string;
   parent2_relation: string;
+  parent2_relation_other: string;
   notes: string;
   interested_courses: string[];
   source: string;
+  source_other: string;
   photo: string | null;
 };
 
@@ -68,13 +71,16 @@ const EMPTY_FORM: FormState = {
   phone: '',
   parent_name: '',
   parent_relation: '',
+  parent_relation_other: '',
   parent_phone: '',
   parent2_name: '',
   parent2_phone: '',
   parent2_relation: '',
+  parent2_relation_other: '',
   notes: '',
   interested_courses: [],
   source: '',
+  source_other: '',
   photo: null,
 };
 
@@ -113,9 +119,27 @@ function getFirstLetter(value: string) {
   return value.trim().charAt(0).toUpperCase();
 }
 
+function normalizeOptionValue(
+  value: string | null | undefined,
+  options: Array<{ value: string }>
+) {
+  const normalized = (value || '').trim();
+  if (!normalized) {
+    return { value: '', other: '' };
+  }
+
+  const matches = options.some((option) => option.value === normalized);
+  return matches
+    ? { value: normalized, other: '' }
+    : { value: 'other', other: normalized };
+}
+
 function mapStudentToForm(student: StudentRecord): FormState {
   const nameParts = student.full_name.trim().split(/\s+/);
   const additionalPhone = student.parent_phone || student.parent2_phone || null;
+  const primaryRelation = normalizeOptionValue(student.parent_relation, RELATION_OPTIONS);
+  const secondaryRelation = normalizeOptionValue(student.parent2_relation, RELATION_OPTIONS);
+  const source = normalizeOptionValue(student.source, SOURCE_OPTIONS);
 
   return {
     first_name: nameParts[0] || '',
@@ -126,11 +150,13 @@ function mapStudentToForm(student: StudentRecord): FormState {
     discount: student.discount != null ? String(student.discount) : '',
     phone: extractPhoneDigits(student.phone),
     parent_name: student.parent_name || '',
-    parent_relation: student.parent_relation || '',
+    parent_relation: primaryRelation.value,
+    parent_relation_other: primaryRelation.other,
     parent_phone: extractPhoneDigits(additionalPhone),
     parent2_name: student.parent2_name || '',
     parent2_phone: extractPhoneDigits(student.parent2_phone),
-    parent2_relation: student.parent2_relation || '',
+    parent2_relation: secondaryRelation.value,
+    parent2_relation_other: secondaryRelation.other,
     notes: student.notes || '',
     interested_courses: student.interested_courses
       ? student.interested_courses
@@ -139,7 +165,8 @@ function mapStudentToForm(student: StudentRecord): FormState {
           .map((item) => item.replace(/^"+|"+$/g, '').trim())
           .filter(Boolean)
       : [],
-    source: student.source || '',
+    source: source.value,
+    source_other: source.other,
     photo: student.photo || null,
   };
 }
@@ -268,6 +295,9 @@ export default function CreateStudentModal({
     if (form.phone.length !== 9) next.phone = t('validation.required');
     if (!form.parent_name.trim()) next.parent_name = t('validation.required');
     if (!form.parent_relation) next.parent_relation = t('validation.required');
+    if (form.parent_relation === 'other' && !form.parent_relation_other.trim()) next.parent_relation_other = t('validation.required');
+    if (form.parent2_relation === 'other' && !form.parent2_relation_other.trim()) next.parent2_relation_other = t('validation.required');
+    if (form.source === 'other' && !form.source_other.trim()) next.source_other = t('validation.required');
     if (form.email.trim() && !isValidEmail(form.email)) next.email = t('validation.invalidEmail');
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -477,12 +507,12 @@ export default function CreateStudentModal({
           birth_date: form.birth_date || null,
           school: form.school || null,
           discount: form.discount || null,
-          parent_relation: form.parent_relation,
+          parent_relation: form.parent_relation === 'other' ? form.parent_relation_other.trim() : form.parent_relation,
           parent2_name: form.parent2_name || null,
           parent2_phone: isEditing ? studentToEdit?.parent2_phone || null : null,
-          parent2_relation: form.parent2_relation || null,
-          interested_courses: isEditing ? form.interested_courses.join(', ') : form.interested_courses,
-          source: form.source || '',
+          parent2_relation: form.parent2_relation === 'other' ? form.parent2_relation_other.trim() : (form.parent2_relation || null),
+          interested_courses: form.interested_courses.join(', '),
+          source: form.source === 'other' ? form.source_other.trim() : (form.source || ''),
           photo: photoUrl,
         }),
       });
@@ -709,6 +739,7 @@ export default function CreateStudentModal({
                         onChange={(e) => handleSchoolChange(e.target.value)}
                         onFocus={() => form.school.trim().length >= 3 && setShowSchoolSuggestions(true)}
                         autoComplete="off"
+                        style={{ minHeight: '42px', height: '42px' }}
                       />
                       {showSchoolSuggestions && schoolSuggestions.length > 0 && (
                         <ul style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.375rem', boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)', listStyle: 'none', margin: '0.25rem 0 0', padding: 0, zIndex: 10, maxHeight: '200px', overflowY: 'auto' }}>
@@ -729,7 +760,7 @@ export default function CreateStudentModal({
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('forms.discount')}</label>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'stretch', minHeight: '42px' }}>
                         <input
                           type="number"
                           min="0"
@@ -737,10 +768,10 @@ export default function CreateStudentModal({
                           className="form-input"
                           value={form.discount}
                           onChange={(e) => setForm((prev) => ({ ...prev, discount: e.target.value.replace(/[^0-9]/g, '') }))}
-                          style={{ width: '100%', borderRadius: '0.375rem 0 0 0.375rem', borderRight: 'none' }}
+                          style={{ width: '100%', borderRadius: '0.375rem 0 0 0.375rem', borderRight: 'none', minHeight: '42px', height: '42px' }}
                           placeholder="10"
                         />
-                        <span style={{ padding: '0.625rem 0.75rem', backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderLeft: 'none', borderRadius: '0 0.375rem 0.375rem 0', color: '#374151', fontSize: '0.875rem', fontWeight: 500 }}>
+                        <span style={{ width: '40px', minWidth: '40px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderLeft: 'none', borderRadius: '0 0.375rem 0.375rem 0', color: '#374151', fontSize: '0.875rem', fontWeight: 500, minHeight: '42px', height: '42px', boxSizing: 'border-box' }}>
                           %
                         </span>
                       </div>
@@ -760,18 +791,18 @@ export default function CreateStudentModal({
                     <label className="form-label">Номер телефону *</label>
                     <div style={{ display: 'flex', alignItems: 'center', border: errors.phone ? '1px solid #ef4444' : '1px solid #d1d5db', borderRadius: '0.375rem', backgroundColor: '#fff', overflow: 'hidden' }}>
                       <span style={{ padding: '0.625rem 0.75rem', backgroundColor: '#f3f4f6', color: '#374151', fontWeight: 500, fontSize: '0.875rem', borderRight: '1px solid #d1d5db' }}>+380</span>
-                      <input className="form-input" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: formatPhoneNumber(e.target.value) }))} maxLength={9} style={{ flex: 1, border: 'none', outline: 'none', padding: '0.625rem 0.75rem' }} />
+                      <input className="form-input" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: formatPhoneNumber(e.target.value) }))} maxLength={9} style={{ flex: 1, border: 'none', outline: 'none', padding: '0.625rem 0.75rem', minHeight: '42px', height: '42px' }} />
                     </div>
                     {errors.phone && <span className="form-error">{errors.phone}</span>}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Ім'я контактної особи *</label>
-                    <input className={`form-input ${errors.parent_name ? 'form-input-error' : ''}`} value={form.parent_name} onChange={(e) => setForm((prev) => ({ ...prev, parent_name: e.target.value }))} />
+                    <input className={`form-input ${errors.parent_name ? 'form-input-error' : ''}`} value={form.parent_name} onChange={(e) => setForm((prev) => ({ ...prev, parent_name: e.target.value }))} style={{ minHeight: '42px', height: '42px' }} />
                     {errors.parent_name && <span className="form-error">{errors.parent_name}</span>}
                   </div>
                 </div>
                 <div className="form-group" style={{ marginTop: '1rem' }}>
-                  <label className="form-label">Стосунок *</label>
+                  <label className="form-label">Хто це для дитини *</label>
                   <select className={`form-input ${errors.parent_relation ? 'form-input-error' : ''}`} value={form.parent_relation} onChange={(e) => setForm((prev) => ({ ...prev, parent_relation: e.target.value }))}>
                     <option value="">Оберіть...</option>
                     {RELATION_OPTIONS.map((option) => (
@@ -780,6 +811,18 @@ export default function CreateStudentModal({
                   </select>
                   {errors.parent_relation && <span className="form-error">{errors.parent_relation}</span>}
                 </div>
+                {form.parent_relation === 'other' && (
+                  <div className="form-group" style={{ marginTop: '1rem' }}>
+                    <label className="form-label">{t('forms.relationOther')}</label>
+                    <input
+                      className={`form-input ${errors.parent_relation_other ? 'form-input-error' : ''}`}
+                      value={form.parent_relation_other}
+                      placeholder={t('forms.relationOtherPlaceholder')}
+                      onChange={(e) => setForm((prev) => ({ ...prev, parent_relation_other: e.target.value }))}
+                    />
+                    {errors.parent_relation_other && <span className="form-error">{errors.parent_relation_other}</span>}
+                  </div>
+                )}
               </div>
 
               <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1rem' }}>
@@ -789,16 +832,16 @@ export default function CreateStudentModal({
                     <label className="form-label">Номер телефону</label>
                     <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #d1d5db', borderRadius: '0.375rem', backgroundColor: '#fff', overflow: 'hidden' }}>
                       <span style={{ padding: '0.625rem 0.75rem', backgroundColor: '#f3f4f6', color: '#374151', fontWeight: 500, fontSize: '0.875rem', borderRight: '1px solid #d1d5db' }}>+380</span>
-                      <input className="form-input" value={form.parent_phone} onChange={(e) => setForm((prev) => ({ ...prev, parent_phone: formatPhoneNumber(e.target.value) }))} maxLength={9} style={{ flex: 1, border: 'none', outline: 'none', padding: '0.625rem 0.75rem' }} />
+                      <input className="form-input" value={form.parent_phone} onChange={(e) => setForm((prev) => ({ ...prev, parent_phone: formatPhoneNumber(e.target.value) }))} maxLength={9} style={{ flex: 1, border: 'none', outline: 'none', padding: '0.625rem 0.75rem', minHeight: '42px', height: '42px' }} />
                     </div>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Ім'я контактної особи</label>
-                    <input className="form-input" value={form.parent2_name} onChange={(e) => setForm((prev) => ({ ...prev, parent2_name: e.target.value }))} />
+                    <input className="form-input" value={form.parent2_name} onChange={(e) => setForm((prev) => ({ ...prev, parent2_name: e.target.value }))} style={{ minHeight: '42px', height: '42px' }} />
                   </div>
                 </div>
                 <div className="form-group" style={{ marginTop: '1rem' }}>
-                  <label className="form-label">Стосунок</label>
+                  <label className="form-label">Хто це для дитини</label>
                   <select className="form-input" value={form.parent2_relation} onChange={(e) => setForm((prev) => ({ ...prev, parent2_relation: e.target.value }))}>
                     <option value="">Оберіть...</option>
                     {RELATION_OPTIONS.map((option) => (
@@ -806,6 +849,18 @@ export default function CreateStudentModal({
                     ))}
                   </select>
                 </div>
+                {form.parent2_relation === 'other' && (
+                  <div className="form-group" style={{ marginTop: '1rem' }}>
+                    <label className="form-label">{t('forms.relationOther')}</label>
+                    <input
+                      className={`form-input ${errors.parent2_relation_other ? 'form-input-error' : ''}`}
+                      value={form.parent2_relation_other}
+                      placeholder={t('forms.relationOtherPlaceholder')}
+                      onChange={(e) => setForm((prev) => ({ ...prev, parent2_relation_other: e.target.value }))}
+                    />
+                    {errors.parent2_relation_other && <span className="form-error">{errors.parent2_relation_other}</span>}
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -875,6 +930,18 @@ export default function CreateStudentModal({
                     ))}
                   </select>
                 </div>
+                {form.source === 'other' && (
+                  <div className="form-group" style={{ marginTop: '1rem' }}>
+                    <label className="form-label">{t('forms.sourceOther')}</label>
+                    <input
+                      className={`form-input ${errors.source_other ? 'form-input-error' : ''}`}
+                      value={form.source_other}
+                      placeholder={t('forms.sourceOtherPlaceholder')}
+                      onChange={(e) => setForm((prev) => ({ ...prev, source_other: e.target.value }))}
+                    />
+                    {errors.source_other && <span className="form-error">{errors.source_other}</span>}
+                  </div>
+                )}
 
                 <div className="form-group" style={{ marginTop: '1rem' }}>
                   <label className="form-label">{t('forms.note')}</label>

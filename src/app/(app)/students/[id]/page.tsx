@@ -73,6 +73,16 @@ interface StudentFormData {
   source_other: string;
 }
 
+function parseInterestedCourses(value: string | null | undefined): string[] {
+  if (!value) return [];
+
+  return value
+    .replace(/^\[|\]$/g, '')
+    .split(',')
+    .map((item) => item.replace(/^"+|"+$/g, '').trim())
+    .filter(Boolean);
+}
+
 interface Course {
   id: number;
   title: string;
@@ -670,7 +680,7 @@ export default function StudentProfilePage() {
       parent2_relation: student.parent2_relation || '',
       parent2_relation_other: '',
       notes: student.notes || '',
-      interested_courses: student.interested_courses ? student.interested_courses.split(',').map(s => s.trim()).filter(Boolean) : [],
+      interested_courses: parseInterestedCourses(student.interested_courses),
       source: student.source || '',
       source_other: '',
     });
@@ -2334,7 +2344,7 @@ export default function StudentProfilePage() {
                         Цікаві курси
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        {student.interested_courses.split(',').map((course, idx) => (
+                        {parseInterestedCourses(student.interested_courses).map((course, idx) => (
                           <span
                             key={idx}
                             style={{

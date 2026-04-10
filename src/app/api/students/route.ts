@@ -215,8 +215,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Serialize interested_courses array to JSON string
-    const interestedCoursesJson = interested_courses ? JSON.stringify(interested_courses) : undefined;
+    const interestedCoursesValue = Array.isArray(interested_courses)
+      ? interested_courses.map((course) => String(course).trim()).filter(Boolean).join(', ')
+      : typeof interested_courses === 'string'
+        ? interested_courses.trim() || undefined
+        : undefined;
     
     const result = await createStudent(
       full_name.trim(),
@@ -233,7 +236,7 @@ export async function POST(request: NextRequest) {
       parent2_name?.trim(),
       parent2_phone?.trim(),
       parent2_relation?.trim(),
-      interestedCoursesJson,
+      interestedCoursesValue,
       source?.trim()
     );
     
