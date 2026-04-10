@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { t } from '@/i18n/t';
@@ -552,20 +552,18 @@ export default function CreateStudentModal({
           boxShadow: '0 28px 70px rgba(15, 23, 42, 0.16)',
         }}
       >
-        <div className="modal-header" style={{ padding: '1.4rem 1.5rem 1.2rem', borderBottom: '1px solid #e2e8f0', background: 'linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', padding: '0.35rem 0.75rem', borderRadius: '999px', backgroundColor: '#eaf2ff', color: '#2563eb', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.85rem' }}>
-                {isEditing ? 'Редагування профілю' : 'Новий учень'}
-              </div>
-              <h3 className="modal-title" style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '0.35rem' }}>
-                {isEditing ? t('modals.editStudent') : t('modals.newStudent')}
-              </h3>
+        <div className="modal-header" style={{ alignItems: 'flex-start', padding: '1.4rem 1.5rem 1.2rem', borderBottom: '1px solid #e2e8f0', background: 'linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%)' }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', padding: '0.35rem 0.75rem', borderRadius: '999px', backgroundColor: '#eaf2ff', color: '#2563eb', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.85rem' }}>
+              {isEditing ? 'Редагування профілю' : 'Новий учень'}
             </div>
-            <button className="modal-close" onClick={close} style={{ fontSize: '1.5rem', lineHeight: 1, padding: '0.25rem' }}>
-              ×
-            </button>
+            <h3 className="modal-title" style={{ fontSize: '1.35rem', fontWeight: 700, margin: 0 }}>
+              {isEditing ? t('modals.editStudent') : t('modals.newStudent')}
+            </h3>
           </div>
+          <button className="modal-close" onClick={close} style={{ fontSize: '1.75rem', lineHeight: 1, padding: '0.25rem', color: '#94a3b8' }}>
+            ×
+          </button>
         </div>
 
         <div className="modal-body" style={{ padding: '1.5rem', overflowY: 'auto', maxHeight: 'calc(92vh - 235px)' }}>
@@ -609,9 +607,9 @@ export default function CreateStudentModal({
 
           {studentFormStep === 'profile' && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '240px minmax(0, 1fr)', gap: '1.25rem', alignItems: 'start' }}>
-                <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1.25rem', textAlign: 'center', position: 'sticky', top: 0 }}>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#0f172a', textAlign: 'left' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '260px minmax(0, 1fr)', gap: '1.5rem', alignItems: 'start' }}>
+                <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1.5rem', textAlign: 'center', position: 'sticky', top: 0 }}>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '1.25rem', color: '#0f172a', textAlign: 'left' }}>
                     {t('forms.photo')}
                   </div>
                   <div
@@ -649,10 +647,10 @@ export default function CreateStudentModal({
                   <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
                 </div>
 
-                <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1.25rem' }}>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#0f172a' }}>Основна інформація</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div className="form-group autocomplete-container" style={{ position: 'relative' }}>
+                <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1.5rem' }}>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '1.25rem', color: '#0f172a' }}>Основна інформація</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    <div className="form-group autocomplete-container" style={{ margin: 0, position: 'relative' }}>
                       <label className="form-label">{t('forms.firstName')} *</label>
                       <input
                         ref={firstNameRef}
@@ -673,7 +671,7 @@ export default function CreateStudentModal({
                         </ul>
                       )}
                     </div>
-                    <div className="form-group autocomplete-container" style={{ position: 'relative' }}>
+                    <div className="form-group autocomplete-container" style={{ margin: 0, position: 'relative' }}>
                       <label className="form-label">{t('forms.lastName')} *</label>
                       <input
                         className={`form-input ${errors.last_name ? 'form-input-error' : ''}`}
@@ -701,11 +699,11 @@ export default function CreateStudentModal({
                       )}
                     </div>
 
-                    <div className="form-group">
+                    <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label">{t('forms.birthDate')}</label>
                       <input type="date" className="form-input" value={form.birth_date} onChange={(e) => setForm((prev) => ({ ...prev, birth_date: e.target.value }))} />
                     </div>
-                    <div className="form-group">
+                    <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label">Email</label>
                       <input
                         type="email"
@@ -730,7 +728,7 @@ export default function CreateStudentModal({
                       {errors.email && <span className="form-error">{errors.email}</span>}
                     </div>
 
-                    <div className="form-group autocomplete-container" style={{ position: 'relative' }}>
+                    <div className="form-group autocomplete-container" style={{ margin: 0, position: 'relative' }}>
                       <label className="form-label">{t('forms.school')}</label>
                       <input
                         className="form-input"
@@ -758,7 +756,7 @@ export default function CreateStudentModal({
                         </ul>
                       )}
                     </div>
-                    <div className="form-group">
+                    <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label">{t('forms.discount')}</label>
                       <div style={{ display: 'flex', alignItems: 'stretch', minHeight: '42px' }}>
                         <input
@@ -784,10 +782,10 @@ export default function CreateStudentModal({
 
           {studentFormStep === 'contacts' && (
             <>
-              <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1rem', marginBottom: '1rem' }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#0f172a' }}>Основний контакт</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
+              <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1.5rem', marginBottom: '1.25rem' }}>
+                <div style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '1.25rem', color: '#0f172a' }}>Основний контакт</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Номер телефону *</label>
                     <div style={{ display: 'flex', alignItems: 'center', border: errors.phone ? '1px solid #ef4444' : '1px solid #d1d5db', borderRadius: '0.375rem', backgroundColor: '#fff', overflow: 'hidden' }}>
                       <span style={{ padding: '0.625rem 0.75rem', backgroundColor: '#f3f4f6', color: '#374151', fontWeight: 500, fontSize: '0.875rem', borderRight: '1px solid #d1d5db' }}>+380</span>
@@ -795,13 +793,13 @@ export default function CreateStudentModal({
                     </div>
                     {errors.phone && <span className="form-error">{errors.phone}</span>}
                   </div>
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Ім'я контактної особи *</label>
                     <input className={`form-input ${errors.parent_name ? 'form-input-error' : ''}`} value={form.parent_name} onChange={(e) => setForm((prev) => ({ ...prev, parent_name: e.target.value }))} style={{ minHeight: '42px', height: '42px' }} />
                     {errors.parent_name && <span className="form-error">{errors.parent_name}</span>}
                   </div>
                 </div>
-                <div className="form-group" style={{ marginTop: '1rem' }}>
+                <div className="form-group" style={{ marginTop: '1.25rem' }}>
                   <label className="form-label">Хто це для дитини *</label>
                   <select className={`form-input ${errors.parent_relation ? 'form-input-error' : ''}`} value={form.parent_relation} onChange={(e) => setForm((prev) => ({ ...prev, parent_relation: e.target.value }))}>
                     <option value="">Оберіть...</option>
@@ -812,7 +810,7 @@ export default function CreateStudentModal({
                   {errors.parent_relation && <span className="form-error">{errors.parent_relation}</span>}
                 </div>
                 {form.parent_relation === 'other' && (
-                  <div className="form-group" style={{ marginTop: '1rem' }}>
+                  <div className="form-group" style={{ marginTop: '0.5rem' }}>
                     <label className="form-label">{t('forms.relationOther')}</label>
                     <input
                       className={`form-input ${errors.parent_relation_other ? 'form-input-error' : ''}`}
@@ -825,22 +823,22 @@ export default function CreateStudentModal({
                 )}
               </div>
 
-              <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1rem' }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#0f172a' }}>Додатковий контакт</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
+              <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1.5rem' }}>
+                <div style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '1.25rem', color: '#0f172a' }}>Додатковий контакт</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Номер телефону</label>
                     <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #d1d5db', borderRadius: '0.375rem', backgroundColor: '#fff', overflow: 'hidden' }}>
                       <span style={{ padding: '0.625rem 0.75rem', backgroundColor: '#f3f4f6', color: '#374151', fontWeight: 500, fontSize: '0.875rem', borderRight: '1px solid #d1d5db' }}>+380</span>
                       <input className="form-input" value={form.parent_phone} onChange={(e) => setForm((prev) => ({ ...prev, parent_phone: formatPhoneNumber(e.target.value) }))} maxLength={9} style={{ flex: 1, border: 'none', outline: 'none', padding: '0.625rem 0.75rem', minHeight: '42px', height: '42px' }} />
                     </div>
                   </div>
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Ім'я контактної особи</label>
                     <input className="form-input" value={form.parent2_name} onChange={(e) => setForm((prev) => ({ ...prev, parent2_name: e.target.value }))} style={{ minHeight: '42px', height: '42px' }} />
                   </div>
                 </div>
-                <div className="form-group" style={{ marginTop: '1rem' }}>
+                <div className="form-group" style={{ marginTop: '1.25rem' }}>
                   <label className="form-label">Хто це для дитини</label>
                   <select className="form-input" value={form.parent2_relation} onChange={(e) => setForm((prev) => ({ ...prev, parent2_relation: e.target.value }))}>
                     <option value="">Оберіть...</option>
@@ -850,7 +848,7 @@ export default function CreateStudentModal({
                   </select>
                 </div>
                 {form.parent2_relation === 'other' && (
-                  <div className="form-group" style={{ marginTop: '1rem' }}>
+                  <div className="form-group" style={{ marginTop: '0.5rem' }}>
                     <label className="form-label">{t('forms.relationOther')}</label>
                     <input
                       className={`form-input ${errors.parent2_relation_other ? 'form-input-error' : ''}`}
@@ -867,8 +865,8 @@ export default function CreateStudentModal({
 
           {studentFormStep === 'extra' && (
             <>
-              <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1.25rem' }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#0f172a' }}>Додаткова інформація</div>
+              <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1.5rem' }}>
+                <div style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '1.25rem', color: '#0f172a' }}>Додаткова інформація</div>
                 <div className="form-group courses-dropdown" style={{ position: 'relative' }}>
                   <label className="form-label">{t('forms.interestedCourses')}</label>
                   <div
@@ -921,7 +919,7 @@ export default function CreateStudentModal({
                   )}
                 </div>
 
-                <div className="form-group" style={{ marginTop: '1rem' }}>
+                <div className="form-group" style={{ marginTop: '1.25rem' }}>
                   <label className="form-label">{t('forms.source')}</label>
                   <select className="form-input" value={form.source} onChange={(e) => setForm((prev) => ({ ...prev, source: e.target.value }))}>
                     <option value="">{t('forms.sourcePlaceholder')}</option>
@@ -931,7 +929,7 @@ export default function CreateStudentModal({
                   </select>
                 </div>
                 {form.source === 'other' && (
-                  <div className="form-group" style={{ marginTop: '1rem' }}>
+                  <div className="form-group" style={{ marginTop: '0.5rem' }}>
                     <label className="form-label">{t('forms.sourceOther')}</label>
                     <input
                       className={`form-input ${errors.source_other ? 'form-input-error' : ''}`}
@@ -943,7 +941,7 @@ export default function CreateStudentModal({
                   </div>
                 )}
 
-                <div className="form-group" style={{ marginTop: '1rem' }}>
+                <div className="form-group" style={{ marginTop: '1.25rem' }}>
                   <label className="form-label">{t('forms.note')}</label>
                   <textarea className="form-input" value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} rows={3} style={{ resize: 'vertical', minHeight: '90px' }} />
                 </div>

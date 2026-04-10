@@ -548,7 +548,7 @@ export async function getStudentsWithDebt(month: string): Promise<StudentWithDeb
        GROUP BY p.student_id, p.group_id
      )
      SELECT
-       s.id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
+       s.id, s.public_id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
        CASE WHEN EXISTS (
               SELECT 1
               FROM student_groups sg2

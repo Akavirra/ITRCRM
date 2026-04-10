@@ -59,6 +59,32 @@
     absences_this_month: number;
     has_debt: boolean;
   }>;
+  debtorsList: Array<{
+    id: number;
+    full_name: string;
+    public_id: string;
+    phone: string | null;
+    parent_name: string | null;
+    parent_phone: string | null;
+    group_title: string;
+    debt: number;
+    debtLabel: string;
+    expected_amount: number;
+    paid_amount: number;
+    lessons_count: number;
+    discount_percent: number;
+  }>;
+  absencesList: Array<{
+    id: number;
+    student_id: number;
+    full_name: string;
+    public_id: string;
+    lesson_date: string;
+    lessonDateLabel: string;
+    group_title: string;
+    course_title: string;
+    start_time: string;
+  }>;
   recentPayments: Array<{
     amount: number;
     amountLabel: string;

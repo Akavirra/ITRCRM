@@ -69,6 +69,8 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showCreateLessonModal, setShowCreateLessonModal] = useState(false);
+  const [showDebtsModal, setShowDebtsModal] = useState(false);
+  const [showAbsencesModal, setShowAbsencesModal] = useState(false);
 
   const completedLessons = initialData.todaySchedule.filter((l) => l.status === 'completed' || l.status === 'done').length;
   const visiblePayments = initialData.recentPayments.slice(0, 6);
@@ -145,8 +147,21 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               value = initialData.stats[card.key];
             }
 
+            const isClickable = card.key === 'unpaidStudents' || card.key === 'attendancePercent';
+            const handleClick = () => {
+              if (card.key === 'unpaidStudents') setShowDebtsModal(true);
+              if (card.key === 'attendancePercent') setShowAbsencesModal(true);
+            };
+
             return (
-              <div key={card.key} className={styles.statItem}>
+              <div
+                key={card.key}
+                className={`${styles.statItem} ${isClickable ? styles.statItemClickable : ''}`}
+                onClick={isClickable ? handleClick : undefined}
+                role={isClickable ? 'button' : undefined}
+                tabIndex={isClickable ? 0 : undefined}
+                onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); } : undefined}
+              >
                 <div className={styles.statItemLabel}>
                   <Icon size={14} />
                   {card.label}
@@ -328,95 +343,6 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
           </section>
         </div>
 
-        {/* Bottom row: Group Capacity + Problem Students */}
-        <div className={styles.columns}>
-          {/* Group Capacity */}
-          <section className={styles.panel}>
-            <div className={styles.panelHeader}>
-              <div>
-                <div className={styles.panelLabel}>Заповненість</div>
-                <h2 className={styles.panelTitle}>Групи</h2>
-              </div>
-              <TransitionLink href="/groups" className={styles.textLink}>
-                Усі групи
-              </TransitionLink>
-            </div>
-
-            {initialData.groupCapacity.length === 0 ? (
-              <div className={styles.compactEmpty}>Немає активних груп.</div>
-            ) : (
-              <div className={styles.capacityList}>
-                {initialData.groupCapacity.map((group) => {
-                  const cap = group.capacity || 0;
-                  const pct = cap > 0 ? Math.round((group.student_count / cap) * 100) : null;
-                  const isFull = pct !== null && pct >= 100;
-                  const isLow = pct !== null && pct < 50;
-                  return (
-                    <div key={group.id} className={styles.capacityItem}>
-                      <div className={styles.capacityInfo}>
-                        <div className={styles.capacityTitle}>{group.title}</div>
-                        <div className={styles.capacityMeta}>{group.course_title}</div>
-                      </div>
-                      <div className={styles.capacityRight}>
-                        <span className={`${styles.capacityCount} ${isFull ? styles.capacityFull : isLow ? styles.capacityLow : ''}`}>
-                          {group.student_count}{cap > 0 ? `/${cap}` : ''}
-                        </span>
-                        {cap > 0 && (
-                          <div className={styles.capacityBarOuter}>
-                            <div
-                              className={`${styles.capacityBarInner} ${isFull ? styles.capacityBarFull : isLow ? styles.capacityBarLow : ''}`}
-                              style={{ width: `${Math.min(pct!, 100)}%` }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* Problem Students */}
-          <section className={styles.panel}>
-            <div className={styles.panelHeader}>
-              <div>
-                <div className={styles.panelLabel}>Увага</div>
-                <h2 className={styles.panelTitle}>Проблемні учні</h2>
-              </div>
-              <TransitionLink href="/students" className={styles.textLink}>
-                Усі учні
-              </TransitionLink>
-            </div>
-
-            {initialData.problemStudents.length === 0 ? (
-              <div className={styles.compactEmpty}>Все добре! Проблемних учнів немає.</div>
-            ) : (
-              <div className={styles.activityList}>
-                {initialData.problemStudents.map((student) => (
-                  <div key={student.id} className={styles.activityItem}>
-                    <div>
-                      <div className={styles.activityTitle}>{student.full_name}</div>
-                      <div className={styles.activityMeta}>{student.public_id}</div>
-                    </div>
-                    <div className={styles.problemBadges}>
-                      {student.absences_this_month >= 2 && (
-                        <span className={styles.badgeDanger}>
-                          {student.absences_this_month} пропуск.
-                        </span>
-                      )}
-                      {student.has_debt && (
-                        <span className={styles.badgeWarning}>
-                          Борг
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
       </div>
 
       <CreateStudentModal
@@ -446,6 +372,93 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
         }}
         initialDate={initialData.todayDate}
       />
+
+      {/* Debts Modal */}
+      {showDebtsModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowDebtsModal(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>
+                <AlertTriangle size={18} />
+                Борги за поточний місяць
+              </h2>
+              <button type="button" className={styles.modalClose} onClick={() => setShowDebtsModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {initialData.debtorsList.length === 0 ? (
+              <div className={styles.compactEmpty}>Боржників немає.</div>
+            ) : (
+              <div className={styles.modalList}>
+                {initialData.debtorsList.map((debtor, idx) => (
+                  <div key={`${debtor.id}-${debtor.group_title}-${idx}`} className={styles.modalListItem}>
+                    <div className={styles.modalListItemMain}>
+                      <div className={styles.activityTitle}>{debtor.full_name}</div>
+                      <div className={styles.activityMeta}>
+                        {debtor.public_id} · {debtor.group_title}
+                      </div>
+                      <div className={styles.debtDetails}>
+                        {debtor.lessons_count} ур. · очікувано {new Intl.NumberFormat('uk-UA').format(debtor.expected_amount)} ₴ · сплачено {new Intl.NumberFormat('uk-UA').format(debtor.paid_amount)} ₴
+                        {debtor.discount_percent > 0 && <> · знижка {debtor.discount_percent}%</>}
+                      </div>
+                    </div>
+                    <div className={styles.debtAmount}>{debtor.debtLabel}</div>
+                  </div>
+                ))}
+                <div className={styles.modalFooter}>
+                  Загальний борг: <strong>
+                    {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', minimumFractionDigits: 0 }).format(
+                      initialData.debtorsList.reduce((sum, d) => sum + d.debt, 0)
+                    )}
+                  </strong>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Absences Modal */}
+      {showAbsencesModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowAbsencesModal(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>
+                <X size={18} />
+                Пропуски за поточний місяць
+              </h2>
+              <button type="button" className={styles.modalClose} onClick={() => setShowAbsencesModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {initialData.absencesList.length === 0 ? (
+              <div className={styles.compactEmpty}>Пропусків немає.</div>
+            ) : (
+              <div className={styles.modalList}>
+                {initialData.absencesList.map((absence) => (
+                  <div key={absence.id} className={styles.modalListItem}>
+                    <div className={styles.modalListItemMain}>
+                      <div className={styles.activityTitle}>{absence.full_name}</div>
+                      <div className={styles.activityMeta}>
+                        {absence.public_id} · {absence.group_title}
+                        {absence.course_title && <> · {absence.course_title}</>}
+                      </div>
+                    </div>
+                    <div className={styles.absenceDate}>
+                      {absence.lessonDateLabel}, {absence.start_time}
+                    </div>
+                  </div>
+                ))}
+                <div className={styles.modalFooter}>
+                  Всього пропусків: <strong>{initialData.absencesList.length}</strong>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

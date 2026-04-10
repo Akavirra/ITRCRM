@@ -1,4 +1,5 @@
 ﻿import { all, get } from '@/db';
+import { getStudentsWithDebt } from '@/lib/students';
 import type { DashboardStatsPayload } from '@/lib/dashboard-types';
 import { addDays, format, startOfMonth, subMonths } from 'date-fns';
 
@@ -188,6 +189,32 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
      LIMIT 5`
   );
 
+  const debtorsPromise = getStudentsWithDebt(firstDayOfMonth);
+
+  const absencesPromise = all<{
+    id: number;
+    student_id: number;
+    full_name: string;
+    public_id: string;
+    lesson_date: string;
+    group_title: string;
+    course_title: string;
+    start_time: string;
+  }>(
+    `SELECT a.id, a.student_id, s.full_name, s.public_id, l.lesson_date,
+       COALESCE(g.title, 'Інд.') as group_title,
+       COALESCE(c.title, '') as course_title,
+       TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as start_time
+     FROM attendance a
+     JOIN lessons l ON a.lesson_id = l.id
+     JOIN students s ON a.student_id = s.id
+     LEFT JOIN groups g ON l.group_id = g.id
+     LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
+     WHERE a.status = 'absent' AND l.lesson_date >= $1 AND l.status = 'done' AND s.is_active = TRUE
+     ORDER BY l.lesson_date DESC, s.full_name ASC`,
+    [firstDayOfMonth]
+  );
+
   const [
     [studentCount, groupCount, lessonCount, revenue, prevRevenue, unpaidCount, attendanceData],
     todaySchedule,
@@ -197,6 +224,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     problemStudents,
     recentPayments,
     recentHistory,
+    debtorsRaw,
+    absencesRaw,
   ] = await Promise.all([
     statsPromise,
     schedulePromise,
@@ -206,6 +235,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     problemStudentsPromise,
     recentPaymentsPromise,
     recentHistoryPromise,
+    debtorsPromise,
+    absencesPromise,
   ]);
 
   const monthlyRevenue = revenue?.total || 0;
@@ -241,6 +272,25 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     upcomingBirthdays,
     groupCapacity: groupCapacity.map((g) => ({ ...g, student_count: Number(g.student_count) })),
     problemStudents: problemStudents.map((s) => ({ ...s, absences_this_month: Number(s.absences_this_month) })),
+    debtorsList: debtorsRaw.map((d) => ({
+      id: d.id,
+      full_name: d.full_name,
+      public_id: d.public_id,
+      phone: d.phone,
+      parent_name: d.parent_name,
+      parent_phone: d.parent_phone,
+      group_title: d.group_title,
+      debt: d.debt,
+      debtLabel: formatCurrencyLabel(d.debt),
+      expected_amount: d.expected_amount,
+      paid_amount: d.paid_amount,
+      lessons_count: d.lessons_count,
+      discount_percent: d.discount_percent,
+    })),
+    absencesList: absencesRaw.map((a) => ({
+      ...a,
+      lessonDateLabel: formatDateLabel(a.lesson_date + 'T12:00:00Z'),
+    })),
     recentPayments: recentPayments.map((payment) => ({
       ...payment,
       amountLabel: formatCurrencyLabel(payment.amount),
