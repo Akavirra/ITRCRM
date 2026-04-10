@@ -447,10 +447,18 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* Schedule Grid */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(7, 1fr)', 
+      {/* Schedule Grid — scrollable wrapper */}
+      <div className="schedule-scroll" style={{
+        overflowX: 'auto',
+        marginLeft: '-0.5rem',
+        marginRight: '-0.5rem',
+        paddingLeft: '0.5rem',
+        paddingRight: '0.5rem',
+        paddingBottom: '0.5rem',
+      }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(7, minmax(180px, 1fr))',
         gap: '0.75rem',
         minHeight: '400px',
         transition: 'opacity 0.25s ease',
@@ -473,6 +481,20 @@ export default function SchedulePage() {
             0%, 100% { opacity: 1; transform: scale(1); }
             50%       { opacity: 0.4; transform: scale(0.7); }
           }
+          .schedule-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+          }
+          .schedule-scroll::-webkit-scrollbar {
+            height: 6px;
+          }
+          .schedule-scroll::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .schedule-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+          }
           .schedule-grid {
             animation: fadeIn 0.3s ease-out;
           }
@@ -480,19 +502,14 @@ export default function SchedulePage() {
             animation: fadeIn 0.4s ease-out backwards;
           }
           ${[0,1,2,3,4,5,6].map(i => `.schedule-day:nth-child(${i + 1}) { animation-delay: ${i * 0.05}s; }`).join('\n')}
-          @media (max-width: 1200px) {
-            .schedule-grid {
-              grid-template-columns: repeat(4, 1fr) !important;
-            }
-          }
           @media (max-width: 900px) {
             .schedule-grid {
-              grid-template-columns: repeat(2, 1fr) !important;
+              grid-template-columns: repeat(7, minmax(160px, 1fr)) !important;
             }
           }
           @media (max-width: 600px) {
             .schedule-grid {
-              grid-template-columns: 1fr !important;
+              grid-template-columns: repeat(7, minmax(140px, 1fr)) !important;
             }
           }
         `}</style>
@@ -662,7 +679,7 @@ export default function SchedulePage() {
                             fontSize: '0.8125rem', color: lessonStyle.accentColor,
                             display: 'flex', alignItems: 'center', gap: '0.25rem',
                             marginTop: '0.125rem', cursor: 'pointer', transition: 'color 0.15s ease',
-                            opacity: 0.85,
+                            opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                           }}
                           onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85'; }}
@@ -756,6 +773,7 @@ export default function SchedulePage() {
             </div>
           );
         })}
+      </div>
       </div>
 
       {showGenerateModal && (
