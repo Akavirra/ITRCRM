@@ -1,6 +1,6 @@
 ﻿import { all, get } from '@/db';
 import type { DashboardStatsPayload } from '@/lib/dashboard-types';
-import { addDays, format, startOfMonth } from 'date-fns';
+import { addDays, format, startOfMonth, subMonths } from 'date-fns';
 
 const KYIV_TIME_ZONE = 'Europe/Kyiv';
 
@@ -55,6 +55,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   const now = new Date();
   const todayStr = format(now, 'yyyy-MM-dd');
   const firstDayOfMonth = format(startOfMonth(now), 'yyyy-MM-dd');
+  const prevMonthStart = format(startOfMonth(subMonths(now, 1)), 'yyyy-MM-dd');
+  const prevMonthEnd = format(startOfMonth(now), 'yyyy-MM-dd');
   const nextWeek = format(addDays(now, 7), 'MM-dd');
   const todayMonthDay = format(now, 'MM-dd');
 
@@ -62,7 +64,29 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     get<{ count: number }>(`SELECT COUNT(*) as count FROM students WHERE is_active = TRUE`),
     get<{ count: number }>(`SELECT COUNT(*) as count FROM groups WHERE status = 'active' AND is_active = TRUE`),
     get<{ count: number }>(`SELECT COUNT(*) as count FROM lessons WHERE lesson_date = $1 AND status != 'canceled'`, [todayStr]),
-    get<{ total: number }>(`SELECT SUM(amount) as total FROM payments WHERE month >= $1`, [firstDayOfMonth]),
+    get<{ total: number }>(`SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE month >= $1`, [firstDayOfMonth]),
+    get<{ total: number }>(`SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE month >= $1 AND month < $2`, [prevMonthStart, prevMonthEnd]),
+    // Unpaid students: active students in groups who haven't paid this month
+    get<{ count: number }>(`
+      SELECT COUNT(DISTINCT sg.student_id) as count
+      FROM student_groups sg
+      JOIN students s ON sg.student_id = s.id
+      JOIN groups g ON sg.group_id = g.id
+      WHERE sg.status = 'active' AND s.is_active = TRUE AND g.status = 'active' AND g.is_active = TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM payments p
+          WHERE p.student_id = sg.student_id AND p.group_id = sg.group_id AND p.month >= $1
+        )
+    `, [firstDayOfMonth]),
+    // Attendance % this month
+    get<{ total: number; present: number }>(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE a.status = 'present' OR a.status = 'makeup_done') as present
+      FROM attendance a
+      JOIN lessons l ON a.lesson_id = l.id
+      WHERE l.lesson_date >= $1 AND l.status = 'done'
+    `, [firstDayOfMonth]),
   ]);
 
   const schedulePromise = all<DashboardStatsPayload['todaySchedule'][number]>(
@@ -80,6 +104,20 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     [todayStr]
   );
 
+  // Next upcoming lesson (not done/canceled, today or future)
+  const nextLessonPromise = get<DashboardStatsPayload['nextLesson']>(
+    `SELECT
+      l.id, l.start_datetime, l.group_id,
+      g.title as group_title, c.title as course_title, u.name as teacher_name
+     FROM lessons l
+     LEFT JOIN groups g ON l.group_id = g.id
+     LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
+     LEFT JOIN users u ON COALESCE(l.teacher_id, g.teacher_id) = u.id
+     WHERE l.start_datetime > NOW() AND l.status = 'scheduled'
+     ORDER BY l.start_datetime ASC
+     LIMIT 1`
+  );
+
   const birthdaysPromise = all<DashboardStatsPayload['upcomingBirthdays'][number]>(
     `SELECT id, full_name, birth_date, public_id
      FROM students
@@ -90,6 +128,48 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
        )
      ORDER BY TO_CHAR(birth_date, 'MM-DD') ASC`,
     [todayMonthDay, nextWeek]
+  );
+
+  // Group capacity: active groups with student count
+  const groupCapacityPromise = all<DashboardStatsPayload['groupCapacity'][number]>(
+    `SELECT g.id, g.title, g.capacity, c.title as course_title,
+       COUNT(sg.id) FILTER (WHERE sg.status = 'active') as student_count
+     FROM groups g
+     LEFT JOIN courses c ON g.course_id = c.id
+     LEFT JOIN student_groups sg ON sg.group_id = g.id
+     WHERE g.status = 'active' AND g.is_active = TRUE
+     GROUP BY g.id, g.title, g.capacity, c.title
+     ORDER BY g.title ASC`
+  );
+
+  // Problem students: many absences this month OR unpaid
+  const problemStudentsPromise = all<DashboardStatsPayload['problemStudents'][number]>(
+    `SELECT
+      s.id, s.full_name, s.public_id,
+      COALESCE(abs.cnt, 0) as absences_this_month,
+      CASE WHEN debt.student_id IS NOT NULL THEN true ELSE false END as has_debt
+     FROM students s
+     LEFT JOIN (
+       SELECT a.student_id, COUNT(*) as cnt
+       FROM attendance a
+       JOIN lessons l ON a.lesson_id = l.id
+       WHERE a.status = 'absent' AND l.lesson_date >= $1 AND l.status = 'done'
+       GROUP BY a.student_id
+     ) abs ON abs.student_id = s.id
+     LEFT JOIN (
+       SELECT DISTINCT sg.student_id
+       FROM student_groups sg
+       JOIN groups g ON sg.group_id = g.id
+       WHERE sg.status = 'active' AND g.status = 'active' AND g.is_active = TRUE
+         AND NOT EXISTS (
+           SELECT 1 FROM payments p
+           WHERE p.student_id = sg.student_id AND p.group_id = sg.group_id AND p.month >= $1
+         )
+     ) debt ON debt.student_id = s.id
+     WHERE s.is_active = TRUE AND (COALESCE(abs.cnt, 0) >= 2 OR debt.student_id IS NOT NULL)
+     ORDER BY COALESCE(abs.cnt, 0) DESC, s.full_name ASC
+     LIMIT 10`,
+    [firstDayOfMonth]
   );
 
   const recentPaymentsPromise = all<DashboardStatsPayload['recentPayments'][number]>(
@@ -109,20 +189,30 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   );
 
   const [
-    [studentCount, groupCount, lessonCount, revenue],
+    [studentCount, groupCount, lessonCount, revenue, prevRevenue, unpaidCount, attendanceData],
     todaySchedule,
+    nextLesson,
     upcomingBirthdays,
+    groupCapacity,
+    problemStudents,
     recentPayments,
     recentHistory,
   ] = await Promise.all([
     statsPromise,
     schedulePromise,
+    nextLessonPromise,
     birthdaysPromise,
+    groupCapacityPromise,
+    problemStudentsPromise,
     recentPaymentsPromise,
     recentHistoryPromise,
   ]);
 
   const monthlyRevenue = revenue?.total || 0;
+  const prevMonthRevenue = prevRevenue?.total || 0;
+  const attTotal = attendanceData?.total || 0;
+  const attPresent = attendanceData?.present || 0;
+  const attendancePercent = attTotal > 0 ? Math.round((attPresent / attTotal) * 100) : null;
 
   return {
     generatedAtLabel: formatFullDateLabel(now),
@@ -134,13 +224,23 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
       todayLessons: lessonCount?.count || 0,
       monthlyRevenue,
       monthlyRevenueLabel: formatCurrencyLabel(monthlyRevenue),
+      unpaidStudents: unpaidCount?.count || 0,
+      attendancePercent,
+      prevMonthRevenue,
+      prevMonthRevenueLabel: formatCurrencyLabel(prevMonthRevenue),
     },
+    nextLesson: nextLesson ? {
+      ...nextLesson,
+      startTimeLabel: formatTimeLabel(nextLesson.start_datetime),
+    } : null,
     todaySchedule: todaySchedule.map((lesson) => ({
       ...lesson,
       startTimeLabel: formatTimeLabel(lesson.start_datetime),
       endTimeLabel: formatTimeLabel(lesson.end_datetime),
     })),
     upcomingBirthdays,
+    groupCapacity: groupCapacity.map((g) => ({ ...g, student_count: Number(g.student_count) })),
+    problemStudents: problemStudents.map((s) => ({ ...s, absences_this_month: Number(s.absences_this_month) })),
     recentPayments: recentPayments.map((payment) => ({
       ...payment,
       amountLabel: formatCurrencyLabel(payment.amount),

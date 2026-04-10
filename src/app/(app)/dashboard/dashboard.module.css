@@ -433,6 +433,194 @@
   font-size: 0.85rem;
 }
 
+/* ── Trend badges ── */
+.trendUp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+}
+
+.trendDown {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+}
+
+.statValueDanger {
+  color: #dc2626;
+}
+
+.statValueGood {
+  color: #059669;
+}
+
+/* ── Next lesson countdown bar ── */
+.nextLessonBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  background: var(--accent-soft);
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.nextLessonText {
+  flex: 1;
+  color: var(--ink);
+}
+
+.nextLessonText strong {
+  color: var(--accent);
+}
+
+.nextLessonCountdown {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--accent);
+  white-space: nowrap;
+  background: white;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid #bfdbfe;
+}
+
+/* ── Group capacity ── */
+.capacityList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.capacityItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.capacityItem:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.capacityItem:first-child {
+  padding-top: 0;
+}
+
+.capacityInfo {
+  min-width: 0;
+  flex: 1;
+}
+
+.capacityTitle {
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.capacityMeta {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}
+
+.capacityRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  min-width: 80px;
+}
+
+.capacityCount {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.capacityFull {
+  color: #059669;
+}
+
+.capacityLow {
+  color: #f59e0b;
+}
+
+.capacityBarOuter {
+  width: 80px;
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.capacityBarInner {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.capacityBarFull {
+  background: #059669;
+}
+
+.capacityBarLow {
+  background: #f59e0b;
+}
+
+/* ── Problem badges ── */
+.problemBadges {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.badgeDanger {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.badgeWarning {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #d97706;
+  background: #fffbeb;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
 /* ── Base generic states (error) ── */
 .errorCard {
   background: var(--surface);
