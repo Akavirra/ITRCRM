@@ -18,11 +18,21 @@ interface CourseStudent {
   phone: string | null;
   parent_name: string | null;
   parent_phone: string | null;
-  group_id: number;
+  group_id: number | null;
   group_public_id: string | null;
-  group_title: string;
-  group_status: string;
-  join_date: string;
+  group_title: string | null;
+  group_status: string | null;
+  join_date: string | null;
+}
+
+// Student with individual lessons
+interface IndividualStudent {
+  id: number;
+  public_id: string | null;
+  full_name: string;
+  phone: string | null;
+  parent_name: string | null;
+  parent_phone: string | null;
 }
 
 // GET /api/courses/[id]/students - Get unique students from all groups of a course
@@ -49,15 +59,14 @@ export async function GET(
     return NextResponse.json({ error: ERROR_MESSAGES.courseNotFound }, { status: 404 });
   }
   
-  // Get all students from all groups of this course
-  // Using GROUP BY to get unique students with their group info
-  const students = await all<CourseStudent>(
-    `SELECT 
-      s.id, 
-      s.public_id, 
-      s.full_name, 
-      s.phone, 
-      s.parent_name, 
+  // Get students from groups of this course
+  const groupStudents = await all<CourseStudent>(
+    `SELECT
+      s.id,
+      s.public_id,
+      s.full_name,
+      s.phone,
+      s.parent_name,
       s.parent_phone,
       g.id as group_id,
       g.public_id as group_public_id,
@@ -71,9 +80,27 @@ export async function GET(
     ORDER BY s.full_name, g.title`,
     [courseId]
   );
-  
-  // Group students by their ID to avoid duplicates
-  // A student can be in multiple groups of the same course
+
+  // Get students with individual lessons (no group) for this course
+  const individualStudents = await all<IndividualStudent>(
+    `SELECT DISTINCT
+      s.id,
+      s.public_id,
+      s.full_name,
+      s.phone,
+      s.parent_name,
+      s.parent_phone
+    FROM students s
+    JOIN attendance a ON a.student_id = s.id
+    JOIN lessons l ON a.lesson_id = l.id
+    WHERE l.course_id = $1
+      AND l.group_id IS NULL
+      AND s.is_active = TRUE
+    ORDER BY s.full_name`,
+    [courseId]
+  );
+
+  // Merge: group students by their ID, include individual lesson students too
   const uniqueStudentsMap = new Map<number, {
     id: number;
     public_id: string | null;
@@ -88,9 +115,10 @@ export async function GET(
       status: string;
       join_date: string;
     }>;
+    hasIndividualLessons: boolean;
   }>();
-  
-  for (const row of students) {
+
+  for (const row of groupStudents) {
     if (!uniqueStudentsMap.has(row.id)) {
       uniqueStudentsMap.set(row.id, {
         id: row.id,
@@ -100,18 +128,36 @@ export async function GET(
         parent_name: row.parent_name,
         parent_phone: row.parent_phone,
         groups: [],
+        hasIndividualLessons: false,
       });
     }
-    
+
     uniqueStudentsMap.get(row.id)!.groups.push({
-      id: row.group_id,
-      public_id: row.group_public_id,
-      title: row.group_title,
-      status: row.group_status,
-      join_date: row.join_date,
+      id: row.group_id!,
+      public_id: row.group_public_id!,
+      title: row.group_title!,
+      status: row.group_status!,
+      join_date: row.join_date!,
     });
   }
-  
+
+  for (const row of individualStudents) {
+    if (!uniqueStudentsMap.has(row.id)) {
+      uniqueStudentsMap.set(row.id, {
+        id: row.id,
+        public_id: row.public_id,
+        full_name: row.full_name,
+        phone: row.phone,
+        parent_name: row.parent_name,
+        parent_phone: row.parent_phone,
+        groups: [],
+        hasIndividualLessons: true,
+      });
+    } else {
+      uniqueStudentsMap.get(row.id)!.hasIndividualLessons = true;
+    }
+  }
+
   const uniqueStudents = Array.from(uniqueStudentsMap.values());
   
   return NextResponse.json({ 

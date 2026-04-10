@@ -33,17 +33,38 @@ export async function getCourses(includeInactive: boolean = false): Promise<Cour
 // Get courses with stats
 export async function getCoursesWithStats(includeInactive: boolean = false): Promise<CourseWithStats[]> {
   const sql = includeInactive
-    ? `SELECT c.*, 
+    ? `SELECT c.*,
         COUNT(DISTINCT g.id) as groups_count,
-        COUNT(DISTINCT sg.student_id) as students_count
+        (
+          COUNT(DISTINCT sg.student_id) +
+          (SELECT COUNT(DISTINCT a.student_id) FROM attendance a
+           JOIN lessons l ON a.lesson_id = l.id
+           WHERE l.course_id = c.id AND l.group_id IS NULL
+             AND a.student_id NOT IN (
+               SELECT sg2.student_id FROM student_groups sg2
+               JOIN groups g2 ON sg2.group_id = g2.id
+               WHERE g2.course_id = c.id AND sg2.is_active = TRUE
+             ))
+        ) as students_count
        FROM courses c
        LEFT JOIN groups g ON c.id = g.course_id
        LEFT JOIN student_groups sg ON g.id = sg.group_id AND sg.is_active = TRUE
        GROUP BY c.id
        ORDER BY c.created_at DESC`
-    : `SELECT c.*, 
+    : `SELECT c.*,
         COUNT(DISTINCT g.id) as groups_count,
-        COUNT(DISTINCT sg.student_id) as students_count
+        (
+          COUNT(DISTINCT sg.student_id) +
+          (SELECT COUNT(DISTINCT a.student_id) FROM attendance a
+           JOIN lessons l ON a.lesson_id = l.id
+           JOIN students s_ind ON a.student_id = s_ind.id AND s_ind.is_active = TRUE
+           WHERE l.course_id = c.id AND l.group_id IS NULL
+             AND a.student_id NOT IN (
+               SELECT sg2.student_id FROM student_groups sg2
+               JOIN groups g2 ON sg2.group_id = g2.id
+               WHERE g2.course_id = c.id AND sg2.is_active = TRUE AND g2.is_active = TRUE
+             ))
+        ) as students_count
        FROM courses c
        LEFT JOIN groups g ON c.id = g.course_id AND g.is_active = TRUE
        LEFT JOIN student_groups sg ON g.id = sg.group_id AND sg.is_active = TRUE

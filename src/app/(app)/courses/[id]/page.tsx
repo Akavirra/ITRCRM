@@ -48,6 +48,7 @@ interface CourseStudent {
     status: string;
     join_date: string;
   }>;
+  hasIndividualLessons?: boolean;
 }
 
 // Hardcoded status labels (do NOT edit i18n)
@@ -1004,6 +1005,12 @@ export default function CourseDetailsPage() {
                                 {idx < student.groups.length - 1 && ', '}
                               </span>
                             ))}
+                            {student.hasIndividualLessons && (
+                              <span style={{ color: '#6b7280', fontStyle: 'italic', fontSize: '0.8125rem' }}>
+                                {student.groups.length > 0 && ', '}Індивідуальні
+                              </span>
+                            )}
+                            {student.groups.length === 0 && !student.hasIndividualLessons && '—'}
                           </td>
                           <td>
                             {student.groups.map((g, idx) => (
