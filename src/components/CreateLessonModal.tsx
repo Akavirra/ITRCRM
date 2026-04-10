@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   X, Calendar, Clock, User, Plus, Check, Search, ChevronDown,
-  AlertCircle, RefreshCw, BookOpen, Users,
+  AlertCircle, RefreshCw, BookOpen, Users, Trash2, Repeat,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { uk } from 'date-fns/locale';
@@ -321,7 +321,9 @@ export default function CreateLessonModal({
   const [courseId, setCourseId] = useState<number | null>(null);
   const [teacherId, setTeacherId] = useState<number | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
-  const [additionalLessonSlotsText, setAdditionalLessonSlotsText] = useState('');
+  const [additionalSlots, setAdditionalSlots] = useState<Array<{ date: string; time: string; duration: number }>>([]);
+  const [weeklyRepeat, setWeeklyRepeat] = useState(false);
+  const [weeklyCount, setWeeklyCount] = useState(4);
   const [isTrial, setIsTrial] = useState(false);
   const [showCourseDropdown, setShowCourseDropdown] = useState(false);
   const [showTeacherDropdown, setShowTeacherDropdown] = useState(false);
@@ -480,35 +482,33 @@ export default function CreateLessonModal({
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
 
-  const parseAdditionalLessonSlots = () => {
-    const lines = additionalLessonSlotsText
-      .split(/\r?\n/)
-      .map(line => line.trim())
-      .filter(Boolean);
+  const addSlot = () => setAdditionalSlots(prev => [...prev, { date: lessonDate, time: startTime, duration: durationMinutes }]);
+  const removeSlot = (idx: number) => setAdditionalSlots(prev => prev.filter((_, i) => i !== idx));
+  const updateSlot = (idx: number, field: 'date' | 'time' | 'duration', value: string | number) =>
+    setAdditionalSlots(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s));
 
-    const slots: Array<{ lessonDate: string; startTime: string; durationMinutes?: number }> = [];
+  const buildAllSlots = () => {
+    const primary = { lessonDate, startTime, durationMinutes };
 
-    for (const line of lines) {
-      const match = line.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})(?:\s+(\d+))?$/);
-      if (!match) {
-        throw new Error(`Невірний формат рядка: ${line}`);
+    if (weeklyRepeat && weeklyCount > 1) {
+      const slots = [primary];
+      const baseDate = parseISO(lessonDate);
+      for (let w = 1; w < weeklyCount; w++) {
+        const d = new Date(baseDate);
+        d.setDate(d.getDate() + 7 * w);
+        slots.push({ lessonDate: format(d, 'yyyy-MM-dd'), startTime, durationMinutes });
       }
-
-      const [, lessonDateValue, startTimeValue, durationValue] = match;
-      const parsedDuration = durationValue ? Number(durationValue) : undefined;
-
-      if (parsedDuration !== undefined && (!Number.isFinite(parsedDuration) || parsedDuration <= 0)) {
-        throw new Error(`Невірна тривалість у рядку: ${line}`);
-      }
-
-      slots.push({
-        lessonDate: lessonDateValue,
-        startTime: startTimeValue,
-        ...(parsedDuration ? { durationMinutes: parsedDuration } : {}),
-      });
+      return slots;
     }
 
-    return slots;
+    if (additionalSlots.length > 0) {
+      return [
+        primary,
+        ...additionalSlots.map(s => ({ lessonDate: s.date, startTime: s.time, durationMinutes: s.duration })),
+      ];
+    }
+
+    return null; // single lesson, no slots array needed
   };
 
   const handleLessonSubmit = async (e: React.FormEvent) => {
@@ -524,7 +524,7 @@ export default function CreateLessonModal({
     }
     setLessonLoading(true);
     try {
-      const additionalSlots = parseAdditionalLessonSlots();
+      const slots = buildAllSlots();
       const res = await fetch('/api/lessons/single', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -537,14 +537,7 @@ export default function CreateLessonModal({
           groupId: null,
           studentIds: selectedStudentIds,
           isTrial,
-          ...(additionalSlots.length > 0
-            ? {
-              slots: [
-                { lessonDate, startTime, durationMinutes },
-                ...additionalSlots,
-              ],
-            }
-            : {}),
+          ...(slots ? { slots } : {}),
         }),
       });
       const data = await res.json();
@@ -628,7 +621,9 @@ export default function CreateLessonModal({
     setCourseId(null);
     setTeacherId(null);
     setSelectedStudentIds([]);
-    setAdditionalLessonSlotsText('');
+    setAdditionalSlots([]);
+    setWeeklyRepeat(false);
+    setWeeklyCount(4);
     setStudentSearch('');
     setIsTrial(false);
     setLessonError(null);
@@ -794,26 +789,109 @@ export default function CreateLessonModal({
                 duration={durationMinutes} onDuration={setDurationMinutes}
               />
 
+              {/* Additional slots / weekly repeat */}
               <div style={{ marginBottom: '1.25rem' }}>
-                <label style={labelStyle}>Додаткові заняття</label>
-                <textarea
-                  value={additionalLessonSlotsText}
-                  onChange={e => setAdditionalLessonSlotsText(e.target.value)}
-                  rows={5}
-                  placeholder={'Кожен рядок: YYYY-MM-DD HH:MM або YYYY-MM-DD HH:MM 90\n2026-04-15 10:00\n2026-04-22 10:00\n2026-04-24 16:30 90'}
-                  style={{
-                    ...inputStyle,
-                    minHeight: '132px',
-                    resize: 'vertical',
-                    lineHeight: 1.5,
-                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                  }}
-                />
-                <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', lineHeight: 1.5, color: '#6b7280' }}>
-                  Перше заняття вище залишається одноразовим за замовчуванням. Тут можна додати ще кілька записів одразу:
-                  у різні дати й години або, наприклад, щотижня в той самий час. Якщо тривалість у рядку не вказати,
-                  буде використано тривалість основного заняття.
-                </p>
+                {/* Additional date rows */}
+                {additionalSlots.map((slot, idx) => (
+                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'end' }}>
+                    <div>
+                      {idx === 0 && <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Дата</label>}
+                      <div style={{ position: 'relative' }}>
+                        <Calendar size={13} style={{ position: 'absolute', left: '0.625rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+                        <input type="date" value={slot.date} onChange={e => updateSlot(idx, 'date', e.target.value)}
+                          style={{ ...inputStyle, paddingLeft: '2rem', fontSize: '0.8125rem', padding: '0.5rem 0.75rem 0.5rem 2rem' }} />
+                      </div>
+                    </div>
+                    <div>
+                      {idx === 0 && <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Час</label>}
+                      <div style={{ position: 'relative' }}>
+                        <Clock size={13} style={{ position: 'absolute', left: '0.625rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+                        <input type="time" value={slot.time} onChange={e => updateSlot(idx, 'time', e.target.value)}
+                          style={{ ...inputStyle, paddingLeft: '2rem', fontSize: '0.8125rem', padding: '0.5rem 0.75rem 0.5rem 2rem' }} />
+                      </div>
+                    </div>
+                    <div>
+                      {idx === 0 && <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Тривалість</label>}
+                      <select value={slot.duration} onChange={e => updateSlot(idx, 'duration', Number(e.target.value))}
+                        style={{ ...inputStyle, cursor: 'pointer', fontSize: '0.8125rem', padding: '0.5rem 0.75rem' }}>
+                        <option value={30}>30 хв</option>
+                        <option value={45}>45 хв</option>
+                        <option value={60}>1 год</option>
+                        <option value={90}>1.5 год</option>
+                        <option value={120}>2 год</option>
+                        <option value={180}>3 год</option>
+                      </select>
+                    </div>
+                    <button type="button" onClick={() => removeSlot(idx)} title="Видалити"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', color: '#ef4444', borderRadius: '0.375rem', display: 'flex', alignItems: 'center' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Action buttons row */}
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {!weeklyRepeat && (
+                    <button type="button" onClick={addSlot}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.375rem',
+                        padding: '0.4rem 0.75rem', borderRadius: '0.375rem',
+                        border: '1.5px dashed #d1d5db', background: 'white',
+                        fontSize: '0.8125rem', color: '#6b7280', cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.color = '#3b82f6'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; }}>
+                      <Plus size={14} /> Додати дату
+                    </button>
+                  )}
+
+                  {additionalSlots.length === 0 && (
+                    <button type="button"
+                      onClick={() => { setWeeklyRepeat(prev => !prev); if (!weeklyRepeat) setAdditionalSlots([]); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.375rem',
+                        padding: '0.4rem 0.75rem', borderRadius: '0.375rem',
+                        border: weeklyRepeat ? '1.5px solid #3b82f6' : '1.5px dashed #d1d5db',
+                        background: weeklyRepeat ? '#eff6ff' : 'white',
+                        fontSize: '0.8125rem',
+                        color: weeklyRepeat ? '#3b82f6' : '#6b7280',
+                        cursor: 'pointer', transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={e => { if (!weeklyRepeat) { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.color = '#3b82f6'; } }}
+                      onMouseLeave={e => { if (!weeklyRepeat) { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; } }}>
+                      <Repeat size={14} /> Щотижня
+                    </button>
+                  )}
+                </div>
+
+                {/* Weekly repeat controls */}
+                {weeklyRepeat && (
+                  <div style={{
+                    marginTop: '0.75rem', padding: '0.75rem',
+                    background: '#f0f7ff', borderRadius: '0.5rem',
+                    border: '1px solid #dbeafe',
+                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                    flexWrap: 'wrap',
+                  }}>
+                    <Repeat size={14} style={{ color: '#3b82f6', flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.8125rem', color: '#374151' }}>Повторити</span>
+                    <select value={weeklyCount} onChange={e => setWeeklyCount(Number(e.target.value))}
+                      style={{ ...inputStyle, width: 'auto', padding: '0.375rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer' }}>
+                      {Array.from({ length: 11 }, (_, i) => i + 2).map(n => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                    <span style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                      {weeklyCount <= 4 ? 'тижні' : 'тижнів'} поспіль
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: 'auto' }}>
+                      = {weeklyCount} занять
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Course */}
