@@ -358,74 +358,72 @@ function SidebarInfoWidget() {
         }
       `}} />
       <div style={{
-        padding: '10px 12px',
+        padding: '10px 14px 9px',
         borderRadius: '18px',
         background: widgetTheme.bg,
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         boxShadow: `${widgetTheme.shadow}, inset 0 0 0 1px ${widgetTheme.borderColor}`,
         border: 'none',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0',
+        display: 'grid',
+        gridTemplateColumns: '1fr auto',
+        gridTemplateRows: 'auto auto auto',
+        rowGap: '2px',
+        columnGap: '8px',
+        alignItems: 'center',
         transition: 'background 1s ease, box-shadow 1s ease',
       }}>
-        {/* Top row: Time + Weather */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-          {/* Time + Day */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '2px' }}>
-              <span style={{ fontSize: '22px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                {h}<span style={{ opacity: 0.3, margin: '0 1px' }}>:</span>{m}
-              </span>
-              <span style={{ fontSize: '10px', fontWeight: '400', color: '#94a3b8', fontVariantNumeric: 'tabular-nums', lineHeight: 1, marginTop: '1px' }}>
-                {s}
-              </span>
-            </div>
-          </div>
-
-          {/* Weather */}
-          {weather && (
-            <button
-              className="weather-btn-hover"
-              ref={weatherBtnRef}
-              onClick={handleWeatherClick}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                background: weatherOpen ? 'rgba(255, 255, 255, 0.6)' : 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                margin: '-4px -8px',
-                borderRadius: '10px',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                opacity: weatherOpen ? 1 : 0.85,
-                flexShrink: 0,
-              }}
-              onMouseOver={e => {
-                e.currentTarget.style.opacity = '1';
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)';
-                e.currentTarget.style.transform = 'scale(1.02)';
-              }}
-              onMouseOut={e => {
-                e.currentTarget.style.opacity = weatherOpen ? '1' : '0.85';
-                e.currentTarget.style.background = weatherOpen ? 'rgba(255, 255, 255, 0.6)' : 'transparent';
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              <span className="weather-icon-anim" style={{ lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code, 15)}</span>
-              <span style={{ fontSize: '14px', fontWeight: '400', color: '#0f172a', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                {weather.temp}°
-              </span>
-            </button>
-          )}
+        {/* Time — left */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
+          <span style={{ fontSize: '22px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+            {h}<span style={{ opacity: 0.3, margin: '0 1px' }}>:</span>{m}
+          </span>
+          <span style={{ fontSize: '9px', fontWeight: '400', color: '#94a3b8', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+            {s}
+          </span>
         </div>
 
-        {/* Bottom row: Day + Date */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', whiteSpace: 'nowrap' }}>
-          <span style={{ fontSize: '11px', fontWeight: '500', color: '#3b82f6', letterSpacing: '0.01em', lineHeight: 1 }}>
+        {/* Weather — right, spans row 1+2 */}
+        {weather ? (
+          <button
+            className="weather-btn-hover"
+            ref={weatherBtnRef}
+            onClick={handleWeatherClick}
+            style={{
+              gridRow: '1 / 3',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1px',
+              background: weatherOpen ? 'rgba(255, 255, 255, 0.6)' : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '6px 8px',
+              margin: '-6px -8px',
+              borderRadius: '12px',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              opacity: weatherOpen ? 1 : 0.85,
+              flexShrink: 0,
+            }}
+            onMouseOver={e => {
+              e.currentTarget.style.opacity = '1';
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)';
+            }}
+            onMouseOut={e => {
+              e.currentTarget.style.opacity = weatherOpen ? '1' : '0.85';
+              e.currentTarget.style.background = weatherOpen ? 'rgba(255, 255, 255, 0.6)' : 'transparent';
+            }}
+          >
+            <span className="weather-icon-anim" style={{ lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code, 18)}</span>
+            <span style={{ fontSize: '12px', fontWeight: '400', color: '#0f172a', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+              {weather.temp}°
+            </span>
+          </button>
+        ) : <span style={{ gridRow: '1 / 3' }} />}
+
+        {/* Day + Date — left, row 2 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '11px', fontWeight: '500', color: '#3b82f6', lineHeight: 1 }}>
             {dayName}
           </span>
           <button
@@ -435,7 +433,7 @@ function SidebarInfoWidget() {
             }}
             style={{
               fontSize: '11px',
-              color: calOpen ? '#3b82f6' : '#64748b',
+              color: calOpen ? '#3b82f6' : '#94a3b8',
               fontWeight: '400',
               background: 'none',
               border: 'none',
@@ -445,37 +443,31 @@ function SidebarInfoWidget() {
               transition: 'color 0.2s',
             }}
             onMouseOver={e => { if (!calOpen) (e.currentTarget.style.color = '#0f172a'); }}
-            onMouseOut={e => { if (!calOpen) (e.currentTarget.style.color = '#64748b'); }}
+            onMouseOut={e => { if (!calOpen) (e.currentTarget.style.color = calOpen ? '#3b82f6' : '#94a3b8'); }}
           >
             {dateStr}
           </button>
         </div>
 
-        {/* Divider */}
-        <div style={{ height: '1px', background: 'rgba(148, 163, 184, 0.12)', margin: '7px 0 6px' }} />
-
+        {/* Events row — full width, row 3 */}
         <button
           onClick={() => setEventsOpen(o => !o)}
           style={{
+            gridColumn: '1 / -1',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-            padding: '0',
-            borderRadius: '0',
+            gap: '6px',
+            marginTop: '5px',
+            padding: '5px 8px',
+            borderRadius: '10px',
             border: 'none',
-            background: 'transparent',
-            color: '#334155',
+            background: eventsOpen ? 'rgba(255, 255, 255, 0.65)' : 'rgba(255, 255, 255, 0.35)',
             cursor: 'pointer',
             textAlign: 'left',
             transition: 'all 0.15s ease',
           }}
-          onMouseOver={e => {
-            e.currentTarget.style.opacity = '0.7';
-          }}
-          onMouseOut={e => {
-            e.currentTarget.style.opacity = '1';
-          }}
+          onMouseOver={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'; }}
+          onMouseOut={e => { e.currentTarget.style.background = eventsOpen ? 'rgba(255, 255, 255, 0.65)' : 'rgba(255, 255, 255, 0.35)'; }}
         >
           <span style={{
             width: '6px',
@@ -487,7 +479,7 @@ function SidebarInfoWidget() {
           <span style={{
             fontSize: '10.5px',
             fontWeight: '500',
-            color: '#475569',
+            color: totalEventsToday > 0 ? '#0f172a' : '#64748b',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
