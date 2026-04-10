@@ -671,8 +671,8 @@ export default function SchedulePage() {
                         </div>
                       )}
 
-                      {/* Course row — hidden for makeup and individual */}
-                      {lesson.groupId && !lesson.isMakeup && (
+                      {/* Course row */}
+                      {lesson.courseTitle && (
                         <div
                           onClick={(e) => handleCourseClick(e, lesson)}
                           style={{
