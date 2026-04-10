@@ -89,9 +89,9 @@ export async function GET(request: NextRequest) {
   
   if (search) {
     // Search with optional limit
-    if (limit) {
+    if (limit && !courseId && !groupId && !withGroups) {
       students = await quickSearchStudents(search, limit);
-    } else if (withGroups || courseId || groupId || (ages && ages.length > 0)) {
+    } else if (withGroups || courseId || groupId || (ages && ages.length > 0) || limit) {
       const result = await listStudentsWithGroups({
         includeInactive,
         search,
@@ -100,8 +100,8 @@ export async function GET(request: NextRequest) {
         ages,
         sortBy,
         sortOrder,
-        limit: withGroups ? limit || 48 : undefined,
-        offset: withGroups ? offset : undefined,
+        limit: limit || 48,
+        offset,
       });
       students = result.students;
       total = result.total;

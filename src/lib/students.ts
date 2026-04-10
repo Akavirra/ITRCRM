@@ -670,14 +670,24 @@ function buildStudentsWhereClause(options: StudentsWithGroupsQuery): { whereClau
 
   if (options.courseId) {
     conditions.push(`
-      EXISTS (
-        SELECT 1
-        FROM student_groups sg_filter
-        JOIN groups g_filter ON g_filter.id = sg_filter.group_id
-        WHERE sg_filter.student_id = s.id
-          AND sg_filter.is_active = TRUE
-          AND g_filter.is_active = TRUE
-          AND g_filter.course_id = $${paramIndex}
+      (
+        EXISTS (
+          SELECT 1
+          FROM student_groups sg_filter
+          JOIN groups g_filter ON g_filter.id = sg_filter.group_id
+          WHERE sg_filter.student_id = s.id
+            AND sg_filter.is_active = TRUE
+            AND g_filter.is_active = TRUE
+            AND g_filter.course_id = $${paramIndex}
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM attendance a_filter
+          JOIN lessons l_filter ON a_filter.lesson_id = l_filter.id
+          WHERE a_filter.student_id = s.id
+            AND l_filter.group_id IS NULL
+            AND l_filter.course_id = $${paramIndex}
+        )
       )
     `);
     params.push(options.courseId);

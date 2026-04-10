@@ -26,6 +26,13 @@ interface Teacher {
   name: string;
 }
 
+interface Group {
+  id: number;
+  title: string;
+  course_id: number;
+  course_title: string;
+}
+
 interface AbsenceRecord {
   attendance_id: number;
   student_id: number;
@@ -301,6 +308,7 @@ export default function CreateLessonModal({
   // ── Shared data ──────────────────────────────────────────────────────────────
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
 
   // ── "Нове заняття" tab state ─────────────────────────────────────────────────
   const [lessonLoading, setLessonLoading] = useState(false);
@@ -318,6 +326,8 @@ export default function CreateLessonModal({
   const [weeklyRepeat, setWeeklyRepeat] = useState(false);
   const [weeklyCount, setWeeklyCount] = useState(4);
   const [isTrial, setIsTrial] = useState(false);
+  const [studentFilterCourse, setStudentFilterCourse] = useState<number | null>(null);
+  const [studentFilterGroup, setStudentFilterGroup] = useState<number | null>(null);
   const [showCourseDropdown, setShowCourseDropdown] = useState(false);
   const [showTeacherDropdown, setShowTeacherDropdown] = useState(false);
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
@@ -341,6 +351,7 @@ export default function CreateLessonModal({
     if (!isOpen) return;
     loadCourses();
     loadTeachers();
+    loadGroups();
     loadAllStudents();
     // Pre-load specific students if IDs are provided (they may not be in the first 50)
     if (initialStudentIds?.length) {
@@ -388,23 +399,16 @@ export default function CreateLessonModal({
 
   // ── Data loaders ──────────────────────────────────────────────────────────────
 
-  const loadAllStudents = async () => {
+  const loadStudents = useCallback(async (opts?: { search?: string; courseId?: number | null; groupId?: number | null }) => {
     setStudentsLoading(true);
     try {
-      const res = await fetch('/api/students?limit=50');
-      const data = await res.json();
-      setStudents(data.students || []);
-    } catch {
-      // silent
-    } finally {
-      setStudentsLoading(false);
-    }
-  };
-
-  const loadStudentsBySearch = useCallback(async (q: string) => {
-    setStudentsLoading(true);
-    try {
-      const res = await fetch(`/api/students?search=${encodeURIComponent(q)}&limit=50`);
+      const params = new URLSearchParams();
+      params.set('limit', '50');
+      params.set('withGroups', 'true');
+      if (opts?.search) params.set('search', opts.search);
+      if (opts?.courseId) params.set('courseId', String(opts.courseId));
+      if (opts?.groupId) params.set('groupId', String(opts.groupId));
+      const res = await fetch(`/api/students?${params}`);
       const data = await res.json();
       setStudents(data.students || []);
     } catch {
@@ -414,11 +418,23 @@ export default function CreateLessonModal({
     }
   }, []);
 
+  const loadAllStudents = () => loadStudents();
+
   const loadCourses = async () => {
     try {
       const res = await fetch('/api/courses');
       const data = await res.json();
       setCourses(data.courses || []);
+    } catch {
+      // silent
+    }
+  };
+
+  const loadGroups = async () => {
+    try {
+      const res = await fetch('/api/groups?basic=true');
+      const data = await res.json();
+      setGroups(data.groups || []);
     } catch {
       // silent
     }
@@ -447,12 +463,18 @@ export default function CreateLessonModal({
     }
   };
 
-  // Student search debounce
+  // Student search debounce + filter changes
   useEffect(() => {
-    if (!studentSearch) return;
-    const t = setTimeout(() => loadStudentsBySearch(studentSearch), 300);
+    if (!isOpen) return;
+    const t = setTimeout(() => {
+      loadStudents({
+        search: studentSearch || undefined,
+        courseId: studentFilterCourse,
+        groupId: studentFilterGroup,
+      });
+    }, studentSearch ? 300 : 0);
     return () => clearTimeout(t);
-  }, [studentSearch, loadStudentsBySearch]);
+  }, [studentSearch, studentFilterCourse, studentFilterGroup, isOpen, loadStudents]);
 
   // ── Derived values ────────────────────────────────────────────────────────────
 
@@ -618,6 +640,8 @@ export default function CreateLessonModal({
     setWeeklyRepeat(false);
     setWeeklyCount(4);
     setStudentSearch('');
+    setStudentFilterCourse(null);
+    setStudentFilterGroup(null);
     setIsTrial(false);
     setLessonError(null);
     setMakeupDate(today);
@@ -744,20 +768,72 @@ export default function CreateLessonModal({
                     <ChevronDown size={16} />
                   </button>
                   {showStudentDropdown && (
-                    <div style={{ ...dropdownContainerStyle, maxHeight: '260px' }}>
-                      <div style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 0, background: 'white' }}>
+                    <div style={{ ...dropdownContainerStyle, maxHeight: '360px' }}>
+                      {/* Search */}
+                      <div style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
                         <div style={{ position: 'relative' }}>
                           <Search size={13} style={{ position: 'absolute', left: '0.625rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
                           <input
                             type="text"
-                            placeholder="Пошук..."
+                            placeholder="Пошук за іменем..."
                             value={studentSearch}
                             onChange={e => setStudentSearch(e.target.value)}
                             style={{ ...inputStyle, paddingLeft: '2rem', padding: '0.4rem 0.75rem 0.4rem 2rem' }}
                           />
                         </div>
+                        {/* Filter row */}
+                        <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.375rem' }}>
+                          <select
+                            value={studentFilterCourse ?? ''}
+                            onChange={e => {
+                              const v = e.target.value ? Number(e.target.value) : null;
+                              setStudentFilterCourse(v);
+                              setStudentFilterGroup(null);
+                            }}
+                            style={{
+                              flex: 1, padding: '0.3rem 0.5rem', borderRadius: '0.375rem',
+                              border: '1px solid #e5e7eb', fontSize: '0.75rem', color: studentFilterCourse ? '#111827' : '#9ca3af',
+                              background: studentFilterCourse ? '#eff6ff' : 'white', cursor: 'pointer', outline: 'none',
+                            }}
+                          >
+                            <option value="">Всі курси</option>
+                            {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                          </select>
+                          <select
+                            value={studentFilterGroup ?? ''}
+                            onChange={e => {
+                              const v = e.target.value ? Number(e.target.value) : null;
+                              setStudentFilterGroup(v);
+                              if (v) {
+                                const g = groups.find(gr => gr.id === v);
+                                if (g) setStudentFilterCourse(g.course_id);
+                              }
+                            }}
+                            style={{
+                              flex: 1, padding: '0.3rem 0.5rem', borderRadius: '0.375rem',
+                              border: '1px solid #e5e7eb', fontSize: '0.75rem', color: studentFilterGroup ? '#111827' : '#9ca3af',
+                              background: studentFilterGroup ? '#eff6ff' : 'white', cursor: 'pointer', outline: 'none',
+                            }}
+                          >
+                            <option value="">Всі групи</option>
+                            {(studentFilterCourse
+                              ? groups.filter(g => g.course_id === studentFilterCourse)
+                              : groups
+                            ).map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+                          </select>
+                          {(studentFilterCourse || studentFilterGroup) && (
+                            <button type="button"
+                              onClick={() => { setStudentFilterCourse(null); setStudentFilterGroup(null); }}
+                              style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '0.375rem', cursor: 'pointer', padding: '0.2rem 0.4rem', color: '#9ca3af', display: 'flex', alignItems: 'center', fontSize: '0.75rem' }}
+                              title="Скинути фільтри"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ maxHeight: '180px', overflow: 'auto' }}>
+                      {/* Student list */}
+                      <div style={{ maxHeight: '230px', overflow: 'auto' }}>
                         {studentsLoading
                           ? <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>Завантаження...</div>
                           : students.length === 0
