@@ -260,20 +260,13 @@ function CourseDropdown({
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <BookOpen size={14} style={{ color: '#9ca3af' }} />
           <span style={{ color: selected ? '#111827' : '#9ca3af' }}>
-            {selected ? selected.title : "Оберіть курс (необов'язково)"}
+            {selected ? selected.title : 'Оберіть курс'}
           </span>
         </span>
         <ChevronDown size={16} style={{ color: '#9ca3af' }} />
       </button>
       {show && (
         <div style={dropdownContainerStyle}>
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            style={dropdownItemStyle(value === null)}
-          >
-            <span style={{ color: '#9ca3af' }}>— Без курсу —</span>
-          </button>
           {courses.map(c => (
             <button
               key={c.id}
@@ -514,7 +507,7 @@ export default function CreateLessonModal({
   const handleLessonSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLessonError(null);
-    if (!lessonDate || !startTime || !durationMinutes || !teacherId) {
+    if (!lessonDate || !startTime || !durationMinutes || !teacherId || !courseId) {
       setLessonError("Заповніть всі обов'язкові поля");
       return;
     }
@@ -896,7 +889,7 @@ export default function CreateLessonModal({
 
               {/* Course */}
               <div style={{ marginBottom: '1.25rem' }}>
-                <label style={labelStyle}>Курс</label>
+                <label style={labelStyle}>Курс <span style={{ color: '#ef4444' }}>*</span></label>
                 <CourseDropdown
                   courses={courses}
                   value={courseId}
