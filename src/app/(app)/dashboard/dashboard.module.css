@@ -23,21 +23,20 @@
 /* ── Hero ── */
 .hero {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--line);
+  /* Removed border-bottom for a cleaner look */
 }
 
 .heroLeft {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.15rem;
 }
 
 .heroGreeting {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--muted);
   margin: 0;
@@ -45,10 +44,10 @@
 
 .heroTitle {
   margin: 0;
-  font-size: 2.25rem;
+  font-size: 1.85rem;
   font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   color: var(--ink);
   text-transform: capitalize;
 }
@@ -64,9 +63,9 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 0.85rem;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--surface);
   color: var(--ink);
   font-size: 0.85rem;
@@ -75,11 +74,13 @@
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
+  box-shadow: var(--shadow-sm);
 }
 
 .actionChip:hover {
   background: var(--surface-soft);
   border-color: #d1d5db;
+  transform: translateY(-1px);
 }
 
 .actionChipIcon {
@@ -93,13 +94,31 @@
 .statsRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 2rem;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.25rem 2rem;
+  gap: 3.5rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .statItem {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.3rem;
+  position: relative;
+}
+
+/* Add vertical divider between items except the last one */
+.statItem:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: -1.75rem;
+  top: 10%;
+  height: 80%;
+  width: 1px;
+  background: var(--line);
 }
 
 .statItemLabel {
@@ -109,12 +128,15 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .statItemValue {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 600;
   line-height: 1;
+  color: var(--ink);
 }
 
 /* ── Panels (shared) ── */
