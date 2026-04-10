@@ -13,3 +13,10 @@ dev_output.txt
 diff.txt
 out.txt
 temp_start.txt
+build_capture.txt
+structure.txt
+next-env.d.ts
+__pycache__/
+*.pyc
+.claude/settings.local.json
+.claude/worktrees/
