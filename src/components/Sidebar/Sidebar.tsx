@@ -373,8 +373,8 @@ function SidebarInfoWidget() {
         alignItems: 'center',
         transition: 'background 1s ease, box-shadow 1s ease',
       }}>
-        {/* Time — left */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
+        {/* Time — left, row 1 */}
+        <div style={{ gridColumn: 1, gridRow: 1, display: 'flex', alignItems: 'baseline', gap: '3px' }}>
           <span style={{ fontSize: '22px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
             {h}<span style={{ opacity: 0.3, margin: '0 1px' }}>:</span>{m}
           </span>
@@ -390,6 +390,7 @@ function SidebarInfoWidget() {
             ref={weatherBtnRef}
             onClick={handleWeatherClick}
             style={{
+              gridColumn: 2,
               gridRow: '1 / 3',
               display: 'flex',
               flexDirection: 'column',
@@ -419,10 +420,10 @@ function SidebarInfoWidget() {
               {weather.temp}°
             </span>
           </button>
-        ) : <span style={{ gridRow: '1 / 3' }} />}
+        ) : <span style={{ gridColumn: 2, gridRow: '1 / 3' }} />}
 
         {/* Day + Date — left, row 2 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ gridColumn: 1, gridRow: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '11px', fontWeight: '500', color: '#3b82f6', lineHeight: 1 }}>
             {dayName}
           </span>
