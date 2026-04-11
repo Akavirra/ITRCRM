@@ -144,31 +144,32 @@ export async function GET(request: NextRequest) {
     }
   }
   
+  // Calculate total days in range
+  const totalDays = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
   // Group lessons by day
   const daysMap: Record<string, LessonRow[]> = {};
-  
-  for (let d = 0; d < 7; d++) {
+
+  for (let d = 0; d < totalDays; d++) {
     const date = addDays(startDate, d);
     const dateStr = format(date, 'yyyy-MM-dd');
     daysMap[dateStr] = [];
   }
-  
+
   for (const lesson of lessons) {
-    // Convert lesson_date to yyyy-MM-dd format for proper matching
-    // (PostgreSQL returns DATE as ISO string with time component)
     const lessonDateStr = format(new Date(lesson.lesson_date), 'yyyy-MM-dd');
     if (daysMap[lessonDateStr]) {
       daysMap[lessonDateStr].push(lesson);
     }
   }
-  
+
   // Build response
   const days = [];
-  for (let d = 0; d < 7; d++) {
+  for (let d = 0; d < totalDays; d++) {
     const date = addDays(startDate, d);
     const dateStr = format(date, 'yyyy-MM-dd');
-    const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay(); // Convert Sunday=0 to Sunday=7
-    
+    const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay();
+
     days.push({
       date: dateStr,
       dayOfWeek,
