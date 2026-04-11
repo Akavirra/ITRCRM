@@ -130,6 +130,13 @@ a:hover {
   border-radius: 0.375rem;
   background-color: white;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  min-height: 42px;
+  height: 42px;
+  box-sizing: border-box;
+}
+
+textarea.form-input {
+  height: auto;
 }
 
 .form-input:focus {
