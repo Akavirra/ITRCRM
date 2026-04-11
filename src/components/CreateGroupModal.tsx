@@ -249,9 +249,9 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
         className="modal"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: '760px',
-          maxHeight: '92vh',
-          overflow: 'visible',
+          maxWidth: '820px',
+          maxHeight: '90vh',
+          overflow: 'hidden',
           borderRadius: '24px',
           border: '1px solid #e2e8f0',
           backgroundColor: '#f7f9fc',
@@ -261,94 +261,23 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
         <div
           className="modal-header"
           style={{
-            position: 'relative',
+            alignItems: 'flex-start',
             padding: '1.4rem 1.5rem 1.2rem',
             borderBottom: '1px solid #e2e8f0',
             background: 'linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%)',
           }}
         >
-          <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '700', color: '#111827', whiteSpace: 'nowrap', paddingRight: '3rem' }}>
-            {uk.modals.newGroup}
-          </h2>
-
-          <button
-            className="modal-close"
-            onClick={closeModal}
-            style={{
-              position: 'absolute',
-              top: '1.2rem',
-              right: '1.2rem',
-              width: '36px',
-              height: '36px',
-              borderRadius: '999px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.35rem',
-              color: '#6b7280',
-              backgroundColor: '#ffffff',
-              border: 'none',
-              boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08)',
-              cursor: 'pointer',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem', marginTop: '1.15rem' }}>
-            {([
-              { id: 'schedule', index: '01', title: 'Розклад', description: 'Курс, день, час, викладач' },
-              { id: 'students', index: '02', title: 'Учні', description: 'Додайте склад групи' },
-              { id: 'extra', index: '03', title: 'Додатково', description: 'Старт і примітка' },
-            ] as const).map((step) => {
-              const isActive = groupFormStep === step.id;
-              return (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => setGroupFormStep(step.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.8rem',
-                    width: '100%',
-                    padding: '0.95rem 1rem',
-                    borderRadius: '18px',
-                    border: isActive ? '1px solid #93c5fd' : '1px solid #dbe4f0',
-                    backgroundColor: isActive ? '#ffffff' : 'rgba(255,255,255,0.72)',
-                    boxShadow: isActive ? '0 10px 24px rgba(37, 99, 235, 0.12)' : 'none',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '38px',
-                      height: '38px',
-                      flexShrink: 0,
-                      borderRadius: '13px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      backgroundColor: isActive ? '#2563eb' : '#eaf2ff',
-                      color: isActive ? '#ffffff' : '#2563eb',
-                    }}
-                  >
-                    {step.index}
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '0.94rem', fontWeight: 700, color: '#0f172a' }}>{step.title}</div>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.35 }}>{step.description}</div>
-                  </div>
-                </button>
-              );
-            })}
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', padding: '0.35rem 0.75rem', borderRadius: '999px', backgroundColor: '#eaf2ff', color: '#2563eb', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.85rem' }}>
+              Нова група
+            </div>
+            <h3 className="modal-title" style={{ fontSize: '1.35rem', fontWeight: 700, margin: 0 }}>
+              {uk.modals.newGroup}
+            </h3>
           </div>
+          <button className="modal-close" onClick={closeModal} style={{ fontSize: '1.75rem', lineHeight: 1, padding: '0.25rem', color: '#94a3b8' }}>
+            ×
+          </button>
         </div>
 
         <form onSubmit={(e) => e.preventDefault()}>
@@ -356,217 +285,133 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
             className="modal-body"
             style={{
               padding: '1.5rem',
-              overflowY: groupFormStep === 'students' ? 'visible' : 'auto',
+              overflowY: 'auto',
               maxHeight: 'calc(92vh - 235px)',
-              paddingBottom: groupFormStep === 'students' && isDropdownOpen ? '14rem' : '1.5rem',
             }}
           >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+              {([
+                { id: 'schedule', index: '01', title: 'Розклад', description: 'Курс, день, час, викладач' },
+                { id: 'students', index: '02', title: 'Учні', description: 'Додайте склад групи' },
+                { id: 'extra', index: '03', title: 'Додатково', description: 'Старт і примітка' },
+              ] as const).map((step) => {
+                const isActive = groupFormStep === step.id;
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    onClick={() => setGroupFormStep(step.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.8rem',
+                      width: '100%',
+                      padding: '0.95rem 1rem',
+                      borderRadius: '18px',
+                      border: isActive ? '1px solid #93c5fd' : '1px solid #dbe4f0',
+                      backgroundColor: isActive ? '#ffffff' : 'rgba(255,255,255,0.72)',
+                      boxShadow: isActive ? '0 10px 24px rgba(37, 99, 235, 0.12)' : 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ width: '38px', height: '38px', flexShrink: 0, borderRadius: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.82rem', fontWeight: 700, backgroundColor: isActive ? '#2563eb' : '#eaf2ff', color: isActive ? '#ffffff' : '#2563eb' }}>
+                      {step.index}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '0.94rem', fontWeight: 700, color: '#0f172a' }}>{step.title}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.35 }}>{step.description}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
             {error && (
-              <div
-                style={{
-                  padding: '0.875rem 1rem',
-                  marginBottom: '1.25rem',
-                  backgroundColor: '#fef2f2',
-                  color: '#dc2626',
-                  borderRadius: '14px',
-                  border: '1px solid #fecaca',
-                  fontSize: '0.875rem',
-                }}
-              >
+              <div style={{ padding: '0.875rem 1rem', marginBottom: '1rem', backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '14px', border: '1px solid #fecaca', fontSize: '0.875rem' }}>
                 {error}
               </div>
             )}
 
             {groupFormStep === 'schedule' && (
-              <div style={{ display: 'grid', gap: '1rem' }}>
+              <>
                 {titlePreview && (
-                  <div
-                    style={{
-                      padding: '1rem 1.1rem',
-                      backgroundColor: '#eff6ff',
-                      borderRadius: '18px',
-                      border: '1px solid #bfdbfe',
-                    }}
-                  >
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: '0.8rem',
-                        color: '#1d4ed8',
-                        fontWeight: '700',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.025em',
-                      }}
-                    >
+                  <div style={{ padding: '0.85rem 1rem', backgroundColor: '#eff6ff', borderRadius: '18px', border: '1px solid #bfdbfe', marginBottom: '1rem' }}>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#1d4ed8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
                       {uk.forms.groupTitle}
                     </p>
-                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '1.1rem', fontWeight: '700', color: '#1e40af' }}>
+                    <p style={{ margin: '0.35rem 0 0 0', fontSize: '1.1rem', fontWeight: 700, color: '#1e40af' }}>
                       {titlePreview}
                     </p>
                   </div>
                 )}
 
-                <div
-                  style={{
-                    backgroundColor: '#fff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '22px',
-                    padding: '1.25rem',
-                    boxShadow: '0 10px 28px rgba(15, 23, 42, 0.04)',
-                  }}
-                >
-                  <div style={{ marginBottom: '1.1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
-                      {uk.forms.course} <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <select
-                      className="form-input"
-                      value={newGroupCourseId}
-                      onChange={(e) => setNewGroupCourseId(e.target.value)}
-                      required
-                      style={{ width: '100%', padding: '0.75rem 0.9rem', border: '1px solid #d1d5db', borderRadius: '12px', fontSize: '0.95rem', backgroundColor: '#fff' }}
-                    >
+                <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1.5rem' }}>
+                  <div className="form-group" style={{ margin: '0 0 1.25rem' }}>
+                    <label className="form-label">{uk.forms.course} *</label>
+                    <select className="form-input" value={newGroupCourseId} onChange={(e) => setNewGroupCourseId(e.target.value)} required>
                       <option value="">{uk.forms.selectCourse}</option>
                       {courses.map((course) => (
-                        <option key={course.id} value={course.id}>
-                          {course.title}
-                        </option>
+                        <option key={course.id} value={course.id}>{course.title}</option>
                       ))}
                     </select>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem', marginBottom: '1.1rem' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
-                        {uk.forms.dayOfWeek} <span style={{ color: '#ef4444' }}>*</span>
-                      </label>
-                      <select
-                        className="form-input"
-                        value={newGroupWeeklyDay}
-                        onChange={(e) => setNewGroupWeeklyDay(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '0.75rem 0.9rem', border: '1px solid #d1d5db', borderRadius: '12px', fontSize: '0.95rem', backgroundColor: '#fff' }}
-                      >
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">{uk.forms.dayOfWeek} *</label>
+                      <select className="form-input" value={newGroupWeeklyDay} onChange={(e) => setNewGroupWeeklyDay(e.target.value)} required>
                         <option value="">{uk.forms.selectDay}</option>
                         {Object.entries(uk.days).map(([key, value]) => (
-                          <option key={key} value={key}>
-                            {value}
-                          </option>
+                          <option key={key} value={key}>{value}</option>
                         ))}
                       </select>
                     </div>
 
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
-                        {uk.forms.startTime} <span style={{ color: '#ef4444' }}>*</span>
-                      </label>
-                      <input
-                        type="time"
-                        className="form-input"
-                        value={newGroupStartTime}
-                        onChange={(e) => setNewGroupStartTime(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '0.75rem 0.9rem', border: '1px solid #d1d5db', borderRadius: '12px', fontSize: '0.95rem', backgroundColor: '#fff' }}
-                      />
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">{uk.forms.startTime} *</label>
+                      <input type="time" className="form-input" value={newGroupStartTime} onChange={(e) => setNewGroupStartTime(e.target.value)} required />
                     </div>
                   </div>
 
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
-                      {uk.forms.teacher} <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <select
-                      className="form-input"
-                      value={newGroupTeacherId}
-                      onChange={(e) => setNewGroupTeacherId(e.target.value)}
-                      required
-                      style={{ width: '100%', padding: '0.75rem 0.9rem', border: '1px solid #d1d5db', borderRadius: '12px', fontSize: '0.95rem', backgroundColor: '#fff' }}
-                    >
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">{uk.forms.teacher} *</label>
+                    <select className="form-input" value={newGroupTeacherId} onChange={(e) => setNewGroupTeacherId(e.target.value)} required>
                       <option value="">{uk.forms.selectTeacher}</option>
                       {teachers.map((teacher) => (
-                        <option key={teacher.id} value={teacher.id}>
-                          {teacher.name}
-                        </option>
+                        <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
                       ))}
                     </select>
                   </div>
                 </div>
-              </div>
+              </>
             )}
 
             {groupFormStep === 'students' && (
-              <div
-                style={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '22px',
-                  padding: '1.25rem',
-                  boxShadow: '0 10px 28px rgba(15, 23, 42, 0.04)',
-                }}
-              >
+              <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'baseline', marginBottom: '1rem', flexWrap: 'wrap' }}>
                   <div>
-                    <div style={{ fontSize: '1rem', fontWeight: 700, color: '#111827' }}>Учні в групі</div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Учні в групі</div>
                     <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.2rem' }}>
                       Додавайте учнів одразу під час створення або залиште це на потім.
                     </div>
                   </div>
-                  <div
-                    style={{
-                      padding: '0.35rem 0.7rem',
-                      borderRadius: '999px',
-                      backgroundColor: '#eef2ff',
-                      color: '#4338ca',
-                      fontSize: '0.8rem',
-                      fontWeight: 700,
-                    }}
-                  >
+                  <div style={{ padding: '0.35rem 0.7rem', borderRadius: '999px', backgroundColor: '#eef2ff', color: '#4338ca', fontSize: '0.8rem', fontWeight: 700 }}>
                     {selectedStudents.length} обрано
                   </div>
                 </div>
 
                 {selectedStudents.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
                     {selectedStudents.map((student) => (
-                      <div
-                        key={student.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '1rem',
-                          padding: '0.75rem 0.9rem',
-                          backgroundColor: '#f8fafc',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '14px',
-                        }}
-                      >
+                      <div key={student.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '0.65rem 0.9rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>{student.full_name}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#64748b', fontFamily: 'monospace', marginTop: '0.15rem' }}>
-                            #{student.public_id}
-                          </div>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#111827' }}>{student.full_name}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>#{student.public_id}</div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveStudent(student.id)}
-                          style={{
-                            background: '#ffffff',
-                            border: '1px solid #fecaca',
-                            color: '#dc2626',
-                            cursor: 'pointer',
-                            borderRadius: '10px',
-                            padding: '0.4rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                          }}
-                          title="Видалити"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        <button type="button" onClick={() => handleRemoveStudent(student.id)} style={{ background: '#ffffff', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', borderRadius: '8px', padding: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} title="Видалити">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                           </svg>
                         </button>
                       </div>
@@ -578,79 +423,32 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
                   <div style={{ position: 'relative' }}>
                     <input
                       type="text"
+                      className="form-input"
                       placeholder="Пошук або вибір учня..."
                       value={searchQuery}
                       onChange={(e) => handleSearchChange(e.target.value)}
                       onFocus={handleDropdownOpen}
-                      style={{ width: '100%', padding: '0.75rem 0.9rem', border: '1px solid #d1d5db', borderRadius: '12px', fontSize: '0.95rem', backgroundColor: '#fff' }}
                     />
                     {searchingStudents && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          right: '0.85rem',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          width: '16px',
-                          height: '16px',
-                          border: '2px solid #e5e7eb',
-                          borderTopColor: '#3b82f6',
-                          borderRadius: '50%',
-                          animation: 'spin 1s linear infinite',
-                        }}
-                      />
+                      <div style={{ position: 'absolute', right: '0.85rem', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', border: '2px solid #e5e7eb', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                     )}
                   </div>
 
                   {isDropdownOpen && (
                     <>
                       <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => setIsDropdownOpen(false)} />
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          right: 0,
-                          marginTop: '0.4rem',
-                          backgroundColor: '#fff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '14px',
-                          boxShadow: '0 16px 40px rgba(15, 23, 42, 0.12)',
-                          zIndex: 10,
-                          maxHeight: '280px',
-                          overflowY: 'auto',
-                        }}
-                      >
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.4rem', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.375rem', boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)', zIndex: 10, maxHeight: '280px', overflowY: 'auto' }}>
                         {searchingStudents && dropdownStudents.length === 0 ? (
                           <div style={{ padding: '0.9rem', fontSize: '0.9rem', color: '#6b7280', textAlign: 'center' }}>Пошук...</div>
                         ) : dropdownStudents.length > 0 ? (
                           dropdownStudents.map((student) => (
-                            <button
-                              key={student.id}
-                              type="button"
-                              onClick={() => handleAddStudent(student)}
-                              style={{
-                                display: 'flex',
-                                width: '100%',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: '1rem',
-                                padding: '0.75rem 0.9rem',
-                                border: 'none',
-                                borderBottom: '1px solid #f1f5f9',
-                                backgroundColor: '#fff',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                              }}
-                            >
+                            <button key={student.id} type="button" onClick={() => handleAddStudent(student)} style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '0.625rem 0.75rem', border: 'none', borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', cursor: 'pointer', textAlign: 'left' }}>
                               <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: '0.92rem', fontWeight: 600, color: '#111827' }}>{student.full_name}</div>
-                                <div style={{ fontSize: '0.8rem', color: '#64748b', fontFamily: 'monospace', marginTop: '0.15rem' }}>
-                                  #{student.public_id}
-                                </div>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#111827' }}>{student.full_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>#{student.public_id}</div>
                               </div>
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2">
-                                <polyline points="20 6 9 17 4 12"></polyline>
+                                <polyline points="20 6 9 17 4 12" />
                               </svg>
                             </button>
                           ))
@@ -667,99 +465,40 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
             )}
 
             {groupFormStep === 'extra' && (
-              <div
-                style={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '22px',
-                  padding: '1.25rem',
-                  boxShadow: '0 10px 28px rgba(15, 23, 42, 0.04)',
-                }}
-              >
-                <div style={{ marginBottom: '1.1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
-                    {uk.forms.startDate}
-                  </label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={newGroupStartDate}
-                    onChange={(e) => setNewGroupStartDate(e.target.value)}
-                    style={{ width: '100%', padding: '0.75rem 0.9rem', border: '1px solid #d1d5db', borderRadius: '12px', fontSize: '0.95rem', backgroundColor: '#fff' }}
-                  />
+              <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1.5rem' }}>
+                <div className="form-group" style={{ margin: '0 0 1.25rem' }}>
+                  <label className="form-label">{uk.forms.startDate}</label>
+                  <input type="date" className="form-input" value={newGroupStartDate} onChange={(e) => setNewGroupStartDate(e.target.value)} />
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
-                    {uk.forms.note}
-                  </label>
-                  <textarea
-                    className="form-input"
-                    value={newGroupNote}
-                    onChange={(e) => setNewGroupNote(e.target.value)}
-                    rows={4}
-                    placeholder={uk.common.note}
-                    style={{ width: '100%', padding: '0.75rem 0.9rem', border: '1px solid #d1d5db', borderRadius: '12px', fontSize: '0.95rem', backgroundColor: '#fff', resize: 'vertical', minHeight: '110px' }}
-                  />
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">{uk.forms.note}</label>
+                  <textarea className="form-input" value={newGroupNote} onChange={(e) => setNewGroupNote(e.target.value)} rows={4} placeholder={uk.common.note} style={{ resize: 'vertical', minHeight: '110px' }} />
                 </div>
               </div>
             )}
           </div>
 
-          <div
-            style={{
-              padding: '1rem 1.5rem 1.25rem',
-              borderTop: '1px solid #e2e8f0',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '1rem',
-              flexWrap: 'wrap',
-              backgroundColor: 'rgba(255,255,255,0.92)',
-            }}
-          >
-            <div style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}>{stepMeta[groupFormStep]}</div>
+          <div style={{ padding: '1rem 1.5rem 1.25rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', backgroundColor: 'rgba(255,255,255,0.92)' }}>
+            <div style={{ color: '#64748b', fontSize: '0.9rem' }}>{stepMeta[groupFormStep]}</div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={closeModal}
-                disabled={saving}
-                style={{ padding: '0.7rem 1.25rem', borderRadius: '12px', fontWeight: '600', fontSize: '0.92rem' }}
-              >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={saving}>
                 {uk.actions.cancel}
               </button>
 
               {groupFormStep !== 'schedule' && (
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={goToPreviousStep}
-                  disabled={saving}
-                  style={{ padding: '0.7rem 1.25rem', borderRadius: '12px', fontWeight: '600', fontSize: '0.92rem' }}
-                >
+                <button type="button" className="btn btn-secondary" onClick={goToPreviousStep} disabled={saving}>
                   Назад
                 </button>
               )}
 
               {groupFormStep !== 'extra' ? (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={goToNextStep}
-                  style={{ padding: '0.7rem 1.4rem', borderRadius: '12px', fontWeight: '600', fontSize: '0.92rem' }}
-                >
+                <button type="button" className="btn btn-primary" onClick={goToNextStep}>
                   Далі
                 </button>
               ) : (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={saving}
-                  onClick={handleCreateGroup}
-                  style={{ padding: '0.7rem 1.4rem', borderRadius: '12px', fontWeight: '600', fontSize: '0.92rem', backgroundColor: '#2563eb' }}
-                >
+                <button type="button" className="btn btn-primary" disabled={saving} onClick={handleCreateGroup}>
                   {saving ? uk.common.saving : uk.actions.create}
                 </button>
               )}
