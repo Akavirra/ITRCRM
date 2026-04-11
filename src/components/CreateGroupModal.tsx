@@ -251,7 +251,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
         style={{
           maxWidth: '820px',
           maxHeight: '90vh',
-          overflow: 'hidden',
+          overflow: groupFormStep === 'students' ? 'visible' : 'hidden',
           borderRadius: '24px',
           border: '1px solid #e2e8f0',
           backgroundColor: '#f7f9fc',
@@ -285,8 +285,8 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess, initialSt
             className="modal-body"
             style={{
               padding: '1.5rem',
-              overflowY: 'auto',
-              maxHeight: 'calc(92vh - 235px)',
+              overflowY: groupFormStep === 'students' ? 'visible' : 'auto',
+              maxHeight: groupFormStep === 'students' ? undefined : 'calc(92vh - 235px)',
             }}
           >
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
