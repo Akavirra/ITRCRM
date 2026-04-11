@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle, BookOpen, Calendar, Check, Clock, CreditCard, DollarSign,
-  Plus, RefreshCw, TrendingDown, TrendingUp, User as UserIcon, Users, Users2, X,
+  ExternalLink, Plus, RefreshCw, SquareArrowOutUpRight, TrendingDown, TrendingUp, User as UserIcon, Users, Users2, X,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { uk } from 'date-fns/locale';
@@ -13,6 +13,7 @@ import CreateGroupModal from '@/components/CreateGroupModal';
 import CreateLessonModal from '@/components/CreateLessonModal';
 import CreateStudentModal from '@/components/CreateStudentModal';
 import TransitionLink from '@/components/TransitionLink';
+import { useStudentModals } from '@/components/StudentModalsContext';
 import type { DashboardStatsPayload } from '@/lib/dashboard-types';
 import styles from './dashboard.module.css';
 
@@ -66,6 +67,7 @@ function NextLessonCountdown({ startDatetime }: { startDatetime: string }) {
 
 export default function DashboardPageClient({ initialData }: { initialData: DashboardStatsPayload }) {
   const router = useRouter();
+  const { openStudentModal } = useStudentModals();
   const [activeTab, setActiveTab] = useState<ActivityTab>('payments');
   const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
@@ -400,7 +402,23 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 {initialData.debtorsList.map((debtor, idx) => (
                   <div key={`${debtor.id}-${debtor.group_title}-${idx}`} className={styles.modalListItem}>
                     <div className={styles.modalListItemMain}>
-                      <div className={styles.activityTitle}>{debtor.full_name}</div>
+                      <div className={styles.modalStudentRow}>
+                        <button
+                          type="button"
+                          className={styles.modalStudentName}
+                          onClick={() => { router.push(`/students/${debtor.public_id}`); setShowDebtsModal(false); }}
+                        >
+                          {debtor.full_name}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.modalStudentOpenBtn}
+                          title="Відкрити картку учня"
+                          onClick={() => openStudentModal(debtor.id, debtor.full_name)}
+                        >
+                          <SquareArrowOutUpRight size={13} />
+                        </button>
+                      </div>
                       <div className={styles.activityMeta}>
                         {debtor.public_id} · {debtor.group_title}
                       </div>
@@ -453,7 +471,23 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 {initialData.absencesList.map((absence) => (
                   <div key={absence.id} className={styles.modalListItem}>
                     <div className={styles.modalListItemMain}>
-                      <div className={styles.activityTitle}>{absence.full_name}</div>
+                      <div className={styles.modalStudentRow}>
+                        <button
+                          type="button"
+                          className={styles.modalStudentName}
+                          onClick={() => { router.push(`/students/${absence.public_id}`); setShowAbsencesModal(false); }}
+                        >
+                          {absence.full_name}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.modalStudentOpenBtn}
+                          title="Відкрити картку учня"
+                          onClick={() => openStudentModal(absence.student_id, absence.full_name)}
+                        >
+                          <SquareArrowOutUpRight size={13} />
+                        </button>
+                      </div>
                       <div className={styles.activityMeta}>
                         {absence.public_id} · {absence.group_title}
                         {absence.course_title && <> · {absence.course_title}</>}
