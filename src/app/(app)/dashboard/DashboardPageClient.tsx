@@ -406,7 +406,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                         <button
                           type="button"
                           className={styles.modalStudentName}
-                          onClick={() => { router.push(`/students/${debtor.public_id}`); setShowDebtsModal(false); }}
+                          onClick={() => { router.push(`/students/${debtor.id}`); setShowDebtsModal(false); }}
                         >
                           {debtor.full_name}
                         </button>
@@ -475,7 +475,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                         <button
                           type="button"
                           className={styles.modalStudentName}
-                          onClick={() => { router.push(`/students/${absence.public_id}`); setShowAbsencesModal(false); }}
+                          onClick={() => { router.push(`/students/${absence.student_id}`); setShowAbsencesModal(false); }}
                         >
                           {absence.full_name}
                         </button>
