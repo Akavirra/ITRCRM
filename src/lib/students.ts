@@ -496,6 +496,103 @@ export async function getStudentPaymentHistory(
 }
 
 // Get students with debt for a specific month
+export async function getStudentsWithAllTimeDebt(): Promise<StudentWithDebt[]> {
+  const setting = await get<{ value: string }>(
+    `SELECT value FROM system_settings WHERE key = 'lesson_price'`
+  );
+  const lessonPrice = parseInt(setting?.value || '300', 10);
+
+  const rows = await all<{
+    id: number;
+    full_name: string;
+    phone: string | null;
+    parent_name: string | null;
+    parent_phone: string | null;
+    notes: string | null;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+    study_status: StudyStatus;
+    discount: number | null;
+    group_id: number;
+    group_title: string;
+    lessons_count: number;
+    paid_amount: number;
+    public_id: string;
+  }>(
+    `WITH active_links AS (
+       SELECT sg.student_id, sg.group_id
+       FROM student_groups sg
+       JOIN students s ON s.id = sg.student_id
+       JOIN groups g ON g.id = sg.group_id
+       WHERE sg.is_active = TRUE
+         AND s.is_active = TRUE
+         AND g.is_active = TRUE
+     ),
+     lesson_counts AS (
+       SELECT l.group_id, COUNT(*)::INTEGER as lessons_count
+       FROM lessons l
+       WHERE l.group_id IS NOT NULL
+         AND l.status != 'canceled'
+         AND COALESCE(l.is_makeup, FALSE) = FALSE
+         AND COALESCE(l.is_trial, FALSE) = FALSE
+       GROUP BY l.group_id
+     ),
+     payment_sums AS (
+       SELECT p.student_id, p.group_id, COALESCE(SUM(p.amount), 0)::INTEGER as paid_amount
+       FROM payments p
+       GROUP BY p.student_id, p.group_id
+     )
+     SELECT
+       s.id, s.public_id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
+       CASE WHEN EXISTS (
+              SELECT 1
+              FROM student_groups sg2
+              WHERE sg2.student_id = s.id AND sg2.is_active = TRUE
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM attendance a2
+              JOIN lessons l2 ON a2.lesson_id = l2.id
+              WHERE a2.student_id = s.id
+                AND l2.group_id IS NULL
+                AND l2.status = 'scheduled'
+                AND l2.lesson_date >= CURRENT_DATE
+            )
+            THEN 'studying' ELSE 'not_studying'
+       END as study_status,
+       COALESCE(s.discount::INTEGER, 0) as discount,
+       g.id as group_id,
+       g.title as group_title,
+       COALESCE(lc.lessons_count, 0) as lessons_count,
+       COALESCE(ps.paid_amount, 0) as paid_amount
+     FROM active_links al
+     JOIN students s ON s.id = al.student_id
+     JOIN groups g ON g.id = al.group_id
+     LEFT JOIN lesson_counts lc ON lc.group_id = g.id
+     LEFT JOIN payment_sums ps ON ps.student_id = s.id AND ps.group_id = g.id
+     ORDER BY s.full_name, g.title`
+  );
+
+  return rows
+    .map(row => {
+      const discountPercent = row.discount || 0;
+      const effectivePrice = Math.round(lessonPrice * (1 - discountPercent / 100));
+      const expectedAmount = row.lessons_count * effectivePrice;
+      const debt = Math.max(0, expectedAmount - row.paid_amount);
+      return {
+        ...row,
+        lesson_price: lessonPrice,
+        discount_percent: discountPercent,
+        expected_amount: expectedAmount,
+        month: 'all',
+        debt,
+      } as StudentWithDebt;
+    })
+    .filter(r => r.debt > 0)
+    .sort((a, b) => b.debt - a.debt);
+}
+
 export async function getStudentsWithDebt(month: string): Promise<StudentWithDebt[]> {
   // Get lesson_price from system_settings
   const setting = await get<{ value: string }>(

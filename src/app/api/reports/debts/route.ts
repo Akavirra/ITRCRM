@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, getAccessibleGroupIds } from '@/lib/api-utils';
-import { getStudentsWithDebt, getTotalDebtForMonth } from '@/lib/students';
+import { getStudentsWithDebt, getStudentsWithAllTimeDebt, getTotalDebtForMonth } from '@/lib/students';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,13 +13,16 @@ export async function GET(request: NextRequest) {
   }
   
   const { searchParams } = new URL(request.url);
+  const period = searchParams.get('period');
   const month = searchParams.get('month') || new Date().toISOString().substring(0, 7) + '-01';
   const format = searchParams.get('format') || 'json';
-  
+
   // Teachers can only see their own groups
   const accessibleGroups = await getAccessibleGroupIds(user);
-  
-  const debtors = await getStudentsWithDebt(month);
+
+  const debtors = period === 'all'
+    ? await getStudentsWithAllTimeDebt()
+    : await getStudentsWithDebt(month);
   
   // Filter by accessible groups for teachers
   const filteredDebtors = user.role === 'admin' 
