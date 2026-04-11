@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   const rows = await all<{
     id: number;
     student_id: number;
+    lesson_id: number;
     full_name: string;
     public_id: string;
     lesson_date: string;
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     course_title: string;
     start_time: string;
   }>(
-    `SELECT a.id, a.student_id, s.full_name, s.public_id, l.lesson_date::text as lesson_date,
+    `SELECT a.id, a.student_id, l.id as lesson_id, s.full_name, s.public_id, l.lesson_date::text as lesson_date,
        COALESCE(g.title, 'Інд.') as group_title,
        COALESCE(c.title, '') as course_title,
        TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24:MI') as start_time

@@ -77,6 +77,7 @@
   absencesList: Array<{
     id: number;
     student_id: number;
+    lesson_id: number;
     full_name: string;
     public_id: string;
     lesson_date: string;

@@ -799,6 +799,26 @@
   flex-shrink: 0;
 }
 
+.absenceDateLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--accent);
+  white-space: nowrap;
+  text-align: right;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.absenceDateLink:hover {
+  color: var(--ink);
+}
+
 .modalFooter {
   padding: 1rem 1.5rem;
   font-size: 0.9rem;
@@ -912,7 +932,8 @@
   }
 
   .debtAmount,
-  .absenceDate {
+  .absenceDate,
+  .absenceDateLink {
     white-space: normal;
     text-align: left;
   }

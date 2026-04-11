@@ -14,6 +14,7 @@ import CreateLessonModal from '@/components/CreateLessonModal';
 import CreateStudentModal from '@/components/CreateStudentModal';
 import TransitionLink from '@/components/TransitionLink';
 import { useStudentModals } from '@/components/StudentModalsContext';
+import { useLessonModals } from '@/components/LessonModalsContext';
 import type { DashboardStatsPayload } from '@/lib/dashboard-types';
 import styles from './dashboard.module.css';
 
@@ -35,6 +36,7 @@ interface AllTimeDebtor {
 interface AllTimeAbsence {
   id: number;
   student_id: number;
+  lesson_id: number;
   full_name: string;
   public_id: string;
   lesson_date: string;
@@ -93,6 +95,7 @@ function NextLessonCountdown({ startDatetime }: { startDatetime: string }) {
 export default function DashboardPageClient({ initialData }: { initialData: DashboardStatsPayload }) {
   const router = useRouter();
   const { openStudentModal } = useStudentModals();
+  const { openLessonModal } = useLessonModals();
   const [activeTab, setActiveTab] = useState<ActivityTab>('payments');
   const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
@@ -644,9 +647,15 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                               {absence.course_title && <> · {absence.course_title}</>}
                             </div>
                           </div>
-                          <div className={styles.absenceDate}>
+                          <button
+                            type="button"
+                            className={styles.absenceDateLink}
+                            title="Відкрити заняття"
+                            onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}
+                          >
+                            <BookOpen size={12} />
                             {absence.lessonDateLabel}, {absence.start_time}
-                          </div>
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -693,9 +702,15 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                             {absence.course_title && <> · {absence.course_title}</>}
                           </div>
                         </div>
-                        <div className={styles.absenceDate}>
+                        <button
+                          type="button"
+                          className={styles.absenceDateLink}
+                          title="Відкрити заняття"
+                          onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}
+                        >
+                          <BookOpen size={12} />
                           {absence.lessonDateLabel}, {absence.start_time}
-                        </div>
+                        </button>
                       </div>
                     ))}
                   </div>

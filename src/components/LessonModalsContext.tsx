@@ -34,7 +34,7 @@ interface StoredModal {
 
 interface LessonModalsContextType {
   openModals: StoredModal[];
-  openLessonModal: (lessonId: number, title: string, lessonData: StoredModal['lessonData']) => void;
+  openLessonModal: (lessonId: number, title: string, lessonData?: StoredModal['lessonData']) => void;
   closeLessonModal: (lessonId: number) => void;
   updateModalState: (lessonId: number, state: Partial<Omit<StoredModal, 'id' | 'title' | 'isOpen'>>) => void;
   isModalOpen: (lessonId: number) => boolean;
