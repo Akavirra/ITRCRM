@@ -661,7 +661,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                               type="button"
                               className={styles.makeupBtn}
                               title="Призначити відпрацювання"
-                              onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}
+                              onClick={() => { setShowAbsencesModal(false); setAbsencesTab('month'); window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } })); }}
                             >
                               <RefreshCw size={12} />
                             </button>
@@ -726,7 +726,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                             type="button"
                             className={styles.makeupBtn}
                             title="Призначити відпрацювання"
-                            onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}
+                            onClick={() => { setShowAbsencesModal(false); setAbsencesTab('month'); window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } })); }}
                           >
                             <RefreshCw size={12} />
                           </button>
