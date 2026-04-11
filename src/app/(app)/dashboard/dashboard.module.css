@@ -819,6 +819,34 @@
   color: var(--ink);
 }
 
+.absenceActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.makeupBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.makeupBtn:hover {
+  color: #f97316;
+  border-color: #f97316;
+  background: #fff7ed;
+}
+
 .modalFooter {
   padding: 1rem 1.5rem;
   font-size: 0.9rem;

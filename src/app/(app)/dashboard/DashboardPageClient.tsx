@@ -647,15 +647,25 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                               {absence.course_title && <> · {absence.course_title}</>}
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            className={styles.absenceDateLink}
-                            title="Відкрити заняття"
-                            onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}
-                          >
-                            <BookOpen size={12} />
-                            {absence.lessonDateLabel}, {absence.start_time}
-                          </button>
+                          <div className={styles.absenceActions}>
+                            <button
+                              type="button"
+                              className={styles.absenceDateLink}
+                              title="Відкрити заняття"
+                              onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}
+                            >
+                              <BookOpen size={12} />
+                              {absence.lessonDateLabel}, {absence.start_time}
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.makeupBtn}
+                              title="Призначити відпрацювання"
+                              onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}
+                            >
+                              <RefreshCw size={12} />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -702,15 +712,25 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                             {absence.course_title && <> · {absence.course_title}</>}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          className={styles.absenceDateLink}
-                          title="Відкрити заняття"
-                          onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}
-                        >
-                          <BookOpen size={12} />
-                          {absence.lessonDateLabel}, {absence.start_time}
-                        </button>
+                        <div className={styles.absenceActions}>
+                          <button
+                            type="button"
+                            className={styles.absenceDateLink}
+                            title="Відкрити заняття"
+                            onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}
+                          >
+                            <BookOpen size={12} />
+                            {absence.lessonDateLabel}, {absence.start_time}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.makeupBtn}
+                            title="Призначити відпрацювання"
+                            onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}
+                          >
+                            <RefreshCw size={12} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
