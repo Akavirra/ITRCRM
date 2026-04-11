@@ -388,9 +388,13 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
             </div>
 
             {initialData.debtorsList.length === 0 ? (
-              <div className={styles.compactEmpty}>Боржників немає.</div>
+              <div className={styles.modalBody}>
+                <div className={styles.compactEmpty}>Боржників немає.</div>
+              </div>
             ) : (
-              <div className={styles.modalList}>
+              <>
+                <div className={styles.modalBody}>
+                  <div className={styles.modalList}>
                 {initialData.debtorsList.map((debtor, idx) => (
                   <div key={`${debtor.id}-${debtor.group_title}-${idx}`} className={styles.modalListItem}>
                     <div className={styles.modalListItemMain}>
@@ -406,6 +410,8 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                     <div className={styles.debtAmount}>{debtor.debtLabel}</div>
                   </div>
                 ))}
+                  </div>
+                </div>
                 <div className={styles.modalFooter}>
                   Загальний борг: <strong>
                     {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', minimumFractionDigits: 0 }).format(
@@ -413,7 +419,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                     )}
                   </strong>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -425,7 +431,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>
-                <X size={18} />
+                <Check size={18} />
                 Пропуски за поточний місяць
               </h2>
               <button type="button" className={styles.modalClose} onClick={() => setShowAbsencesModal(false)}>
@@ -434,9 +440,13 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
             </div>
 
             {initialData.absencesList.length === 0 ? (
-              <div className={styles.compactEmpty}>Пропусків немає.</div>
+              <div className={styles.modalBody}>
+                <div className={styles.compactEmpty}>Пропусків немає.</div>
+              </div>
             ) : (
-              <div className={styles.modalList}>
+              <>
+                <div className={styles.modalBody}>
+                  <div className={styles.modalList}>
                 {initialData.absencesList.map((absence) => (
                   <div key={absence.id} className={styles.modalListItem}>
                     <div className={styles.modalListItemMain}>
@@ -451,10 +461,12 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                     </div>
                   </div>
                 ))}
+                  </div>
+                </div>
                 <div className={styles.modalFooter}>
                   Всього пропусків: <strong>{initialData.absencesList.length}</strong>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>

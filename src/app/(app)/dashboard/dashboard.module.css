@@ -697,6 +697,7 @@
   max-height: 80vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   animation: slideUp 0.2s ease;
 }
 
@@ -741,15 +742,19 @@
   color: var(--ink);
 }
 
-.modalList {
-  overflow-y: auto;
-  padding: 0.5rem 1.5rem;
+.modalBody {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.modalList {
+  padding: 0.5rem 1.5rem 0;
 }
 
 .modalListItem {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   padding: 0.85rem 0;
@@ -776,21 +781,25 @@
   font-size: 0.95rem;
   color: #dc2626;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .absenceDate {
   font-size: 0.85rem;
   color: var(--muted);
   white-space: nowrap;
+  text-align: right;
+  flex-shrink: 0;
 }
 
 .modalFooter {
-  padding: 1rem 0;
+  padding: 1rem 1.5rem;
   font-size: 0.9rem;
   color: var(--muted);
   border-top: 1px solid var(--line);
-  margin-top: 0.5rem;
   text-align: right;
+  background: var(--surface);
+  flex-shrink: 0;
 }
 
 .modalFooter strong {
@@ -822,5 +831,33 @@
   
   .statItemValue {
     font-size: 1.15rem;
+  }
+
+  .modalContent {
+    max-height: calc(100vh - 2rem);
+  }
+
+  .modalHeader {
+    padding: 1rem 1rem 0.9rem;
+  }
+
+  .modalList {
+    padding: 0.5rem 1rem 0;
+  }
+
+  .modalListItem {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .debtAmount,
+  .absenceDate {
+    white-space: normal;
+    text-align: left;
+  }
+
+  .modalFooter {
+    padding: 0.9rem 1rem;
+    text-align: left;
   }
 }
