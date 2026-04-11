@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle, BookOpen, Calendar, Check, Clock, CreditCard, DollarSign,
@@ -77,6 +78,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const visibleHistory = initialData.recentHistory.slice(0, 6);
 
   const formattedDate = format(new Date(initialData.todayDate), 'd MMMM, EEEE', { locale: uk });
+  const canUsePortal = typeof window !== 'undefined';
 
   return (
     <>
@@ -374,7 +376,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
       />
 
       {/* Debts Modal */}
-      {showDebtsModal && (
+      {canUsePortal && showDebtsModal && createPortal(
         <div className={styles.modalOverlay} onClick={() => setShowDebtsModal(false)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
@@ -422,11 +424,12 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Absences Modal */}
-      {showAbsencesModal && (
+      {canUsePortal && showAbsencesModal && createPortal(
         <div className={styles.modalOverlay} onClick={() => setShowAbsencesModal(false)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
@@ -469,7 +472,8 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
