@@ -1,4 +1,4 @@
-.page {
+.page, .modalOverlay {
   --surface: #ffffff;
   --surface-soft: #fcfcfc;
   --line: #efefef;
@@ -15,9 +15,12 @@
   --radius: 12px;
   --radius-sm: 8px;
 
+  color: var(--ink);
+}
+
+.page {
   display: grid;
   gap: 2rem;
-  color: var(--ink);
 }
 
 /* ── Hero ── */
