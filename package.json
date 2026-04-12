@@ -51,9 +51,12 @@
     "test": "jest"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.52",
+    "@ai-sdk/react": "^3.0.160",
     "@neondatabase/serverless": "^1.0.2",
     "@pdf-lib/fontkit": "^1.1.1",
     "@types/qrcode": "^1.5.6",
+    "ai": "^6.0.158",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.9.0",
     "csv-stringify": "^6.4.6",
@@ -70,7 +73,9 @@
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "uuid": "^9.0.1"
+    "react-markdown": "^10.1.0",
+    "uuid": "^9.0.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
