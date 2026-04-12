@@ -179,6 +179,14 @@
   display: inline-flex;
   gap: 0.15rem;
   margin-top: 0.45rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.statItem:hover .miniSegmented {
+  opacity: 1;
+  visibility: visible;
 }
 
 .miniSegmentBtn {

@@ -13,6 +13,7 @@ import CreateGroupModal from '@/components/CreateGroupModal';
 import CreateLessonModal from '@/components/CreateLessonModal';
 import CreateStudentModal from '@/components/CreateStudentModal';
 import TransitionLink from '@/components/TransitionLink';
+import AnimatedNumber from '@/components/AnimatedNumber';
 import { useStudentModals } from '@/components/StudentModalsContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
 import type { DashboardStatsPayload } from '@/lib/dashboard-types';
@@ -240,17 +241,17 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
             <div className={styles.secondaryStatItem}>
               <Users size={13} />
               <span className={styles.secondaryStatLabel}>Студенти</span>
-              <span className={styles.secondaryStatValue}>{initialData.stats.activeStudents}</span>
+              <span className={styles.secondaryStatValue}><AnimatedNumber value={initialData.stats.activeStudents} /></span>
             </div>
             <div className={styles.secondaryStatItem}>
               <Users2 size={13} />
               <span className={styles.secondaryStatLabel}>Групи</span>
-              <span className={styles.secondaryStatValue}>{initialData.stats.activeGroups}</span>
+              <span className={styles.secondaryStatValue}><AnimatedNumber value={initialData.stats.activeGroups} /></span>
             </div>
             <div className={styles.secondaryStatItem}>
               <GraduationCap size={13} />
               <span className={styles.secondaryStatLabel}>Курси</span>
-              <span className={styles.secondaryStatValue}>{initialData.stats.activeCourses}</span>
+              <span className={styles.secondaryStatValue}><AnimatedNumber value={initialData.stats.activeCourses} /></span>
             </div>
           </div>
           <div className={styles.segmented}>
@@ -281,7 +282,10 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 {statsPeriod === 'month' ? 'Дохід за місяць' : 'Дохід за увесь час'}
               </div>
               <div className={styles.statItemValue}>
-                {statsPeriod === 'month' ? initialData.stats.monthlyRevenueLabel : initialData.stats.allTimeRevenueLabel}
+                <AnimatedNumber 
+                  value={statsPeriod === 'month' ? initialData.stats.monthlyRevenue : initialData.stats.allTimeRevenue}
+                  formatFn={(v) => new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', minimumFractionDigits: 0 }).format(v)}
+                />
                 {statsPeriod === 'month' && (() => {
                   const prev = initialData.stats.prevMonthRevenue;
                   const curr = initialData.stats.monthlyRevenue;
@@ -320,7 +324,9 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                     <AlertTriangle size={14} />
                     Борги
                   </div>
-                  <div className={valueClass}>{debtsValue}</div>
+                  <div className={valueClass}>
+                    <AnimatedNumber value={debtsValue} />
+                  </div>
                 </div>
               );
             })()}
@@ -346,7 +352,9 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                     <Check size={14} />
                     Відвідуваність
                   </div>
-                  <div className={valueClass}>{value}</div>
+                  <div className={valueClass}>
+                    {pct !== null ? <AnimatedNumber value={pct} formatFn={(v) => `${v}%`} /> : '—'}
+                  </div>
                 </div>
               );
             })()}
@@ -358,12 +366,13 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 {statsPeriod === 'allTime' ? 'Дітей за увесь час' : studentsLabels[studentsPeriod]}
               </div>
               <div className={styles.statItemValue}>
-                {statsPeriod === 'allTime'
-                  ? initialData.stats.allTimeStudents
-                  : studentsPeriod === 'today' ? initialData.stats.todayStudents
-                  : studentsPeriod === 'month' ? initialData.stats.monthStudents
-                  : initialData.stats.yearStudents
-                }
+                <AnimatedNumber value={
+                  statsPeriod === 'allTime'
+                    ? initialData.stats.allTimeStudents
+                    : studentsPeriod === 'today' ? initialData.stats.todayStudents
+                    : studentsPeriod === 'month' ? initialData.stats.monthStudents
+                    : initialData.stats.yearStudents
+                } />
               </div>
               {statsPeriod === 'month' && (
                 <div className={styles.miniSegmented}>
