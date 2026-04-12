@@ -287,14 +287,21 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   value={statsPeriod === 'month' ? initialData.stats.monthlyRevenue : initialData.stats.allTimeRevenue}
                   formatFn={(v) => new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', minimumFractionDigits: 0 }).format(v)}
                 />
-                {statsPeriod === 'month' && (() => {
+                {(() => {
                   const prev = initialData.stats.prevMonthRevenue;
                   const curr = initialData.stats.monthlyRevenue;
                   if (prev > 0) {
                     const pct = Math.round(((curr - prev) / prev) * 100);
                     const isUp = pct >= 0;
                     return (
-                      <span className={isUp ? styles.trendUp : styles.trendDown}>
+                      <span 
+                        className={isUp ? styles.trendUp : styles.trendDown}
+                        style={{ 
+                          opacity: statsPeriod === 'month' ? 1 : 0, 
+                          visibility: statsPeriod === 'month' ? 'visible' : 'hidden',
+                          transition: 'opacity 0.2s ease, visibility 0.2s ease'
+                        }}
+                      >
                         {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                         {isUp ? '+' : ''}{pct}%
                       </span>
@@ -303,11 +310,15 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   return null;
                 })()}
               </div>
-              {statsPeriod === 'month' && initialData.stats.revenueTrend && (
-                <div className={styles.sparklineContainer}>
-                  <Sparkline data={initialData.stats.revenueTrend} color="#10b981" />
-                </div>
-              )}
+              <div 
+                className={styles.sparklineContainer}
+                style={{ 
+                  opacity: statsPeriod === 'month' ? 0.8 : 0,
+                  transition: 'opacity 0.2s ease'
+                }}
+              >
+                {initialData.stats.revenueTrend && <Sparkline data={initialData.stats.revenueTrend} color="#10b981" />}
+              </div>
             </div>
 
             {/* Debts */}
@@ -361,11 +372,15 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   <div className={valueClass}>
                     {pct !== null ? <AnimatedNumber value={pct} formatFn={(v) => `${v}%`} /> : '—'}
                   </div>
-                  {statsPeriod === 'month' && initialData.stats.attendanceTrend && (
-                    <div className={styles.sparklineContainer}>
-                      <Sparkline data={initialData.stats.attendanceTrend} color="#3b82f6" />
-                    </div>
-                  )}
+                  <div 
+                    className={styles.sparklineContainer}
+                    style={{ 
+                      opacity: statsPeriod === 'month' ? 0.8 : 0,
+                      transition: 'opacity 0.2s ease'
+                    }}
+                  >
+                    {initialData.stats.attendanceTrend && <Sparkline data={initialData.stats.attendanceTrend} color="#3b82f6" />}
+                  </div>
                 </div>
               );
             })()}
@@ -385,7 +400,14 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                     : initialData.stats.yearStudents
                 } />
               </div>
-              {statsPeriod === 'month' && (
+              <div 
+                style={{ 
+                  opacity: statsPeriod === 'month' ? 1 : 0, 
+                  visibility: statsPeriod === 'month' ? 'visible' : 'hidden',
+                  pointerEvents: statsPeriod === 'month' ? 'auto' : 'none',
+                  transition: 'opacity 0.2s ease, visibility 0.2s ease'
+                }}
+              >
                 <div className={styles.miniSegmented}>
                   <button
                     type="button"
@@ -409,7 +431,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                     Рік
                   </button>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </section>
