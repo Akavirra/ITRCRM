@@ -1043,7 +1043,7 @@ const Navbar: React.FC<NavbarProps> = ({
                   { id: 'general', label: 'Загальні' },
                   { id: 'profile', label: 'Профіль' },
                   { id: 'notifications', label: 'Сповіщення' },
-                  { id: 'salary', label: 'Ціни та зарплата' },
+                  { id: 'salary', label: 'Ціни та тарифи' },
                   { id: 'system', label: 'Система' },
                   ...(user?.role === 'admin' ? [{ id: 'users', label: 'Користувачі' }] : []),
                 ] as { id: string; label: string }[]).map((tab) => (
@@ -1298,14 +1298,14 @@ const Navbar: React.FC<NavbarProps> = ({
                 {/* Salary Tab */}
                 {activeSettingsTab === 'salary' && (
                   <div>
-                    <h3 style={{
-                      fontSize: '0.8125rem', fontWeight: '600', color: '#374151',
-                      marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em',
-                      display: 'flex', alignItems: 'center', gap: '0.4rem',
+                    <p style={{
+                      fontSize: '0.8125rem',
+                      color: '#6b7280',
+                      marginBottom: '0.5rem',
+                      fontWeight: 600,
                     }}>
-                      <DollarSign size={14} />
-                      Зарплата викладачів
-                    </h3>
+                      Ціни для учнів
+                    </p>
                     <div style={{ marginBottom: '1.5rem' }}>
                       <label className="form-label">Ціна за заняття для учнів (₴)</label>
                       <div style={{ maxWidth: '200px' }}>
@@ -1339,7 +1339,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', marginBottom: '1.25rem' }} />
 
                     <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.5rem', fontWeight: 600 }}>
-                      Ставка викладача за 1 дитину на занятті
+                      Тарифи викладача
                     </p>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', maxWidth: '400px', marginBottom: '1.25rem' }}>
