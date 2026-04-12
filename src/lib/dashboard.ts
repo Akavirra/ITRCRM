@@ -302,6 +302,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     recentHistory,
     debtorsRaw,
     absencesRaw,
+    revenueTrendRaw,
+    attendanceTrendRaw,
   ] = await Promise.all([
     statsPromise,
     schedulePromise,
