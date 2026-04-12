@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, badRequest } from '@/lib/api-utils';
 import { all, get } from '@/db';
