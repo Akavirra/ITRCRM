@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, badRequest } from '@/lib/api-utils';
 import { all, get } from '@/db';
 import { createOpenAI } from '@ai-sdk/openai';
-import { streamText, tool } from 'ai';
+import { streamText, tool, type CoreMessage } from 'ai';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { messages: Array<{ role: string; content: string }> };
+  let body: { messages: CoreMessage[] };
   try {
     body = await request.json();
   } catch {
