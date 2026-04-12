@@ -426,7 +426,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                       {lesson.original_date && (
                         <span className={styles.rescheduledBadge}>
                           <RefreshCw size={10} />
-                          Перенесено з {format(new Date(lesson.original_date + 'T00:00:00'), 'd MMM', { locale: uk })}
+                          Перенесено з {format(new Date(lesson.original_date), 'd MMM', { locale: uk })}
                         </span>
                       )}
                     </div>
