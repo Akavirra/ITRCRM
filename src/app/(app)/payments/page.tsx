@@ -178,6 +178,7 @@ export default function PaymentsPage() {
   const [historyMethodFilter, setHistoryMethodFilter] = useState('');
   const [historyTypeFilter, setHistoryTypeFilter] = useState('');
   const [historyPage, setHistoryPage] = useState(0);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentHistoryRecord | null>(null);
 
   const [monthOptions, setMonthOptions] = useState<{ value: string; label: string }[]>([]);
@@ -774,6 +775,14 @@ export default function PaymentsPage() {
           </button>
 
           {/* Month picker — only for group tab */}
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowHistoryModal(true)}
+            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: '600' }}
+          >
+            Р†СЃС‚РѕСЂС–СЏ РѕРїР»Р°С‚
+          </button>
+
           {tab === 'group' && (
             <select
               className="form-input"
@@ -1075,7 +1084,7 @@ export default function PaymentsPage() {
       )}
 
       {/* Payment History - Collapsible */}
-      <details style={{ marginTop: '1.5rem' }} open>
+      <details style={{ marginTop: '1.5rem', display: 'none' }} open>
         <summary style={{
           cursor: 'pointer',
           fontSize: '1rem',
@@ -1239,6 +1248,196 @@ export default function PaymentsPage() {
           )}
         </div>
       </details>
+
+      {showHistoryModal && (
+        <div
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+            padding: '1rem',
+          }}
+          onClick={() => setShowHistoryModal(false)}
+        >
+          <div
+            className="card"
+            style={{
+              width: '100%',
+              maxWidth: '1120px',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="card-header"
+              style={{ justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}
+            >
+              <div>
+                <div style={{ fontSize: '1.125rem', fontWeight: '700', color: '#111827' }}>Р†СЃС‚РѕСЂС–СЏ РѕРїР»Р°С‚</div>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  {historyTotal} Р·Р°РїРёСЃС–РІ
+                </div>
+              </div>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowHistoryModal(false)}
+                style={{ padding: '0.5rem 0.875rem', fontSize: '0.875rem' }}
+              >
+                Р—Р°РєСЂРёС‚Рё
+              </button>
+            </div>
+
+            <div style={{ padding: '1rem 1.25rem 0', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="РџРѕС€СѓРє Р·Р° С–Рј'СЏРј..."
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                style={{ width: '200px', padding: '0.375rem 0.75rem', fontSize: '0.8125rem' }}
+              />
+              <select
+                className="form-input"
+                value={historyTypeFilter}
+                onChange={(e) => setHistoryTypeFilter(e.target.value)}
+                style={{ width: '140px', padding: '0.375rem 0.75rem', fontSize: '0.8125rem' }}
+              >
+                <option value="">РЈСЃС– С‚РёРїРё</option>
+                <option value="group">Р“СЂСѓРїРѕРІС–</option>
+                <option value="individual">Р†РЅРґРёРІС–РґСѓР°Р»СЊРЅС–</option>
+              </select>
+              <select
+                className="form-input"
+                value={historyMethodFilter}
+                onChange={(e) => setHistoryMethodFilter(e.target.value)}
+                style={{ width: '150px', padding: '0.375rem 0.75rem', fontSize: '0.8125rem' }}
+              >
+                <option value="">РЈСЃС– СЃРїРѕСЃРѕР±Рё</option>
+                <option value="cash">Р“РѕС‚С–РІРєР°</option>
+                <option value="account">Р‘РµР·РіРѕС‚С–РІРєРѕРІРѕ</option>
+              </select>
+            </div>
+
+            <div style={{ padding: '1rem 1.25rem 1.25rem', overflowY: 'auto' }}>
+              <div className="table-container">
+                {historyLoading ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Р—Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ...</div>
+                ) : historyPayments.length > 0 ? (
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Р”Р°С‚Р°</th>
+                        <th>РЈС‡РµРЅСЊ</th>
+                        <th>РўРёРї</th>
+                        <th>Р“СЂСѓРїР° / Р”РµС‚Р°Р»С–</th>
+                        <th style={{ textAlign: 'right' }}>РЎСѓРјР°</th>
+                        <th>РЎРїРѕСЃС–Р±</th>
+                        <th style={{ textAlign: 'center', width: '60px' }}>Р”С–С—</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyPayments.map(p => (
+                        <tr key={`${p.type}-${p.id}`}>
+                          <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+                            {new Date(p.paid_at).toLocaleDateString('uk-UA')}
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => openStudentModal(p.student_id, p.student_name)}
+                              style={{ background: 'none', border: 'none', padding: 0, color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline', textAlign: 'left' }}
+                            >
+                              {p.student_name}
+                            </button>
+                          </td>
+                          <td>
+                            <span style={{
+                              padding: '2px 8px', borderRadius: 4, fontSize: '0.6875rem', fontWeight: 600,
+                              backgroundColor: p.type === 'group' ? '#dbeafe' : '#f3e8ff',
+                              color: p.type === 'group' ? '#1d4ed8' : '#7c3aed',
+                            }}>
+                              {p.type === 'group' ? 'Р“СЂСѓРїРѕРІР°' : 'Р†РЅРґРёРІС–Рґ.'}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: '0.8125rem' }}>
+                            {p.type === 'group' && p.group_title ? (
+                              <>
+                                <button
+                                  onClick={() => p.group_id && openGroupModal(p.group_id, p.group_title!)}
+                                  style={{ background: 'none', border: 'none', padding: 0, color: '#3b82f6', cursor: 'pointer', fontSize: '0.8125rem', textDecoration: 'underline', textAlign: 'left' }}
+                                >
+                                  {p.group_title}
+                                </button>
+                                {p.month && <span style={{ color: '#9ca3af', marginLeft: '0.375rem' }}>({p.month.substring(0, 7)})</span>}
+                              </>
+                            ) : (
+                              <span style={{ color: '#6b7280' }}>{p.lessons_count} Р·Р°РЅ.</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: '600', fontSize: '0.875rem' }}>
+                            {p.amount} в‚ґ
+                          </td>
+                          <td>
+                            <span style={{
+                              padding: '2px 6px', borderRadius: 4, fontSize: '0.6875rem',
+                              backgroundColor: p.method === 'cash' ? '#dcfce7' : '#e0f2fe',
+                              color: p.method === 'cash' ? '#16a34a' : '#0284c7',
+                            }}>
+                              {p.method === 'cash' ? 'Р“РѕС‚С–РІРєР°' : 'Р‘РµР·РіРѕС‚.'}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <button
+                              onClick={() => setSelectedPayment(p)}
+                              style={{
+                                background: 'none', border: '1px solid #e5e7eb', borderRadius: '0.25rem',
+                                padding: '0.25rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', color: '#6b7280',
+                              }}
+                              title="Р”РµС‚Р°Р»С–"
+                            >
+                              рџ‘Ѓ
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    РќРµРјР°С” Р·Р°РїРёСЃС–РІ
+                  </div>
+                )}
+              </div>
+
+              {historyTotal > HISTORY_LIMIT && (
+                <div style={{ paddingTop: '0.75rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => fetchHistory(historyPage - 1)}
+                    disabled={historyPage === 0}
+                    style={{ fontSize: '0.8125rem' }}
+                  >
+                    в†ђ РќР°Р·Р°Рґ
+                  </button>
+                  <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                    {historyPage * HISTORY_LIMIT + 1}вЂ“{Math.min((historyPage + 1) * HISTORY_LIMIT, historyTotal)} Р· {historyTotal}
+                  </span>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => fetchHistory(historyPage + 1)}
+                    disabled={(historyPage + 1) * HISTORY_LIMIT >= historyTotal}
+                    style={{ fontSize: '0.8125rem' }}
+                  >
+                    Р”Р°Р»С– в†’
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payment Detail Modal */}
       {selectedPayment && (

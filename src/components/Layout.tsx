@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { t } from '@/i18n/t';
 import Sidebar from './Sidebar/Sidebar';
 import Navbar from './Navbar/Navbar';
+import AssistantChat from './AssistantChat';
 
 interface User {
   id: number;
@@ -223,6 +224,9 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
             {children}
           </main>
         </div>
+
+        {/* AI Assistant Chat Widget */}
+        {user.role === 'admin' && <AssistantChat />}
 
         {/* Mobile/Tablet overlay when sidebar is open */}
         {!isDesktop && sidebarOpen && (
