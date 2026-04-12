@@ -670,7 +670,7 @@ export default function CreateLessonModal({
         position: 'fixed', inset: 0,
         backgroundColor: 'rgba(0,0,0,0.5)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 50, padding: '1rem',
+        zIndex: 1100, padding: '1rem',
       }}
       onClick={handleClose}
     >
