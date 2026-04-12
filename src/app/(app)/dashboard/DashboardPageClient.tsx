@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
-  AlertTriangle, BookOpen, Calendar, Check, Clock, CreditCard, DollarSign,
+  AlertTriangle, BarChart3, BookOpen, Calendar, Check, ChevronLeft, ChevronRight, Clock, CreditCard, DollarSign,
   ExternalLink, GraduationCap, Plus, RefreshCw, SquareArrowOutUpRight, TrendingDown, TrendingUp, User as UserIcon, Users, Users2, X,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -45,6 +45,44 @@ interface AllTimeAbsence {
   group_title: string;
   course_title: string;
   start_time: string;
+}
+
+interface MonthlyAttStat {
+  month: string;
+  monthLabel: string;
+  total: number;
+  present: number;
+  absent: number;
+  percent: number;
+}
+
+interface TopAbsentee {
+  student_id: number;
+  full_name: string;
+  public_id: string;
+  absences: number;
+  total_lessons: number;
+  percent: number;
+}
+
+interface AttAbsence {
+  id: number;
+  student_id: number;
+  lesson_id: number;
+  full_name: string;
+  public_id: string;
+  lesson_date: string;
+  lessonDateLabel: string;
+  month: string;
+  group_title: string;
+  course_title: string;
+  start_time: string;
+}
+
+interface AttendanceStatsData {
+  monthlyStats: MonthlyAttStat[];
+  topAbsentees: TopAbsentee[];
+  absencesByMonth: AttAbsence[];
 }
 
 const studentsLabels: Record<StudentsPeriod, string> = {
@@ -106,8 +144,9 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const [absencesTab, setAbsencesTab] = useState<PeriodTab>('month');
   const [allTimeDebtors, setAllTimeDebtors] = useState<AllTimeDebtor[] | null>(null);
   const [allTimeDebtsLoading, setAllTimeDebtsLoading] = useState(false);
-  const [allTimeAbsences, setAllTimeAbsences] = useState<AllTimeAbsence[] | null>(null);
-  const [allTimeAbsencesLoading, setAllTimeAbsencesLoading] = useState(false);
+  const [attendanceStats, setAttendanceStats] = useState<AttendanceStatsData | null>(null);
+  const [attendanceStatsLoading, setAttendanceStatsLoading] = useState(false);
+  const [attMonthFilter, setAttMonthFilter] = useState<string | null>(null);
 
   const handleDebtsTabChange = (tab: PeriodTab) => {
     setDebtsTab(tab);
@@ -121,16 +160,20 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
     }
   };
 
-  const handleAbsencesTabChange = (tab: PeriodTab) => {
-    setAbsencesTab(tab);
-    if (tab === 'allTime' && allTimeAbsences === null && !allTimeAbsencesLoading) {
-      setAllTimeAbsencesLoading(true);
-      fetch('/api/dashboard/absences')
-        .then((res) => res.json())
-        .then((data) => setAllTimeAbsences(data.absences ?? []))
-        .catch(() => setAllTimeAbsences([]))
-        .finally(() => setAllTimeAbsencesLoading(false));
-    }
+  const loadAttendanceStats = () => {
+    if (attendanceStats !== null || attendanceStatsLoading) return;
+    setAttendanceStatsLoading(true);
+    fetch('/api/dashboard/attendance-stats')
+      .then((res) => res.json())
+      .then((data) => setAttendanceStats(data))
+      .catch(() => setAttendanceStats({ monthlyStats: [], topAbsentees: [], absencesByMonth: [] }))
+      .finally(() => setAttendanceStatsLoading(false));
+  };
+
+  const handleOpenAttendance = () => {
+    setShowAbsencesModal(true);
+    setAttMonthFilter(null);
+    loadAttendanceStats();
   };
 
   const completedLessons = initialData.todaySchedule.filter((l) => l.status === 'completed' || l.status === 'done').length;
@@ -273,10 +316,10 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               return (
                 <div
                   className={`${styles.statItem} ${styles.statItemClickable}`}
-                  onClick={() => setShowAbsencesModal(true)}
+                  onClick={handleOpenAttendance}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setShowAbsencesModal(true); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenAttendance(); }}
                 >
                   <div className={styles.statItemLabel}>
                     <Check size={14} />
@@ -673,165 +716,236 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
         document.body
       )}
 
-      {/* Absences Modal */}
+      {/* Attendance Panel */}
       {canUsePortal && showAbsencesModal && createPortal(
-        <div className={styles.modalOverlay} onClick={() => { setShowAbsencesModal(false); setAbsencesTab('month'); }}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalOverlay} onClick={() => setShowAbsencesModal(false)}>
+          <div className={`${styles.modalContent} ${styles.modalWide}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>
-                <Check size={18} />
-                {absencesTab === 'month' ? 'Пропуски за поточний місяць' : 'Пропуски за увесь період'}
+                <BarChart3 size={18} />
+                {attMonthFilter
+                  ? attendanceStats?.monthlyStats.find(m => m.month === attMonthFilter)?.monthLabel || 'Відвідуваність'
+                  : 'Відвідуваність'
+                }
               </h2>
-              <button type="button" className={styles.modalClose} onClick={() => { setShowAbsencesModal(false); setAbsencesTab('month'); }}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className={styles.modalTabBar}>
-              <div className={styles.segmented}>
-                <button
-                  type="button"
-                  className={`${styles.segmentButton} ${absencesTab === 'month' ? styles.segmentButtonActive : ''}`}
-                  onClick={() => handleAbsencesTabChange('month')}
-                >
-                  За місяць
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.segmentButton} ${absencesTab === 'allTime' ? styles.segmentButtonActive : ''}`}
-                  onClick={() => handleAbsencesTabChange('allTime')}
-                >
-                  За увесь період
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {attMonthFilter && (
+                  <button type="button" className={styles.modalClose} onClick={() => setAttMonthFilter(null)} title="Назад до огляду">
+                    <ChevronLeft size={18} />
+                  </button>
+                )}
+                <button type="button" className={styles.modalClose} onClick={() => setShowAbsencesModal(false)}>
+                  <X size={18} />
                 </button>
               </div>
             </div>
 
-            {absencesTab === 'month' ? (
-              initialData.absencesList.length === 0 ? (
-                <div className={styles.modalBody}>
-                  <div className={styles.compactEmpty}>Пропусків немає.</div>
-                </div>
-              ) : (
-                <>
-                  <div className={styles.modalBody}>
-                    <div className={styles.modalList}>
-                      {initialData.absencesList.map((absence) => (
-                        <div key={absence.id} className={styles.modalListItem}>
-                          <div className={styles.modalListItemMain}>
-                            <div className={styles.modalStudentRow}>
-                              <button
-                                type="button"
-                                className={styles.modalStudentName}
-                                onClick={() => { router.push(`/students/${absence.student_id}`); setShowAbsencesModal(false); setAbsencesTab('month'); }}
-                              >
-                                {absence.full_name}
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.modalStudentOpenBtn}
-                                title="Відкрити картку учня"
-                                onClick={() => openStudentModal(absence.student_id, absence.full_name)}
-                              >
-                                <SquareArrowOutUpRight size={13} />
-                              </button>
-                            </div>
-                            <div className={styles.activityMeta}>
-                              {absence.public_id} · {absence.group_title}
-                              {absence.course_title && <> · {absence.course_title}</>}
-                            </div>
-                          </div>
-                          <div className={styles.absenceActions}>
-                            <button
-                              type="button"
-                              className={styles.absenceDateLink}
-                              title="Відкрити заняття"
-                              onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}
-                            >
-                              <BookOpen size={12} />
-                              {absence.lessonDateLabel}, {absence.start_time}
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.makeupBtn}
-                              title="Призначити відпрацювання"
-                              onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}
-                            >
-                              <RefreshCw size={12} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className={styles.modalFooter}>
-                    Всього пропусків: <strong>{initialData.absencesList.length}</strong>
-                  </div>
-                </>
-              )
-            ) : allTimeAbsencesLoading ? (
+            {attendanceStatsLoading ? (
               <div className={styles.modalBody}>
                 <div className={styles.compactEmpty}>Завантаження...</div>
               </div>
-            ) : !allTimeAbsences || allTimeAbsences.length === 0 ? (
+            ) : !attendanceStats ? (
               <div className={styles.modalBody}>
-                <div className={styles.compactEmpty}>Пропусків немає.</div>
+                <div className={styles.compactEmpty}>Не вдалося завантажити дані.</div>
               </div>
-            ) : (
-              <>
-                <div className={styles.modalBody}>
-                  <div className={styles.modalList}>
-                    {allTimeAbsences.map((absence) => (
-                      <div key={absence.id} className={styles.modalListItem}>
-                        <div className={styles.modalListItemMain}>
-                          <div className={styles.modalStudentRow}>
-                            <button
-                              type="button"
-                              className={styles.modalStudentName}
-                              onClick={() => { router.push(`/students/${absence.student_id}`); setShowAbsencesModal(false); setAbsencesTab('month'); }}
-                            >
-                              {absence.full_name}
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.modalStudentOpenBtn}
-                              title="Відкрити картку учня"
-                              onClick={() => openStudentModal(absence.student_id, absence.full_name)}
-                            >
-                              <SquareArrowOutUpRight size={13} />
-                            </button>
-                          </div>
-                          <div className={styles.activityMeta}>
-                            {absence.public_id} · {absence.group_title}
-                            {absence.course_title && <> · {absence.course_title}</>}
-                          </div>
+            ) : attMonthFilter ? (
+              /* ── Month drill-down: absences list ── */
+              (() => {
+                const monthAbsences = attendanceStats.absencesByMonth.filter(a => a.month === attMonthFilter);
+                const monthStat = attendanceStats.monthlyStats.find(m => m.month === attMonthFilter);
+                return (
+                  <>
+                    {monthStat && (
+                      <div className={styles.attSummaryBar}>
+                        <div className={styles.attSummaryItem}>
+                          <span className={styles.attSummaryLabel}>Присутні</span>
+                          <span className={`${styles.attSummaryValue} ${styles.statValueGood}`}>{monthStat.present}</span>
                         </div>
-                        <div className={styles.absenceActions}>
-                          <button
-                            type="button"
-                            className={styles.absenceDateLink}
-                            title="Відкрити заняття"
-                            onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}
-                          >
-                            <BookOpen size={12} />
-                            {absence.lessonDateLabel}, {absence.start_time}
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.makeupBtn}
-                            title="Призначити відпрацювання"
-                            onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}
-                          >
-                            <RefreshCw size={12} />
-                          </button>
+                        <div className={styles.attSummaryItem}>
+                          <span className={styles.attSummaryLabel}>Відсутні</span>
+                          <span className={`${styles.attSummaryValue} ${styles.statValueDanger}`}>{monthStat.absent}</span>
+                        </div>
+                        <div className={styles.attSummaryItem}>
+                          <span className={styles.attSummaryLabel}>Всього</span>
+                          <span className={styles.attSummaryValue}>{monthStat.total}</span>
+                        </div>
+                        <div className={styles.attSummaryItem}>
+                          <span className={styles.attSummaryLabel}>Відвідуваність</span>
+                          <span className={`${styles.attSummaryValue} ${monthStat.percent >= 90 ? styles.statValueGood : monthStat.percent < 70 ? styles.statValueDanger : ''}`}>{monthStat.percent}%</span>
                         </div>
                       </div>
-                    ))}
+                    )}
+                    <div className={styles.modalBody}>
+                      {monthAbsences.length === 0 ? (
+                        <div className={styles.compactEmpty}>Пропусків немає.</div>
+                      ) : (
+                        <div className={styles.modalList}>
+                          {monthAbsences.map((absence) => (
+                            <div key={absence.id} className={styles.modalListItem}>
+                              <div className={styles.modalListItemMain}>
+                                <div className={styles.modalStudentRow}>
+                                  <button
+                                    type="button"
+                                    className={styles.modalStudentName}
+                                    onClick={() => { router.push(`/students/${absence.student_id}`); setShowAbsencesModal(false); }}
+                                  >
+                                    {absence.full_name}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.modalStudentOpenBtn}
+                                    title="Відкрити картку учня"
+                                    onClick={() => openStudentModal(absence.student_id, absence.full_name)}
+                                  >
+                                    <SquareArrowOutUpRight size={13} />
+                                  </button>
+                                </div>
+                                <div className={styles.activityMeta}>
+                                  {absence.public_id} · {absence.group_title}
+                                  {absence.course_title && <> · {absence.course_title}</>}
+                                </div>
+                              </div>
+                              <div className={styles.absenceActions}>
+                                <button
+                                  type="button"
+                                  className={styles.absenceDateLink}
+                                  title="Відкрити заняття"
+                                  onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}
+                                >
+                                  <BookOpen size={12} />
+                                  {absence.lessonDateLabel}, {absence.start_time}
+                                </button>
+                                <button
+                                  type="button"
+                                  className={styles.makeupBtn}
+                                  title="Призначити відпрацювання"
+                                  onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}
+                                >
+                                  <RefreshCw size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className={styles.modalFooter}>
+                      Пропусків: <strong>{monthAbsences.length}</strong>
+                    </div>
+                  </>
+                );
+              })()
+            ) : (
+              /* ── Overview: chart + top absentees ── */
+              <div className={styles.modalBody}>
+                <div className={styles.attOverview}>
+                  {/* Monthly chart */}
+                  <div className={styles.attSection}>
+                    <div className={styles.attSectionTitle}>Відвідуваність по місяцях</div>
+                    {attendanceStats.monthlyStats.length === 0 ? (
+                      <div className={styles.compactEmpty}>Немає даних.</div>
+                    ) : (
+                      <div className={styles.attChart}>
+                        {attendanceStats.monthlyStats.map((m) => {
+                          const maxTotal = Math.max(...attendanceStats.monthlyStats.map(s => s.total), 1);
+                          const presentHeight = (m.present / maxTotal) * 100;
+                          const absentHeight = (m.absent / maxTotal) * 100;
+                          const shortMonth = new Intl.DateTimeFormat('uk-UA', { month: 'short' }).format(
+                            new Date(Number(m.month.split('-')[0]), Number(m.month.split('-')[1]) - 1, 15)
+                          );
+                          return (
+                            <button
+                              key={m.month}
+                              type="button"
+                              className={styles.attChartCol}
+                              onClick={() => setAttMonthFilter(m.month)}
+                              title={`${m.monthLabel}: ${m.percent}%`}
+                            >
+                              <div className={styles.attChartPercent}>{m.percent}%</div>
+                              <div className={styles.attChartBar}>
+                                <div className={styles.attChartBarPresent} style={{ height: `${presentHeight}%` }} />
+                                <div className={styles.attChartBarAbsent} style={{ height: `${absentHeight}%` }} />
+                              </div>
+                              <div className={styles.attChartLabel}>{shortMonth}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Summary stats for current month */}
+                  {attendanceStats.monthlyStats.length > 0 && (() => {
+                    const current = attendanceStats.monthlyStats[attendanceStats.monthlyStats.length - 1];
+                    const prev = attendanceStats.monthlyStats.length > 1
+                      ? attendanceStats.monthlyStats[attendanceStats.monthlyStats.length - 2]
+                      : null;
+                    const trend = prev ? current.percent - prev.percent : 0;
+                    return (
+                      <div className={styles.attSummaryBar}>
+                        <div className={styles.attSummaryItem}>
+                          <span className={styles.attSummaryLabel}>Цей місяць</span>
+                          <span className={`${styles.attSummaryValue} ${current.percent >= 90 ? styles.statValueGood : current.percent < 70 ? styles.statValueDanger : ''}`}>
+                            {current.percent}%
+                            {trend !== 0 && (
+                              <span className={`${styles.attTrendBadge} ${trend > 0 ? styles.trendUp : styles.trendDown}`}>
+                                {trend > 0 ? '+' : ''}{trend}%
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                        <div className={styles.attSummaryItem}>
+                          <span className={styles.attSummaryLabel}>Присутні</span>
+                          <span className={styles.attSummaryValue}>{current.present}</span>
+                        </div>
+                        <div className={styles.attSummaryItem}>
+                          <span className={styles.attSummaryLabel}>Відсутні</span>
+                          <span className={styles.attSummaryValue}>{current.absent}</span>
+                        </div>
+                        <div className={styles.attSummaryItem}>
+                          <span className={styles.attSummaryLabel}>Всього</span>
+                          <span className={styles.attSummaryValue}>{current.total}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Top absentees */}
+                  {attendanceStats.topAbsentees.length > 0 && (
+                    <div className={styles.attSection}>
+                      <div className={styles.attSectionTitle}>Найбільше пропусків (3 міс.)</div>
+                      <div className={styles.attAbsenteeList}>
+                        {attendanceStats.topAbsentees.map((s) => (
+                          <div key={s.student_id} className={styles.attAbsenteeItem}>
+                            <div className={styles.attAbsenteeInfo}>
+                              <button
+                                type="button"
+                                className={styles.modalStudentName}
+                                onClick={() => openStudentModal(s.student_id, s.full_name)}
+                              >
+                                {s.full_name}
+                              </button>
+                              <span className={styles.activityMeta}>{s.public_id}</span>
+                            </div>
+                            <div className={styles.attAbsenteeStats}>
+                              <div className={styles.attAbsenteeBarOuter}>
+                                <div
+                                  className={`${styles.attAbsenteeBarInner} ${s.percent >= 90 ? styles.capacityBarFull : s.percent < 70 ? styles.capacityBarLow : ''}`}
+                                  style={{ width: `${s.percent}%` }}
+                                />
+                              </div>
+                              <span className={styles.attAbsenteeStat}>
+                                <span className={styles.statValueDanger}>{s.absences}</span>
+                                <span className={styles.activityMeta}>/ {s.total_lessons}</span>
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className={styles.modalFooter}>
-                  Всього пропусків: <strong>{allTimeAbsences.length}</strong>
-                </div>
-              </>
+              </div>
             )}
           </div>
         </div>,

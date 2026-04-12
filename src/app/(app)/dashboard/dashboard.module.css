@@ -977,6 +977,206 @@
   color: var(--accent);
 }
 
+/* ── Wide modal variant ── */
+.modalWide {
+  max-width: 760px;
+}
+
+/* ── Attendance panel ── */
+.attOverview {
+  padding: 1rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.attSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.attSectionTitle {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Summary bar */
+.attSummaryBar {
+  display: flex;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.attSummaryItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.65rem 0.5rem;
+  background: var(--surface);
+}
+
+.attSummaryLabel {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.attSummaryValue {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.attTrendBadge {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* Bar chart */
+.attChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  height: 140px;
+  padding: 0 0.25rem;
+}
+
+.attChartCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  height: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.attChartCol:hover {
+  opacity: 0.8;
+}
+
+.attChartPercent {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.attChartBar {
+  flex: 1;
+  width: 100%;
+  max-width: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 1px;
+  border-radius: 4px 4px 0 0;
+  overflow: hidden;
+}
+
+.attChartBarPresent {
+  background: #22c55e;
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+  transition: height 0.3s ease;
+}
+
+.attChartBarAbsent {
+  background: #ef4444;
+  min-height: 0;
+  transition: height 0.3s ease;
+}
+
+.attChartLabel {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+/* Top absentees */
+.attAbsenteeList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.attAbsenteeItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.attAbsenteeItem:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.attAbsenteeItem:first-child {
+  padding-top: 0;
+}
+
+.attAbsenteeInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.attAbsenteeStats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.attAbsenteeBarOuter {
+  width: 60px;
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.attAbsenteeBarInner {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.attAbsenteeStat {
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  white-space: nowrap;
+}
+
 @media (max-width: 1100px) {
   .columns {
     grid-template-columns: 1fr;
@@ -1046,5 +1246,31 @@
   .modalFooter {
     padding: 0.9rem 1rem;
     text-align: left;
+  }
+
+  .modalWide {
+    max-width: 100%;
+  }
+
+  .attOverview {
+    padding: 1rem;
+  }
+
+  .attSummaryBar {
+    flex-wrap: wrap;
+  }
+
+  .attSummaryItem {
+    min-width: calc(50% - 1px);
+  }
+
+  .attChart {
+    height: 120px;
+  }
+
+  .attAbsenteeItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
   }
 }
