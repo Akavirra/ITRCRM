@@ -170,46 +170,45 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
           </div>
         </section>
 
-        {/* Secondary stats — active entities */}
-        <section className={styles.secondaryStatsRow}>
-          <div className={styles.secondaryStatItem}>
-            <Users size={13} />
-            <span className={styles.secondaryStatLabel}>Студенти</span>
-            <span className={styles.secondaryStatValue}>{initialData.stats.activeStudents}</span>
+        {/* Stats header: secondary entities + period toggle */}
+        <div className={styles.statsHeader}>
+          <div className={styles.secondaryStatsRow}>
+            <div className={styles.secondaryStatItem}>
+              <Users size={13} />
+              <span className={styles.secondaryStatLabel}>Студенти</span>
+              <span className={styles.secondaryStatValue}>{initialData.stats.activeStudents}</span>
+            </div>
+            <div className={styles.secondaryStatItem}>
+              <Users2 size={13} />
+              <span className={styles.secondaryStatLabel}>Групи</span>
+              <span className={styles.secondaryStatValue}>{initialData.stats.activeGroups}</span>
+            </div>
+            <div className={styles.secondaryStatItem}>
+              <GraduationCap size={13} />
+              <span className={styles.secondaryStatLabel}>Курси</span>
+              <span className={styles.secondaryStatValue}>{initialData.stats.activeCourses}</span>
+            </div>
           </div>
-          <div className={styles.secondaryStatItem}>
-            <Users2 size={13} />
-            <span className={styles.secondaryStatLabel}>Групи</span>
-            <span className={styles.secondaryStatValue}>{initialData.stats.activeGroups}</span>
+          <div className={styles.segmented}>
+            <button
+              type="button"
+              className={`${styles.segmentButton} ${statsPeriod === 'month' ? styles.segmentButtonActive : ''}`}
+              onClick={() => setStatsPeriod('month')}
+            >
+              За місяць
+            </button>
+            <button
+              type="button"
+              className={`${styles.segmentButton} ${statsPeriod === 'allTime' ? styles.segmentButtonActive : ''}`}
+              onClick={() => setStatsPeriod('allTime')}
+            >
+              За увесь час
+            </button>
           </div>
-          <div className={styles.secondaryStatItem}>
-            <GraduationCap size={13} />
-            <span className={styles.secondaryStatLabel}>Курси</span>
-            <span className={styles.secondaryStatValue}>{initialData.stats.activeCourses}</span>
-          </div>
-        </section>
+        </div>
 
         {/* Primary stats */}
         <section className={styles.statsRow}>
-          <div className={styles.statsRowHeader}>
-            <div className={styles.segmented}>
-              <button
-                type="button"
-                className={`${styles.segmentButton} ${statsPeriod === 'month' ? styles.segmentButtonActive : ''}`}
-                onClick={() => setStatsPeriod('month')}
-              >
-                За місяць
-              </button>
-              <button
-                type="button"
-                className={`${styles.segmentButton} ${statsPeriod === 'allTime' ? styles.segmentButtonActive : ''}`}
-                onClick={() => setStatsPeriod('allTime')}
-              >
-                За увесь час
-              </button>
-            </div>
-          </div>
-
           <div className={styles.statsGrid}>
             {/* Revenue */}
             <div className={styles.statItem}>
