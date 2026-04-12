@@ -164,6 +164,22 @@ const DB_TOOLS = [
   {
     type: 'function' as const,
     function: {
+      name: 'query_absences',
+      description: 'Знайти учнів з пропусками (absent) за період. Повертає: student_name, group_title, absent_count, total_lessons. Корисно для запитань "хто пропускає", "в кого пропуски".',
+      parameters: {
+        type: 'object',
+        properties: {
+          date_from: { type: 'string', description: 'Дата початку (YYYY-MM-DD). За замовчуванням — початок поточного місяця.' },
+          date_to: { type: 'string', description: 'Дата кінця (YYYY-MM-DD). За замовчуванням — сьогодні.' },
+          group_id: { type: 'number', description: 'Фільтр за ID групи (опціонально)' },
+          min_absences: { type: 'number', description: 'Мінімальна кількість пропусків (за замовчуванням 1)' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
       name: 'query_stats',
       description: 'Загальна статистика CRM: кількість учнів, груп, курсів, вчителів, занять за період, загальна сума оплат.',
       parameters: {
@@ -483,6 +499,39 @@ async function executeQueryStats(params: Record<string, unknown>) {
   return { ...stats, ...lessonStats, ...paymentStats };
 }
 
+async function executeQueryAbsences(params: Record<string, unknown>) {
+  const now = new Date();
+  const date_from = (params.date_from as string) || `${now.toISOString().slice(0, 7)}-01`;
+  const date_to = (params.date_to as string) || now.toISOString().slice(0, 10);
+  const { group_id, min_absences = 1 } = params;
+
+  let sql = `
+    SELECT s.full_name as student_name, g.title as group_title,
+           COUNT(*) FILTER (WHERE a.status = 'absent') as absent_count,
+           COUNT(*) as total_lessons
+    FROM attendance a
+    JOIN lessons l ON a.lesson_id = l.id
+    JOIN students s ON a.student_id = s.id
+    LEFT JOIN groups g ON l.group_id = g.id
+    WHERE l.lesson_date >= $1 AND l.lesson_date <= $2`;
+  const sqlParams: unknown[] = [date_from, date_to];
+  let paramIdx = 3;
+
+  if (group_id) {
+    sql += ` AND l.group_id = $${paramIdx}`;
+    sqlParams.push(group_id);
+    paramIdx++;
+  }
+
+  sql += ` GROUP BY s.id, s.full_name, g.title
+           HAVING COUNT(*) FILTER (WHERE a.status = 'absent') >= $${paramIdx}
+           ORDER BY absent_count DESC
+           LIMIT 15`;
+  sqlParams.push(min_absences);
+
+  return all(sql, sqlParams);
+}
+
 const TOOL_EXECUTORS: Record<string, (params: Record<string, unknown>) => Promise<unknown>> = {
   query_students: executeQueryStudents,
   query_groups: executeQueryGroups,
@@ -494,6 +543,7 @@ const TOOL_EXECUTORS: Record<string, (params: Record<string, unknown>) => Promis
   query_courses: executeQueryCourses,
   query_teachers: executeQueryTeachers,
   query_stats: executeQueryStats,
+  query_absences: executeQueryAbsences,
 };
 
 // Groq API (OpenAI-compatible)
