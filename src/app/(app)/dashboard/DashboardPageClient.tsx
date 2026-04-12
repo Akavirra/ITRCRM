@@ -14,6 +14,7 @@ import CreateLessonModal from '@/components/CreateLessonModal';
 import CreateStudentModal from '@/components/CreateStudentModal';
 import TransitionLink from '@/components/TransitionLink';
 import AnimatedNumber from '@/components/AnimatedNumber';
+import Sparkline from '@/components/Sparkline';
 import { useStudentModals } from '@/components/StudentModalsContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
 import type { DashboardStatsPayload } from '@/lib/dashboard-types';
@@ -302,6 +303,11 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   return null;
                 })()}
               </div>
+              {statsPeriod === 'month' && initialData.stats.revenueTrend && (
+                <div className={styles.sparklineContainer}>
+                  <Sparkline data={initialData.stats.revenueTrend} color="#10b981" />
+                </div>
+              )}
             </div>
 
             {/* Debts */}
@@ -355,6 +361,11 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   <div className={valueClass}>
                     {pct !== null ? <AnimatedNumber value={pct} formatFn={(v) => `${v}%`} /> : '—'}
                   </div>
+                  {statsPeriod === 'month' && initialData.stats.attendanceTrend && (
+                    <div className={styles.sparklineContainer}>
+                      <Sparkline data={initialData.stats.attendanceTrend} color="#3b82f6" />
+                    </div>
+                  )}
                 </div>
               );
             })()}

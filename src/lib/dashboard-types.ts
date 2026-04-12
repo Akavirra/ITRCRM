@@ -1,4 +1,4 @@
-﻿export interface DashboardStatsPayload {
+export interface DashboardStatsPayload {
   generatedAtLabel: string;
   todayDate: string;
   greeting: string;
@@ -21,6 +21,8 @@
     monthStudents: number;
     yearStudents: number;
     allTimeStudents: number;
+    revenueTrend: number[];
+    attendanceTrend: number[];
   };
   nextLesson: {
     id: number;

@@ -1,7 +1,7 @@
-﻿import { all, get } from '@/db';
+import { all, get } from '@/db';
 import { getStudentsWithDebt } from '@/lib/students';
 import type { DashboardStatsPayload } from '@/lib/dashboard-types';
-import { addDays, format, startOfMonth, startOfYear, subMonths } from 'date-fns';
+import { addDays, format, startOfMonth, startOfYear, subMonths, subDays } from 'date-fns';
 
 const KYIV_TIME_ZONE = 'Europe/Kyiv';
 
@@ -270,6 +270,25 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     [firstDayOfMonth]
   );
 
+  const revenueTrendPromise = all<{ date: string; value: number }>(`
+    SELECT TO_CHAR(paid_at AT TIME ZONE 'Europe/Kyiv', 'YYYY-MM-DD') as date, SUM(amount) as value 
+    FROM payments 
+    WHERE paid_at >= NOW() - INTERVAL '30 days' 
+    GROUP BY TO_CHAR(paid_at AT TIME ZONE 'Europe/Kyiv', 'YYYY-MM-DD') 
+    ORDER BY date ASC
+  `);
+
+  const attendanceTrendPromise = all<{ date: string; value: number }>(`
+    SELECT 
+      l.lesson_date::text as date, 
+      ROUND((COUNT(*) FILTER (WHERE a.status = 'present' OR a.status = 'makeup_done')::numeric / NULLIF(COUNT(*), 0)) * 100) as value
+    FROM attendance a
+    JOIN lessons l ON a.lesson_id = l.id
+    WHERE l.lesson_date >= CURRENT_DATE - 30 AND l.status = 'done'
+    GROUP BY l.lesson_date
+    ORDER BY l.lesson_date ASC
+  `);
+
   const [
     [studentCount, groupCount, lessonCount, revenue, prevRevenue, unpaidCount, attendanceData,
      courseCount, allTimeRevenue, allTimeAttendanceData, allTimeUnpaidCount,
@@ -294,6 +313,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     recentHistoryPromise,
     debtorsPromise,
     absencesPromise,
+    revenueTrendPromise,
+    attendanceTrendPromise,
   ]);
 
   const monthlyRevenue = revenue?.total || 0;
@@ -306,6 +327,20 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   const allTimeAttTotal = allTimeAttendanceData?.total || 0;
   const allTimeAttPresent = allTimeAttendanceData?.present || 0;
   const allTimeAttendancePercent = allTimeAttTotal > 0 ? Math.round((allTimeAttPresent / allTimeAttTotal) * 100) : null;
+
+  const last30Days = Array.from({ length: 30 }, (_, i) => {
+    return format(subDays(now, 29 - i), 'yyyy-MM-dd');
+  });
+
+  const revenueTrend = last30Days.map(date => {
+    const record = revenueTrendRaw.find(r => r.date === date);
+    return record ? Number(record.value) : 0;
+  });
+
+  const attendanceTrend = last30Days.map(date => {
+    const record = attendanceTrendRaw.find(r => r.date === date);
+    return record ? Number(record.value) : 0;
+  });
 
   return {
     generatedAtLabel: formatFullDateLabel(now),
@@ -330,6 +365,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
       monthStudents: monthStudentsCount?.count || 0,
       yearStudents: yearStudentsCount?.count || 0,
       allTimeStudents: allTimeStudentsCount?.count || 0,
+      revenueTrend,
+      attendanceTrend,
     },
     nextLesson: nextLesson ? {
       ...nextLesson,
