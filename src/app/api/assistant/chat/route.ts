@@ -103,7 +103,6 @@ export async function POST(request: NextRequest) {
       model: groq(process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'),
       system: SYSTEM_PROMPT,
       messages: messages,
-      maxSteps: 5,
       temperature: 0.3,
       tools: {
         query_students: tool({

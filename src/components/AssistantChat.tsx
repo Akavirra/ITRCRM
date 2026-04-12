@@ -66,6 +66,7 @@ export default function AssistantChat() {
   } = useChat({
     api: '/api/assistant/chat',
     initialMessages: getInitialMessages(),
+    maxSteps: 5,
   });
 
   // Save messages to localStorage and auto-scroll
