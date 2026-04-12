@@ -20,6 +20,7 @@
     todayStudents: number;
     monthStudents: number;
     yearStudents: number;
+    allTimeStudents: number;
   };
   nextLesson: {
     id: number;

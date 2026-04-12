@@ -287,40 +287,45 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               );
             })()}
 
-            {/* Students count with own toggle */}
+            {/* Students count */}
             <div className={styles.statItem}>
               <div className={styles.statItemLabel}>
                 <UserIcon size={14} />
-                {studentsLabels[studentsPeriod]}
+                {statsPeriod === 'allTime' ? 'Дітей за увесь час' : studentsLabels[studentsPeriod]}
               </div>
               <div className={styles.statItemValue}>
-                {studentsPeriod === 'today' && initialData.stats.todayStudents}
-                {studentsPeriod === 'month' && initialData.stats.monthStudents}
-                {studentsPeriod === 'year' && initialData.stats.yearStudents}
+                {statsPeriod === 'allTime'
+                  ? initialData.stats.allTimeStudents
+                  : studentsPeriod === 'today' ? initialData.stats.todayStudents
+                  : studentsPeriod === 'month' ? initialData.stats.monthStudents
+                  : initialData.stats.yearStudents
+                }
               </div>
-              <div className={styles.miniSegmented}>
-                <button
-                  type="button"
-                  className={`${styles.miniSegmentBtn} ${studentsPeriod === 'today' ? styles.miniSegmentBtnActive : ''}`}
-                  onClick={() => setStudentsPeriod('today')}
-                >
-                  День
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.miniSegmentBtn} ${studentsPeriod === 'month' ? styles.miniSegmentBtnActive : ''}`}
-                  onClick={() => setStudentsPeriod('month')}
-                >
-                  Місяць
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.miniSegmentBtn} ${studentsPeriod === 'year' ? styles.miniSegmentBtnActive : ''}`}
-                  onClick={() => setStudentsPeriod('year')}
-                >
-                  Рік
-                </button>
-              </div>
+              {statsPeriod === 'month' && (
+                <div className={styles.miniSegmented}>
+                  <button
+                    type="button"
+                    className={`${styles.miniSegmentBtn} ${studentsPeriod === 'today' ? styles.miniSegmentBtnActive : ''}`}
+                    onClick={() => setStudentsPeriod('today')}
+                  >
+                    День
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.miniSegmentBtn} ${studentsPeriod === 'month' ? styles.miniSegmentBtnActive : ''}`}
+                    onClick={() => setStudentsPeriod('month')}
+                  >
+                    Місяць
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.miniSegmentBtn} ${studentsPeriod === 'year' ? styles.miniSegmentBtnActive : ''}`}
+                    onClick={() => setStudentsPeriod('year')}
+                  >
+                    Рік
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </section>

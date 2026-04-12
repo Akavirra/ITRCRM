@@ -135,6 +135,13 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
       JOIN lessons l ON a.lesson_id = l.id
       WHERE l.lesson_date >= $1 AND l.status != 'canceled'
     `, [firstDayOfYear]),
+    // All-time unique students count
+    get<{ count: number }>(`
+      SELECT COUNT(DISTINCT a.student_id) as count
+      FROM attendance a
+      JOIN lessons l ON a.lesson_id = l.id
+      WHERE l.status != 'canceled'
+    `),
   ]);
 
   const schedulePromise = all<DashboardStatsPayload['todaySchedule'][number]>(
@@ -266,7 +273,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   const [
     [studentCount, groupCount, lessonCount, revenue, prevRevenue, unpaidCount, attendanceData,
      courseCount, allTimeRevenue, allTimeAttendanceData, allTimeUnpaidCount,
-     todayStudentsCount, monthStudentsCount, yearStudentsCount],
+     todayStudentsCount, monthStudentsCount, yearStudentsCount, allTimeStudentsCount],
     todaySchedule,
     nextLesson,
     upcomingBirthdays,
@@ -322,6 +329,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
       todayStudents: todayStudentsCount?.count || 0,
       monthStudents: monthStudentsCount?.count || 0,
       yearStudents: yearStudentsCount?.count || 0,
+      allTimeStudents: allTimeStudentsCount?.count || 0,
     },
     nextLesson: nextLesson ? {
       ...nextLesson,
