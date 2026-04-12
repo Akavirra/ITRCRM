@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       tools: {
         query_students: tool({
           description: 'Пошук учнів за іменем, або отримання списку учнів. Повертає: id, full_name, phone, email, parent_name, parent_phone, birth_date, is_active, notes, discount.',
-          parameters: z.object({
+          inputSchema: z.object({
             search: z.string().optional().describe('Пошук по імені учня (часткове співпадіння)'),
             is_active: z.boolean().optional().describe('Фільтр за активністю'),
             limit: z.number().optional().default(20).describe('Максимальна кількість результатів (за замовчуванням 20)'),
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         }),
         query_groups: tool({
           description: 'Отримання груп з інформацією про курс, вчителя, розклад. Повертає: id, title, course_title, teacher_name, weekly_day (1=Пн..7=Нд), start_time, duration_minutes, monthly_price, status, capacity, student_count.',
-          parameters: z.object({
+          inputSchema: z.object({
             search: z.string().optional().describe('Пошук по назві групи'),
             status: z.enum(['active', 'paused', 'finished']).optional().describe('Фільтр за статусом'),
             limit: z.number().optional().default(20).describe('Максимальна кількість результатів'),
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
         }),
         query_student_groups: tool({
           description: 'Отримання груп конкретного учня або учнів конкретної групи.',
-          parameters: z.object({
+          inputSchema: z.object({
             student_id: z.number().optional().describe('ID учня для пошуку його груп'),
             group_id: z.number().optional().describe('ID групи для пошуку її учнів'),
           }),
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
         }),
         query_lessons: tool({
           description: 'Отримання занять з фільтрацією. Повертає: id, group_title, teacher_name, lesson_date, start_datetime, end_datetime, topic, status (scheduled/done/cancelled), present_count, absent_count.',
-          parameters: z.object({
+          inputSchema: z.object({
             group_id: z.number().optional().describe('Фільтр за ID групи'),
             date_from: z.string().optional().describe('Дата початку (YYYY-MM-DD)'),
             date_to: z.string().optional().describe('Дата кінця (YYYY-MM-DD)'),
@@ -252,7 +252,7 @@ export async function POST(request: NextRequest) {
         }),
         query_payments: tool({
           description: 'Отримання оплат з фільтрацією. Повертає: student_name, group_title, month, amount, method, paid_at, note.',
-          parameters: z.object({
+          inputSchema: z.object({
             student_id: z.number().optional().describe('Фільтр за ID учня'),
             group_id: z.number().optional().describe('Фільтр за ID групи'),
             month: z.string().optional().describe('Фільтр за місяцем (YYYY-MM)'),
@@ -293,7 +293,7 @@ export async function POST(request: NextRequest) {
         }),
         query_debts: tool({
           description: 'Отримання боржників — учнів, які не оплатили за певний місяць. Повертає: student_name, group_title, month, monthly_price, paid_amount, debt.',
-          parameters: z.object({
+          inputSchema: z.object({
             month: z.string().optional().describe('Місяць для перевірки (YYYY-MM). За замовчуванням — поточний.'),
           }),
           execute: async ({ month: m }) => {
@@ -318,7 +318,7 @@ export async function POST(request: NextRequest) {
         }),
         query_attendance: tool({
           description: 'Статистика відвідуваності учня або групи. Повертає кількість present, absent, late, excused.',
-          parameters: z.object({
+          inputSchema: z.object({
             student_id: z.number().optional().describe('ID учня'),
             group_id: z.number().optional().describe('ID групи'),
             date_from: z.string().optional().describe('Дата початку (YYYY-MM-DD)'),
@@ -364,7 +364,7 @@ export async function POST(request: NextRequest) {
         }),
         query_courses: tool({
           description: 'Отримання курсів. Повертає: id, title, description, age_min, duration_months, is_active, groups_count.',
-          parameters: z.object({
+          inputSchema: z.object({
             search: z.string().optional().describe('Пошук по назві курсу'),
             is_active: z.boolean().optional().describe('Фільтр за активністю'),
           }),
@@ -393,7 +393,7 @@ export async function POST(request: NextRequest) {
         }),
         query_teachers: tool({
           description: 'Отримання викладачів. Повертає: id, name, email, phone, is_active, groups_count.',
-          parameters: z.object({
+          inputSchema: z.object({
             search: z.string().optional().describe('Пошук по імені'),
             is_active: z.boolean().optional().describe('Фільтр за активністю'),
           }),
@@ -422,7 +422,7 @@ export async function POST(request: NextRequest) {
         }),
         query_absences: tool({
           description: 'Знайти учнів з пропусками (absent) за період. Повертає: student_name, group_title, absent_count, total_lessons. Корисно для запитань "хто пропускає", "в кого пропуски".',
-          parameters: z.object({
+          inputSchema: z.object({
             date_from: z.string().optional().describe('Дата початку (YYYY-MM-DD). За замовчуванням — початок поточного місяця.'),
             date_to: z.string().optional().describe('Дата кінця (YYYY-MM-DD). За замовчуванням — сьогодні.'),
             group_id: z.number().optional().describe('Фільтр за ID групи (опціонально)'),
@@ -462,7 +462,7 @@ export async function POST(request: NextRequest) {
         }),
         query_stats: tool({
           description: 'Загальна статистика CRM: кількість учнів, груп, курсів, вчителів, занять за період, загальна сума оплат.',
-          parameters: z.object({
+          inputSchema: z.object({
             period: z.enum(['today', 'week', 'month', 'year', 'all']).optional().default('month').describe('Період'),
           }),
           execute: async ({ period }) => {

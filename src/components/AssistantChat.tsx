@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, X, Send, Bot, Trash2, Minimize2 } from 'lucide-react';
-import { useChat, Message } from '@ai-sdk/react';
+import { useChat, UIMessage } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
 import ReactMarkdown from 'react-markdown';
 
 const STORAGE_KEY = 'assistant_chat_messages';
@@ -13,68 +14,69 @@ const SUGGESTED_QUESTIONS = [
   'Загальна статистика',
 ];
 
-// Helper to get friendly tool status
-const getToolStatus = (msg: Message) => {
-  if (!msg.toolInvocations || msg.toolInvocations.length === 0) return null;
-  const currentTool = msg.toolInvocations[msg.toolInvocations.length - 1]; // get the latest
-  if (currentTool.state !== 'result') {
-    switch (currentTool.toolName) {
-      case 'query_students': return 'Шукаю учнів у базі...';
-      case 'query_groups': return 'Перевіряю групи...';
-      case 'query_student_groups': return 'Перевіряю записи в групах...';
-      case 'query_lessons': return 'Шукаю заняття в розкладі...';
-      case 'query_payments': return 'Перевіряю оплати...';
-      case 'query_debts': return 'Рахую боржників...';
-      case 'query_attendance': return 'Обчислюю відвідуваність...';
-      case 'query_courses': return 'Шукаю курси...';
-      case 'query_teachers': return 'Шукаю викладачів...';
-      case 'query_absences': return 'Шукаю учнів з пропусками...';
-      case 'query_stats': return 'Збираю загальну статистику...';
-      default: return 'Виконую запит до бази даних...';
-    }
+const getMessageText = (msg: UIMessage) =>
+  msg.parts
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join('');
+
+const getToolPart = (msg: UIMessage) => {
+  const toolParts = msg.parts.filter((part) => part.type.startsWith('tool-'));
+  return toolParts.length > 0 ? toolParts[toolParts.length - 1] : null;
+};
+
+const getToolStatus = (msg: UIMessage) => {
+  const currentTool = getToolPart(msg);
+  if (!currentTool || !('state' in currentTool) || currentTool.state === 'output-available') {
+    return null;
   }
-  return null;
+
+  const toolName = currentTool.type.replace(/^tool-/, '');
+  switch (toolName) {
+    case 'query_students': return 'Шукаю учнів у базі...';
+    case 'query_groups': return 'Перевіряю групи...';
+    case 'query_student_groups': return 'Перевіряю записи в групах...';
+    case 'query_lessons': return 'Шукаю заняття в розкладі...';
+    case 'query_payments': return 'Перевіряю оплати...';
+    case 'query_debts': return 'Рахую боржників...';
+    case 'query_attendance': return 'Обчислюю відвідуваність...';
+    case 'query_courses': return 'Шукаю курси...';
+    case 'query_teachers': return 'Шукаю викладачів...';
+    case 'query_absences': return 'Шукаю учнів з пропусками...';
+    case 'query_stats': return 'Збираю загальну статистику...';
+    default: return 'Виконую запит до бази даних...';
+  }
 };
 
 export default function AssistantChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatBodyRef = useRef<HTMLDivElement>(null);
 
-  // Load initial messages from localStorage
-  const getInitialMessages = (): Message[] => {
+  const getInitialMessages = (): UIMessage[] => {
     if (typeof window === 'undefined') return [];
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch { /* ignore */ }
+      if (saved) return JSON.parse(saved) as UIMessage[];
+    } catch {}
     return [];
   };
 
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    isLoading,
-    error,
-    setMessages,
-    append,
-    stop,
-  } = useChat({
-    api: '/api/assistant/chat',
-    initialMessages: getInitialMessages(),
-    maxSteps: 5,
+  const { messages, status, error, setMessages, sendMessage, stop } = useChat({
+    transport: new DefaultChatTransport({ api: '/api/assistant/chat' }),
+    messages: getInitialMessages(),
   });
 
-  // Save messages to localStorage and auto-scroll
+  const isLoading = status === 'submitted' || status === 'streaming';
+
   useEffect(() => {
     if (messages.length > 0) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-50)));
-      } catch { /* ignore */ }
+      } catch {}
     }
   }, [messages]);
 
@@ -82,19 +84,29 @@ export default function AssistantChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Focus input when opening
   useEffect(() => {
     if (isOpen && !isMinimized) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen, isMinimized]);
 
+  const submitInput = () => {
+    const text = input.trim();
+    if (!text || isLoading) return;
+    sendMessage({ text });
+    setInput('');
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      const event = new Event('submit', { cancelable: true });
-      handleSubmit(event as any);
+      submitInput();
     }
+  };
+
+  const handleSubmit = (e?: { preventDefault?: () => void }) => {
+    e?.preventDefault?.();
+    submitInput();
   };
 
   const clearHistory = () => {
@@ -113,15 +125,11 @@ export default function AssistantChat() {
     }
   };
 
-  const hasToolCalls = (msg: Message) => {
-    return msg.toolInvocations && msg.toolInvocations.length > 0;
-  };
-
+  const hasToolCalls = (msg: UIMessage) => Boolean(getToolPart(msg));
   const activeToolStatus = messages.length > 0 ? getToolStatus(messages[messages.length - 1]) : null;
 
   return (
     <>
-      {/* Chat window */}
       {isOpen && (
         <div
           className={`assistant-chat-window ${isMinimized ? 'assistant-chat-minimized' : ''}`}
@@ -132,7 +140,6 @@ export default function AssistantChat() {
             zIndex: 1000,
           }}
         >
-          {/* Header */}
           <div className="assistant-chat-header" onClick={() => isMinimized && setIsMinimized(false)}>
             <div className="assistant-chat-header-left">
               <Bot size={18} />
@@ -165,7 +172,6 @@ export default function AssistantChat() {
             </div>
           </div>
 
-          {/* Body */}
           {!isMinimized && (
             <>
               <div className="assistant-chat-body" ref={chatBodyRef}>
@@ -181,7 +187,11 @@ export default function AssistantChat() {
                         <button
                           key={i}
                           className="assistant-chat-suggestion"
-                          onClick={() => append({ role: 'user', content: q })}
+                          onClick={() => {
+                            if (!isLoading) {
+                              sendMessage({ text: q });
+                            }
+                          }}
                         >
                           {q}
                         </button>
@@ -190,39 +200,42 @@ export default function AssistantChat() {
                   </div>
                 )}
 
-                {messages.map((msg, i) => (
-                  <div
-                    key={msg.id || i}
-                    className={`assistant-chat-message assistant-chat-message-${msg.role}`}
-                  >
-                    {msg.role === 'assistant' && (
-                      <div className="assistant-chat-avatar">
-                        <Bot size={14} />
-                      </div>
-                    )}
-                    <div className={`assistant-chat-bubble assistant-chat-bubble-${msg.role}`}>
-                      {msg.content && (
-                        <ReactMarkdown 
-                          components={{
-                            p: ({...props}) => <p style={{ margin: '0 0 0.5em 0', lastChild: { margin: 0 } }} {...props} />,
-                            ul: ({...props}) => <ul style={{ paddingLeft: '1.2em', margin: '0.5em 0' }} {...props} />,
-                            ol: ({...props}) => <ol style={{ paddingLeft: '1.2em', margin: '0.5em 0' }} {...props} />,
-                            li: ({...props}) => <li style={{ margin: '0.2em 0' }} {...props} />,
-                            strong: ({...props}) => <strong style={{ fontWeight: 600 }} {...props} />,
-                          }}
-                        >
-                          {msg.content}
-                        </ReactMarkdown>
-                      )}
-                      
-                      {hasToolCalls(msg) && (
-                        <div style={{ fontSize: '0.85em', color: '#a0aec0', fontStyle: 'italic', marginTop: msg.content ? '4px' : '0' }}>
-                          {getToolStatus(msg)}
+                {messages.map((msg, i) => {
+                  const text = getMessageText(msg);
+                  return (
+                    <div
+                      key={msg.id || i}
+                      className={`assistant-chat-message assistant-chat-message-${msg.role}`}
+                    >
+                      {msg.role === 'assistant' && (
+                        <div className="assistant-chat-avatar">
+                          <Bot size={14} />
                         </div>
                       )}
+                      <div className={`assistant-chat-bubble assistant-chat-bubble-${msg.role}`}>
+                        {text && (
+                          <ReactMarkdown
+                            components={{
+                              p: ({ ...props }) => <p style={{ margin: '0 0 0.5em 0' }} {...props} />,
+                              ul: ({ ...props }) => <ul style={{ paddingLeft: '1.2em', margin: '0.5em 0' }} {...props} />,
+                              ol: ({ ...props }) => <ol style={{ paddingLeft: '1.2em', margin: '0.5em 0' }} {...props} />,
+                              li: ({ ...props }) => <li style={{ margin: '0.2em 0' }} {...props} />,
+                              strong: ({ ...props }) => <strong style={{ fontWeight: 600 }} {...props} />,
+                            }}
+                          >
+                            {text}
+                          </ReactMarkdown>
+                        )}
+
+                        {hasToolCalls(msg) && (
+                          <div style={{ fontSize: '0.85em', color: '#a0aec0', fontStyle: 'italic', marginTop: text ? '4px' : '0' }}>
+                            {getToolStatus(msg)}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {isLoading && messages[messages.length - 1]?.role === 'user' && !activeToolStatus && (
                   <div className="assistant-chat-message assistant-chat-message-assistant">
@@ -246,12 +259,11 @@ export default function AssistantChat() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input */}
               <form onSubmit={handleSubmit} className="assistant-chat-input-area">
                 <textarea
                   ref={inputRef}
                   value={input}
-                  onChange={handleInputChange}
+                  onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Напишіть запитання..."
                   className="assistant-chat-input"
@@ -271,7 +283,6 @@ export default function AssistantChat() {
         </div>
       )}
 
-      {/* FAB button */}
       <button
         onClick={toggleOpen}
         className={`assistant-chat-fab ${isOpen ? 'assistant-chat-fab-active' : ''}`}
