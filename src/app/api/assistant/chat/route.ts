@@ -22,8 +22,9 @@ const SYSTEM_PROMPT = `Ти — розумний помічник CRM-систе
 4. Ніколи не змінюй дані — тільки читання (SELECT)
 5. Форматуй числа зрозуміло (наприклад, "2 500 грн")
 6. Якщо не знаєш відповіді — чесно скажи
-7. Для дат використовуй формат "дд.мм.рррр"
-8. Будь дружнім і корисним`;
+7. Для дат у ВІДПОВІДЯХ використовуй формат "дд.мм.рррр"
+8. Будь дружнім і корисним
+9. КРИТИЧНО: При виклику функцій дати ЗАВЖДИ передавай у форматі YYYY-MM-DD (наприклад 2024-01-31), а місяці у форматі YYYY-MM (наприклад 2024-01). НІКОЛИ не використовуй формат дд.мм.рррр у параметрах функцій!`;
 
 const DB_TOOLS = [
   {
@@ -177,7 +178,7 @@ const DB_TOOLS = [
 
 // Tool execution functions
 async function executeQueryStudents(params: Record<string, unknown>) {
-  const { search, is_active, limit = 20 } = params;
+  const { search, is_active, limit = 10 } = params;
   let sql = `SELECT id, full_name, phone, email, parent_name, parent_phone, birth_date, is_active, notes, discount FROM students WHERE 1=1`;
   const sqlParams: unknown[] = [];
   let paramIdx = 1;
@@ -199,7 +200,7 @@ async function executeQueryStudents(params: Record<string, unknown>) {
 }
 
 async function executeQueryGroups(params: Record<string, unknown>) {
-  const { search, status, limit = 20 } = params;
+  const { search, status, limit = 10 } = params;
   let sql = `
     SELECT g.id, g.title, c.title as course_title, u.name as teacher_name,
            g.weekly_day, g.start_time, g.duration_minutes, g.monthly_price,
@@ -255,7 +256,7 @@ async function executeQueryStudentGroups(params: Record<string, unknown>) {
 }
 
 async function executeQueryLessons(params: Record<string, unknown>) {
-  const { group_id, date_from, date_to, status, limit = 20 } = params;
+  const { group_id, date_from, date_to, status, limit = 10 } = params;
   let sql = `
     SELECT l.id, g.title as group_title, u.name as teacher_name,
            l.lesson_date, l.start_datetime, l.end_datetime, l.topic, l.status,
@@ -295,7 +296,7 @@ async function executeQueryLessons(params: Record<string, unknown>) {
 }
 
 async function executeQueryPayments(params: Record<string, unknown>) {
-  const { student_id, group_id, month, limit = 20 } = params;
+  const { student_id, group_id, month, limit = 10 } = params;
   let sql = `
     SELECT s.full_name as student_name, g.title as group_title,
            p.month, p.amount, p.method, p.paid_at, p.note
@@ -525,7 +526,7 @@ async function groqFetch(apiKey: string, groqMessages: GroqMessage[]) {
         tools: DB_TOOLS,
         tool_choice: 'auto',
         temperature: 0.3,
-        max_tokens: 2048,
+        max_tokens: 1024,
       }),
     });
 
