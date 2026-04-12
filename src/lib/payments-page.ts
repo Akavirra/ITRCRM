@@ -1,10 +1,11 @@
 import { all } from '@/db';
-import { getLessonPrice, getPaymentStats } from '@/lib/payments';
+import { getIndividualLessonPrice, getLessonPrice, getPaymentStats } from '@/lib/payments';
 import { getStudentsWithDebt } from '@/lib/students';
 
 export interface PaymentsOverviewData {
   month: string;
   lesson_price: number;
+  individual_lesson_price: number;
   group_debts: {
     total_debt: number;
     students_count: number;
@@ -62,6 +63,7 @@ export async function getPaymentsOverview(month: string): Promise<PaymentsOvervi
   const totalDebt = debtors.reduce((sum, debtor) => sum + debtor.debt, 0);
   const studentsCount = new Set(debtors.map((debtor) => debtor.id)).size;
   const lessonPrice = await getLessonPrice();
+  const individualLessonPrice = await getIndividualLessonPrice();
 
   const individualDebtors = await all<{
     id: number;
@@ -98,6 +100,7 @@ export async function getPaymentsOverview(month: string): Promise<PaymentsOvervi
   return {
     month,
     lesson_price: lessonPrice,
+    individual_lesson_price: individualLessonPrice,
     group_debts: {
       total_debt: totalDebt,
       students_count: studentsCount,

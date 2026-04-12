@@ -9,6 +9,7 @@ const DEFAULTS: Record<string, string> = {
   teacher_salary_group: '75',
   teacher_salary_individual: '100',
   lesson_price: '300',
+  individual_lesson_price: '300',
 };
 
 export async function GET(request: NextRequest) {
@@ -23,6 +24,9 @@ export async function GET(request: NextRequest) {
     );
     const settings: Record<string, string> = { ...DEFAULTS };
     for (const row of rows) settings[row.key] = row.value;
+    if (!settings.individual_lesson_price) {
+      settings.individual_lesson_price = settings.lesson_price;
+    }
     return NextResponse.json({ settings });
   } catch {
     return NextResponse.json({ settings: DEFAULTS });
@@ -39,7 +43,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Невірний формат' }, { status: 400 });
   }
 
-  const allowed = ['teacher_salary_group', 'teacher_salary_individual', 'lesson_price'];
+  const allowed = ['teacher_salary_group', 'teacher_salary_individual', 'lesson_price', 'individual_lesson_price'];
   for (const key of allowed) {
     if (key in body) {
       const val = parseFloat(body[key]);

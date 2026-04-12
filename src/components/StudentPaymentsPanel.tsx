@@ -29,6 +29,7 @@ interface PaymentsSummary {
   student: { id: number; full_name: string; discount_percent: number };
   lesson_price: number;
   effective_price: number;
+  individual_lesson_price: number;
   months: string[];
   group_debts: GroupDebt[];
   individual_balance: {
@@ -448,8 +449,9 @@ export default function StudentPaymentsPanel({ studentId }: { studentId: number 
                     }}>
                       <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginBottom: '0.25rem', fontWeight: 500 }}>Оплачено</div>
                       <div style={{ fontSize: '1.125rem', fontWeight: '700', color: 'var(--gray-800)' }}>
-                        {data.individual_balance.lessons_paid}
+                        {data.individual_balance.lessons_paid * data.individual_lesson_price} ₴
                       </div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>{data.individual_balance.lessons_paid} зан.</div>
                     </div>
                     <div style={{
                       padding: '0.875rem',
@@ -460,8 +462,9 @@ export default function StudentPaymentsPanel({ studentId }: { studentId: number 
                     }}>
                       <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginBottom: '0.25rem', fontWeight: 500 }}>Використано</div>
                       <div style={{ fontSize: '1.125rem', fontWeight: '700', color: 'var(--gray-800)' }}>
-                        {data.individual_balance.lessons_used}
+                        {data.individual_balance.lessons_used * data.individual_lesson_price} ₴
                       </div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>{data.individual_balance.lessons_used} зан.</div>
                     </div>
                     <div style={{
                       padding: '0.875rem',
@@ -476,8 +479,9 @@ export default function StudentPaymentsPanel({ studentId }: { studentId: number 
                         fontWeight: '700',
                         color: data.individual_balance.lessons_remaining > 0 ? '#16a34a' : data.individual_balance.lessons_remaining < 0 ? '#dc2626' : 'var(--gray-800)',
                       }}>
-                        {data.individual_balance.lessons_remaining}
+                        {data.individual_balance.lessons_remaining * data.individual_lesson_price} ₴
                       </div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>{data.individual_balance.lessons_remaining} зан.</div>
                     </div>
                   </div>
                 </div>

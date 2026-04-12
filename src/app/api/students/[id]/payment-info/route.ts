@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized } from '@/lib/api-utils';
 import { get, all } from '@/db';
-import { getLessonPrice } from '@/lib/payments';
+import { getIndividualLessonPrice, getLessonPrice } from '@/lib/payments';
 import { getIndividualBalance } from '@/lib/individual-payments';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +35,7 @@ export async function GET(
 
   const lessonPrice = await getLessonPrice();
   const effectivePrice = Math.round(lessonPrice * (1 - student.discount / 100));
+  const individualLessonPrice = await getIndividualLessonPrice();
 
   // Student's active groups with payment status per current months
   const groups = await all<{
@@ -70,6 +71,7 @@ export async function GET(
     },
     lesson_price: lessonPrice,
     effective_price: effectivePrice,
+    individual_lesson_price: individualLessonPrice,
     groups,
     has_individual: (hasIndividual?.cnt || 0) > 0,
     individual_balance: individualBalance,

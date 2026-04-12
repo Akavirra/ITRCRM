@@ -1,5 +1,5 @@
 import { run, get, all } from '@/db';
-import { getLessonPrice } from './payments';
+import { getIndividualLessonPrice } from './payments';
 
 export interface IndividualPayment {
   id: number;
@@ -117,13 +117,12 @@ export async function calculateIndividualAmount(
   studentId: number,
   lessonsCount: number
 ): Promise<{ lesson_price: number; discount_percent: number; effective_price: number; total: number }> {
-  const lessonPrice = await getLessonPrice();
-  const student = await get<{ discount: number | null }>(
-    `SELECT COALESCE(discount::INTEGER, 0) as discount FROM students WHERE id = $1`,
-    [studentId]
-  );
-  const discountPercent = student?.discount || 0;
-  const effectivePrice = Math.round(lessonPrice * (1 - discountPercent / 100));
+  const lessonPrice = await getIndividualLessonPrice();
+
+  // Individual lessons use the same fixed price for everyone.
+  const discountPercent = 0;
+  const effectivePrice = lessonPrice;
+
   return {
     lesson_price: lessonPrice,
     discount_percent: discountPercent,

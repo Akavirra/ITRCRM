@@ -63,6 +63,18 @@ export async function getLessonPrice(): Promise<number> {
   return parseInt(setting?.value || '300', 10);
 }
 
+export async function getIndividualLessonPrice(): Promise<number> {
+  const setting = await get<{ value: string }>(
+    `SELECT value FROM system_settings WHERE key = 'individual_lesson_price'`
+  );
+
+  if (setting?.value) {
+    return parseInt(setting.value, 10);
+  }
+
+  return getLessonPrice();
+}
+
 // Get payment status for all students in a group for a month
 export async function getPaymentStatusForGroupMonth(
   groupId: number,

@@ -46,6 +46,7 @@ interface IndividualDebtor {
 interface OverviewData {
   month: string;
   lesson_price: number;
+  individual_lesson_price: number;
   group_debts: {
     total_debt: number;
     students_count: number;
@@ -72,6 +73,7 @@ interface StudentPaymentInfo {
   student: { id: number; full_name: string; discount_percent: number };
   lesson_price: number;
   effective_price: number;
+  individual_lesson_price: number;
   groups: Array<{ group_id: number; group_title: string }>;
   has_individual: boolean;
   individual_balance: IndividualBalance | null;
@@ -453,7 +455,7 @@ export default function PaymentsPage() {
             months: [],
             lessons_count: 1,
             amount: '',
-            auto_amount: info.effective_price,
+            auto_amount: info.individual_lesson_price,
           });
         }
         setPaymentLines(lines);
@@ -480,6 +482,7 @@ export default function PaymentsPage() {
   const groupBreakdown = selectedStudent ? getGroupBreakdown() : [];
   const allGroupsLoaded = groupBreakdown.every(g => g.lessons !== null);
   const totalExpected = allGroupsLoaded ? groupBreakdown.reduce((s, g) => s + (g.expected || 0), 0) : 0;
+  const individualLessonPrice = selectedStudent?.individual_lesson_price || data?.individual_lesson_price || 0;
 
   // Handle month change in console
   const handleGroupPayMonthChange = (newMonth: string) => {
@@ -543,7 +546,7 @@ export default function PaymentsPage() {
     if (!isNaN(groupAmt) && groupAmt > 0) total += groupAmt;
     // Individual lines
     for (const line of paymentLines.filter(l => l.target_type === 'individual')) {
-      const amt = line.amount ? parseFloat(line.amount) : line.lessons_count * (selectedStudent?.effective_price || 0);
+      const amt = line.amount ? parseFloat(line.amount) : line.lessons_count * individualLessonPrice;
       if (!isNaN(amt) && amt > 0) total += amt;
     }
     return total;
@@ -557,7 +560,7 @@ export default function PaymentsPage() {
     const hasGroupPayment = !isNaN(groupAmt) && groupAmt > 0 && allGroupsLoaded && totalExpected > 0;
     const individualLines = paymentLines.filter(l => l.target_type === 'individual');
     const hasIndividual = individualLines.some(l => {
-      const amt = l.amount ? parseFloat(l.amount) : l.lessons_count * selectedStudent.effective_price;
+      const amt = l.amount ? parseFloat(l.amount) : l.lessons_count * individualLessonPrice;
       return !isNaN(amt) && amt > 0;
     });
 
@@ -613,7 +616,7 @@ export default function PaymentsPage() {
 
       // Save individual payments
       for (const line of individualLines) {
-        const amt = line.amount ? parseFloat(line.amount) : line.lessons_count * selectedStudent.effective_price;
+        const amt = line.amount ? parseFloat(line.amount) : line.lessons_count * individualLessonPrice;
         if (isNaN(amt) || amt <= 0) continue;
         const res = await fetch(`/api/students/${selectedStudent.student.id}/individual-payments`, {
           method: 'POST',
@@ -956,7 +959,8 @@ export default function PaymentsPage() {
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
               Індивідуальні заняття — баланс занять
             </h3>
-            <div style={{ marginLeft: 'auto', fontSize: '0.875rem', color: '#6b7280' }}>
+            <div style={{ marginLeft: 'auto', fontSize: '0.875rem', color: '#6b7280', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <span>Фіксована ціна: {data?.individual_lesson_price || data?.lesson_price || 0} ₴/заняття</span>
               {filteredIndividualDebtors.length} учнів
             </div>
           </div>
@@ -966,7 +970,7 @@ export default function PaymentsPage() {
                 <thead>
                   <tr>
                     <th>Учень</th>
-                    <th style={{ textAlign: 'right' }}>Оплачено занять</th>
+                    <th style={{ textAlign: 'right' }}>Оплачено</th>
                     <th style={{ textAlign: 'right' }}>Використано</th>
                     <th style={{ textAlign: 'right' }}>Залишок</th>
                     <th style={{ textAlign: 'right', width: '100px' }}>Дії</th>
@@ -987,15 +991,32 @@ export default function PaymentsPage() {
                           {d.full_name}
                         </button>
                       </td>
-                      <td style={{ textAlign: 'right' }}>{d.balance.lessons_paid}</td>
-                      <td style={{ textAlign: 'right' }}>{d.balance.lessons_used}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: '600' }}>
+                          {d.balance.lessons_paid * (data?.individual_lesson_price || data?.lesson_price || 0)} ₴
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                          {d.balance.lessons_paid} зан.
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: '600' }}>
+                          {d.balance.lessons_used * (data?.individual_lesson_price || data?.lesson_price || 0)} ₴
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                          {d.balance.lessons_used} зан.
+                        </div>
+                      </td>
                       <td style={{ textAlign: 'right' }}>
                         <span style={{
                           fontWeight: '600',
                           color: d.balance.lessons_remaining < 0 ? '#ef4444' : '#22c55e',
                         }}>
-                          {d.balance.lessons_remaining}
+                          {d.balance.lessons_remaining * (data?.individual_lesson_price || data?.lesson_price || 0)} ₴
                         </span>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                          {d.balance.lessons_remaining} зан.
+                        </div>
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <button
@@ -1552,7 +1573,7 @@ export default function PaymentsPage() {
                     <div>
                       <span style={{ color: '#6b7280' }}>Інд. баланс: </span>
                       <strong style={{ color: selectedStudent.individual_balance.lessons_remaining < 0 ? '#ef4444' : '#22c55e' }}>
-                        {selectedStudent.individual_balance.lessons_remaining} зан.
+                        {selectedStudent.individual_balance.lessons_remaining} зан. / {selectedStudent.individual_balance.lessons_remaining * individualLessonPrice} ₴
                       </strong>
                     </div>
                   )}
@@ -1734,6 +1755,9 @@ export default function PaymentsPage() {
                         <strong style={{ fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem' }}>
                           Індивідуальні заняття
                         </strong>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+                          Фіксована ціна: <strong style={{ color: '#111827' }}>{individualLessonPrice} ₴</strong> за 1 заняття
+                        </div>
                         <div style={{ marginBottom: '0.5rem' }}>
                           <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.125rem' }}>
                             Кількість занять
@@ -1748,7 +1772,7 @@ export default function PaymentsPage() {
                           />
                           {line.lessons_count > 0 && (
                             <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                              = {line.lessons_count * selectedStudent.effective_price} ₴
+                              = {line.lessons_count * individualLessonPrice} ₴
                             </span>
                           )}
                         </div>
@@ -1761,7 +1785,7 @@ export default function PaymentsPage() {
                             className="form-input"
                             value={line.amount}
                             onChange={(e) => updateLine(line.id, { amount: e.target.value })}
-                            placeholder={String(line.lessons_count * selectedStudent.effective_price)}
+                            placeholder={String(line.lessons_count * individualLessonPrice)}
                             style={{ width: '140px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
                           />
                         </div>
@@ -1778,7 +1802,7 @@ export default function PaymentsPage() {
                           months: [],
                           lessons_count: 1,
                           amount: '',
-                          auto_amount: selectedStudent.effective_price,
+                          auto_amount: selectedStudent.individual_lesson_price,
                         }])}
                         style={{
                           padding: '0.375rem 0.75rem', fontSize: '0.8125rem',
