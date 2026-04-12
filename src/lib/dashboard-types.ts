@@ -5,6 +5,7 @@
   stats: {
     activeStudents: number;
     activeGroups: number;
+    activeCourses: number;
     todayLessons: number;
     monthlyRevenue: number;
     monthlyRevenueLabel: string;
@@ -12,6 +13,13 @@
     attendancePercent: number | null;
     prevMonthRevenue: number;
     prevMonthRevenueLabel: string;
+    allTimeRevenue: number;
+    allTimeRevenueLabel: string;
+    allTimeUnpaidStudents: number;
+    allTimeAttendancePercent: number | null;
+    todayStudents: number;
+    monthStudents: number;
+    yearStudents: number;
   };
   nextLesson: {
     id: number;

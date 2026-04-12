@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle, BookOpen, Calendar, Check, Clock, CreditCard, DollarSign,
-  ExternalLink, Plus, RefreshCw, SquareArrowOutUpRight, TrendingDown, TrendingUp, User as UserIcon, Users, Users2, X,
+  ExternalLink, GraduationCap, Plus, RefreshCw, SquareArrowOutUpRight, TrendingDown, TrendingUp, User as UserIcon, Users, Users2, X,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { uk } from 'date-fns/locale';
@@ -20,6 +20,7 @@ import styles from './dashboard.module.css';
 
 type ActivityTab = 'payments' | 'history';
 type PeriodTab = 'month' | 'allTime';
+type StudentsPeriod = 'today' | 'month' | 'year';
 
 interface AllTimeDebtor {
   id: number;
@@ -46,14 +47,11 @@ interface AllTimeAbsence {
   start_time: string;
 }
 
-const statCards = [
-  { key: 'activeStudents', label: 'Активні студенти', icon: Users },
-  { key: 'activeGroups', label: 'Активні групи', icon: Users2 },
-  { key: 'todayLessons', label: 'Уроків сьогодні', icon: BookOpen },
-  { key: 'monthlyRevenue', label: 'Дохід за місяць', icon: DollarSign },
-  { key: 'unpaidStudents', label: 'Борги', icon: AlertTriangle },
-  { key: 'attendancePercent', label: 'Відвідуваність', icon: Check },
-] as const;
+const studentsLabels: Record<StudentsPeriod, string> = {
+  today: 'Дітей сьогодні',
+  month: 'Дітей за місяць',
+  year: 'Дітей за рік',
+};
 
 /* ── Lesson card style logic — matches schedule page exactly ── */
 
@@ -97,6 +95,8 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const { openStudentModal } = useStudentModals();
   const { openLessonModal } = useLessonModals();
   const [activeTab, setActiveTab] = useState<ActivityTab>('payments');
+  const [statsPeriod, setStatsPeriod] = useState<PeriodTab>('month');
+  const [studentsPeriod, setStudentsPeriod] = useState<StudentsPeriod>('today');
   const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showCreateLessonModal, setShowCreateLessonModal] = useState(false);
@@ -170,71 +170,160 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
           </div>
         </section>
 
-        {/* Stats */}
+        {/* Secondary stats — active entities */}
+        <section className={styles.secondaryStatsRow}>
+          <div className={styles.secondaryStatItem}>
+            <Users size={13} />
+            <span className={styles.secondaryStatLabel}>Студенти</span>
+            <span className={styles.secondaryStatValue}>{initialData.stats.activeStudents}</span>
+          </div>
+          <div className={styles.secondaryStatItem}>
+            <Users2 size={13} />
+            <span className={styles.secondaryStatLabel}>Групи</span>
+            <span className={styles.secondaryStatValue}>{initialData.stats.activeGroups}</span>
+          </div>
+          <div className={styles.secondaryStatItem}>
+            <GraduationCap size={13} />
+            <span className={styles.secondaryStatLabel}>Курси</span>
+            <span className={styles.secondaryStatValue}>{initialData.stats.activeCourses}</span>
+          </div>
+        </section>
+
+        {/* Primary stats */}
         <section className={styles.statsRow}>
-          {statCards.map((card) => {
-            const Icon = card.icon;
-            let value: string | number;
-            let trend: React.ReactNode = null;
-            let valueClass = styles.statItemValue;
-
-            if (card.key === 'monthlyRevenue') {
-              value = initialData.stats.monthlyRevenueLabel;
-              const prev = initialData.stats.prevMonthRevenue;
-              const curr = initialData.stats.monthlyRevenue;
-              if (prev > 0) {
-                const pct = Math.round(((curr - prev) / prev) * 100);
-                const isUp = pct >= 0;
-                trend = (
-                  <span className={isUp ? styles.trendUp : styles.trendDown}>
-                    {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                    {isUp ? '+' : ''}{pct}%
-                  </span>
-                );
-              }
-            } else if (card.key === 'unpaidStudents') {
-              value = initialData.stats.unpaidStudents;
-              if (initialData.stats.unpaidStudents > 0) {
-                valueClass = `${styles.statItemValue} ${styles.statValueDanger}`;
-              }
-            } else if (card.key === 'attendancePercent') {
-              const pct = initialData.stats.attendancePercent;
-              value = pct !== null ? `${pct}%` : '—';
-              if (pct !== null && pct < 70) {
-                valueClass = `${styles.statItemValue} ${styles.statValueDanger}`;
-              } else if (pct !== null && pct >= 90) {
-                valueClass = `${styles.statItemValue} ${styles.statValueGood}`;
-              }
-            } else {
-              value = initialData.stats[card.key];
-            }
-
-            const isClickable = card.key === 'unpaidStudents' || card.key === 'attendancePercent';
-            const handleClick = () => {
-              if (card.key === 'unpaidStudents') setShowDebtsModal(true);
-              if (card.key === 'attendancePercent') setShowAbsencesModal(true);
-            };
-
-            return (
-              <div
-                key={card.key}
-                className={`${styles.statItem} ${isClickable ? styles.statItemClickable : ''}`}
-                onClick={isClickable ? handleClick : undefined}
-                role={isClickable ? 'button' : undefined}
-                tabIndex={isClickable ? 0 : undefined}
-                onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); } : undefined}
+          <div className={styles.statsRowHeader}>
+            <div className={styles.segmented}>
+              <button
+                type="button"
+                className={`${styles.segmentButton} ${statsPeriod === 'month' ? styles.segmentButtonActive : ''}`}
+                onClick={() => setStatsPeriod('month')}
               >
-                <div className={styles.statItemLabel}>
-                  <Icon size={14} />
-                  {card.label}
-                </div>
-                <div className={valueClass}>
-                  {value}
-                  {trend}
-                </div>
+                За місяць
+              </button>
+              <button
+                type="button"
+                className={`${styles.segmentButton} ${statsPeriod === 'allTime' ? styles.segmentButtonActive : ''}`}
+                onClick={() => setStatsPeriod('allTime')}
+              >
+                За увесь час
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.statsGrid}>
+            {/* Revenue */}
+            <div className={styles.statItem}>
+              <div className={styles.statItemLabel}>
+                <DollarSign size={14} />
+                {statsPeriod === 'month' ? 'Дохід за місяць' : 'Дохід за увесь час'}
               </div>
-            );
-          })}
+              <div className={styles.statItemValue}>
+                {statsPeriod === 'month' ? initialData.stats.monthlyRevenueLabel : initialData.stats.allTimeRevenueLabel}
+                {statsPeriod === 'month' && (() => {
+                  const prev = initialData.stats.prevMonthRevenue;
+                  const curr = initialData.stats.monthlyRevenue;
+                  if (prev > 0) {
+                    const pct = Math.round(((curr - prev) / prev) * 100);
+                    const isUp = pct >= 0;
+                    return (
+                      <span className={isUp ? styles.trendUp : styles.trendDown}>
+                        {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                        {isUp ? '+' : ''}{pct}%
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
+
+            {/* Debts */}
+            {(() => {
+              const debtsValue = statsPeriod === 'month'
+                ? initialData.stats.unpaidStudents
+                : initialData.stats.allTimeUnpaidStudents;
+              const valueClass = debtsValue > 0
+                ? `${styles.statItemValue} ${styles.statValueDanger}`
+                : styles.statItemValue;
+              return (
+                <div
+                  className={`${styles.statItem} ${styles.statItemClickable}`}
+                  onClick={() => setShowDebtsModal(true)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setShowDebtsModal(true); }}
+                >
+                  <div className={styles.statItemLabel}>
+                    <AlertTriangle size={14} />
+                    Борги
+                  </div>
+                  <div className={valueClass}>{debtsValue}</div>
+                </div>
+              );
+            })()}
+
+            {/* Attendance */}
+            {(() => {
+              const pct = statsPeriod === 'month'
+                ? initialData.stats.attendancePercent
+                : initialData.stats.allTimeAttendancePercent;
+              const value = pct !== null ? `${pct}%` : '—';
+              let valueClass = styles.statItemValue;
+              if (pct !== null && pct < 70) valueClass = `${styles.statItemValue} ${styles.statValueDanger}`;
+              else if (pct !== null && pct >= 90) valueClass = `${styles.statItemValue} ${styles.statValueGood}`;
+              return (
+                <div
+                  className={`${styles.statItem} ${styles.statItemClickable}`}
+                  onClick={() => setShowAbsencesModal(true)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setShowAbsencesModal(true); }}
+                >
+                  <div className={styles.statItemLabel}>
+                    <Check size={14} />
+                    Відвідуваність
+                  </div>
+                  <div className={valueClass}>{value}</div>
+                </div>
+              );
+            })()}
+
+            {/* Students count with own toggle */}
+            <div className={styles.statItem}>
+              <div className={styles.statItemLabel}>
+                <UserIcon size={14} />
+                {studentsLabels[studentsPeriod]}
+              </div>
+              <div className={styles.statItemValue}>
+                {studentsPeriod === 'today' && initialData.stats.todayStudents}
+                {studentsPeriod === 'month' && initialData.stats.monthStudents}
+                {studentsPeriod === 'year' && initialData.stats.yearStudents}
+              </div>
+              <div className={styles.miniSegmented}>
+                <button
+                  type="button"
+                  className={`${styles.miniSegmentBtn} ${studentsPeriod === 'today' ? styles.miniSegmentBtnActive : ''}`}
+                  onClick={() => setStudentsPeriod('today')}
+                >
+                  День
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.miniSegmentBtn} ${studentsPeriod === 'month' ? styles.miniSegmentBtnActive : ''}`}
+                  onClick={() => setStudentsPeriod('month')}
+                >
+                  Місяць
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.miniSegmentBtn} ${studentsPeriod === 'year' ? styles.miniSegmentBtnActive : ''}`}
+                  onClick={() => setStudentsPeriod('year')}
+                >
+                  Рік
+                </button>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Next lesson countdown */}
@@ -661,7 +750,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                               type="button"
                               className={styles.makeupBtn}
                               title="Призначити відпрацювання"
-                              onClick={() => { setShowAbsencesModal(false); setAbsencesTab('month'); window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } })); }}
+                              onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}
                             >
                               <RefreshCw size={12} />
                             </button>
@@ -726,7 +815,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                             type="button"
                             className={styles.makeupBtn}
                             title="Призначити відпрацювання"
-                            onClick={() => { setShowAbsencesModal(false); setAbsencesTab('month'); window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } })); }}
+                            onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}
                           >
                             <RefreshCw size={12} />
                           </button>

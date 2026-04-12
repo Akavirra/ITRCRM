@@ -1,7 +1,7 @@
 ﻿import { all, get } from '@/db';
 import { getStudentsWithDebt } from '@/lib/students';
 import type { DashboardStatsPayload } from '@/lib/dashboard-types';
-import { addDays, format, startOfMonth, subMonths } from 'date-fns';
+import { addDays, format, startOfMonth, startOfYear, subMonths } from 'date-fns';
 
 const KYIV_TIME_ZONE = 'Europe/Kyiv';
 
@@ -56,6 +56,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   const now = new Date();
   const todayStr = format(now, 'yyyy-MM-dd');
   const firstDayOfMonth = format(startOfMonth(now), 'yyyy-MM-dd');
+  const firstDayOfYear = format(startOfYear(now), 'yyyy-MM-dd');
   const prevMonthStart = format(startOfMonth(subMonths(now, 1)), 'yyyy-MM-dd');
   const prevMonthEnd = format(startOfMonth(now), 'yyyy-MM-dd');
   const nextWeek = format(addDays(now, 7), 'MM-dd');
@@ -88,6 +89,52 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
       JOIN lessons l ON a.lesson_id = l.id
       WHERE l.lesson_date >= $1 AND l.status = 'done'
     `, [firstDayOfMonth]),
+    // Active courses
+    get<{ count: number }>(`SELECT COUNT(*) as count FROM courses WHERE is_active = TRUE`),
+    // All-time revenue
+    get<{ total: number }>(`SELECT COALESCE(SUM(amount), 0) as total FROM payments`),
+    // All-time attendance %
+    get<{ total: number; present: number }>(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE a.status = 'present' OR a.status = 'makeup_done') as present
+      FROM attendance a
+      JOIN lessons l ON a.lesson_id = l.id
+      WHERE l.status = 'done'
+    `),
+    // All-time unpaid students (same as month but without date filter — students with any unmatched group)
+    get<{ count: number }>(`
+      SELECT COUNT(DISTINCT sg.student_id) as count
+      FROM student_groups sg
+      JOIN students s ON sg.student_id = s.id
+      JOIN groups g ON sg.group_id = g.id
+      WHERE sg.status = 'active' AND s.is_active = TRUE AND g.status = 'active' AND g.is_active = TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM payments p
+          WHERE p.student_id = sg.student_id AND p.group_id = sg.group_id AND p.month >= $1
+        )
+    `, [firstDayOfMonth]),
+    // Today's unique students count
+    get<{ count: number }>(`
+      SELECT COUNT(DISTINCT a.student_id) as count
+      FROM attendance a
+      JOIN lessons l ON a.lesson_id = l.id
+      WHERE l.lesson_date = $1 AND l.status != 'canceled'
+    `, [todayStr]),
+    // This month's unique students count
+    get<{ count: number }>(`
+      SELECT COUNT(DISTINCT a.student_id) as count
+      FROM attendance a
+      JOIN lessons l ON a.lesson_id = l.id
+      WHERE l.lesson_date >= $1 AND l.status != 'canceled'
+    `, [firstDayOfMonth]),
+    // This year's unique students count
+    get<{ count: number }>(`
+      SELECT COUNT(DISTINCT a.student_id) as count
+      FROM attendance a
+      JOIN lessons l ON a.lesson_id = l.id
+      WHERE l.lesson_date >= $1 AND l.status != 'canceled'
+    `, [firstDayOfYear]),
   ]);
 
   const schedulePromise = all<DashboardStatsPayload['todaySchedule'][number]>(
@@ -217,7 +264,9 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   );
 
   const [
-    [studentCount, groupCount, lessonCount, revenue, prevRevenue, unpaidCount, attendanceData],
+    [studentCount, groupCount, lessonCount, revenue, prevRevenue, unpaidCount, attendanceData,
+     courseCount, allTimeRevenue, allTimeAttendanceData, allTimeUnpaidCount,
+     todayStudentsCount, monthStudentsCount, yearStudentsCount],
     todaySchedule,
     nextLesson,
     upcomingBirthdays,
@@ -246,6 +295,11 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   const attPresent = attendanceData?.present || 0;
   const attendancePercent = attTotal > 0 ? Math.round((attPresent / attTotal) * 100) : null;
 
+  const allTimeRevenueVal = allTimeRevenue?.total || 0;
+  const allTimeAttTotal = allTimeAttendanceData?.total || 0;
+  const allTimeAttPresent = allTimeAttendanceData?.present || 0;
+  const allTimeAttendancePercent = allTimeAttTotal > 0 ? Math.round((allTimeAttPresent / allTimeAttTotal) * 100) : null;
+
   return {
     generatedAtLabel: formatFullDateLabel(now),
     todayDate: todayStr,
@@ -253,6 +307,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     stats: {
       activeStudents: studentCount?.count || 0,
       activeGroups: groupCount?.count || 0,
+      activeCourses: courseCount?.count || 0,
       todayLessons: lessonCount?.count || 0,
       monthlyRevenue,
       monthlyRevenueLabel: formatCurrencyLabel(monthlyRevenue),
@@ -260,6 +315,13 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
       attendancePercent,
       prevMonthRevenue,
       prevMonthRevenueLabel: formatCurrencyLabel(prevMonthRevenue),
+      allTimeRevenue: allTimeRevenueVal,
+      allTimeRevenueLabel: formatCurrencyLabel(allTimeRevenueVal),
+      allTimeUnpaidStudents: allTimeUnpaidCount?.count || 0,
+      allTimeAttendancePercent,
+      todayStudents: todayStudentsCount?.count || 0,
+      monthStudents: monthStudentsCount?.count || 0,
+      yearStudents: yearStudentsCount?.count || 0,
     },
     nextLesson: nextLesson ? {
       ...nextLesson,

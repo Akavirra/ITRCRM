@@ -93,17 +93,50 @@
   color: var(--muted);
 }
 
-/* ── Stats Row (Compact) ── */
-.statsRow {
+/* ── Secondary stats (active entities) ── */
+.secondaryStatsRow {
   display: flex;
-  flex-wrap: wrap;
+  gap: 1.5rem;
   align-items: center;
+}
+
+.secondaryStatItem {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.secondaryStatLabel {
+  font-weight: 400;
+}
+
+.secondaryStatValue {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ── Stats Row (Primary) ── */
+.statsRow {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 1.25rem 2rem;
-  gap: 3.5rem;
   box-shadow: var(--shadow-sm);
+}
+
+.statsRowHeader {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.statsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 3.5rem;
 }
 
 .statItem {
@@ -114,7 +147,7 @@
 }
 
 /* Add vertical divider between items except the last one */
-.statItem:not(:last-child)::after {
+.statsGrid > .statItem:not(:last-child)::after {
   content: '';
   position: absolute;
   right: -1.75rem;
@@ -140,6 +173,36 @@
   font-weight: 600;
   line-height: 1;
   color: var(--ink);
+}
+
+/* ── Mini segmented (for students period toggle) ── */
+.miniSegmented {
+  display: inline-flex;
+  gap: 0.15rem;
+  margin-top: 0.45rem;
+}
+
+.miniSegmentBtn {
+  border: 0;
+  background: transparent;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.miniSegmentBtn:hover {
+  color: var(--ink);
+}
+
+.miniSegmentBtnActive {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* ── Panels (shared) ── */
@@ -934,10 +997,18 @@
     justify-content: center;
   }
   
-  .statsRow {
+  .secondaryStatsRow {
     gap: 1rem;
   }
-  
+
+  .statsGrid {
+    gap: 1.5rem;
+  }
+
+  .statsGrid > .statItem:not(:last-child)::after {
+    display: none;
+  }
+
   .statItemValue {
     font-size: 1.15rem;
   }
