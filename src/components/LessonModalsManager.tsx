@@ -40,6 +40,7 @@ interface LessonData {
   teacherName: string;
   originalTeacherId?: number;
   isReplaced?: boolean;
+  lessonDate: string;
   startTime: string;
   endTime: string;
   status: 'scheduled' | 'done' | 'canceled';
@@ -140,6 +141,16 @@ function toLessonMediaViewerFile(photo: LessonPhotoFile): MediaFile {
 
 function formatDateTime(startTime: string, endTime: string): string {
   return `${startTime} - ${endTime}`;
+}
+
+function formatLessonDate(lessonDate: string): string {
+  const date = new Date(lessonDate + 'T12:00:00');
+  return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'short' }).format(date);
+}
+
+function formatOriginalDate(originalDate: string): string {
+  const date = new Date(originalDate + 'T12:00:00');
+  return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long' }).format(date);
 }
 
 function getStatusBadge(status: 'scheduled' | 'done' | 'canceled') {
@@ -1895,8 +1906,12 @@ export default function LessonModalsManager() {
                 ) : null}
 
                 <div style={{ marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>Час</div>
+                  <div style={{ fontSize: '0.6875rem', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase' }}>Дата та час</div>
                   <div style={{ fontSize: '0.875rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                    <Calendar size={14} />
+                    {lesson.lessonDate ? formatLessonDate(lesson.lessonDate) : '—'}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: '0.25rem' }}>
                     <Clock size={14} />
                     {formatDateTime(lesson.startTime, lesson.endTime)}
                   </div>
@@ -1914,7 +1929,7 @@ export default function LessonModalsManager() {
                       gap: '0.25rem',
                     }}>
                       <RefreshCw size={10} />
-                      Перенесено з {lesson.originalDate}
+                      Перенесено з {formatOriginalDate(lesson.originalDate)}
                     </div>
                   )}
                 </div>

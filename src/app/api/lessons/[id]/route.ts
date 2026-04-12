@@ -15,6 +15,7 @@ interface Lesson {
   id: number;
   group_id: number;
   lesson_date: string;
+  original_date: string | null;
   start_datetime: string;
   end_datetime: string;
   topic: string | null;
@@ -71,6 +72,7 @@ export async function GET(
       l.group_id,
       l.course_id as lesson_course_id,
       l.lesson_date,
+      l.original_date,
       COALESCE(l.is_makeup, FALSE) as is_makeup,
       l.start_datetime,
       l.end_datetime,
@@ -162,6 +164,9 @@ export async function GET(
       notesSetBy: lessonWithDetails.notes_set_by_name,
       notesSetAt: formatTimestamp(lessonWithDetails.notes_set_at),
       notesSetByTelegramId: lessonWithDetails.notes_set_by_telegram_id,
+      lessonDate: lessonWithDetails.lesson_date,
+      originalDate: (lessonWithDetails as any).original_date || null,
+      isRescheduled: !!(lessonWithDetails as any).original_date,
       isMakeup: !!(lessonWithDetails as any).is_makeup,
       telegramUserInfo: lessonWithDetails.telegram_user_info,
     } : null;
