@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, badRequest } from '@/lib/api-utils';
 import { all, get } from '@/db';
-import { GoogleGenerativeAI, SchemaType, type FunctionDeclaration } from '@google/generative-ai';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,121 +25,151 @@ const SYSTEM_PROMPT = `Ти — розумний помічник CRM-систе
 7. Для дат використовуй формат "дд.мм.рррр"
 8. Будь дружнім і корисним`;
 
-const DB_TOOLS: FunctionDeclaration[] = [
+const DB_TOOLS = [
   {
-    name: 'query_students',
-    description: 'Пошук учнів за іменем, або отримання списку учнів. Повертає: id, full_name, phone, email, parent_name, parent_phone, birth_date, is_active, notes, discount. Можна фільтрувати по is_active (true/false) або шукати по імені (partial match).',
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        search: { type: SchemaType.STRING, description: 'Пошук по імені учня (часткове співпадіння)' },
-        is_active: { type: SchemaType.BOOLEAN, description: 'Фільтр за активністю (true = активні, false = неактивні)' },
-        limit: { type: SchemaType.NUMBER, description: 'Максимальна кількість результатів (за замовчуванням 20)' },
+    type: 'function' as const,
+    function: {
+      name: 'query_students',
+      description: 'Пошук учнів за іменем, або отримання списку учнів. Повертає: id, full_name, phone, email, parent_name, parent_phone, birth_date, is_active, notes, discount.',
+      parameters: {
+        type: 'object',
+        properties: {
+          search: { type: 'string', description: 'Пошук по імені учня (часткове співпадіння)' },
+          is_active: { type: 'boolean', description: 'Фільтр за активністю' },
+          limit: { type: 'number', description: 'Максимальна кількість результатів (за замовчуванням 20)' },
+        },
       },
     },
   },
   {
-    name: 'query_groups',
-    description: 'Отримання груп з інформацією про курс, вчителя, розклад. Повертає: id, title, course_title, teacher_name, weekly_day (1=Пн..7=Нд), start_time, duration_minutes, monthly_price, status, capacity, student_count.',
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        search: { type: SchemaType.STRING, description: 'Пошук по назві групи' },
-        status: { type: SchemaType.STRING, description: 'Фільтр за статусом: active, paused, finished' },
-        limit: { type: SchemaType.NUMBER, description: 'Максимальна кількість результатів (за замовчуванням 20)' },
+    type: 'function' as const,
+    function: {
+      name: 'query_groups',
+      description: 'Отримання груп з інформацією про курс, вчителя, розклад. Повертає: id, title, course_title, teacher_name, weekly_day (1=Пн..7=Нд), start_time, duration_minutes, monthly_price, status, capacity, student_count.',
+      parameters: {
+        type: 'object',
+        properties: {
+          search: { type: 'string', description: 'Пошук по назві групи' },
+          status: { type: 'string', description: 'Фільтр за статусом: active, paused, finished' },
+          limit: { type: 'number', description: 'Максимальна кількість результатів (за замовчуванням 20)' },
+        },
       },
     },
   },
   {
-    name: 'query_student_groups',
-    description: 'Отримання груп конкретного учня або учнів конкретної групи.',
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        student_id: { type: SchemaType.NUMBER, description: 'ID учня для пошуку його груп' },
-        group_id: { type: SchemaType.NUMBER, description: 'ID групи для пошуку її учнів' },
+    type: 'function' as const,
+    function: {
+      name: 'query_student_groups',
+      description: 'Отримання груп конкретного учня або учнів конкретної групи.',
+      parameters: {
+        type: 'object',
+        properties: {
+          student_id: { type: 'number', description: 'ID учня для пошуку його груп' },
+          group_id: { type: 'number', description: 'ID групи для пошуку її учнів' },
+        },
       },
     },
   },
   {
-    name: 'query_lessons',
-    description: 'Отримання занять з фільтрацією. Повертає: id, group_title, teacher_name, lesson_date, start_datetime, end_datetime, topic, status (scheduled/done/cancelled), present_count, absent_count.',
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        group_id: { type: SchemaType.NUMBER, description: 'Фільтр за ID групи' },
-        date_from: { type: SchemaType.STRING, description: 'Дата початку (YYYY-MM-DD)' },
-        date_to: { type: SchemaType.STRING, description: 'Дата кінця (YYYY-MM-DD)' },
-        status: { type: SchemaType.STRING, description: 'Фільтр за статусом: scheduled, done, cancelled' },
-        limit: { type: SchemaType.NUMBER, description: 'Максимальна кількість результатів (за замовчуванням 20)' },
+    type: 'function' as const,
+    function: {
+      name: 'query_lessons',
+      description: 'Отримання занять з фільтрацією. Повертає: id, group_title, teacher_name, lesson_date, start_datetime, end_datetime, topic, status (scheduled/done/cancelled), present_count, absent_count.',
+      parameters: {
+        type: 'object',
+        properties: {
+          group_id: { type: 'number', description: 'Фільтр за ID групи' },
+          date_from: { type: 'string', description: 'Дата початку (YYYY-MM-DD)' },
+          date_to: { type: 'string', description: 'Дата кінця (YYYY-MM-DD)' },
+          status: { type: 'string', description: 'Фільтр за статусом: scheduled, done, cancelled' },
+          limit: { type: 'number', description: 'Максимальна кількість результатів (за замовчуванням 20)' },
+        },
       },
     },
   },
   {
-    name: 'query_payments',
-    description: 'Отримання оплат з фільтрацією. Повертає: student_name, group_title, month, amount, method, paid_at, note.',
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        student_id: { type: SchemaType.NUMBER, description: 'Фільтр за ID учня' },
-        group_id: { type: SchemaType.NUMBER, description: 'Фільтр за ID групи' },
-        month: { type: SchemaType.STRING, description: 'Фільтр за місяцем (YYYY-MM)' },
-        limit: { type: SchemaType.NUMBER, description: 'Максимальна кількість результатів (за замовчуванням 20)' },
+    type: 'function' as const,
+    function: {
+      name: 'query_payments',
+      description: 'Отримання оплат з фільтрацією. Повертає: student_name, group_title, month, amount, method, paid_at, note.',
+      parameters: {
+        type: 'object',
+        properties: {
+          student_id: { type: 'number', description: 'Фільтр за ID учня' },
+          group_id: { type: 'number', description: 'Фільтр за ID групи' },
+          month: { type: 'string', description: 'Фільтр за місяцем (YYYY-MM)' },
+          limit: { type: 'number', description: 'Максимальна кількість результатів (за замовчуванням 20)' },
+        },
       },
     },
   },
   {
-    name: 'query_debts',
-    description: 'Отримання боржників — учнів, які не оплатили за певний місяць. Повертає: student_name, group_title, month, monthly_price, paid_amount, debt.',
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        month: { type: SchemaType.STRING, description: 'Місяць для перевірки (YYYY-MM). За замовчуванням — поточний.' },
+    type: 'function' as const,
+    function: {
+      name: 'query_debts',
+      description: 'Отримання боржників — учнів, які не оплатили за певний місяць. Повертає: student_name, group_title, month, monthly_price, paid_amount, debt.',
+      parameters: {
+        type: 'object',
+        properties: {
+          month: { type: 'string', description: 'Місяць для перевірки (YYYY-MM). За замовчуванням — поточний.' },
+        },
       },
     },
   },
   {
-    name: 'query_attendance',
-    description: 'Статистика відвідуваності учня або групи. Повертає кількість present, absent, late, excused.',
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        student_id: { type: SchemaType.NUMBER, description: 'ID учня' },
-        group_id: { type: SchemaType.NUMBER, description: 'ID групи' },
-        date_from: { type: SchemaType.STRING, description: 'Дата початку (YYYY-MM-DD)' },
-        date_to: { type: SchemaType.STRING, description: 'Дата кінця (YYYY-MM-DD)' },
+    type: 'function' as const,
+    function: {
+      name: 'query_attendance',
+      description: 'Статистика відвідуваності учня або групи. Повертає кількість present, absent, late, excused.',
+      parameters: {
+        type: 'object',
+        properties: {
+          student_id: { type: 'number', description: 'ID учня' },
+          group_id: { type: 'number', description: 'ID групи' },
+          date_from: { type: 'string', description: 'Дата початку (YYYY-MM-DD)' },
+          date_to: { type: 'string', description: 'Дата кінця (YYYY-MM-DD)' },
+        },
       },
     },
   },
   {
-    name: 'query_courses',
-    description: 'Отримання курсів. Повертає: id, title, description, age_min, duration_months, is_active, groups_count.',
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        search: { type: SchemaType.STRING, description: 'Пошук по назві курсу' },
-        is_active: { type: SchemaType.BOOLEAN, description: 'Фільтр за активністю' },
+    type: 'function' as const,
+    function: {
+      name: 'query_courses',
+      description: 'Отримання курсів. Повертає: id, title, description, age_min, duration_months, is_active, groups_count.',
+      parameters: {
+        type: 'object',
+        properties: {
+          search: { type: 'string', description: 'Пошук по назві курсу' },
+          is_active: { type: 'boolean', description: 'Фільтр за активністю' },
+        },
       },
     },
   },
   {
-    name: 'query_teachers',
-    description: 'Отримання викладачів. Повертає: id, name, email, phone, is_active, groups_count.',
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        search: { type: SchemaType.STRING, description: 'Пошук по імені' },
-        is_active: { type: SchemaType.BOOLEAN, description: 'Фільтр за активністю' },
+    type: 'function' as const,
+    function: {
+      name: 'query_teachers',
+      description: 'Отримання викладачів. Повертає: id, name, email, phone, is_active, groups_count.',
+      parameters: {
+        type: 'object',
+        properties: {
+          search: { type: 'string', description: 'Пошук по імені' },
+          is_active: { type: 'boolean', description: 'Фільтр за активністю' },
+        },
       },
     },
   },
   {
-    name: 'query_stats',
-    description: 'Загальна статистика CRM: кількість учнів, груп, курсів, вчителів, занять за період, загальна сума оплат.',
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        period: { type: SchemaType.STRING, description: 'Період: today, week, month, year, all (за замовчуванням month)' },
+    type: 'function' as const,
+    function: {
+      name: 'query_stats',
+      description: 'Загальна статистика CRM: кількість учнів, груп, курсів, вчителів, занять за період, загальна сума оплат.',
+      parameters: {
+        type: 'object',
+        properties: {
+          period: { type: 'string', description: 'Період: today, week, month, year, all (за замовчуванням month)' },
+        },
       },
     },
   },
@@ -466,14 +495,28 @@ const TOOL_EXECUTORS: Record<string, (params: Record<string, unknown>) => Promis
   query_stats: executeQueryStats,
 };
 
+// Groq API (OpenAI-compatible)
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+interface GroqMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: { name: string; arguments: string };
+  }>;
+  tool_call_id?: string;
+}
+
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return unauthorized();
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'AI помічник не налаштований. Додайте GEMINI_API_KEY.' },
+      { error: 'AI помічник не налаштований. Додайте GROQ_API_KEY.' },
       { status: 503 }
     );
   }
@@ -489,65 +532,91 @@ export async function POST(request: NextRequest) {
     return badRequest('Повідомлення обов\'язкові');
   }
 
-  // Limit message history to prevent abuse
   const messages = body.messages.slice(-20);
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite',
-      systemInstruction: SYSTEM_PROMPT,
-      tools: [{ functionDeclarations: DB_TOOLS }],
-    });
+    // Build messages for Groq
+    const groqMessages: GroqMessage[] = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...messages.map(msg => ({
+        role: (msg.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+        content: msg.content,
+      })),
+    ];
 
-    // Build chat history
-    const history = messages.slice(0, -1).map(msg => ({
-      role: msg.role === 'assistant' ? 'model' as const : 'user' as const,
-      parts: [{ text: msg.content }],
-    }));
-
-    const chat = model.startChat({ history });
-    const lastMessage = messages[messages.length - 1].content;
-
-    // Send message and handle function calls
-    let response = await chat.sendMessage(lastMessage);
-    let result = response.response;
-
-    // Handle up to 5 rounds of function calls
+    // Handle up to 5 rounds of tool calls
     for (let i = 0; i < 5; i++) {
-      const functionCalls = result.functionCalls();
-      if (!functionCalls || functionCalls.length === 0) break;
+      const res = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+          messages: groqMessages,
+          tools: DB_TOOLS,
+          tool_choice: 'auto',
+          temperature: 0.3,
+          max_tokens: 2048,
+        }),
+      });
 
-      const functionResponses = [];
-      for (const call of functionCalls) {
-        const executor = TOOL_EXECUTORS[call.name];
-        if (executor) {
-          try {
-            const data = await executor(call.args as Record<string, unknown>);
-            functionResponses.push({
-              functionResponse: {
-                name: call.name,
-                response: { data },
-              },
-            });
-          } catch (error) {
-            functionResponses.push({
-              functionResponse: {
-                name: call.name,
-                response: { error: 'Помилка виконання запиту' },
-              },
-            });
-          }
-        }
+      if (!res.ok) {
+        const errorData = await res.text();
+        console.error('Groq API error:', res.status, errorData);
+        return NextResponse.json(
+          { error: `Помилка AI сервісу (${res.status})` },
+          { status: 502 }
+        );
       }
 
-      response = await chat.sendMessage(functionResponses);
-      result = response.response;
+      const data = await res.json();
+      const choice = data.choices?.[0];
+
+      if (!choice) {
+        return NextResponse.json(
+          { error: 'Порожня відповідь від AI' },
+          { status: 502 }
+        );
+      }
+
+      const assistantMessage = choice.message;
+
+      // If no tool calls — return the text response
+      if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
+        return NextResponse.json({ message: assistantMessage.content || '' });
+      }
+
+      // Add assistant message with tool calls
+      groqMessages.push(assistantMessage);
+
+      // Execute each tool call
+      for (const toolCall of assistantMessage.tool_calls) {
+        const executor = TOOL_EXECUTORS[toolCall.function.name];
+        let result: unknown;
+
+        if (executor) {
+          try {
+            const args = JSON.parse(toolCall.function.arguments || '{}');
+            result = await executor(args);
+          } catch {
+            result = { error: 'Помилка виконання запиту' };
+          }
+        } else {
+          result = { error: `Невідома функція: ${toolCall.function.name}` };
+        }
+
+        groqMessages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result),
+        });
+      }
     }
 
-    const text = result.text();
-
-    return NextResponse.json({ message: text });
+    // If we exhausted all rounds, return last available content
+    return NextResponse.json({ message: 'Не вдалося отримати відповідь. Спробуйте спростити запитання.' });
   } catch (error: unknown) {
     console.error('Assistant error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
