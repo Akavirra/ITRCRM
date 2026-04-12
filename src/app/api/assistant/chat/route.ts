@@ -509,6 +509,39 @@ interface GroqMessage {
   tool_call_id?: string;
 }
 
+async function groqFetch(apiKey: string, groqMessages: GroqMessage[]) {
+  const maxRetries = 3;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const res = await fetch(GROQ_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+        messages: groqMessages,
+        tools: DB_TOOLS,
+        tool_choice: 'auto',
+        temperature: 0.3,
+        max_tokens: 2048,
+      }),
+    });
+
+    if (res.status === 429 && attempt < maxRetries - 1) {
+      // Wait before retry: 2s, 4s
+      await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+      continue;
+    }
+
+    return res;
+  }
+
+  // Should not reach here, but just in case
+  throw new Error('Max retries exceeded');
+}
+
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return unauthorized();
@@ -546,28 +579,17 @@ export async function POST(request: NextRequest) {
 
     // Handle up to 5 rounds of tool calls
     for (let i = 0; i < 5; i++) {
-      const res = await fetch(GROQ_API_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
-          messages: groqMessages,
-          tools: DB_TOOLS,
-          tool_choice: 'auto',
-          temperature: 0.3,
-          max_tokens: 2048,
-        }),
-      });
+      const res = await groqFetch(apiKey, groqMessages);
 
       if (!res.ok) {
         const errorData = await res.text();
         console.error('Groq API error:', res.status, errorData);
+        const userMsg = res.status === 429
+          ? 'Забагато запитів, зачекайте кілька секунд'
+          : `Помилка AI сервісу (${res.status})`;
         return NextResponse.json(
-          { error: `Помилка AI сервісу (${res.status})` },
-          { status: 502 }
+          { error: userMsg },
+          { status: res.status === 429 ? 429 : 502 }
         );
       }
 
