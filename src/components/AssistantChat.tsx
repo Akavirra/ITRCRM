@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, X, Send, Bot, Trash2, Minimize2 } from 'lucide-react';
@@ -11,8 +11,15 @@ const SUGGESTED_QUESTIONS = [
   'Скільки активних учнів?',
   'Хто боржники цього місяця?',
   'Які заняття сьогодні?',
-  'Загальна статистика',
+  'Дай короткий підсумок на сьогодні',
+  'Покажи ризикових учнів за цей місяць',
+  'Покажи загальну статистику',
 ];
+
+const getStorage = () => {
+  if (typeof window === 'undefined') return null;
+  return window.sessionStorage;
+};
 
 const getMessageText = (msg: UIMessage) =>
   msg.parts
@@ -33,12 +40,17 @@ const getToolStatus = (msg: UIMessage) => {
 
   const toolName = currentTool.type.replace(/^tool-/, '');
   switch (toolName) {
+    case 'query_active_students_count': return 'Підраховую учнів...';
     case 'query_students': return 'Шукаю учнів у базі...';
     case 'query_groups': return 'Перевіряю групи...';
     case 'query_student_groups': return 'Перевіряю записи в групах...';
     case 'query_lessons': return 'Шукаю заняття в розкладі...';
+    case 'query_today_lessons': return 'Збираю заняття на сьогодні...';
+    case 'query_daily_brief': return 'Готую короткий підсумок дня...';
     case 'query_payments': return 'Перевіряю оплати...';
     case 'query_debts': return 'Рахую боржників...';
+    case 'query_debts_summary': return 'Підсумовую борги за місяць...';
+    case 'query_at_risk_students': return 'Шукаю учнів, які потребують уваги...';
     case 'query_attendance': return 'Обчислюю відвідуваність...';
     case 'query_courses': return 'Шукаю курси...';
     case 'query_teachers': return 'Шукаю викладачів...';
@@ -54,14 +66,18 @@ export default function AssistantChat() {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const chatBodyRef = useRef<HTMLDivElement>(null);
 
   const getInitialMessages = (): UIMessage[] => {
-    if (typeof window === 'undefined') return [];
+    const storage = getStorage();
+    if (!storage) return [];
+
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = storage.getItem(STORAGE_KEY);
       if (saved) return JSON.parse(saved) as UIMessage[];
-    } catch {}
+    } catch {
+      storage.removeItem(STORAGE_KEY);
+    }
+
     return [];
   };
 
@@ -73,10 +89,18 @@ export default function AssistantChat() {
   const isLoading = status === 'submitted' || status === 'streaming';
 
   useEffect(() => {
-    if (messages.length > 0) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-50)));
-      } catch {}
+    const storage = getStorage();
+    if (!storage) return;
+
+    try {
+      if (messages.length === 0) {
+        storage.removeItem(STORAGE_KEY);
+        return;
+      }
+
+      storage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-20)));
+    } catch {
+      storage.removeItem(STORAGE_KEY);
     }
   }, [messages]);
 
@@ -93,6 +117,7 @@ export default function AssistantChat() {
   const submitInput = () => {
     const text = input.trim();
     if (!text || isLoading) return;
+
     sendMessage({ text });
     setInput('');
   };
@@ -110,9 +135,10 @@ export default function AssistantChat() {
   };
 
   const clearHistory = () => {
+    const storage = getStorage();
     stop();
     setMessages([]);
-    localStorage.removeItem(STORAGE_KEY);
+    storage?.removeItem(STORAGE_KEY);
   };
 
   const toggleOpen = () => {
@@ -135,7 +161,7 @@ export default function AssistantChat() {
           className={`assistant-chat-window ${isMinimized ? 'assistant-chat-minimized' : ''}`}
           style={{
             position: 'fixed',
-            bottom: isMinimized ? '80px' : '80px',
+            bottom: '80px',
             right: '16px',
             zIndex: 1000,
           }}
@@ -150,7 +176,7 @@ export default function AssistantChat() {
                 <button
                   onClick={(e) => { e.stopPropagation(); clearHistory(); }}
                   className="assistant-chat-header-btn"
-                  title="Очистити"
+                  title="Очистити історію"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -174,37 +200,37 @@ export default function AssistantChat() {
 
           {!isMinimized && (
             <>
-              <div className="assistant-chat-body" ref={chatBodyRef}>
+              <div className="assistant-chat-body">
                 {messages.length === 0 && !isLoading && (
                   <div className="assistant-chat-welcome">
                     <Bot size={32} className="assistant-chat-welcome-icon" />
                     <p className="assistant-chat-welcome-title">Привіт! Я помічник CRM.</p>
                     <p className="assistant-chat-welcome-subtitle">
-                      Запитай мене про учнів, групи, оплати, відвідуваність або статистику.
+                      Запитай мене про учнів, групи, оплати, відвідуваність або коротку статистику.
                     </p>
                     <div className="assistant-chat-suggestions">
-                      {SUGGESTED_QUESTIONS.map((q, i) => (
+                      {SUGGESTED_QUESTIONS.map((question) => (
                         <button
-                          key={i}
+                          key={question}
                           className="assistant-chat-suggestion"
                           onClick={() => {
                             if (!isLoading) {
-                              sendMessage({ text: q });
+                              sendMessage({ text: question });
                             }
                           }}
                         >
-                          {q}
+                          {question}
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {messages.map((msg, i) => {
+                {messages.map((msg, index) => {
                   const text = getMessageText(msg);
                   return (
                     <div
-                      key={msg.id || i}
+                      key={msg.id || index}
                       className={`assistant-chat-message assistant-chat-message-${msg.role}`}
                     >
                       {msg.role === 'assistant' && (
@@ -227,7 +253,7 @@ export default function AssistantChat() {
                           </ReactMarkdown>
                         )}
 
-                        {hasToolCalls(msg) && (
+                        {hasToolCalls(msg) && getToolStatus(msg) && (
                           <div style={{ fontSize: '0.85em', color: '#a0aec0', fontStyle: 'italic', marginTop: text ? '4px' : '0' }}>
                             {getToolStatus(msg)}
                           </div>
@@ -252,7 +278,7 @@ export default function AssistantChat() {
 
                 {error && (
                   <div className="assistant-chat-error">
-                    {error.message || 'Помилка з\'єднання'}
+                    {error.message || 'Помилка з’єднання'}
                   </div>
                 )}
 
@@ -274,6 +300,7 @@ export default function AssistantChat() {
                   type="submit"
                   disabled={!input.trim() || isLoading}
                   className="assistant-chat-send"
+                  title="Надіслати"
                 >
                   <Send size={16} />
                 </button>
@@ -286,7 +313,7 @@ export default function AssistantChat() {
       <button
         onClick={toggleOpen}
         className={`assistant-chat-fab ${isOpen ? 'assistant-chat-fab-active' : ''}`}
-        title="AI Помічник"
+        title="AI помічник"
         style={{
           position: 'fixed',
           bottom: '16px',

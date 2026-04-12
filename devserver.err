@@ -1,0 +1,213 @@
+ ⚠ Port 3000 is in use, trying 3001 instead.
+Login error: SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
+    at JSON.parse (<anonymous>)
+    at parseJSONFromBytes (node:internal/deps/undici/undici:5738:19)
+    at successSteps (node:internal/deps/undici/undici:5719:27)
+    at fullyReadBody (node:internal/deps/undici/undici:4609:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async consumeBody (node:internal/deps/undici/undici:5728:7)
+    at async POST (webpack-internal:///(rsc)/./src/app/api/auth/login/route.ts:20:22)
+    at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251
+Login error: SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
+    at JSON.parse (<anonymous>)
+    at parseJSONFromBytes (node:internal/deps/undici/undici:5738:19)
+    at successSteps (node:internal/deps/undici/undici:5719:27)
+    at fullyReadBody (node:internal/deps/undici/undici:4609:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async consumeBody (node:internal/deps/undici/undici:5728:7)
+    at async POST (webpack-internal:///(rsc)/./src/app/api/auth/login/route.ts:20:22)
+    at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251
+DB Query Error: {
+  text: '\n' +
+    '      SELECT\n' +
+    '        s.full_name as student_name,\n' +
+    '        g.title as group_title,\n' +
+    '        g.monthly_price,\n' +
+    '        COALESCE(p.paid_amount, 0) as paid_amount,\n' +
+    '        g.monthly_price - COALESCE(p.paid',
+  params: [ '2026-04' ],
+  error: NeonDbError: invalid input syntax for type date: "2026-04"
+      at dr.execute (webpack-internal:///(rsc)/./node_modules/@neondatabase/serverless/index.mjs:4870:46)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async query (webpack-internal:///(rsc)/./src/db/neon.ts:36:22)
+      at async all (webpack-internal:///(rsc)/./src/db/neon.ts:65:18)
+      at async buildMonthlyDebtorsReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:151:21)
+      at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
+      at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251 {
+    severity: 'ERROR',
+    code: '22007',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: "unnamed portal parameter $1 = '...'",
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'datetime.c',
+    line: '4140',
+    routine: 'DateTimeParseError',
+    sourceError: undefined
+  }
+}
+Assistant error: NeonDbError: invalid input syntax for type date: "2026-04"
+    at dr.execute (webpack-internal:///(rsc)/./node_modules/@neondatabase/serverless/index.mjs:4870:46)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async query (webpack-internal:///(rsc)/./src/db/neon.ts:36:22)
+    at async all (webpack-internal:///(rsc)/./src/db/neon.ts:65:18)
+    at async buildMonthlyDebtorsReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:151:21)
+    at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
+    at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251 {
+  severity: 'ERROR',
+  code: '22007',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $1 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'datetime.c',
+  line: '4140',
+  routine: 'DateTimeParseError',
+  sourceError: undefined
+}
+DB Query Error: {
+  text: '\n' +
+    '      SELECT\n' +
+    '        $1 as today,\n' +
+    '        COUNT(*) as total_lessons,\n' +
+    "        COUNT(*) FILTER (WHERE status = 'scheduled') as scheduled_lessons,\n" +
+    "        COUNT(*) FILTER (WHERE status = 'done') as done",
+  params: [ '2026-04-12' ],
+  error: NeonDbError: inconsistent types deduced for parameter $1
+      at dr.execute (webpack-internal:///(rsc)/./node_modules/@neondatabase/serverless/index.mjs:4870:46)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async query (webpack-internal:///(rsc)/./src/db/neon.ts:36:22)
+      at async queryOne (webpack-internal:///(rsc)/./src/db/neon.ts:52:18)
+      at async get (webpack-internal:///(rsc)/./src/db/neon.ts:61:17)
+      at async buildDailyBriefReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:126:19)
+      at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
+      at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251 {
+    severity: 'ERROR',
+    code: '42P08',
+    detail: 'date versus text',
+    hint: undefined,
+    position: '23',
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'parse_param.c',
+    line: '219',
+    routine: 'variable_coerce_param_hook',
+    sourceError: undefined
+  }
+}
+Assistant error: NeonDbError: inconsistent types deduced for parameter $1
+    at dr.execute (webpack-internal:///(rsc)/./node_modules/@neondatabase/serverless/index.mjs:4870:46)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async query (webpack-internal:///(rsc)/./src/db/neon.ts:36:22)
+    at async queryOne (webpack-internal:///(rsc)/./src/db/neon.ts:52:18)
+    at async get (webpack-internal:///(rsc)/./src/db/neon.ts:61:17)
+    at async buildDailyBriefReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:126:19)
+    at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
+    at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251 {
+  severity: 'ERROR',
+  code: '42P08',
+  detail: 'date versus text',
+  hint: undefined,
+  position: '23',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_param.c',
+  line: '219',
+  routine: 'variable_coerce_param_hook',
+  sourceError: undefined
+}
+DB Query Error: {
+  text: '\n' +
+    '      SELECT\n' +
+    '        s.full_name as student_name,\n' +
+    '        s.parent_name,\n' +
+    '        s.parent_phone,\n' +
+    '        g.title as group_title,\n' +
+    "        COUNT(*) FILTER (WHERE a.status = 'absent') as absent_count,\n" +
+    ' ',
+  params: [ '2026-04-01', '2026-04-12', '2026-04', 2, 1, 10 ],
+  error: NeonDbError: invalid input syntax for type date: "2026-04"
+      at dr.execute (webpack-internal:///(rsc)/./node_modules/@neondatabase/serverless/index.mjs:4870:46)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async query (webpack-internal:///(rsc)/./src/db/neon.ts:36:22)
+      at async all (webpack-internal:///(rsc)/./src/db/neon.ts:65:18)
+      at async buildAtRiskStudentsReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:194:22)
+      at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
+      at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251 {
+    severity: 'ERROR',
+    code: '22007',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: "unnamed portal parameter $3 = '...'",
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'datetime.c',
+    line: '4140',
+    routine: 'DateTimeParseError',
+    sourceError: undefined
+  }
+}
+Assistant error: NeonDbError: invalid input syntax for type date: "2026-04"
+    at dr.execute (webpack-internal:///(rsc)/./node_modules/@neondatabase/serverless/index.mjs:4870:46)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async query (webpack-internal:///(rsc)/./src/db/neon.ts:36:22)
+    at async all (webpack-internal:///(rsc)/./src/db/neon.ts:65:18)
+    at async buildAtRiskStudentsReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:194:22)
+    at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
+    at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251 {
+  severity: 'ERROR',
+  code: '22007',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'datetime.c',
+  line: '4140',
+  routine: 'DateTimeParseError',
+  sourceError: undefined
+}
+Assistant error: TypeError: value.split is not a function or its return value is not iterable
+    at formatDateForReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:23:38)
+    at buildDailyBriefReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:144:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
+    at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251

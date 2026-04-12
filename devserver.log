@@ -1,0 +1,35 @@
+
+> school-admin-panel@1.0.0 dev
+> next dev
+
+   ▲ Next.js 14.0.4
+   - Local:        http://localhost:3001
+   - Environments: .env.local
+
+ ✓ Ready in 5.9s
+ ✓ Compiled /src/middleware in 349ms (64 modules)
+ ○ Compiling /api/auth/login ...
+ ✓ Compiled /api/auth/login in 1848ms (62 modules)
+ ✓ Compiled /api/auth/me in 396ms (64 modules)
+ ○ Compiling /login ...
+ ✓ Compiled /login in 14.6s (2620 modules)
+ ○ Compiling /api/auth/me ...
+ ✓ Compiled /api/auth/me in 3.7s (2752 modules)
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 8.2s (3553 modules)
+ ✓ Compiled in 735ms (1909 modules)
+ ✓ Compiled in 692ms (228 modules)
+ ✓ Compiled in 325ms (228 modules)
+ ✓ Compiled in 216ms
+ ○ Compiling /api/auth/login ...
+ ✓ Compiled /api/auth/login in 1027ms (62 modules)
+ ○ Compiling /api/assistant/chat ...
+ ✓ Compiled /api/assistant/chat in 968ms (229 modules)
+ ✓ Compiled in 727ms (229 modules)
+ ✓ Compiled in 351ms (229 modules)
+ ✓ Compiled in 33ms
+ ✓ Compiled /api/auth/login in 63ms (62 modules)
+ ✓ Compiled /api/assistant/chat in 242ms (229 modules)
+ ✓ Compiled in 198ms (229 modules)
+ ✓ Compiled in 168ms (229 modules)
+ ✓ Compiled in 195ms (229 modules)
