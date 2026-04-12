@@ -509,7 +509,7 @@ export async function POST(request: NextRequest) {
             return { ...stats, ...lessonStats, ...paymentStats };
           },
         }),
-      },
+      } as any,
     });
 
     return result.toDataStreamResponse();
