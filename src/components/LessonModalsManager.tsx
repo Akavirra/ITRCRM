@@ -144,13 +144,15 @@ function formatDateTime(startTime: string, endTime: string): string {
 }
 
 function formatLessonDate(lessonDate: string): string {
-  const date = new Date(lessonDate + 'T12:00:00');
-  return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'short' }).format(date);
+  const date = new Date(lessonDate);
+  if (isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'short', timeZone: 'Europe/Kyiv' }).format(date);
 }
 
 function formatOriginalDate(originalDate: string): string {
-  const date = new Date(originalDate + 'T12:00:00');
-  return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long' }).format(date);
+  const date = new Date(originalDate);
+  if (isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', timeZone: 'Europe/Kyiv' }).format(date);
 }
 
 function getStatusBadge(status: 'scheduled' | 'done' | 'canceled') {
