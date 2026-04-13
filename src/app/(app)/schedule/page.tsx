@@ -47,18 +47,22 @@ interface ScheduleResponse {
   totalLessons: number;
 }
 
+const HYDRATION_SAFE_DATE = new Date('2000-01-03T00:00:00');
+
 export default function SchedulePage() {
   const router = useRouter();
   const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [schedule, setSchedule] = useState<ScheduleResponse | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(
-    startOfWeek(new Date(), { weekStartsOn: 1, locale: uk })
+    HYDRATION_SAFE_DATE
   );
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date>(HYDRATION_SAFE_DATE);
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [isNavigating, setIsNavigating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDateContextReady, setIsDateContextReady] = useState(false);
+  const [todayKey, setTodayKey] = useState('');
 
   // Filters
   const [groupFilter, setGroupFilter] = useState<string>('');
@@ -138,10 +142,18 @@ export default function SchedulePage() {
   }, [silentRefresh]);
 
   useEffect(() => {
-    if (user) {
+    const now = new Date();
+    setCurrentWeekStart(startOfWeek(now, { weekStartsOn: 1, locale: uk }));
+    setCurrentMonth(now);
+    setTodayKey(format(now, 'yyyy-MM-dd'));
+    setIsDateContextReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (user && isDateContextReady) {
       fetchSchedule();
     }
-  }, [user, fetchSchedule]);
+  }, [user, fetchSchedule, isDateContextReady]);
 
   const goToPreviousWeek = () => {
     setIsNavigating(true);
@@ -253,9 +265,8 @@ export default function SchedulePage() {
   };
 
   const isToday = (dateStr: string) => {
-    const today = new Date();
     const date = parseISO(dateStr);
-    return format(today, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+    return todayKey !== '' && todayKey === format(date, 'yyyy-MM-dd');
   };
 
   if (loading) {

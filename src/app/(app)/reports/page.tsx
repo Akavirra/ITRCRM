@@ -14,9 +14,16 @@ export default function ReportsPage() {
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
-    month: new Date().toISOString().substring(0, 7) + '-01',
+    month: '',
     groupId: '',
   });
+
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      month: new Date().toISOString().substring(0, 7) + '-01',
+    }));
+  }, []);
 
   const loadReport = async () => {
     setReportData(null);
