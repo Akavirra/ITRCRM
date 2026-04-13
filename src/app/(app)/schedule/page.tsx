@@ -80,6 +80,26 @@ export default function SchedulePage() {
   // Create lesson modal state
   const [showCreateLessonModal, setShowCreateLessonModal] = useState(false);
 
+  // Swipe State
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  const handleNavTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleNavTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) { // Swipe threshold
+      if (diff > 0) {
+        viewMode === 'week' ? goToNextWeek() : goToNextMonth();
+      } else {
+        viewMode === 'week' ? goToPreviousWeek() : goToPreviousMonth();
+      }
+    }
+    setTouchStartX(null);
+  };
+
   const buildScheduleUrl = useCallback(() => {
     let startDateStr: string;
     let endDateStr: string;
@@ -154,6 +174,21 @@ export default function SchedulePage() {
       fetchSchedule();
     }
   }, [user, fetchSchedule, isDateContextReady]);
+
+  useEffect(() => {
+    // Scroll to today if it exists in the current week view
+    if (schedule && viewMode === 'week' && todayKey) {
+      const hasToday = schedule.days.some(d => d.date.startsWith(todayKey));
+      if (hasToday) {
+        setTimeout(() => {
+          const el = document.getElementById(`day-card-${todayKey}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+          }
+        }, 100);
+      }
+    }
+  }, [schedule, viewMode, todayKey]);
 
   const goToPreviousWeek = () => {
     setIsNavigating(true);
@@ -388,7 +423,11 @@ export default function SchedulePage() {
               <span className="nav-text">Попередній</span>
             </button>
 
-            <div style={{ textAlign: 'center' }}>
+            <div 
+              style={{ textAlign: 'center', flex: 1, touchAction: 'pan-y' }}
+              onTouchStart={handleNavTouchStart}
+              onTouchEnd={handleNavTouchEnd}
+            >
               <div style={{
                 fontSize: '0.9375rem', fontWeight: 600, color: '#111827',
                 textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem',
@@ -510,6 +549,21 @@ export default function SchedulePage() {
           .nav-btn { min-width: auto !important; padding: 0.5rem !important; justify-content: center; }
           .nav-text { display: none; }
           
+          /* Smaller top buttons to fit */
+          .schedule-controls-mobile-row button,
+          .schedule-controls-mobile-row .btn {
+            padding: 0.375rem 0.5rem !important;
+            font-size: 0.75rem !important;
+            gap: 0.25rem !important;
+          }
+          
+          /* One card per screen */
+          .schedule-day-card {
+            flex: 0 0 100% !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          
           /* Adapt Month View on mobile to vertical list of active days */
           .month-grid-container { border: none !important; background: transparent !important; display: flex !important; flex-direction: column !important; gap: 0.5rem !important; }
           .month-cell { border: 1px solid #e5e7eb; border-radius: 0.5rem; min-height: auto !important; margin-bottom: 0 !important; display: none !important; opacity: 1 !important; }
@@ -533,7 +587,12 @@ export default function SchedulePage() {
               } : {};
 
               return (
-                <div key={day.date} className="card schedule-day-card" style={{ minHeight: '200px', ...todayStyle }}>
+                <div 
+                  id={`day-card-${day.date}`} 
+                  key={day.date} 
+                  className="card schedule-day-card" 
+                  style={{ minHeight: '200px', ...todayStyle }}
+                >
                   <div className="card-body" style={{ padding: '0.75rem' }}>
                     {/* Day Header */}
                     <div style={{ textAlign: 'center', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: isToday(day.date) ? '2px solid #3b82f6' : '1px solid #e5e7eb' }}>
