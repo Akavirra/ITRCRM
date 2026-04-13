@@ -46,6 +46,7 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
   const [isTablet, setIsTablet] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [assistantWidgetEnabled, setAssistantWidgetEnabled] = useState(true);
 
   // Check viewport size
   useEffect(() => {
@@ -70,6 +71,33 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
       setSidebarOpen(false);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadSystemSettings = async () => {
+      try {
+        const response = await fetch('/api/system-settings', { cache: 'no-store' });
+        if (!response.ok || !active) {
+          return;
+        }
+
+        const data = await response.json();
+        const systemSettings = data?.settings || {};
+        if (active) {
+          setAssistantWidgetEnabled(systemSettings.assistant_widget_enabled !== '0');
+        }
+      } catch {
+        // Keep the widget visible by default if settings are temporarily unavailable.
+      }
+    };
+
+    void loadSystemSettings();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const lastSessionCheckRef = useRef(0);
 
@@ -228,7 +256,7 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
         </div>
 
         {/* AI Assistant Chat Widget */}
-        {user.role === 'admin' && <AssistantChat />}
+        {user.role === 'admin' && assistantWidgetEnabled && <AssistantChat />}
 
         {/* Mobile/Tablet overlay when sidebar is open */}
         {!isDesktop && sidebarOpen && (

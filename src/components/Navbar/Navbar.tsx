@@ -155,7 +155,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [clearing, setClearing] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const prevUnreadRef = useRef<number | null>(null);
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'profile' | 'notifications' | 'salary' | 'system' | 'users'>('general');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'profile' | 'notifications' | 'salary' | 'assistant' | 'system' | 'users'>('general');
   const [settings, setSettings] = useState({
     displayName: user?.name || '',
     email: '',
@@ -180,6 +180,10 @@ const Navbar: React.FC<NavbarProps> = ({
     individual_lesson_price: '300',
   });
   const [salarySaving, setSalarySaving] = useState(false);
+  const [assistantSettings, setAssistantSettings] = useState({
+    assistant_widget_enabled: true,
+  });
+  const [assistantSaving, setAssistantSaving] = useState(false);
   const [sysUsers, setSysUsers] = useState<{ id: number; name: string; email: string; role: string; is_active: boolean; is_owner: boolean; created_at: string }[]>([]);
   const [currentUserIsOwner, setCurrentUserIsOwner] = useState(false);
   const [sysUsersLoading, setSysUsersLoading] = useState(false);
@@ -363,6 +367,23 @@ const Navbar: React.FC<NavbarProps> = ({
       setTimeout(() => setSaved(false), 2000);
     } catch { /* silent */ } finally {
       setSalarySaving(false);
+    }
+  };
+
+  const handleAssistantSave = async () => {
+    setAssistantSaving(true);
+    try {
+      await fetch('/api/system-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assistant_widget_enabled: assistantSettings.assistant_widget_enabled ? '1' : '0',
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch { /* silent */ } finally {
+      setAssistantSaving(false);
     }
   };
 
@@ -606,12 +627,17 @@ const Navbar: React.FC<NavbarProps> = ({
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         const systemSettings = d?.settings || d || {};
-        if (d) setSalarySettings({
-          teacher_salary_group: String(systemSettings.teacher_salary_group ?? 75),
-          teacher_salary_individual: String(systemSettings.teacher_salary_individual ?? 100),
-          lesson_price: String(systemSettings.lesson_price ?? 300),
-          individual_lesson_price: String(systemSettings.individual_lesson_price ?? systemSettings.lesson_price ?? 300),
-        });
+        if (d) {
+          setSalarySettings({
+            teacher_salary_group: String(systemSettings.teacher_salary_group ?? 75),
+            teacher_salary_individual: String(systemSettings.teacher_salary_individual ?? 100),
+            lesson_price: String(systemSettings.lesson_price ?? 300),
+            individual_lesson_price: String(systemSettings.individual_lesson_price ?? systemSettings.lesson_price ?? 300),
+          });
+          setAssistantSettings({
+            assistant_widget_enabled: String(systemSettings.assistant_widget_enabled ?? '1') !== '0',
+          });
+        }
       })
       .catch(() => {});
   }, [settingsOpen]);
@@ -1044,6 +1070,7 @@ const Navbar: React.FC<NavbarProps> = ({
                   { id: 'profile', label: 'Профіль' },
                   { id: 'notifications', label: 'Сповіщення' },
                   { id: 'salary', label: 'Ціни та тарифи' },
+                  { id: 'assistant', label: 'ШІ помічник' },
                   { id: 'system', label: 'Система' },
                   ...(user?.role === 'admin' ? [{ id: 'users', label: 'Користувачі' }] : []),
                 ] as { id: string; label: string }[]).map((tab) => (
@@ -1394,6 +1421,64 @@ const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 )}
 
+                {activeSettingsTab === 'assistant' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{
+                      padding: '1rem 1.125rem',
+                      background: '#fff7ed',
+                      border: '1px solid #fdba74',
+                      borderRadius: '0.75rem',
+                      color: '#9a3412',
+                    }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.35rem' }}>
+                        Експериментальна функція
+                      </div>
+                      <div style={{ fontSize: '0.875rem', lineHeight: 1.6 }}>
+                        ШІ-помічник ще розробляється. Віджет може працювати нестабільно, інколи помилятися або змінюватися без попередження.
+                      </div>
+                    </div>
+
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.75rem',
+                      padding: '1rem 1.125rem',
+                      borderRadius: '0.75rem',
+                      border: '1px solid #e5e7eb',
+                      backgroundColor: '#ffffff',
+                      cursor: 'pointer',
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={assistantSettings.assistant_widget_enabled}
+                        onChange={(e) => setAssistantSettings({
+                          assistant_widget_enabled: e.target.checked,
+                        })}
+                        style={{ width: '18px', height: '18px', accentColor: '#2563eb', marginTop: '0.15rem' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#111827', marginBottom: '0.3rem' }}>
+                          Увімкнути віджет ШІ-помічника
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.6 }}>
+                          Показувати плаваючий чат-помічник для адміністраторів у правому нижньому куті CRM.
+                        </div>
+                      </div>
+                    </label>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleAssistantSave}
+                        disabled={assistantSaving}
+                      >
+                        <Save size={14} />
+                        {assistantSaving ? 'Збереження...' : saved ? 'Збережено!' : 'Зберегти'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* System Tab */}
                 {activeSettingsTab === 'system' && (
                   <div>
@@ -1569,7 +1654,7 @@ const Navbar: React.FC<NavbarProps> = ({
                 )}
 
                 {/* Save Button — hidden on users and profile tabs */}
-                {activeSettingsTab !== 'users' && activeSettingsTab !== 'profile' && (
+                {activeSettingsTab !== 'users' && activeSettingsTab !== 'profile' && activeSettingsTab !== 'salary' && activeSettingsTab !== 'assistant' && (
                   <div style={{
                     marginTop: '1.5rem',
                     paddingTop: '1rem',

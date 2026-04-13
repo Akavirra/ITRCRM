@@ -10,6 +10,7 @@ const DEFAULTS: Record<string, string> = {
   teacher_salary_individual: '100',
   lesson_price: '300',
   individual_lesson_price: '300',
+  assistant_widget_enabled: '1',
 };
 
 export async function GET(request: NextRequest) {
@@ -43,9 +44,27 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Невірний формат' }, { status: 400 });
   }
 
-  const allowed = ['teacher_salary_group', 'teacher_salary_individual', 'lesson_price', 'individual_lesson_price'];
+  const allowed = [
+    'teacher_salary_group',
+    'teacher_salary_individual',
+    'lesson_price',
+    'individual_lesson_price',
+    'assistant_widget_enabled',
+  ];
   for (const key of allowed) {
     if (key in body) {
+      if (key === 'assistant_widget_enabled') {
+        const rawValue = String(body[key]);
+        if (rawValue !== '0' && rawValue !== '1') {
+          return NextResponse.json({ error: `Невірне значення для ${key}` }, { status: 400 });
+        }
+        await run(
+          `INSERT INTO system_settings (key, value, updated_at) VALUES ($1, $2, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+          [key, rawValue]
+        );
+        continue;
+      }
       const val = parseFloat(body[key]);
       if (isNaN(val) || val < 0) {
         return NextResponse.json({ error: `Невірне значення для ${key}` }, { status: 400 });
