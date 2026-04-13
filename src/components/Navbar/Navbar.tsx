@@ -380,6 +380,11 @@ const Navbar: React.FC<NavbarProps> = ({
           assistant_widget_enabled: assistantSettings.assistant_widget_enabled ? '1' : '0',
         }),
       });
+      window.dispatchEvent(new CustomEvent('app:assistant-widget-setting-changed', {
+        detail: {
+          enabled: assistantSettings.assistant_widget_enabled,
+        },
+      }));
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch { /* silent */ } finally {

@@ -99,6 +99,29 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
     };
   }, []);
 
+  useEffect(() => {
+    const handleAssistantWidgetSettingChanged = (
+      event: Event,
+    ) => {
+      const customEvent = event as CustomEvent<{ enabled?: boolean }>;
+      if (typeof customEvent.detail?.enabled === 'boolean') {
+        setAssistantWidgetEnabled(customEvent.detail.enabled);
+      }
+    };
+
+    window.addEventListener(
+      'app:assistant-widget-setting-changed',
+      handleAssistantWidgetSettingChanged as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        'app:assistant-widget-setting-changed',
+        handleAssistantWidgetSettingChanged as EventListener,
+      );
+    };
+  }, []);
+
   const lastSessionCheckRef = useRef(0);
 
   useEffect(() => {
