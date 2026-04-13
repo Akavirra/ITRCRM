@@ -324,67 +324,57 @@ export default function SchedulePage() {
 
   return (
     <>
-      {/* Page Header and View Toggle Container */}
-      <div className="schedule-top-container" style={{ marginBottom: '1.5rem' }}>
-        <h1 className="schedule-title" style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0, color: '#111827' }}>
-          Розклад занять
-        </h1>
-        
-        <div className="schedule-controls-mobile-row">
+      {/* ===== DESKTOP header: h1 top left, buttons top right, toggle below ===== */}
+      <div className="sched-header-desktop" style={{ marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0, color: '#111827' }}>
+            Розклад занять
+          </h1>
           {(user?.role === 'admin' || user?.role === 'teacher') && (
-            <div className="schedule-actions" style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
               {user?.role === 'admin' && (
-                <button
-                  onClick={() => setShowCreateLessonModal(true)}
-                  className="btn btn-primary"
-                  style={{ gap: '0.5rem', whiteSpace: 'nowrap' }}
-                >
-                  <Plus size={14} />
-                  Створити
+                <button onClick={() => setShowCreateLessonModal(true)} className="btn btn-primary" style={{ gap: '0.5rem' }}>
+                  <Plus size={14} /> Створити
                 </button>
               )}
-              <button
-                onClick={() => setShowGenerateModal(true)}
-                className="btn btn-secondary"
-                style={{ gap: '0.5rem', whiteSpace: 'nowrap' }}
-              >
-                <RefreshCw size={14} />
-                Згенерувати
+              <button onClick={() => setShowGenerateModal(true)} className="btn btn-secondary" style={{ gap: '0.5rem' }}>
+                <RefreshCw size={14} /> Згенерувати
               </button>
             </div>
           )}
+        </div>
+        <div style={{ display: 'flex', gap: '0.25rem', background: '#f3f4f6', borderRadius: '0.5rem', padding: '0.25rem', width: 'fit-content' }}>
+          <button onClick={() => setViewMode('week')} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 1rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: '0.375rem', border: 'none', cursor: 'pointer', background: viewMode === 'week' ? 'white' : 'transparent', color: viewMode === 'week' ? '#111827' : '#6b7280', boxShadow: viewMode === 'week' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s ease' }}>
+            <Calendar size={14} /> Тиждень
+          </button>
+          <button onClick={() => setViewMode('month')} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 1rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: '0.375rem', border: 'none', cursor: 'pointer', background: viewMode === 'month' ? 'white' : 'transparent', color: viewMode === 'month' ? '#111827' : '#6b7280', boxShadow: viewMode === 'month' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s ease' }}>
+            <CalendarDays size={14} /> Місяць
+          </button>
+        </div>
+      </div>
 
-          {/* View Mode Toggle */}
-          <div className="schedule-view-mode" style={{ display: 'flex', gap: '0.25rem', background: '#f3f4f6', borderRadius: '0.5rem', padding: '0.25rem', width: 'fit-content' }}>
-            <button
-              onClick={() => setViewMode('week')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.375rem',
-                padding: '0.5rem 1rem', fontSize: '0.8125rem', fontWeight: 500,
-                borderRadius: '0.375rem', border: 'none', cursor: 'pointer',
-                background: viewMode === 'week' ? 'white' : 'transparent',
-                color: viewMode === 'week' ? '#111827' : '#6b7280',
-                boxShadow: viewMode === 'week' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                transition: 'all 0.15s ease', whiteSpace: 'nowrap'
-              }}
-            >
-              <Calendar size={14} />
-              Тиждень
+      {/* ===== MOBILE header: h1 above, all 4 buttons in one scrollable row ===== */}
+      <div className="sched-header-mobile" style={{ marginBottom: '1.5rem' }}>
+        <h1 style={{ fontSize: '1.375rem', fontWeight: 600, margin: '0 0 0.75rem', color: '#111827' }}>
+          Розклад занять
+        </h1>
+        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '2px' }}>
+          {user?.role === 'admin' && (
+            <button onClick={() => setShowCreateLessonModal(true)} className="btn btn-primary" style={{ gap: '0.375rem', padding: '0.375rem 0.625rem', fontSize: '0.75rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <Plus size={13} /> Створити
             </button>
-            <button
-              onClick={() => setViewMode('month')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.375rem',
-                padding: '0.5rem 1rem', fontSize: '0.8125rem', fontWeight: 500,
-                borderRadius: '0.375rem', border: 'none', cursor: 'pointer',
-                background: viewMode === 'month' ? 'white' : 'transparent',
-                color: viewMode === 'month' ? '#111827' : '#6b7280',
-                boxShadow: viewMode === 'month' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                transition: 'all 0.15s ease', whiteSpace: 'nowrap'
-              }}
-            >
-              <CalendarDays size={14} />
-              Місяць
+          )}
+          {(user?.role === 'admin' || user?.role === 'teacher') && (
+            <button onClick={() => setShowGenerateModal(true)} className="btn btn-secondary" style={{ gap: '0.375rem', padding: '0.375rem 0.625rem', fontSize: '0.75rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <RefreshCw size={13} /> Згенерувати
+            </button>
+          )}
+          <div style={{ display: 'flex', gap: '0.25rem', background: '#f3f4f6', borderRadius: '0.5rem', padding: '0.25rem', flexShrink: 0 }}>
+            <button onClick={() => setViewMode('week')} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.625rem', fontSize: '0.75rem', fontWeight: 500, borderRadius: '0.375rem', border: 'none', cursor: 'pointer', background: viewMode === 'week' ? 'white' : 'transparent', color: viewMode === 'week' ? '#111827' : '#6b7280', boxShadow: viewMode === 'week' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s ease', whiteSpace: 'nowrap' }}>
+              <Calendar size={13} /> Тиждень
+            </button>
+            <button onClick={() => setViewMode('month')} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.625rem', fontSize: '0.75rem', fontWeight: 500, borderRadius: '0.375rem', border: 'none', cursor: 'pointer', background: viewMode === 'month' ? 'white' : 'transparent', color: viewMode === 'month' ? '#111827' : '#6b7280', boxShadow: viewMode === 'month' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s ease', whiteSpace: 'nowrap' }}>
+              <CalendarDays size={13} /> Місяць
             </button>
           </div>
         </div>
@@ -516,46 +506,21 @@ export default function SchedulePage() {
         
         .month-cell:hover { background: #f9fafb !important; }
         
+        /* Desktop/Mobile header toggle */
+        .sched-header-desktop { display: block; }
+        .sched-header-mobile  { display: none; }
+        
         @media (min-width: 769px) {
-          .schedule-top-container {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            grid-template-areas: "title actions" "view view";
-            gap: 1rem;
-            align-items: center;
-          }
-          .schedule-title { grid-area: title; }
-          .schedule-actions { grid-area: actions; justify-self: end; }
-          .schedule-view-mode { grid-area: view; }
-          .schedule-controls-mobile-row { display: contents; }
-          
           .nav-btn { min-width: 110px; }
         }
         
         @media (max-width: 768px) {
-          .schedule-top-container { display: flex; flex-direction: column; gap: 1rem; align-items: stretch; }
-          .schedule-controls-mobile-row {
-            display: flex;
-            width: 100%;
-            overflow-x: auto;
-            gap: 0.5rem;
-            padding-bottom: 0.5rem;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-          }
-          .schedule-controls-mobile-row::-webkit-scrollbar { display: none; }
+          .sched-header-desktop { display: none !important; }
+          .sched-header-mobile  { display: block !important; }
           
           .nav-container { flex-wrap: nowrap !important; }
           .nav-btn { min-width: auto !important; padding: 0.5rem !important; justify-content: center; }
           .nav-text { display: none; }
-          
-          /* Smaller top buttons to fit */
-          .schedule-controls-mobile-row button,
-          .schedule-controls-mobile-row .btn {
-            padding: 0.375rem 0.5rem !important;
-            font-size: 0.75rem !important;
-            gap: 0.25rem !important;
-          }
           
           /* One card per screen */
           .schedule-day-card {
