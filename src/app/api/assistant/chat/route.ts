@@ -118,9 +118,15 @@ export async function POST(request: NextRequest) {
       return createUIMessageStreamResponse({ stream });
     }
 
-    const modelMessages = await convertToModelMessages(
-      body.messages.map(({ id: _id, ...message }) => message),
-    );
+    // Sanitize messages: keep only text parts to avoid Groq "unsupported content types" errors
+    const sanitizedMessages = body.messages.map(({ id: _id, ...message }) => ({
+      ...message,
+      parts: message.parts.filter(
+        (part: { type: string }) => part.type === 'text',
+      ),
+    }));
+
+    const modelMessages = await convertToModelMessages(sanitizedMessages);
 
     const result = streamText({
       model: groq(process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'),

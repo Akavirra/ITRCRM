@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { t } from '@/i18n/t';
 import Sidebar from './Sidebar/Sidebar';
 import Navbar from './Navbar/Navbar';
-import AssistantChat from './AssistantChat';
+
+const AssistantChat = dynamic(() => import('./AssistantChat'), { ssr: false });
 
 interface User {
   id: number;
