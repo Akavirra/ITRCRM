@@ -24,6 +24,7 @@ import {
   markAssistantKeyRateLimited,
 } from '@/lib/assistant/provider-failover';
 import { getAssistantQuickReply } from '@/lib/assistant/quick-replies';
+import { formatAssistantToolResults } from '@/lib/assistant/tool-result-fallback';
 import { createAssistantTools } from '@/lib/assistant/tools';
 
 export const dynamic = 'force-dynamic';
@@ -164,6 +165,7 @@ export async function POST(request: NextRequest) {
 
         const responseText =
           result.text?.trim() ||
+          formatAssistantToolResults(result.toolResults as Array<{ toolName?: string; output?: unknown }>) ||
           'Не вдалося сформувати текстову відповідь. Спробуйте уточнити запит.';
 
         return createAssistantTextResponse(

@@ -1,4 +1,4 @@
-﻿export const ASSISTANT_TIMEZONE = 'Europe/Kyiv';
+export const ASSISTANT_TIMEZONE = 'Europe/Kyiv';
 
 export const ASSISTANT_SYSTEM_PROMPT = `Ти — помічник CRM школи робототехніки "IT Robotics". Відповідай тільки українською мовою.
 
