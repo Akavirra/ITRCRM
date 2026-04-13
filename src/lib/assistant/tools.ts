@@ -17,8 +17,7 @@ import {
 export function createAssistantTools(now = new Date()): ToolSet {
   return {
     query_active_students_count: tool({
-      description:
-        'Швидкий підрахунок учнів. Корисно для запитів "скільки активних учнів", "скільки всього учнів". Повертає: total_students, active_students, inactive_students.',
+      description: 'Підрахунок учнів: total, active, inactive.',
       inputSchema: z.object({}),
       execute: async () => {
         return get<{
@@ -35,12 +34,11 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_students: tool({
-      description:
-        "Пошук учнів за іменем, або отримання списку учнів. Повертає: id, full_name, phone, email, parent_name, parent_phone, birth_date, is_active, notes, discount.",
+      description: 'Пошук учнів за іменем або список учнів.',
       inputSchema: z.object({
-        search: z.string().optional().describe("Пошук по імені учня (часткове співпадіння)"),
-        is_active: z.boolean().optional().describe('Фільтр за активністю'),
-        limit: z.number().optional().default(20).describe('Максимальна кількість результатів (за замовчуванням 20)'),
+        search: z.string().optional().describe("Ім'я учня"),
+        is_active: z.boolean().optional().describe('active?'),
+        limit: z.number().optional().default(20).describe('max results'),
       }),
       execute: async ({ search, is_active, limit }) => {
         let sql =
@@ -67,12 +65,11 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_groups: tool({
-      description:
-        'Отримання груп з інформацією про курс, вчителя, розклад. Повертає: id, title, course_title, teacher_name, weekly_day (1=Пн..7=Нд), start_time, duration_minutes, monthly_price, status, capacity, student_count.',
+      description: 'Список груп з курсом, вчителем, розкладом.',
       inputSchema: z.object({
-        search: z.string().optional().describe('Пошук по назві групи'),
-        status: z.enum(['active', 'paused', 'finished']).optional().describe('Фільтр за статусом'),
-        limit: z.number().optional().default(20).describe('Максимальна кількість результатів'),
+        search: z.string().optional().describe('назва'),
+        status: z.enum(['active', 'paused', 'finished']).optional().describe('статус'),
+        limit: z.number().optional().default(20).describe('max results'),
       }),
       execute: async ({ search, status, limit }) => {
         let sql = `
@@ -106,10 +103,10 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_student_groups: tool({
-      description: 'Отримання груп конкретного учня або учнів конкретної групи.',
+      description: 'Групи учня або учні групи.',
       inputSchema: z.object({
-        student_id: z.number().optional().describe('ID учня для пошуку його груп'),
-        group_id: z.number().optional().describe('ID групи для пошуку її учнів'),
+        student_id: z.number().optional().describe('ID учня'),
+        group_id: z.number().optional().describe('ID групи'),
       }),
       execute: async ({ student_id, group_id }) => {
         if (student_id) {
@@ -144,14 +141,13 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_lessons: tool({
-      description:
-        'Отримання занять з фільтрацією. Повертає: id, group_title, teacher_name, lesson_date, start_datetime, end_datetime, topic, status (scheduled/done/cancelled), present_count, absent_count.',
+      description: 'Заняття з фільтрацією за групою, датами, статусом.',
       inputSchema: z.object({
-        group_id: z.number().optional().describe('Фільтр за ID групи'),
-        date_from: z.string().optional().describe('Дата початку (YYYY-MM-DD)'),
-        date_to: z.string().optional().describe('Дата кінця (YYYY-MM-DD)'),
-        status: z.enum(['scheduled', 'done', 'cancelled']).optional().describe('Фільтр за статусом'),
-        limit: z.number().optional().default(20).describe('Максимальна кількість результатів'),
+        group_id: z.number().optional().describe('group_id'),
+        date_from: z.string().optional().describe('YYYY-MM-DD'),
+        date_to: z.string().optional().describe('YYYY-MM-DD'),
+        status: z.enum(['scheduled', 'done', 'cancelled']).optional().describe('статус'),
+        limit: z.number().optional().default(20).describe('max results'),
       }),
       execute: async ({ group_id, date_from: rawDateFrom, date_to: rawDateTo, status, limit }) => {
         const dateFrom = normalizeDate(rawDateFrom);
@@ -199,10 +195,9 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_today_lessons: tool({
-      description:
-        'Швидкий список занять на сьогодні за часовою зоною Europe/Kyiv. Корисно для запитів "які заняття сьогодні". Повертає: id, group_title, teacher_name, lesson_date, start_datetime, end_datetime, topic, status.',
+      description: 'Заняття на сьогодні.',
       inputSchema: z.object({
-        group_id: z.number().optional().describe('Опціональний фільтр за ID групи'),
+        group_id: z.number().optional().describe('group_id'),
       }),
       execute: async ({ group_id }) => {
         const today = getAssistantToday(now);
@@ -226,8 +221,7 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_daily_brief: tool({
-      description:
-        'Короткий зведений підсумок на сьогодні за часовою зоною Europe/Kyiv. Корисно для запитів "що сьогодні", "короткий звіт за день". Повертає: today, total_lessons, scheduled_lessons, done_lessons, cancelled_lessons, unique_groups, unique_teachers.',
+      description: 'Підсумок дня: кількість занять, статуси.',
       inputSchema: z.object({}),
       execute: async () => {
         const today = getAssistantToday(now);
@@ -258,12 +252,12 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_payments: tool({
-      description: 'Отримання оплат з фільтрацією. Повертає: student_name, group_title, month, amount, method, paid_at, note.',
+      description: 'Оплати з фільтрацією за учнем, групою, місяцем.',
       inputSchema: z.object({
-        student_id: z.number().optional().describe('Фільтр за ID учня'),
-        group_id: z.number().optional().describe('Фільтр за ID групи'),
-        month: z.string().optional().describe('Фільтр за місяцем (YYYY-MM)'),
-        limit: z.number().optional().default(20).describe('Максимальна кількість результатів'),
+        student_id: z.number().optional().describe('student_id'),
+        group_id: z.number().optional().describe('group_id'),
+        month: z.string().optional().describe('YYYY-MM'),
+        limit: z.number().optional().default(20).describe('max results'),
       }),
       execute: async ({ student_id, group_id, month: rawMonth, limit }) => {
         const month = normalizeMonth(rawMonth);
@@ -302,10 +296,9 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_debts: tool({
-      description:
-        'Отримання боржників — учнів, які не оплатили за певний місяць. Повертає: student_name, group_title, month, monthly_price, paid_amount, debt.',
+      description: 'Список боржників за місяць.',
       inputSchema: z.object({
-        month: z.string().optional().describe('Місяць для перевірки (YYYY-MM). За замовчуванням — поточний.'),
+        month: z.string().optional().describe('YYYY-MM, default: current'),
       }),
       execute: async ({ month: rawMonth }) => {
         const month = normalizeMonth(rawMonth) || getAssistantCurrentMonth(now);
@@ -333,10 +326,9 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_debts_summary: tool({
-      description:
-        'Швидкий підсумок боргів за місяць. Корисно для запитів "скільки боржників цього місяця" або "загальна сума боргу". Повертає: debtors_count, total_debt, month.',
+      description: 'Підсумок боргів: кількість боржників, сума.',
       inputSchema: z.object({
-        month: z.string().optional().describe('Місяць для перевірки (YYYY-MM). За замовчуванням — поточний.'),
+        month: z.string().optional().describe('YYYY-MM, default: current'),
       }),
       execute: async ({ month: rawMonth }) => {
         const month = normalizeMonth(rawMonth) || getAssistantCurrentMonth(now);
@@ -373,15 +365,14 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_at_risk_students: tool({
-      description:
-        'Знайти ризикових учнів за період: тих, у кого є пропуски або борг. Корисно для запитів "ризикові учні", "кому треба приділити увагу". Повертає: student_name, parent_name, parent_phone, group_title, absent_count, debt.',
+      description: 'Ризикові учні: пропуски або борги.',
       inputSchema: z.object({
-        date_from: z.string().optional().describe('Дата початку періоду (YYYY-MM-DD). За замовчуванням — початок поточного місяця.'),
-        date_to: z.string().optional().describe('Дата кінця періоду (YYYY-MM-DD). За замовчуванням — сьогодні.'),
-        month: z.string().optional().describe('Місяць для перевірки боргу (YYYY-MM). За замовчуванням — поточний.'),
-        min_absences: z.number().optional().default(2).describe('Мінімум пропусків для попадання в список'),
-        min_debt: z.number().optional().default(1).describe('Мінімальний борг для попадання в список'),
-        limit: z.number().optional().default(10).describe('Максимальна кількість записів'),
+        date_from: z.string().optional().describe('YYYY-MM-DD, default: month start'),
+        date_to: z.string().optional().describe('YYYY-MM-DD, default: today'),
+        month: z.string().optional().describe('YYYY-MM, default: current'),
+        min_absences: z.number().optional().default(2).describe('min absences'),
+        min_debt: z.number().optional().default(1).describe('min debt'),
+        limit: z.number().optional().default(10).describe('max results'),
       }),
       execute: async ({ date_from: rawDateFrom, date_to: rawDateTo, month: rawMonth, min_absences, min_debt, limit }) => {
         const dateFrom = normalizeDate(rawDateFrom) || getAssistantMonthStart(now);
@@ -431,12 +422,12 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_attendance: tool({
-      description: 'Статистика відвідуваності учня або групи. Повертає кількість present, absent, late, excused.',
+      description: 'Відвідуваність учня або групи за період.',
       inputSchema: z.object({
         student_id: z.number().optional().describe('ID учня'),
         group_id: z.number().optional().describe('ID групи'),
-        date_from: z.string().optional().describe('Дата початку (YYYY-MM-DD)'),
-        date_to: z.string().optional().describe('Дата кінця (YYYY-MM-DD)'),
+        date_from: z.string().optional().describe('YYYY-MM-DD'),
+        date_to: z.string().optional().describe('YYYY-MM-DD'),
       }),
       execute: async ({ student_id, group_id, date_from: rawDateFrom, date_to: rawDateTo }) => {
         const dateFrom = normalizeDate(rawDateFrom);
@@ -482,10 +473,10 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_courses: tool({
-      description: 'Отримання курсів. Повертає: id, title, description, age_min, duration_months, is_active, groups_count.',
+      description: 'Список курсів.',
       inputSchema: z.object({
-        search: z.string().optional().describe('Пошук по назві курсу'),
-        is_active: z.boolean().optional().describe('Фільтр за активністю'),
+        search: z.string().optional().describe('назва'),
+        is_active: z.boolean().optional().describe('active?'),
       }),
       execute: async ({ search, is_active }) => {
         let sql = `
@@ -513,10 +504,10 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_teachers: tool({
-      description: 'Отримання викладачів. Повертає: id, name, email, phone, is_active, groups_count.',
+      description: 'Список викладачів.',
       inputSchema: z.object({
-        search: z.string().optional().describe("Пошук по імені"),
-        is_active: z.boolean().optional().describe('Фільтр за активністю'),
+        search: z.string().optional().describe("ім'я"),
+        is_active: z.boolean().optional().describe('active?'),
       }),
       execute: async ({ search, is_active }) => {
         let sql = `
@@ -544,13 +535,12 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_absences: tool({
-      description:
-        'Знайти учнів з пропусками (absent) за період. Повертає: student_name, group_title, absent_count, total_lessons. Корисно для запитань "хто пропускає", "в кого пропуски".',
+      description: 'Учні з пропусками за період.',
       inputSchema: z.object({
-        date_from: z.string().optional().describe('Дата початку (YYYY-MM-DD). За замовчуванням — початок поточного місяця.'),
-        date_to: z.string().optional().describe('Дата кінця (YYYY-MM-DD). За замовчуванням — сьогодні.'),
-        group_id: z.number().optional().describe('Фільтр за ID групи (опціонально)'),
-        min_absences: z.number().optional().default(1).describe('Мінімальна кількість пропусків (за замовчуванням 1)'),
+        date_from: z.string().optional().describe('YYYY-MM-DD, default: month start'),
+        date_to: z.string().optional().describe('YYYY-MM-DD, default: today'),
+        group_id: z.number().optional().describe('group_id'),
+        min_absences: z.number().optional().default(1).describe('min absences'),
       }),
       execute: async ({ date_from: rawDateFrom, date_to: rawDateTo, group_id, min_absences }) => {
         const dateFrom = normalizeDate(rawDateFrom) || getAssistantMonthStart(now);
@@ -583,7 +573,7 @@ export function createAssistantTools(now = new Date()): ToolSet {
       },
     }),
     query_stats: tool({
-      description: 'Загальна статистика CRM: кількість учнів, груп, курсів, вчителів, занять за період, загальна сума оплат.',
+      description: 'Загальна статистика CRM за період.',
       inputSchema: z.object({
         period: z.enum(['today', 'week', 'month', 'year', 'all']).optional().default('month').describe('Період'),
       }),

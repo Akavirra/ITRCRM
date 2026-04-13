@@ -119,8 +119,9 @@ export async function POST(request: NextRequest) {
       return createUIMessageStreamResponse({ stream });
     }
 
-    // Sanitize messages: keep only text parts to avoid Groq "unsupported content types" errors
-    const sanitizedMessages = body.messages.map(({ id: _id, ...message }) => ({
+    // Keep only last 10 messages and text parts to reduce token usage
+    const recentMessages = body.messages.slice(-10);
+    const sanitizedMessages = recentMessages.map(({ id: _id, ...message }) => ({
       ...message,
       parts: message.parts.filter(
         (part: { type: string }) => part.type === 'text',
@@ -131,10 +132,11 @@ export async function POST(request: NextRequest) {
 
     const result = streamText({
       model: groq(process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'),
-      system: `${ASSISTANT_SYSTEM_PROMPT}\n\nСьогоднішня дата: ${getAssistantToday()}. Поточний місяць: ${getAssistantCurrentMonth()}. ЗАВЖДИ використовуй ці дати як орієнтир при запитах.`,
+      system: `${ASSISTANT_SYSTEM_PROMPT}\nДата: ${getAssistantToday()}. Місяць: ${getAssistantCurrentMonth()}.`,
       messages: modelMessages,
+      maxOutputTokens: 1024,
       temperature: 0,
-      stopWhen: stepCountIs(5),
+      stopWhen: stepCountIs(3),
       tools: createAssistantTools(),
     });
 
