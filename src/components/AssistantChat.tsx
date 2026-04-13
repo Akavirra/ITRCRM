@@ -67,24 +67,27 @@ export default function AssistantChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const getInitialMessages = (): UIMessage[] => {
-    const storage = getStorage();
-    if (!storage) return [];
+  const { messages, status, error, setMessages, sendMessage, stop } = useChat({
+    transport: new DefaultChatTransport({ api: '/api/assistant/chat' }),
+  });
 
+  // Restore messages from sessionStorage after hydration
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const storage = getStorage();
+    if (!storage) return;
     try {
       const saved = storage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved) as UIMessage[];
+      if (saved) {
+        const parsed = JSON.parse(saved) as UIMessage[];
+        if (parsed.length > 0) setMessages(parsed);
+      }
     } catch {
       storage.removeItem(STORAGE_KEY);
     }
-
-    return [];
-  };
-
-  const { messages, status, error, setMessages, sendMessage, stop } = useChat({
-    transport: new DefaultChatTransport({ api: '/api/assistant/chat' }),
-    messages: getInitialMessages(),
-  });
+  }, [setMessages]);
 
   const isLoading = status === 'submitted' || status === 'streaming';
 
