@@ -3,33 +3,26 @@
 > next dev
 
    ▲ Next.js 14.0.4
-   - Local:        http://localhost:3001
+   - Local:        http://localhost:3000
    - Environments: .env.local
 
- ✓ Ready in 5.9s
- ✓ Compiled /src/middleware in 349ms (64 modules)
+ ✓ Ready in 6.6s
+ ✓ Compiled /src/middleware in 317ms (64 modules)
  ○ Compiling /api/auth/login ...
- ✓ Compiled /api/auth/login in 1848ms (62 modules)
- ✓ Compiled /api/auth/me in 396ms (64 modules)
- ○ Compiling /login ...
- ✓ Compiled /login in 14.6s (2620 modules)
- ○ Compiling /api/auth/me ...
- ✓ Compiled /api/auth/me in 3.7s (2752 modules)
- ○ Compiling /dashboard ...
- ✓ Compiled /dashboard in 8.2s (3553 modules)
- ✓ Compiled in 735ms (1909 modules)
- ✓ Compiled in 692ms (228 modules)
- ✓ Compiled in 325ms (228 modules)
- ✓ Compiled in 216ms
- ○ Compiling /api/auth/login ...
- ✓ Compiled /api/auth/login in 1027ms (62 modules)
+ ✓ Compiled /api/auth/login in 1462ms (62 modules)
  ○ Compiling /api/assistant/chat ...
- ✓ Compiled /api/assistant/chat in 968ms (229 modules)
- ✓ Compiled in 727ms (229 modules)
- ✓ Compiled in 351ms (229 modules)
- ✓ Compiled in 33ms
- ✓ Compiled /api/auth/login in 63ms (62 modules)
- ✓ Compiled /api/assistant/chat in 242ms (229 modules)
- ✓ Compiled in 198ms (229 modules)
- ✓ Compiled in 168ms (229 modules)
- ✓ Compiled in 195ms (229 modules)
+ ✓ Compiled /_error in 523ms (1508 modules)
+ ✓ Compiled in 289ms (46 modules)
+ ✓ Compiled /api/auth/login in 229ms (100 modules)
+ ✓ Compiled /api/assistant/chat in 501ms (268 modules)
+ ✓ Compiled in 505ms (46 modules)
+ ✓ Compiled /api/auth/login in 83ms (100 modules)
+ ○ Compiling /api/assistant/chat ...
+ ✓ Compiled /api/assistant/chat in 535ms (269 modules)
+ ✓ Compiled in 313ms (46 modules)
+ ✓ Compiled /api/auth/login in 65ms (100 modules)
+ ✓ Compiled /api/assistant/chat in 230ms (269 modules)
+ ✓ Compiled in 738ms (269 modules)
+ ✓ Compiled in 522ms (46 modules)
+
+C:\CProjects\ITRoboticsCRM\ITRobotCRM>[?25h

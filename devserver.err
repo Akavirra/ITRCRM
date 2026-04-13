@@ -1,213 +1,195 @@
- ⚠ Port 3000 is in use, trying 3001 instead.
-Login error: SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
-    at JSON.parse (<anonymous>)
-    at parseJSONFromBytes (node:internal/deps/undici/undici:5738:19)
-    at successSteps (node:internal/deps/undici/undici:5719:27)
-    at fullyReadBody (node:internal/deps/undici/undici:4609:9)
+ ⨯ ./src/lib/assistant/constants.ts
+Error: Failed to read source code from C:\CProjects\ITRoboticsCRM\ITRobotCRM\src\lib\assistant\constants.ts
+
+Caused by:
+    stream did not contain valid UTF-8
+
+Import trace for requested module:
+./src/lib/assistant/constants.ts
+./src/app/api/assistant/chat/route.ts
+ ⨯ ./src/lib/assistant/constants.ts
+Error: Failed to read source code from C:\CProjects\ITRoboticsCRM\ITRobotCRM\src\lib\assistant\constants.ts
+
+Caused by:
+    stream did not contain valid UTF-8
+
+Import trace for requested module:
+./src/lib/assistant/constants.ts
+./src/app/api/assistant/chat/route.ts
+ ⨯ ./src/lib/assistant/constants.ts
+Error: Failed to read source code from C:\CProjects\ITRoboticsCRM\ITRobotCRM\src\lib\assistant\constants.ts
+
+Caused by:
+    stream did not contain valid UTF-8
+
+Import trace for requested module:
+./src/lib/assistant/constants.ts
+./src/app/api/assistant/chat/route.ts
+Assistant error: APICallError [AI_APICallError]: tool call validation failed: parameters for tool query_at_risk_students did not match schema: errors: [`/limit`: expected number, but got string, `/min_absences`: expected number, but got string, `/min_debt`: expected number, but got string]
+    at eval (webpack-internal:///(rsc)/./node_modules/@ai-sdk/provider-utils/dist/index.mjs:2557:24)
     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async consumeBody (node:internal/deps/undici/undici:5728:7)
-    at async POST (webpack-internal:///(rsc)/./src/app/api/auth/login/route.ts:20:22)
-    at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251
-Login error: SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
-    at JSON.parse (<anonymous>)
-    at parseJSONFromBytes (node:internal/deps/undici/undici:5738:19)
-    at successSteps (node:internal/deps/undici/undici:5719:27)
-    at fullyReadBody (node:internal/deps/undici/undici:4609:9)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async consumeBody (node:internal/deps/undici/undici:5728:7)
-    at async POST (webpack-internal:///(rsc)/./src/app/api/auth/login/route.ts:20:22)
-    at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251
-DB Query Error: {
-  text: '\n' +
-    '      SELECT\n' +
-    '        s.full_name as student_name,\n' +
-    '        g.title as group_title,\n' +
-    '        g.monthly_price,\n' +
-    '        COALESCE(p.paid_amount, 0) as paid_amount,\n' +
-    '        g.monthly_price - COALESCE(p.paid',
-  params: [ '2026-04' ],
-  error: NeonDbError: invalid input syntax for type date: "2026-04"
-      at dr.execute (webpack-internal:///(rsc)/./node_modules/@neondatabase/serverless/index.mjs:4870:46)
-      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-      at async query (webpack-internal:///(rsc)/./src/db/neon.ts:36:22)
-      at async all (webpack-internal:///(rsc)/./src/db/neon.ts:65:18)
-      at async buildMonthlyDebtorsReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:151:21)
-      at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
-      at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251 {
-    severity: 'ERROR',
-    code: '22007',
-    detail: undefined,
-    hint: undefined,
-    position: undefined,
-    internalPosition: undefined,
-    internalQuery: undefined,
-    where: "unnamed portal parameter $1 = '...'",
-    schema: undefined,
-    table: undefined,
-    column: undefined,
-    dataType: undefined,
-    constraint: undefined,
-    file: 'datetime.c',
-    line: '4140',
-    routine: 'DateTimeParseError',
-    sourceError: undefined
-  }
-}
-Assistant error: NeonDbError: invalid input syntax for type date: "2026-04"
-    at dr.execute (webpack-internal:///(rsc)/./node_modules/@neondatabase/serverless/index.mjs:4870:46)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async query (webpack-internal:///(rsc)/./src/db/neon.ts:36:22)
-    at async all (webpack-internal:///(rsc)/./src/db/neon.ts:65:18)
-    at async buildMonthlyDebtorsReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:151:21)
-    at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
+    at async postToApi (webpack-internal:///(rsc)/./node_modules/@ai-sdk/provider-utils/dist/index.mjs:2429:36)
+    at async OpenAIResponsesLanguageModel.doGenerate (webpack-internal:///(rsc)/./node_modules/@ai-sdk/openai/dist/index.mjs:5016:77)
+    at async fn (webpack-internal:///(rsc)/./node_modules/ai/dist/index.mjs:4321:52)
+    at async eval (webpack-internal:///(rsc)/./node_modules/ai/dist/index.mjs:2338:28)
+    at async _retryWithExponentialBackoff (webpack-internal:///(rsc)/./node_modules/ai/dist/index.mjs:2597:16)
+    at async fn (webpack-internal:///(rsc)/./node_modules/ai/dist/index.mjs:4280:48)
+    at async eval (webpack-internal:///(rsc)/./node_modules/ai/dist/index.mjs:2338:28)
+    at async generateText (webpack-internal:///(rsc)/./node_modules/ai/dist/index.mjs:4117:16)
+    at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:117:32)
     at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251 {
-  severity: 'ERROR',
-  code: '22007',
-  detail: undefined,
-  hint: undefined,
-  position: undefined,
-  internalPosition: undefined,
-  internalQuery: undefined,
-  where: "unnamed portal parameter $1 = '...'",
-  schema: undefined,
-  table: undefined,
-  column: undefined,
-  dataType: undefined,
-  constraint: undefined,
-  file: 'datetime.c',
-  line: '4140',
-  routine: 'DateTimeParseError',
-  sourceError: undefined
+  cause: undefined,
+  url: 'https://api.groq.com/openai/v1/responses',
+  requestBodyValues: {
+    model: 'llama-3.3-70b-versatile',
+    input: [ [Object], [Object], [Object], [Object], [Object] ],
+    temperature: 0,
+    top_p: undefined,
+    max_output_tokens: 1024,
+    conversation: undefined,
+    max_tool_calls: undefined,
+    metadata: undefined,
+    parallel_tool_calls: undefined,
+    previous_response_id: undefined,
+    store: undefined,
+    user: undefined,
+    instructions: undefined,
+    service_tier: undefined,
+    include: undefined,
+    prompt_cache_key: undefined,
+    prompt_cache_retention: undefined,
+    safety_identifier: undefined,
+    top_logprobs: undefined,
+    truncation: undefined,
+    tools: [
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object]
+    ],
+    tool_choice: 'auto'
+  },
+  statusCode: 400,
+  responseHeaders: {
+    'alt-svc': 'h3=":443"; ma=86400',
+    'cache-control': 'private, max-age=0, no-store, no-cache, must-revalidate',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9eba638efb8fc916-KBP',
+    connection: 'keep-alive',
+    'content-length': '558',
+    'content-type': 'application/json',
+    date: 'Mon, 13 Apr 2026 12:14:10 GMT',
+    server: 'cloudflare',
+    'set-cookie': '__cf_bm=EQ3SZYfpSroaoia7.KOpjovLAN9CnacRCsasdXTGsFE-1776082449.760103-1.0.1.1-HfpYGIQV9gXu64y_WDkm8vkc_riIuCoe1rNc1QFkCMkq9XOETAJp4SYo1r.tikZI0MfvcE_Tp0sdsKKaUFQR0gh9HVUI2f72YGVengr3Siv.i5K9p_9fhXopo3_btT4p; HttpOnly; Secure; Path=/; Domain=groq.com; Expires=Mon, 13 Apr 2026 12:44:10 GMT',
+    'strict-transport-security': 'max-age=15552000',
+    vary: 'Origin',
+    via: '1.1 google',
+    'x-groq-region': 'dls',
+    'x-ratelimit-limit-requests': '1000',
+    'x-ratelimit-limit-tokens': '12000',
+    'x-ratelimit-remaining-requests': '997',
+    'x-ratelimit-remaining-tokens': '5901',
+    'x-ratelimit-reset-requests': '4m19.2s',
+    'x-ratelimit-reset-tokens': '30.494s',
+    'x-request-id': 'req_01kp3c6xe3fkb86df4rf3ys54h'
+  },
+  responseBody: '{"error":{"message":"tool call validation failed: parameters for tool query_at_risk_students did not match schema: errors: [`/limit`: expected number, but got string, `/min_absences`: expected number, but got string, `/min_debt`: expected number, but got string]","type":"invalid_request_error","code":"tool_use_failed","failed_generation":"\\u003cfunction=query_at_risk_students\\u003e{\\"date_from\\": \\"2026-04-01\\", \\"date_to\\": \\"2026-04-13\\", \\"limit\\": \\"10\\", \\"min_absences\\": \\"2\\", \\"min_debt\\": \\"1\\", \\"month\\": \\"2026-04\\"}\\u003c/function\\u003e"}}\n',
+  isRetryable: false,
+  data: {
+    error: {
+      message: 'tool call validation failed: parameters for tool query_at_risk_students did not match schema: errors: [`/limit`: expected number, but got string, `/min_absences`: expected number, but got string, `/min_debt`: expected number, but got string]',
+      type: 'invalid_request_error',
+      code: 'tool_use_failed'
+    }
+  },
+  [Symbol(vercel.ai.error)]: true,
+  [Symbol(vercel.ai.error.AI_APICallError)]: true
 }
-DB Query Error: {
-  text: '\n' +
-    '      SELECT\n' +
-    '        $1 as today,\n' +
-    '        COUNT(*) as total_lessons,\n' +
-    "        COUNT(*) FILTER (WHERE status = 'scheduled') as scheduled_lessons,\n" +
-    "        COUNT(*) FILTER (WHERE status = 'done') as done",
-  params: [ '2026-04-12' ],
-  error: NeonDbError: inconsistent types deduced for parameter $1
-      at dr.execute (webpack-internal:///(rsc)/./node_modules/@neondatabase/serverless/index.mjs:4870:46)
-      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-      at async query (webpack-internal:///(rsc)/./src/db/neon.ts:36:22)
-      at async queryOne (webpack-internal:///(rsc)/./src/db/neon.ts:52:18)
-      at async get (webpack-internal:///(rsc)/./src/db/neon.ts:61:17)
-      at async buildDailyBriefReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:126:19)
-      at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
-      at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251 {
-    severity: 'ERROR',
-    code: '42P08',
-    detail: 'date versus text',
-    hint: undefined,
-    position: '23',
-    internalPosition: undefined,
-    internalQuery: undefined,
-    where: undefined,
-    schema: undefined,
-    table: undefined,
-    column: undefined,
-    dataType: undefined,
-    constraint: undefined,
-    file: 'parse_param.c',
-    line: '219',
-    routine: 'variable_coerce_param_hook',
-    sourceError: undefined
-  }
-}
-Assistant error: NeonDbError: inconsistent types deduced for parameter $1
-    at dr.execute (webpack-internal:///(rsc)/./node_modules/@neondatabase/serverless/index.mjs:4870:46)
+Assistant error: APICallError [AI_APICallError]: tool call validation failed: parameters for tool query_at_risk_students did not match schema: errors: [`/limit`: expected number, but got string, `/min_absences`: expected number, but got string, `/min_debt`: expected number, but got string]
+    at eval (webpack-internal:///(rsc)/./node_modules/@ai-sdk/provider-utils/dist/index.mjs:2557:24)
     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async query (webpack-internal:///(rsc)/./src/db/neon.ts:36:22)
-    at async queryOne (webpack-internal:///(rsc)/./src/db/neon.ts:52:18)
-    at async get (webpack-internal:///(rsc)/./src/db/neon.ts:61:17)
-    at async buildDailyBriefReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:126:19)
-    at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
+    at async postToApi (webpack-internal:///(rsc)/./node_modules/@ai-sdk/provider-utils/dist/index.mjs:2429:36)
+    at async OpenAIResponsesLanguageModel.doGenerate (webpack-internal:///(rsc)/./node_modules/@ai-sdk/openai/dist/index.mjs:5016:77)
+    at async fn (webpack-internal:///(rsc)/./node_modules/ai/dist/index.mjs:4321:52)
+    at async eval (webpack-internal:///(rsc)/./node_modules/ai/dist/index.mjs:2338:28)
+    at async _retryWithExponentialBackoff (webpack-internal:///(rsc)/./node_modules/ai/dist/index.mjs:2597:16)
+    at async fn (webpack-internal:///(rsc)/./node_modules/ai/dist/index.mjs:4280:48)
+    at async eval (webpack-internal:///(rsc)/./node_modules/ai/dist/index.mjs:2338:28)
+    at async generateText (webpack-internal:///(rsc)/./node_modules/ai/dist/index.mjs:4117:16)
+    at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:117:32)
     at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251 {
-  severity: 'ERROR',
-  code: '42P08',
-  detail: 'date versus text',
-  hint: undefined,
-  position: '23',
-  internalPosition: undefined,
-  internalQuery: undefined,
-  where: undefined,
-  schema: undefined,
-  table: undefined,
-  column: undefined,
-  dataType: undefined,
-  constraint: undefined,
-  file: 'parse_param.c',
-  line: '219',
-  routine: 'variable_coerce_param_hook',
-  sourceError: undefined
+  cause: undefined,
+  url: 'https://api.groq.com/openai/v1/responses',
+  requestBodyValues: {
+    model: 'llama-3.3-70b-versatile',
+    input: [ [Object], [Object], [Object], [Object], [Object] ],
+    temperature: 0,
+    top_p: undefined,
+    max_output_tokens: 1024,
+    conversation: undefined,
+    max_tool_calls: undefined,
+    metadata: undefined,
+    parallel_tool_calls: undefined,
+    previous_response_id: undefined,
+    store: undefined,
+    user: undefined,
+    instructions: undefined,
+    service_tier: undefined,
+    include: undefined,
+    prompt_cache_key: undefined,
+    prompt_cache_retention: undefined,
+    safety_identifier: undefined,
+    top_logprobs: undefined,
+    truncation: undefined,
+    tools: [
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object]
+    ],
+    tool_choice: 'auto'
+  },
+  statusCode: 400,
+  responseHeaders: {
+    'alt-svc': 'h3=":443"; ma=86400',
+    'cache-control': 'private, max-age=0, no-store, no-cache, must-revalidate',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9eba64c25daa0202-WAW',
+    connection: 'keep-alive',
+    'content-length': '558',
+    'content-type': 'application/json',
+    date: 'Mon, 13 Apr 2026 12:14:59 GMT',
+    server: 'cloudflare',
+    'set-cookie': '__cf_bm=3zedF6Yt6ayiatdBSV4gohlyrioSf93oi8HiD3Nemb4-1776082498.9346983-1.0.1.1-L1Hq0XPfLZIjSkTE2h773rYxbncdzV1l45.lOWWSWJiMmB28AvpKzT78Rv.RkyiTl2l5iHJMTJk05rtmUkQs6Eq65TiemTaKxs.e6W188dKwEeeZmcsfU4MSehyCaGiS; HttpOnly; Secure; Path=/; Domain=groq.com; Expires=Mon, 13 Apr 2026 12:44:59 GMT',
+    'strict-transport-security': 'max-age=15552000',
+    vary: 'Origin',
+    via: '1.1 google',
+    'x-groq-region': 'dls',
+    'x-ratelimit-limit-requests': '1000',
+    'x-ratelimit-limit-tokens': '12000',
+    'x-ratelimit-remaining-requests': '995',
+    'x-ratelimit-remaining-tokens': '6810',
+    'x-ratelimit-reset-requests': '7m12s',
+    'x-ratelimit-reset-tokens': '25.95s',
+    'x-request-id': 'req_01kp3c8dege1s9w7wc95snf1jh'
+  },
+  responseBody: '{"error":{"message":"tool call validation failed: parameters for tool query_at_risk_students did not match schema: errors: [`/limit`: expected number, but got string, `/min_absences`: expected number, but got string, `/min_debt`: expected number, but got string]","type":"invalid_request_error","code":"tool_use_failed","failed_generation":"\\u003cfunction=query_at_risk_students\\u003e{\\"date_from\\": \\"2026-04-01\\", \\"date_to\\": \\"2026-04-13\\", \\"limit\\": \\"10\\", \\"min_absences\\": \\"2\\", \\"min_debt\\": \\"1\\", \\"month\\": \\"2026-04\\"}\\u003c/function\\u003e"}}\n',
+  isRetryable: false,
+  data: {
+    error: {
+      message: 'tool call validation failed: parameters for tool query_at_risk_students did not match schema: errors: [`/limit`: expected number, but got string, `/min_absences`: expected number, but got string, `/min_debt`: expected number, but got string]',
+      type: 'invalid_request_error',
+      code: 'tool_use_failed'
+    }
+  },
+  [Symbol(vercel.ai.error)]: true,
+  [Symbol(vercel.ai.error.AI_APICallError)]: true
 }
-DB Query Error: {
-  text: '\n' +
-    '      SELECT\n' +
-    '        s.full_name as student_name,\n' +
-    '        s.parent_name,\n' +
-    '        s.parent_phone,\n' +
-    '        g.title as group_title,\n' +
-    "        COUNT(*) FILTER (WHERE a.status = 'absent') as absent_count,\n" +
-    ' ',
-  params: [ '2026-04-01', '2026-04-12', '2026-04', 2, 1, 10 ],
-  error: NeonDbError: invalid input syntax for type date: "2026-04"
-      at dr.execute (webpack-internal:///(rsc)/./node_modules/@neondatabase/serverless/index.mjs:4870:46)
-      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-      at async query (webpack-internal:///(rsc)/./src/db/neon.ts:36:22)
-      at async all (webpack-internal:///(rsc)/./src/db/neon.ts:65:18)
-      at async buildAtRiskStudentsReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:194:22)
-      at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
-      at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251 {
-    severity: 'ERROR',
-    code: '22007',
-    detail: undefined,
-    hint: undefined,
-    position: undefined,
-    internalPosition: undefined,
-    internalQuery: undefined,
-    where: "unnamed portal parameter $3 = '...'",
-    schema: undefined,
-    table: undefined,
-    column: undefined,
-    dataType: undefined,
-    constraint: undefined,
-    file: 'datetime.c',
-    line: '4140',
-    routine: 'DateTimeParseError',
-    sourceError: undefined
-  }
-}
-Assistant error: NeonDbError: invalid input syntax for type date: "2026-04"
-    at dr.execute (webpack-internal:///(rsc)/./node_modules/@neondatabase/serverless/index.mjs:4870:46)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async query (webpack-internal:///(rsc)/./src/db/neon.ts:36:22)
-    at async all (webpack-internal:///(rsc)/./src/db/neon.ts:65:18)
-    at async buildAtRiskStudentsReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:194:22)
-    at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
-    at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251 {
-  severity: 'ERROR',
-  code: '22007',
-  detail: undefined,
-  hint: undefined,
-  position: undefined,
-  internalPosition: undefined,
-  internalQuery: undefined,
-  where: "unnamed portal parameter $3 = '...'",
-  schema: undefined,
-  table: undefined,
-  column: undefined,
-  dataType: undefined,
-  constraint: undefined,
-  file: 'datetime.c',
-  line: '4140',
-  routine: 'DateTimeParseError',
-  sourceError: undefined
-}
-Assistant error: TypeError: value.split is not a function or its return value is not iterable
-    at formatDateForReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:23:38)
-    at buildDailyBriefReply (webpack-internal:///(rsc)/./src/lib/assistant/quick-replies.ts:144:24)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async POST (webpack-internal:///(rsc)/./src/app/api/assistant/chat/route.ts:55:45)
-    at async C:\CProjects\ITRoboticsCRM\ITRobotCRM\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63251

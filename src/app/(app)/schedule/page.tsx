@@ -467,24 +467,40 @@ export default function SchedulePage() {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes nav-loading { 0% { transform: translateX(-120%); } 100% { transform: translateX(300%); } }
         @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.7); } }
-        .schedule-scroll { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
-        .schedule-scroll::-webkit-scrollbar { height: 6px; }
-        .schedule-scroll::-webkit-scrollbar-track { background: transparent; }
-        .schedule-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        .schedule-grid { animation: fadeIn 0.3s ease-out; }
-        .schedule-day { animation: fadeIn 0.4s ease-out backwards; }
-        ${[0,1,2,3,4,5,6].map(i => `.schedule-day:nth-child(${i + 1}) { animation-delay: ${i * 0.05}s; }`).join('\n')}
-        @media (max-width: 900px) { .schedule-grid { grid-template-columns: repeat(7, minmax(160px, 1fr)) !important; } }
-        @media (max-width: 600px) { .schedule-grid { grid-template-columns: repeat(7, minmax(140px, 1fr)) !important; } }
+        .schedule-scroll { scrollbar-width: none; -ms-overflow-style: none; scroll-snap-type: x mandatory; scroll-behavior: smooth; }
+        .schedule-scroll::-webkit-scrollbar { display: none; }
+        
+        .schedule-grid { animation: fadeIn 0.3s ease-out; display: flex; gap: 1rem; }
+        .schedule-day-card { flex: 0 0 auto; width: calc(100vw - 2.5rem); max-width: 320px; scroll-snap-align: center; animation: fadeIn 0.4s ease-out backwards; }
+        
+        @media (min-width: 1024px) {
+          .schedule-scroll { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; scroll-snap-type: none; }
+          .schedule-scroll::-webkit-scrollbar { display: block; height: 8px; }
+          .schedule-scroll::-webkit-scrollbar-track { background: transparent; }
+          .schedule-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+          
+          .schedule-grid { display: grid; grid-template-columns: repeat(7, minmax(180px, 1fr)); gap: 0.75rem; }
+          .schedule-day-card { width: auto; max-width: none; scroll-snap-align: none; flex: initial; }
+        }
+        
+        ${[0,1,2,3,4,5,6].map(i => `.schedule-day-card:nth-child(${i + 1}) { animation-delay: ${i * 0.05}s; }`).join('\n')}
+        
         .month-cell:hover { background: #f9fafb !important; }
+        
+        /* Adapt Month View on mobile to vertical list of active days */
+        @media (max-width: 768px) {
+          .month-grid-container { border: none !important; background: transparent !important; display: flex !important; flex-direction: column !important; gap: 0.5rem !important; }
+          .month-cell { border: 1px solid #e5e7eb; border-radius: 0.5rem; min-height: auto !important; margin-bottom: 0 !important; display: none !important; opacity: 1 !important; }
+          .month-cell.has-events, .month-cell.is-today { display: flex !important; }
+          .month-header { display: none !important; }
+        }
       `}</style>
 
       {/* ========== WEEK VIEW ========== */}
       {viewMode === 'week' && (
         <div className="schedule-scroll" style={{ overflowX: 'auto', marginLeft: '-0.5rem', marginRight: '-0.5rem', paddingLeft: '0.5rem', paddingRight: '0.5rem', paddingBottom: '0.5rem' }}>
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(7, minmax(180px, 1fr))',
-            gap: '0.75rem', minHeight: '400px',
+            minHeight: '400px',
             transition: 'opacity 0.25s ease', opacity: isNavigating ? 0.5 : 1,
           }} className="schedule-grid">
             {schedule?.days.map((day) => {
@@ -495,7 +511,7 @@ export default function SchedulePage() {
               } : {};
 
               return (
-                <div key={day.date} className="card" style={{ minHeight: '200px', ...todayStyle }}>
+                <div key={day.date} className="card schedule-day-card" style={{ minHeight: '200px', ...todayStyle }}>
                   <div className="card-body" style={{ padding: '0.75rem' }}>
                     {/* Day Header */}
                     <div style={{ textAlign: 'center', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: isToday(day.date) ? '2px solid #3b82f6' : '1px solid #e5e7eb' }}>
@@ -609,7 +625,7 @@ export default function SchedulePage() {
       {viewMode === 'month' && (
         <div style={{ transition: 'opacity 0.25s ease', opacity: isNavigating ? 0.5 : 1 }}>
           {/* Day-of-week header */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', marginBottom: '1px' }}>
+          <div className="month-header" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', marginBottom: '1px' }}>
             {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'].map(d => (
               <div key={d} style={{
                 textAlign: 'center', padding: '0.5rem', fontSize: '0.75rem', fontWeight: 600,
@@ -622,7 +638,7 @@ export default function SchedulePage() {
           </div>
 
           {/* Calendar grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#e5e7eb', border: '1px solid #e5e7eb', borderRadius: '0 0 0.5rem 0.5rem' }}>
+          <div className="month-grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#e5e7eb', border: '1px solid #e5e7eb', borderRadius: '0 0 0.5rem 0.5rem' }}>
             {(() => {
               if (!schedule?.days) return null;
               const daysMap: Record<string, DaySchedule> = {};
@@ -642,10 +658,12 @@ export default function SchedulePage() {
                 const today = isToday(dateStr);
                 const dayNum = cursor.getDate();
 
+                const hasEvents = dayData && dayData.lessons.length > 0;
+
                 cells.push(
                   <div
                     key={dateStr}
-                    className="month-cell"
+                    className={`month-cell ${hasEvents ? 'has-events' : ''} ${today ? 'is-today' : ''}`}
                     style={{
                       background: today ? '#eff6ff' : 'white',
                       minHeight: '110px',
@@ -669,9 +687,9 @@ export default function SchedulePage() {
                       }}>
                         {dayNum}
                       </span>
-                      {dayData && dayData.lessons.length > 0 && (
+                      {hasEvents && (
                         <span style={{ fontSize: '0.625rem', fontWeight: 600, color: '#3b82f6' }}>
-                          {dayData.lessons.length}
+                          {dayData.lessons.length} {dayData.lessons.length === 1 ? 'заняття' : 'занять'} 
                         </span>
                       )}
                     </div>
