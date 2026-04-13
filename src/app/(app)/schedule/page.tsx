@@ -548,6 +548,20 @@ export default function SchedulePage() {
           .month-cell { border: 1px solid #e5e7eb; border-radius: 0.5rem; min-height: auto !important; margin-bottom: 0 !important; display: none !important; opacity: 1 !important; }
           .month-cell.has-events, .month-cell.is-today { display: flex !important; }
           .month-header { display: none !important; }
+          
+          /* Larger lesson tiles for comfortable finger tapping on mobile */
+          .month-lesson-item {
+            padding: 0.5rem 0.625rem !important;
+            font-size: 0.8125rem !important;
+            border-radius: 0.375rem !important;
+            border-left-width: 3px !important;
+            min-height: 36px !important;
+            display: flex !important;
+            align-items: center !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+          }
         }
       `}</style>
 
@@ -761,6 +775,7 @@ export default function SchedulePage() {
                         return (
                           <div
                             key={lesson.id}
+                            className="month-lesson-item"
                             onClick={() => handleLessonClick(lesson)}
                             style={{
                               fontSize: '0.6875rem',
