@@ -176,8 +176,8 @@ export default function SchedulePage() {
   }, [user, fetchSchedule, isDateContextReady]);
 
   useEffect(() => {
-    // Scroll to today if it exists in the current week view
-    if (schedule && viewMode === 'week' && todayKey) {
+    // Scroll to today only on mobile (≤768px) to avoid unwanted scroll on desktop
+    if (schedule && viewMode === 'week' && todayKey && window.innerWidth <= 768) {
       const hasToday = schedule.days.some(d => d.date.startsWith(todayKey));
       if (hasToday) {
         setTimeout(() => {
@@ -185,7 +185,7 @@ export default function SchedulePage() {
           if (el) {
             el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
           }
-        }, 100);
+        }, 150);
       }
     }
   }, [schedule, viewMode, todayKey]);
