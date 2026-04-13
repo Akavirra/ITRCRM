@@ -1,10 +1,11 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createOpenAI } from '@ai-sdk/openai';
 import {
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
   generateText,
+  streamText,
   stepCountIs,
   type UIMessage,
 } from 'ai';
@@ -153,26 +154,17 @@ export async function POST(request: NextRequest) {
       });
 
       try {
-        const result = await generateText({
+        const result = streamText({
           model: groq(process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'),
           system: `${ASSISTANT_SYSTEM_PROMPT}\nДата: ${getAssistantToday()}. Місяць: ${getAssistantCurrentMonth()}.`,
           messages: modelMessages,
           maxOutputTokens: 1024,
           temperature: 0,
-          stopWhen: stepCountIs(3),
+          maxSteps: 5,
           tools: createAssistantTools(),
         });
 
-        const responseText =
-          result.text?.trim() ||
-          formatAssistantToolResults(result.toolResults as Array<{ toolName?: string; output?: unknown }>) ||
-          'Не вдалося сформувати текстову відповідь. Спробуйте уточнити запит.';
-
-        return createAssistantTextResponse(
-          body.messages,
-          responseText,
-          'assistant-model-reply',
-        );
+        return result.toDataStreamResponse();
       } catch (error) {
         if (isAssistantQuotaError(error)) {
           markAssistantKeyRateLimited(apiKey);

@@ -38,7 +38,7 @@ export function createAssistantTools(now = new Date()): ToolSet {
       inputSchema: z.object({
         search: z.string().optional().describe("Ім'я учня"),
         is_active: z.boolean().optional().describe('active?'),
-        limit: z.number().optional().default(20).describe('max results'),
+        limit: z.coerce.number().optional().default(20).describe('max results'),
       }),
       execute: async ({ search, is_active, limit }) => {
         let sql =
@@ -69,7 +69,7 @@ export function createAssistantTools(now = new Date()): ToolSet {
       inputSchema: z.object({
         search: z.string().optional().describe('назва'),
         status: z.enum(['active', 'paused', 'finished']).optional().describe('статус'),
-        limit: z.number().optional().default(20).describe('max results'),
+        limit: z.coerce.number().optional().default(20).describe('max results'),
       }),
       execute: async ({ search, status, limit }) => {
         let sql = `
@@ -147,7 +147,7 @@ export function createAssistantTools(now = new Date()): ToolSet {
         date_from: z.string().optional().describe('YYYY-MM-DD'),
         date_to: z.string().optional().describe('YYYY-MM-DD'),
         status: z.enum(['scheduled', 'done', 'cancelled']).optional().describe('статус'),
-        limit: z.number().optional().default(20).describe('max results'),
+        limit: z.coerce.number().optional().default(20).describe('max results'),
       }),
       execute: async ({ group_id, date_from: rawDateFrom, date_to: rawDateTo, status, limit }) => {
         const dateFrom = normalizeDate(rawDateFrom);
@@ -257,7 +257,7 @@ export function createAssistantTools(now = new Date()): ToolSet {
         student_id: z.number().optional().describe('student_id'),
         group_id: z.number().optional().describe('group_id'),
         month: z.string().optional().describe('YYYY-MM'),
-        limit: z.number().optional().default(20).describe('max results'),
+        limit: z.coerce.number().optional().default(20).describe('max results'),
       }),
       execute: async ({ student_id, group_id, month: rawMonth, limit }) => {
         const month = normalizeMonth(rawMonth);
@@ -370,9 +370,9 @@ export function createAssistantTools(now = new Date()): ToolSet {
         date_from: z.string().optional().describe('YYYY-MM-DD, default: month start'),
         date_to: z.string().optional().describe('YYYY-MM-DD, default: today'),
         month: z.string().optional().describe('YYYY-MM, default: current'),
-        min_absences: z.number().optional().default(2).describe('min absences'),
-        min_debt: z.number().optional().default(1).describe('min debt'),
-        limit: z.number().optional().default(10).describe('max results'),
+        min_absences: z.coerce.number().optional().default(2).describe('min absences'),
+        min_debt: z.coerce.number().optional().default(1).describe('min debt'),
+        limit: z.coerce.number().optional().default(10).describe('max results'),
       }),
       execute: async ({ date_from: rawDateFrom, date_to: rawDateTo, month: rawMonth, min_absences, min_debt, limit }) => {
         const dateFrom = normalizeDate(rawDateFrom) || getAssistantMonthStart(now);
@@ -540,7 +540,7 @@ export function createAssistantTools(now = new Date()): ToolSet {
         date_from: z.string().optional().describe('YYYY-MM-DD, default: month start'),
         date_to: z.string().optional().describe('YYYY-MM-DD, default: today'),
         group_id: z.number().optional().describe('group_id'),
-        min_absences: z.number().optional().default(1).describe('min absences'),
+        min_absences: z.coerce.number().optional().default(1).describe('min absences'),
       }),
       execute: async ({ date_from: rawDateFrom, date_to: rawDateTo, group_id, min_absences }) => {
         const dateFrom = normalizeDate(rawDateFrom) || getAssistantMonthStart(now);
