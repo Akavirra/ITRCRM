@@ -43,5 +43,5 @@ export default function AnimatedNumber({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, duration]); // Intentionally omitting displayValue so it only restarts when `value` changes
 
-  return <>{formatFn ? formatFn(displayValue) : displayValue}</>;
+  return <span suppressHydrationWarning>{formatFn ? formatFn(displayValue) : displayValue}</span>;
 }

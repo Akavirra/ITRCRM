@@ -213,7 +213,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
         <section className={styles.hero}>
           <div className={styles.heroLeft}>
             <div className={styles.heroGreeting}>{initialData.greeting}!</div>
-            <h1 className={styles.heroTitle}>{formattedDate}</h1>
+            <h1 className={styles.heroTitle} suppressHydrationWarning>{formattedDate}</h1>
           </div>
 
           <div className={styles.actionsStrip}>
@@ -530,7 +530,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
 
                       {/* Rescheduled info */}
                       {lesson.original_date && (
-                        <span className={styles.rescheduledBadge}>
+                        <span className={styles.rescheduledBadge} suppressHydrationWarning>
                           <RefreshCw size={10} />
                           Перенесено з {format(new Date(lesson.original_date), 'd MMM', { locale: uk })}
                         </span>
