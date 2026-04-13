@@ -36,6 +36,12 @@ describe('assistant quick replies', () => {
     });
   });
 
+  test('matches stats overview prompt', () => {
+    expect(matchAssistantQuickReply('Покажи загальну статистику CRM')).toEqual({
+      kind: 'stats-overview',
+    });
+  });
+
   test('returns formatted active students reply', async () => {
     mockGet.mockResolvedValue({
       total_students: '120',
@@ -69,7 +75,7 @@ describe('assistant quick replies', () => {
       now: new Date('2026-04-12T08:00:00.000Z'),
     });
 
-    expect(reply).toContain('На 12.04.2026 заплановано 1 занять.');
+    expect(reply).toContain('На 12.04.2026 заплановано 1 заняття.');
     expect(reply).toContain('Junior Robotics');
     expect(reply).toContain('Ірина');
     expect(reply).toContain('Сенсори');
@@ -111,7 +117,7 @@ describe('assistant quick replies', () => {
       now: new Date('2026-04-12T08:00:00.000Z'),
     });
 
-    expect(reply).toContain('За 2026-04 боржників: 1.');
+    expect(reply).toContain('За 2026-04 є 1 боржник.');
     expect(reply).toContain('Загальний борг: 1 500 грн.');
     expect(reply).toContain('Марко Тест');
   });
@@ -133,15 +139,44 @@ describe('assistant quick replies', () => {
       now: new Date('2026-04-12T08:00:00.000Z'),
     });
 
-    expect(reply).toContain('Ризикових учнів за період 01.04.2026–12.04.2026: 1.');
+    expect(reply).toContain('За період 01.04.2026–12.04.2026 знайдено 1 ризиковий учень.');
     expect(reply).toContain('Анна Тест');
     expect(reply).toContain('3 пропуск(и)');
     expect(reply).toContain('борг 700 грн');
   });
 
-  test('returns null for broader prompts', async () => {
+  test('returns formatted stats overview reply', async () => {
+    mockGet
+      .mockResolvedValueOnce({
+        total_students: '120',
+        active_students: '90',
+        total_groups: '12',
+        active_groups: '8',
+        total_courses: '6',
+        total_teachers: '5',
+      } as never)
+      .mockResolvedValueOnce({
+        lessons_count: '18',
+        done_count: '11',
+      } as never)
+      .mockResolvedValueOnce({
+        total_payments: '25000',
+      } as never);
+
     const reply = await getAssistantQuickReply({
       text: 'Покажи загальну статистику CRM',
+      now: new Date('2026-04-12T08:00:00.000Z'),
+    });
+
+    expect(reply).toContain('Зараз у CRM 90 активних учнів.');
+    expect(reply).toContain('Активних 8 груп');
+    expect(reply).toContain('За цей місяць: 18 занять');
+    expect(reply).toContain('Оплат від початку місяця: 25 000 грн.');
+  });
+
+  test('returns null for broader prompts', async () => {
+    const reply = await getAssistantQuickReply({
+      text: 'Поясни, як краще організувати розклад груп',
     });
 
     expect(reply).toBeNull();

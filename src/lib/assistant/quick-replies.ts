@@ -4,6 +4,8 @@ import { ASSISTANT_TIMEZONE } from './constants';
 import {
   getAssistantCurrentMonth,
   getAssistantMonthStart,
+  getPaymentsRangeStart,
+  getStatsDateFilter,
   getAssistantToday,
 } from './date-utils';
 
@@ -12,7 +14,8 @@ type QuickReplyKind =
   | 'today-lessons'
   | 'daily-brief'
   | 'monthly-debtors'
-  | 'at-risk-students';
+  | 'at-risk-students'
+  | 'stats-overview';
 
 interface QuickReplyMatch {
   kind: QuickReplyKind;
@@ -59,6 +62,24 @@ interface AtRiskRow {
   debt: string | number;
 }
 
+interface StatsOverviewRow {
+  total_students: string;
+  active_students: string;
+  total_groups: string;
+  active_groups: string;
+  total_courses: string;
+  total_teachers: string;
+}
+
+interface StatsLessonRow {
+  lessons_count: string;
+  done_count: string;
+}
+
+interface StatsPaymentRow {
+  total_payments: string;
+}
+
 function normalizePrompt(text: string) {
   return text.toLowerCase().replace(/\s+/g, ' ').trim();
 }
@@ -70,6 +91,26 @@ function formatNumber(value: string | number) {
 
 function formatCurrency(value: string | number) {
   return `${formatNumber(value)} грн`;
+}
+
+function pluralize(value: string | number, forms: [string, string, string]) {
+  const absValue = Math.abs(Number(value));
+  const mod10 = absValue % 10;
+  const mod100 = absValue % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return forms[0];
+  }
+
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) {
+    return forms[1];
+  }
+
+  return forms[2];
+}
+
+function formatCount(value: string | number, forms: [string, string, string]) {
+  return `${formatNumber(value)} ${pluralize(value, forms)}`;
 }
 
 function formatDateForReply(value: string | Date) {
@@ -129,6 +170,13 @@ export function matchAssistantQuickReply(text: string): QuickReplyMatch | null {
 
   if (normalized.includes('ризиков') && normalized.includes('учн')) {
     return { kind: 'at-risk-students' };
+  }
+
+  if (
+    (normalized.includes('статист') || normalized.includes('показник')) &&
+    (normalized.includes('загальн') || normalized.includes('crm') || normalized.includes('система'))
+  ) {
+    return { kind: 'stats-overview' };
   }
 
   if (
@@ -214,9 +262,9 @@ async function buildTodayLessonsReply(now: Date) {
   const moreCount = lessons.length - lines.length;
 
   return [
-    `На ${formatDateForReply(today)} заплановано ${formatNumber(lessons.length)} занять.`,
+    `На ${formatDateForReply(today)} заплановано ${formatCount(lessons.length, ['заняття', 'заняття', 'занять'])}.`,
     ...lines,
-    moreCount > 0 ? `Ще занять: ${formatNumber(moreCount)}.` : null,
+    moreCount > 0 ? `Ще ${formatCount(moreCount, ['заняття', 'заняття', 'занять'])}.` : null,
   ]
     .filter(Boolean)
     .join('\n');
@@ -245,9 +293,9 @@ async function buildDailyBriefReply(now: Date) {
   }
 
   return [
-    `Підсумок на ${formatDateForReply(today)}: ${formatNumber(brief.total_lessons)} занять.`,
+    `Підсумок на ${formatDateForReply(today)}: ${formatCount(brief.total_lessons, ['заняття', 'заняття', 'занять'])}.`,
     `Заплановано: ${formatNumber(brief.scheduled_lessons)}, проведено: ${formatNumber(brief.done_lessons)}, скасовано: ${formatNumber(brief.cancelled_lessons)}.`,
-    `У роботі ${formatNumber(brief.unique_groups)} груп і ${formatNumber(brief.unique_teachers)} викладачів.`,
+    `У роботі ${formatCount(brief.unique_groups, ['група', 'групи', 'груп'])} і ${formatCount(brief.unique_teachers, ['викладач', 'викладачі', 'викладачів'])}.`,
   ].join('\n');
 }
 
@@ -292,9 +340,9 @@ async function buildMonthlyDebtorsReply(now: Date) {
   const moreCount = debtors.length - lines.length;
 
   return [
-    `За ${month} боржників: ${formatNumber(debtors.length)}. Загальний борг: ${formatCurrency(totalDebt)}.`,
+    `За ${month} є ${formatCount(debtors.length, ['боржник', 'боржники', 'боржників'])}. Загальний борг: ${formatCurrency(totalDebt)}.`,
     ...lines,
-    moreCount > 0 ? `Ще боржників: ${formatNumber(moreCount)}.` : null,
+    moreCount > 0 ? `Ще ${formatCount(moreCount, ['боржник', 'боржники', 'боржників'])}.` : null,
   ]
     .filter(Boolean)
     .join('\n');
@@ -368,8 +416,51 @@ async function buildAtRiskStudentsReply(now: Date) {
   });
 
   return [
-    `Ризикових учнів за період ${formatDateForReply(dateFrom)}–${formatDateForReply(dateTo)}: ${formatNumber(students.length)}.`,
+    `За період ${formatDateForReply(dateFrom)}–${formatDateForReply(dateTo)} знайдено ${formatCount(students.length, ['ризиковий учень', 'ризикові учні', 'ризикових учнів'])}.`,
     ...lines,
+  ].join('\n');
+}
+
+async function buildStatsOverviewReply(now: Date) {
+  const stats = await get<StatsOverviewRow>(`
+    SELECT
+      (SELECT COUNT(*) FROM students) as total_students,
+      (SELECT COUNT(*) FROM students WHERE is_active = true) as active_students,
+      (SELECT COUNT(*) FROM groups WHERE is_active = true) as total_groups,
+      (SELECT COUNT(*) FROM groups WHERE is_active = true AND status = 'active') as active_groups,
+      (SELECT COUNT(*) FROM courses WHERE is_active = true) as total_courses,
+      (SELECT COUNT(*) FROM users WHERE role = 'teacher' AND is_active = true) as total_teachers
+  `);
+
+  const lessonDateFilter = getStatsDateFilter('month', now);
+  const lessonStats = await get<StatsLessonRow>(
+    `
+      SELECT COUNT(*) as lessons_count,
+             COUNT(*) FILTER (WHERE status = 'done') as done_count
+      FROM lessons l
+      WHERE 1=1 ${lessonDateFilter.clause}
+    `,
+    lessonDateFilter.params,
+  );
+
+  const paymentStats = await get<StatsPaymentRow>(
+    `
+      SELECT COALESCE(SUM(amount), 0) as total_payments
+      FROM payments
+      WHERE paid_at >= $1
+    `,
+    [getPaymentsRangeStart('month', now)],
+  );
+
+  if (!stats || !lessonStats || !paymentStats) {
+    return 'Не вдалося зібрати загальну статистику CRM.';
+  }
+
+  return [
+    `Зараз у CRM ${formatCount(stats.active_students, ['активний учень', 'активні учні', 'активних учнів'])}.`,
+    `Активних ${formatCount(stats.active_groups, ['група', 'групи', 'груп'])}, курсів: ${formatNumber(stats.total_courses)}, викладачів: ${formatNumber(stats.total_teachers)}.`,
+    `За цей місяць: ${formatCount(lessonStats.lessons_count, ['заняття', 'заняття', 'занять'])}, з них проведено ${formatNumber(lessonStats.done_count)}.`,
+    `Оплат від початку місяця: ${formatCurrency(paymentStats.total_payments)}.`,
   ].join('\n');
 }
 
@@ -394,6 +485,8 @@ export async function getAssistantQuickReply({
       return buildMonthlyDebtorsReply(now);
     case 'at-risk-students':
       return buildAtRiskStudentsReply(now);
+    case 'stats-overview':
+      return buildStatsOverviewReply(now);
     default:
       return null;
   }

@@ -14,6 +14,7 @@ import {
   ASSISTANT_SYSTEM_PROMPT,
   ASSISTANT_USER_ERROR_MESSAGE,
 } from '@/lib/assistant/constants';
+import { getAssistantGuardrailReply } from '@/lib/assistant/guardrails';
 import { getAssistantQuickReply } from '@/lib/assistant/quick-replies';
 import { createAssistantTools } from '@/lib/assistant/tools';
 
@@ -75,6 +76,27 @@ export async function POST(request: NextRequest) {
 
   try {
     const latestUserText = extractLatestUserText(body.messages);
+    const guardrailReply = latestUserText
+      ? getAssistantGuardrailReply(latestUserText)
+      : null;
+
+    if (guardrailReply) {
+      const stream = createUIMessageStream({
+        originalMessages: body.messages as UIMessage[],
+        execute: ({ writer }) => {
+          const textPartId = 'assistant-guardrail-reply';
+
+          writer.write({ type: 'start' });
+          writer.write({ type: 'text-start', id: textPartId });
+          writer.write({ type: 'text-delta', id: textPartId, delta: guardrailReply });
+          writer.write({ type: 'text-end', id: textPartId });
+          writer.write({ type: 'finish', finishReason: 'stop' });
+        },
+      });
+
+      return createUIMessageStreamResponse({ stream });
+    }
+
     const quickReply = latestUserText
       ? await getAssistantQuickReply({ text: latestUserText })
       : null;
