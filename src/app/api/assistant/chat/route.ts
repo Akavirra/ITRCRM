@@ -17,6 +17,7 @@ import {
 import { getAssistantGuardrailReply } from '@/lib/assistant/guardrails';
 import { getAssistantQuickReply } from '@/lib/assistant/quick-replies';
 import { createAssistantTools } from '@/lib/assistant/tools';
+import { getAssistantToday, getAssistantCurrentMonth } from '@/lib/assistant/date-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
 
     const result = streamText({
       model: groq(process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'),
-      system: ASSISTANT_SYSTEM_PROMPT,
+      system: `${ASSISTANT_SYSTEM_PROMPT}\n\nСьогоднішня дата: ${getAssistantToday()}. Поточний місяць: ${getAssistantCurrentMonth()}. ЗАВЖДИ використовуй ці дати як орієнтир при запитах.`,
       messages: modelMessages,
       temperature: 0,
       stopWhen: stepCountIs(5),
