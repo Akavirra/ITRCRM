@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
           messages: modelMessages,
           maxOutputTokens: 1024,
           temperature: 0,
-          maxSteps: 5,
+          stopWhen: stepCountIs(5),
           tools: createAssistantTools(),
         });
 
