@@ -164,7 +164,9 @@ export async function POST(request: NextRequest) {
           tools: createAssistantTools(),
         });
 
-        return result.toDataStreamResponse();
+        return result.toUIMessageStreamResponse({
+          originalMessages: body.messages as UIMessage[],
+        });
       } catch (error) {
         if (isAssistantQuotaError(error)) {
           markAssistantKeyRateLimited(apiKey);
