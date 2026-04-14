@@ -255,7 +255,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               <span className={styles.secondaryStatValue}><AnimatedNumber value={initialData.stats.activeCourses} /></span>
             </div>
           </div>
-          <div className={styles.segmented}>
+          <div className={styles.segmented} data-active={statsPeriod}>
             <button
               type="button"
               className={`${styles.segmentButton} ${statsPeriod === 'month' ? styles.segmentButtonActive : ''}`}
@@ -549,7 +549,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 <div className={styles.panelLabel}>Операції</div>
                 <h2 className={styles.panelTitle}>Останні зміни</h2>
               </div>
-              <div className={styles.segmented}>
+              <div className={styles.segmented} data-active={activeTab}>
                 <button
                   type="button"
                   className={`${styles.segmentButton} ${activeTab === 'payments' ? styles.segmentButtonActive : ''}`}
@@ -649,7 +649,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
             </div>
 
             <div className={styles.modalTabBar}>
-              <div className={styles.segmented}>
+              <div className={styles.segmented} data-active={debtsTab}>
                 <button
                   type="button"
                   className={`${styles.segmentButton} ${debtsTab === 'month' ? styles.segmentButtonActive : ''}`}
@@ -806,7 +806,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
             </div>
 
             <div className={styles.modalTabBar}>
-              <div className={styles.segmented}>
+              <div className={`${styles.segmented} ${styles.segmented3}`} data-active={attendanceView}>
                 <button
                   type="button"
                   className={`${styles.segmentButton} ${attendanceView === 'month' ? styles.segmentButtonActive : ''}`}

@@ -1,0 +1,16 @@
+
+> school-admin-panel@1.0.0 dev
+> next dev
+
+   ▲ Next.js 14.0.4
+   - Local:        http://localhost:3001
+   - Environments: .env.local
+
+ ✓ Ready in 5.2s
+ ✓ Compiled /src/middleware in 279ms (64 modules)
+ ✓ Compiled /api/auth/login in 348ms (62 modules)
+ ○ Compiling /api/assistant/chat ...
+ ✓ Compiled /api/assistant/chat in 1003ms (232 modules)
+ ✓ Compiled in 49ms
+
+C:\CProjects\ITRoboticsCRM\ITRobotCRM>
