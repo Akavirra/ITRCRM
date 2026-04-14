@@ -694,17 +694,29 @@ const Navbar: React.FC<NavbarProps> = ({
             </TransitionLink>
           </div>
 
-          {/* Mobile search toggle button (visible only on mobile when search is closed) */}
-          <button
-            className={`${styles.iconButton} ${styles.mobileSearchToggle}`}
-            onClick={openMobileSearch}
-            title="Пошук"
-          >
-            <Search size={20} strokeWidth={1.5} />
-          </button>
-
           {/* Center section - Search */}
           <div className={`${styles.navbarCenter} ${mobileSearchOpen ? styles.navbarCenterExpanded : ''}`}>
+            {/* Mobile search toggle button (visible only on mobile when search is closed) */}
+            {!mobileSearchOpen && (
+              <button
+                className={`${styles.iconButton} ${styles.mobileSearchToggle}`}
+                onClick={openMobileSearch}
+                title="Пошук"
+              >
+                <Search size={20} strokeWidth={1.5} />
+              </button>
+            )}
+
+            {/* Mobile search toggle button (visible only on mobile when search is closed) */}
+            {!mobileSearchOpen && (
+              <button
+                className={`${styles.iconButton} ${styles.mobileSearchToggle}`}
+                onClick={openMobileSearch}
+                title="Пошук"
+              >
+                <Search size={20} strokeWidth={1.5} />
+              </button>
+            )}
             <div className={styles.searchContainer}>
               <Search size={18} className={styles.searchIcon} />
               <input
