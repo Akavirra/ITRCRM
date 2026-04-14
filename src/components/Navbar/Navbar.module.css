@@ -28,6 +28,7 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  transition: opacity 0.25s ease, width 0.3s ease, margin 0.3s ease;
 }
 
 .homeButton {
@@ -56,6 +57,7 @@
   justify-content: center;
   max-width: 560px;
   margin: 0 auto;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .searchContainer {
@@ -140,6 +142,7 @@
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+  transition: opacity 0.25s ease, width 0.3s ease;
 }
 
 .iconButton {
@@ -303,7 +306,28 @@
   background: #fef2f2;
 }
 
-/* Responsive - Tablet */
+/* ── Mobile search toggle (icon) ── hidden on desktop */
+.mobileSearchToggle {
+  display: none;
+}
+
+/* ── Mobile search close button inside expanded search ── */
+.mobileSearchClose {
+  display: none;
+}
+
+/* ── Visibility helpers ── */
+.desktopOnly {
+  display: flex;
+}
+
+.mobileOnly {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────── */
+/* Responsive - Tablet                                     */
+/* ─────────────────────────────────────────────────────── */
 @media (max-width: 1024px) and (min-width: 769px) {
   .navbar {
     padding: 0 16px;
@@ -327,7 +351,9 @@
   }
 }
 
-/* Responsive - Mobile */
+/* ─────────────────────────────────────────────────────── */
+/* Responsive - Mobile                                     */
+/* ─────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .navbar {
     padding: 0 12px;
@@ -335,14 +361,112 @@
   }
 
   .navbarInner {
-    gap: 8px;
+    gap: 4px;
   }
 
+  /* ── Hide/show helpers on mobile ── */
+  .desktopOnly {
+    display: none !important;
+  }
+
+  .mobileOnly {
+    display: flex !important;
+  }
+
+  /* ── Left section default (visible) ── */
+  .navbarLeft {
+    overflow: hidden;
+  }
+
+  /* ── Left section hidden when search is expanded ── */
+  .navbarLeftHidden {
+    width: 0 !important;
+    opacity: 0;
+    pointer-events: none;
+    gap: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  /* ── Mobile search toggle button ── */
+  .mobileSearchToggle {
+    display: flex;
+    flex-shrink: 0;
+    transition: opacity 0.2s ease, width 0.2s ease;
+  }
+
+  /* Hide search toggle when search is expanded (via parent hiding) */
+  .navbarCenterExpanded ~ .navbarRight .mobileSearchToggle,
+  .navbarLeftHidden ~ .mobileSearchToggle {
+    display: none;
+  }
+
+  /* ── Center section (search) – collapsed by default on mobile ── */
   .navbarCenter {
-    max-width: 100%;
-    flex: 1;
+    flex: 0 0 0;
+    width: 0;
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    margin: 0;
+    transition: flex 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.2s ease 0.05s;
   }
 
+  /* ── Center section expanded (when mobile search is open) ── */
+  .navbarCenterExpanded {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ── Mobile close button inside search bar ── */
+  .mobileSearchClose {
+    display: flex;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: #f1f5f9;
+    border-radius: 8px;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    z-index: 2;
+    padding: 0;
+  }
+
+  .mobileSearchClose:hover {
+    background: #e2e8f0;
+    color: #334155;
+  }
+
+  /* ── Right section: shrink when search is expanded ── */
+  .navbarRight {
+    transition: opacity 0.25s ease;
+  }
+
+  /* ── When search is expanded, hide right icons except user block ── */
+  .navbarCenterExpanded ~ .navbarRight .iconButton:not(.mobileSearchToggle) {
+    display: none;
+  }
+
+  .navbarCenterExpanded ~ .navbarRight .userBlock {
+    display: none;
+  }
+
+  /* ── Search hint always hidden on mobile ── */
   .searchHint {
     display: none;
   }
@@ -350,8 +474,13 @@
   .searchContainer {
     height: 38px;
     font-size: 14px;
-    padding: 0 12px 0 38px;
+  }
+
+  .searchInput {
+    height: 38px;
     border-radius: 10px;
+    padding: 0 40px 0 38px;
+    font-size: 14px;
   }
 
   .searchIcon {
@@ -406,20 +535,22 @@
   }
 
   .navbarInner {
-    gap: 4px;
+    gap: 2px;
   }
 
   .searchContainer {
     position: static;
+    height: 36px;
+    font-size: 13px;
   }
 
-  .searchContainer {
+  .searchInput {
     height: 36px;
     font-size: 13px;
   }
 
   .navbarRight {
-    gap: 2px;
+    gap: 0;
   }
 
   .homeButton {

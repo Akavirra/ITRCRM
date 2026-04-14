@@ -108,6 +108,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { calcOpen, toggleCalc } = useCalculator();
   const { notesOpen, toggleNotes } = useNotes();
@@ -316,18 +317,25 @@ const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
-  // Keyboard shortcut for search (Ctrl+K)
+  // Keyboard shortcut for search (Ctrl+K) + ESC to close mobile search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') {
         e.preventDefault();
-        searchInputRef.current?.focus();
+        setMobileSearchOpen(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+      if (e.code === 'Escape' && mobileSearchOpen) {
+        setMobileSearchOpen(false);
+        setSearchQuery('');
+        setSearchFocused(false);
+        searchInputRef.current?.blur();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [mobileSearchOpen]);
 
   const handleLogout = async () => {
     try {
@@ -654,12 +662,24 @@ const Navbar: React.FC<NavbarProps> = ({
   const userName = user?.name || 'Максим П.';
   const userRole = user?.role === 'admin' ? t('roles.admin') : t('roles.teacher');
 
+  const closeMobileSearch = useCallback(() => {
+    setMobileSearchOpen(false);
+    setSearchQuery('');
+    setSearchFocused(false);
+    searchInputRef.current?.blur();
+  }, []);
+
+  const openMobileSearch = useCallback(() => {
+    setMobileSearchOpen(true);
+    setTimeout(() => searchInputRef.current?.focus(), 60);
+  }, []);
+
   return (
     <>
       <nav className={`${styles.navbar} ${withSidebar ? styles.navbarWithSidebar : ''}`}>
         <div className={styles.navbarInner}>
           {/* Left section - Menu button + Home */}
-          <div className={styles.navbarLeft}>
+          <div className={`${styles.navbarLeft} ${mobileSearchOpen ? styles.navbarLeftHidden : ''}`}>
             {withSidebar && (
               <button 
                 className={styles.homeButton} 
@@ -674,8 +694,17 @@ const Navbar: React.FC<NavbarProps> = ({
             </TransitionLink>
           </div>
 
+          {/* Mobile search toggle button (visible only on mobile when search is closed) */}
+          <button
+            className={`${styles.iconButton} ${styles.mobileSearchToggle}`}
+            onClick={openMobileSearch}
+            title="Пошук"
+          >
+            <Search size={20} strokeWidth={1.5} />
+          </button>
+
           {/* Center section - Search */}
-          <div className={styles.navbarCenter}>
+          <div className={`${styles.navbarCenter} ${mobileSearchOpen ? styles.navbarCenterExpanded : ''}`}>
             <div className={styles.searchContainer}>
               <Search size={18} className={styles.searchIcon} />
               <input
@@ -687,7 +716,13 @@ const Navbar: React.FC<NavbarProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
-                onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
+                onBlur={() => setTimeout(() => {
+                  setSearchFocused(false);
+                  // Auto-close mobile search when blurred if query is empty
+                  if (!searchQuery) {
+                    setMobileSearchOpen(false);
+                  }
+                }, 200)}
                 autoComplete="off"
                 spellCheck={false}
               />
@@ -698,10 +733,20 @@ const Navbar: React.FC<NavbarProps> = ({
                   <kbd>K</kbd>
                 </div>
               )}
+              {/* Mobile close button inside search */}
+              {mobileSearchOpen && (
+                <button
+                  className={styles.mobileSearchClose}
+                  onClick={closeMobileSearch}
+                  type="button"
+                >
+                  <X size={16} strokeWidth={2} />
+                </button>
+              )}
               <GlobalSearch
                 query={searchQuery}
                 inputFocused={searchFocused}
-                onClose={() => { setSearchQuery(''); setSearchFocused(false); searchInputRef.current?.blur(); }}
+                onClose={() => { setSearchQuery(''); setSearchFocused(false); searchInputRef.current?.blur(); setMobileSearchOpen(false); }}
               />
             </div>
           </div>
@@ -728,9 +773,9 @@ const Navbar: React.FC<NavbarProps> = ({
               <Calculator size={20} strokeWidth={1.5} />
             </button>
 
-            {/* Settings Modal Button */}
+            {/* Settings Modal Button — hidden on mobile, shown in dropdown instead */}
             <button
-              className={styles.iconButton}
+              className={`${styles.iconButton} ${styles.desktopOnly}`}
               title={t('nav.settings')}
               onClick={() => setSettingsOpen(true)}
             >
@@ -950,6 +995,14 @@ const Navbar: React.FC<NavbarProps> = ({
                   >
                     <User size={16} />
                     Мій профіль
+                  </button>
+                  {/* Settings — shown in dropdown on mobile only */}
+                  <button
+                    className={`${styles.dropdownItem} ${styles.mobileOnly}`}
+                    onClick={() => { setDropdownOpen(false); setSettingsOpen(true); setActiveSettingsTab('general'); }}
+                  >
+                    <Settings size={16} />
+                    {t('nav.settings') || 'Налаштування'}
                   </button>
                   <button
                     className={`${styles.dropdownItem} ${styles.danger}`}
