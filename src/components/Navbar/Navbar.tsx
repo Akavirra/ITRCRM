@@ -692,6 +692,16 @@ const Navbar: React.FC<NavbarProps> = ({
             <TransitionLink href="/dashboard" className={styles.homeButton} title={t('nav.dashboard')}>
               <Home size={20} strokeWidth={1.5} />
             </TransitionLink>
+            {/* Mobile search toggle button */}
+            {!mobileSearchOpen && (
+              <button
+                className={`${styles.iconButton} ${styles.mobileSearchToggle}`}
+                onClick={openMobileSearch}
+                title="Пошук"
+              >
+                <Search size={20} strokeWidth={1.5} />
+              </button>
+            )}
           </div>
 
           {/* Center section - Search */}
@@ -745,16 +755,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right section */}
           <div className={styles.navbarRight}>
-            {/* Mobile search toggle button (visible only on mobile when search is closed) */}
-            {!mobileSearchOpen && (
-              <button
-                className={`${styles.iconButton} ${styles.mobileSearchToggle}`}
-                onClick={openMobileSearch}
-                title="Пошук"
-              >
-                <Search size={20} strokeWidth={1.5} />
-              </button>
-            )}
+            
             {/* Notes Button */}
             <button
               className={styles.iconButton}

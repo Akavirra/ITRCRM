@@ -404,16 +404,6 @@
 
 
 
-/* Hide search toggle when search is expanded with animation */
-.navbarCenterExpanded ~ .navbarRight .mobileSearchToggle,
-.navbarLeftHidden ~ .mobileSearchToggle {
-  width: 0;
-  opacity: 0;
-  margin: 0;
-  padding: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
 
   /* ── Center section (search) – collapsed by default on mobile ── */
     .navbarCenter {
@@ -491,17 +481,7 @@
     display: none;
   }
 
-  .searchContainer {
-    height: 38px;
-    font-size: 14px;
-  }
 
-  .searchInput {
-    height: 38px;
-    border-radius: 10px;
-    padding: 0 40px 0 38px;
-    font-size: 14px;
-  }
 
   .searchIcon {
     left: 12px;
@@ -558,16 +538,7 @@
     gap: 2px;
   }
 
-  .searchContainer {
-    position: static;
-    height: 36px;
-    font-size: 13px;
-  }
 
-  .searchInput {
-    height: 36px;
-    font-size: 13px;
-  }
 
   .navbarRight {
     gap: 2px;
