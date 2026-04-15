@@ -122,6 +122,7 @@ export default function CalculatorWidget({ onRestore, onClose }: Props) {
     };
     const onUp = () => {
       if (dragging.current && moved.current) {
+        suppressRestoreRef.current = true;
         savePos(posRef.current);
       }
       dragging.current = false;
@@ -181,6 +182,7 @@ export default function CalculatorWidget({ onRestore, onClose }: Props) {
     clearLongPressTimer();
 
     if (dragging.current && moved.current) {
+      suppressRestoreRef.current = true;
       savePos(posRef.current);
     }
 
