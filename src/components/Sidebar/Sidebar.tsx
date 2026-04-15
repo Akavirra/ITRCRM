@@ -189,7 +189,7 @@ function buildCalendarTooltip(
 
 // divider removed for minimalist design
 
-function SidebarInfoWidget() {
+function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
   const [now, setNow] = useState<Date | null>(null);
   const [calOpen, setCalOpen] = useState(false);
   const [calYear, setCalYear] = useState(0);
@@ -344,6 +344,101 @@ function SidebarInfoWidget() {
   };
 
   const widgetTheme = getWidgetTheme();
+
+  if (isCompact) {
+    return (
+      <div
+        id="sidebar-info-widget"
+        style={{
+          margin: '0 12px',
+          flexShrink: 0,
+          position: 'relative',
+          paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+        }}
+      >
+        <div
+          style={{
+            padding: '10px 12px',
+            borderRadius: '16px',
+            background: widgetTheme.bg,
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            boxShadow: `${widgetTheme.shadow}, inset 0 0 0 1px ${widgetTheme.borderColor}`,
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+            transition: 'background 1s ease, box-shadow 1s ease',
+          }}
+        >
+          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            <span
+              style={{
+                fontSize: '20px',
+                fontWeight: '300',
+                color: '#0f172a',
+                letterSpacing: '-0.03em',
+                fontVariantNumeric: 'tabular-nums',
+                lineHeight: 1,
+              }}
+            >
+              {h}:{m}
+            </span>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: '500',
+                color: '#64748b',
+                lineHeight: 1.1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {dayName}, {dateStr}
+            </span>
+          </div>
+
+          {weather ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flexShrink: 0,
+                padding: '6px 8px',
+                borderRadius: '12px',
+                background: 'rgba(255, 255, 255, 0.45)',
+              }}
+            >
+              <span style={{ lineHeight: 1, color: '#3b82f6' }}>{weatherIcon(weather.code, 16)}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
+                <span
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: '#0f172a',
+                    fontVariantNumeric: 'tabular-nums',
+                    lineHeight: 1,
+                  }}
+                >
+                  {weather.temp}°
+                </span>
+                <span style={{ fontSize: '10px', color: '#94a3b8', lineHeight: 1 }}>
+                  {weather.city}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <span style={{ fontSize: '10px', color: '#94a3b8', flexShrink: 0 }}>
+              --
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div id="sidebar-info-widget" style={{ margin: '0 12px 12px', flexShrink: 0, position: 'relative' }}>
@@ -1378,7 +1473,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   };
 
   const getSidebarHeight = () => {
-    if (isSmallScreen) return '100vh';
+    if (isSmallScreen) return '100dvh';
     return 'calc(100vh - 100px)';
   };
 
@@ -1405,7 +1500,8 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     boxShadow: isOpen ? '0 4px 20px rgba(0, 0, 0, 0.08)' : 'none',
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden',
+    overflow: isSmallScreen ? 'auto' : 'hidden',
+    WebkitOverflowScrolling: 'touch',
     borderRadius: getSidebarBorderRadius(),
     marginBottom: isSmallScreen ? '0' : '16px',
     border: isSmallScreen ? 'none' : '1px solid #f0f0f0',
@@ -1447,7 +1543,9 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       <aside style={sidebarStyle}>
         {/* Logo area */}
         <div style={{
-          padding: '1rem 1rem 0.875rem',
+          padding: isSmallScreen
+            ? 'max(1rem, env(safe-area-inset-top)) 1rem 0.875rem'
+            : '1rem 1rem 0.875rem',
           backgroundColor: isNight && !nightLampOn ? '#1e293b' : '#ffffff',
           display: 'flex',
           alignItems: 'center',
@@ -1868,7 +1966,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         </div>
 
         {/* Navigation */}
-        <nav style={{ padding: '24px 8px', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <nav style={{ padding: isSmallScreen ? '16px 8px' : '24px 8px', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -1959,7 +2057,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         </nav>
 
         {/* Date / time / weather widget */}
-        <SidebarInfoWidget />
+        <SidebarInfoWidget isCompact={isSmallScreen} />
 
       </aside>
     </>
