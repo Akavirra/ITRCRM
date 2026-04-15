@@ -1020,6 +1020,13 @@ const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
       </nav>
+      {/* Mobile search backdrop */}
+      {mobileSearchOpen && (
+        <div
+          className={styles.mobileSearchBackdrop}
+          onClick={closeMobileSearch}
+        />
+      )}
 
 
       {/* Settings Modal */}

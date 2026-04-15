@@ -412,32 +412,32 @@
   margin: 0;
   padding: 0;
   pointer-events: none;
+  overflow: hidden;
 }
 
   /* ── Center section (search) – collapsed by default on mobile ── */
-  .navbarCenter {
-    flex: 0 0 0;
-    width: 0;
-    max-width: 0;
-    overflow: hidden;
-    opacity: 0;
-    pointer-events: none;
-    margin: 0;
-    transition: flex 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.2s ease 0.05s;
-  }
+    .navbarCenter {
+      flex: 1 1 0%;
+      max-width: 0;
+      min-width: 0;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      margin: 0;
+      padding: 0;
+      transition: max-width 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+                  opacity 0.25s ease 0.1s,
+                  padding 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    }
 
-  /* ── Center section expanded (when mobile search is open) ── */
-  .navbarCenterExpanded {
-    flex: 1 1 100%;
-    width: 100%;
-    max-width: 100%;
-    overflow: visible;
-    opacity: 1;
-    pointer-events: auto;
-  }
+    .navbarCenterExpanded {
+      max-width: 100%;
+      min-width: 0;
+      opacity: 1;
+      overflow: visible;
+      pointer-events: auto;
+      padding: 0;
+    }
 
   /* ── Mobile close button inside search bar ── */
   .mobileSearchClose {
@@ -478,7 +478,8 @@
     opacity: 0;
     margin: 0;
     padding: 0;
-    pointer-events: none;
+  pointer-events: none;
+  overflow: hidden;
   }
 
   .navbarCenterExpanded ~ .navbarRight {
@@ -581,4 +582,28 @@
     width: 34px;
     height: 34px;
   }
+}
+
+/* Mobile Search Backdrop */
+.mobileSearchBackdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobileSearchBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    top: 56px;
+    background: rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 99;
+    animation: backdropFadeIn 0.25s ease forwards;
+  }
+}
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
