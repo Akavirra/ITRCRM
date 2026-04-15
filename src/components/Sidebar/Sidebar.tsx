@@ -889,6 +889,9 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
 
   const isSmallScreen = isMobile || isTablet;
   const mobileNavbarHeight = isMobile ? 56 : 64;
+  const primaryMenuItems = isSmallScreen
+    ? menuItems.filter((item) => item.href !== '/dashboard')
+    : menuItems;
 
   // --- Interactive robot logo ---
   const logoRef = useRef<HTMLDivElement>(null);
@@ -1550,46 +1553,15 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
           backgroundColor: isNight && !nightLampOn ? '#1e293b' : '#ffffff',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: isSmallScreen ? 'space-between' : 'center',
+          justifyContent: 'center',
           flexShrink: 0,
           borderBottom: '1px solid #f0f0f0',
           minHeight: isSmallScreen ? '52px' : '64px',
           transition: 'background-color 0.5s ease',
         }}>
-          {isSmallScreen ? (
-            <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  Меню
-                </span>
-                <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#0f172a' }}>
-                  Навігація CRM
-                </span>
-              </div>
-              <TransitionLink
-                href="/dashboard"
-                onClick={onClose}
-                style={{
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 12px',
-                  borderRadius: 12,
-                  background: '#eff6ff',
-                  color: '#2563eb',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                }}
-              >
-                <Home size={16} />
-                Головна
-              </TransitionLink>
-            </>
-          ) : (
-            <>
-              <style dangerouslySetInnerHTML={{
-                __html: `
+          <>
+            <style dangerouslySetInnerHTML={{
+              __html: `
                 .itrcrm-logo { transition: transform 0.3s ease; }
                 .itrcrm-logo:hover { transform: scale(1.03); }
                 .itrcrm-logo:hover .logo-icon { filter: drop-shadow(0 3px 10px rgba(37,99,235,0.35)); }
@@ -1640,22 +1612,21 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 @keyframes basketShake { 0%,100% { transform: translate(38px,26px) rotate(0deg); } 25% { transform: translate(38px,26px) rotate(-3deg); } 75% { transform: translate(38px,26px) rotate(3deg); } }
                 .basket-shake { animation: basketShake 0.4s ease-in-out infinite; }
               `}} />
-              <TransitionLink
-            href="/dashboard"
-            onClick={isSmallScreen ? onClose : undefined}
-            style={{ textDecoration: 'none' }}
-          >
+            <TransitionLink
+              href={isSmallScreen ? pathname : '/dashboard'}
+              style={{ textDecoration: 'none' }}
+            >
             <div
               ref={logoRef}
               className={`itrcrm-logo${isSleeping ? ' robot-sleeping' : ''}${isNight && !nightLampOn ? ' robot-night' : ''}${isNight && nightLampOn ? ' robot-lamp-on' : ''}`}
               onClick={handleRobotClick}
               onDoubleClick={handleRobotDoubleClick}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, userSelect: 'none', cursor: 'pointer', padding: '4px 0', position: 'relative' }}
+              style={{ display: 'flex', alignItems: 'center', gap: isSmallScreen ? 6 : 8, userSelect: 'none', cursor: 'pointer', padding: isSmallScreen ? '2px 0' : '4px 0', position: 'relative' }}
             >
               {/* Speech bubble */}
               {speechBubble && <div className="robot-speech">{speechBubble}</div>}
               {/* Robot icon */}
-              <svg className={`logo-icon${birthdayParty || newYearParty || sep1Party || easterParty ? ' robot-dancing' : ''}${halloweenParty ? ' robot-scared' : ''}`} width="62" height="62" viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
+              <svg className={`logo-icon${birthdayParty || newYearParty || sep1Party || easterParty ? ' robot-dancing' : ''}${halloweenParty ? ' robot-scared' : ''}`} width={isSmallScreen ? "44" : "62"} height={isSmallScreen ? "44" : "62"} viewBox="-2 -10 58 52" fill="none" style={{ flexShrink: 0, transition: 'filter 0.3s ease', overflow: 'visible' }}>
                 <defs>
                   <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44">
                     <stop offset="0%" stopColor={isNight && !nightLampOn ? '#1e3a5f' : '#3b82f6'} />
@@ -1986,18 +1957,17 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 <rect x="26" y="34" width="4" height="4" rx="1" fill="#93c5fd" />
               </svg>
               {/* Text */}
-              <div className="logo-letters" style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1, transition: 'filter 0.3s ease', gap: 2, marginTop: 14 }}>
-                <span style={{ fontSize: '1.85rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+              <div className="logo-letters" style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1, transition: 'filter 0.3s ease', gap: 2, marginTop: isSmallScreen ? 9 : 14 }}>
+                <span style={{ fontSize: isSmallScreen ? '1.3rem' : '1.85rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
                   ITR
                 </span>
-                <span style={{ fontSize: '1.85rem', fontWeight: 800, color: '#2563eb', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+                <span style={{ fontSize: isSmallScreen ? '1.3rem' : '1.85rem', fontWeight: 800, color: '#2563eb', letterSpacing: '-0.02em', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
                   CRM
                 </span>
               </div>
             </div>
-              </TransitionLink>
-            </>
-          )}
+            </TransitionLink>
+          </>
         </div>
 
         {/* Navigation */}
@@ -2007,7 +1977,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
               Основне
             </div>
           )}
-          {menuItems.map((item) => {
+          {primaryMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
             return (
