@@ -55,12 +55,12 @@ const reportsMenuItems = [
 ];
 
 
-// ── Combined date/time + weather widget ───────────────────────────────────────
+// в”Ђв”Ђ Combined date/time + weather widget в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
-const DAYS_UK = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'П\u2019ятниця', 'Субота'];
-const DAYS_SHORT_UK = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
-const MONTHS_UK = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
-const MONTHS_FULL_UK = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
+const DAYS_UK = ['РќРµРґС–Р»СЏ', 'РџРѕРЅРµРґС–Р»РѕРє', 'Р’С–РІС‚РѕСЂРѕРє', 'РЎРµСЂРµРґР°', 'Р§РµС‚РІРµСЂ', 'Рџ\u2019СЏС‚РЅРёС†СЏ', 'РЎСѓР±РѕС‚Р°'];
+const DAYS_SHORT_UK = ['РџРЅ', 'Р’С‚', 'РЎСЂ', 'Р§С‚', 'РџС‚', 'РЎР±', 'РќРґ'];
+const MONTHS_UK = ['СЃС–С‡РЅСЏ', 'Р»СЋС‚РѕРіРѕ', 'Р±РµСЂРµР·РЅСЏ', 'РєРІС–С‚РЅСЏ', 'С‚СЂР°РІРЅСЏ', 'С‡РµСЂРІРЅСЏ', 'Р»РёРїРЅСЏ', 'СЃРµСЂРїРЅСЏ', 'РІРµСЂРµСЃРЅСЏ', 'Р¶РѕРІС‚РЅСЏ', 'Р»РёСЃС‚РѕРїР°РґР°', 'РіСЂСѓРґРЅСЏ'];
+const MONTHS_FULL_UK = ['РЎС–С‡РµРЅСЊ', 'Р›СЋС‚РёР№', 'Р‘РµСЂРµР·РµРЅСЊ', 'РљРІС–С‚РµРЅСЊ', 'РўСЂР°РІРµРЅСЊ', 'Р§РµСЂРІРµРЅСЊ', 'Р›РёРїРµРЅСЊ', 'РЎРµСЂРїРµРЅСЊ', 'Р’РµСЂРµСЃРµРЅСЊ', 'Р–РѕРІС‚РµРЅСЊ', 'Р›РёСЃС‚РѕРїР°Рґ', 'Р“СЂСѓРґРµРЅСЊ'];
 
 interface WeatherData {
   city: string;
@@ -168,10 +168,10 @@ function buildCalendarDays(year: number, month: number): (number | null)[] {
 function eventWord(count: number): string {
   const mod10 = count % 10;
   const mod100 = count % 100;
-  if (mod100 >= 11 && mod100 <= 19) return 'подій';
-  if (mod10 === 1) return 'подія';
-  if (mod10 >= 2 && mod10 <= 4) return 'події';
-  return 'подій';
+  if (mod100 >= 11 && mod100 <= 19) return 'РїРѕРґС–Р№';
+  if (mod10 === 1) return 'РїРѕРґС–СЏ';
+  if (mod10 >= 2 && mod10 <= 4) return 'РїРѕРґС–С—';
+  return 'РїРѕРґС–Р№';
 }
 
 function padDateValue(value: number): string {
@@ -182,8 +182,8 @@ function buildCalendarTooltip(
   holidays: SidebarHolidayEvent[],
   birthdays: SidebarBirthdayEvent[]
 ): string {
-  const holidayLines = holidays.map((holiday) => `Свято: ${holiday.name}`);
-  const birthdayLines = birthdays.map((birthday) => `День народження: ${birthday.full_name} (${birthday.ageLabel})`);
+  const holidayLines = holidays.map((holiday) => `РЎРІСЏС‚Рѕ: ${holiday.name}`);
+  const birthdayLines = birthdays.map((birthday) => `Р”РµРЅСЊ РЅР°СЂРѕРґР¶РµРЅРЅСЏ: ${birthday.full_name} (${birthday.ageLabel})`);
   return [...holidayLines, ...birthdayLines].join('\n');
 }
 
@@ -199,6 +199,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
   const [forecast, setForecast] = useState<ForecastDay[] | null>(null);
   const [events, setEvents] = useState<SidebarEventsData | null>(null);
   const [eventsOpen, setEventsOpen] = useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const weatherBtnRef = useRef<HTMLButtonElement>(null);
   const weatherPopRef = useRef<HTMLDivElement>(null);
   const [weatherPopPos, setWeatherPopPos] = useState({ left: 0, bottom: 20 });
@@ -311,16 +312,18 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
     calendarEventsByDate.set(birthday.next_birthday, existing);
   }
 
-  let eventSummary = 'Подій немає';
+  let eventSummary = 'РџРѕРґС–Р№ РЅРµРјР°С”';
   if (totalEventsToday > 0) {
-    eventSummary = `${totalEventsToday} ${eventWord(totalEventsToday)} сьогодні`;
+    eventSummary = `${totalEventsToday} ${eventWord(totalEventsToday)} СЃСЊРѕРіРѕРґРЅС–`;
   } else if (nextHoliday) {
     eventSummary = `${nextHoliday.label}: ${nextHoliday.name}`;
   } else if (nextBirthday) {
-    eventSummary = `${nextBirthday.label}: день народження`;
+    eventSummary = `${nextBirthday.label}: РґРµРЅСЊ РЅР°СЂРѕРґР¶РµРЅРЅСЏ`;
   }
 
   const handleWeatherClick = () => {
+    setCalOpen(false);
+    setEventsOpen(false);
     if (!weatherOpen && weatherBtnRef.current) {
       const sidebar = weatherBtnRef.current.closest('aside');
       const right = sidebar?.getBoundingClientRect().right ?? weatherBtnRef.current.getBoundingClientRect().right;
@@ -346,22 +349,25 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
   const widgetTheme = getWidgetTheme();
 
   const toggleCalendar = () => {
+    const todayKey = `${todayY}-${padDateValue(todayM + 1)}-${padDateValue(todayD)}`;
     if (!calOpen) {
       setCalYear(todayY);
       setCalMonth(todayM);
+      setSelectedCalendarDate(todayKey);
     }
     setWeatherOpen(false);
     setEventsOpen(false);
     setCalOpen(o => !o);
   };
 
-  const toggleEvents = () => {
-    setCalOpen(false);
-    setWeatherOpen(false);
-    setEventsOpen(o => !o);
-  };
-
   if (isCompact) {
+    const selectedDateKey = selectedCalendarDate ?? `${todayY}-${padDateValue(todayM + 1)}-${padDateValue(todayD)}`;
+    const selectedDateEvents = calendarEventsByDate.get(selectedDateKey) ?? { holidays: [], birthdays: [] };
+    const [selectedYear, selectedMonth, selectedDay] = selectedDateKey.split('-').map(Number);
+    const selectedDateLabel = Number.isFinite(selectedDay) && Number.isFinite(selectedMonth)
+      ? `${selectedDay} ${MONTHS_UK[selectedMonth - 1]}`
+      : dateStr;
+    const isSelectedDateToday = selectedYear === todayY && selectedMonth - 1 === todayM && selectedDay === todayD;
     return (
       <div
         id="sidebar-info-widget"
@@ -388,56 +394,65 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
             transition: 'background 1s ease, box-shadow 1s ease',
           }}
         >
-          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <span
-              style={{
-                fontSize: '20px',
-                fontWeight: '300',
-                color: '#0f172a',
-                letterSpacing: '-0.03em',
-                fontVariantNumeric: 'tabular-nums',
-                lineHeight: 1,
-              }}
-            >
-              {h}:{m}
-            </span>
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: '500',
-                color: '#64748b',
-                lineHeight: 1.1,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {dayName}, {dateStr}
-            </span>
-          </div>
+          <button
+            onClick={toggleCalendar}
+            style={{
+              minWidth: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: calOpen ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+              border: 'none',
+              padding: '2px 4px',
+              margin: '-2px -4px',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+            aria-label="Р’С–РґРєСЂРёС‚Рё РєР°Р»РµРЅРґР°СЂ С– РїРѕРґС–С—"
+          >
+            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+              <span
+                style={{
+                  fontSize: '20px',
+                  fontWeight: '300',
+                  color: '#0f172a',
+                  letterSpacing: '-0.03em',
+                  fontVariantNumeric: 'tabular-nums',
+                  lineHeight: 1,
+                }}
+              >
+                {h}:{m}
+              </span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: '500',
+                  color: '#64748b',
+                  lineHeight: 1.1,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {dayName}, {dateStr}
+              </span>
+            </div>
+            {hasEventSummary && (
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '999px',
+                  background: totalEventsToday > 0 ? '#f97316' : '#3b82f6',
+                  boxShadow: '0 0 0 2px rgba(255,255,255,0.9)',
+                  flexShrink: 0,
+                }}
+              />
+            )}
+          </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            <button
-              onClick={toggleCalendar}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 34,
-                height: 34,
-                borderRadius: '12px',
-                border: 'none',
-                cursor: 'pointer',
-                background: calOpen ? 'rgba(59, 130, 246, 0.18)' : 'rgba(255, 255, 255, 0.52)',
-                color: calOpen ? '#2563eb' : '#64748b',
-                transition: 'all 0.15s ease',
-                flexShrink: 0,
-              }}
-              aria-label="Відкрити календар"
-            >
-              <Calendar size={16} />
-            </button>
-
             <button
               className="weather-btn-hover"
               ref={weatherBtnRef}
@@ -465,42 +480,6 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
               <span style={{ fontSize: '13px', fontWeight: '600', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
                 {weather ? `${weather.temp}°` : '--'}
               </span>
-            </button>
-
-            <button
-              onClick={toggleEvents}
-              style={{
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 34,
-                height: 34,
-                borderRadius: '12px',
-                border: 'none',
-                cursor: 'pointer',
-                background: eventsOpen ? 'rgba(249, 115, 22, 0.16)' : 'rgba(255, 255, 255, 0.52)',
-                color: totalEventsToday > 0 ? '#f97316' : hasEventSummary ? '#2563eb' : '#64748b',
-                transition: 'all 0.15s ease',
-                flexShrink: 0,
-              }}
-              aria-label="Відкрити події"
-            >
-              <Flag size={15} />
-              {hasEventSummary && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: 6,
-                    right: 6,
-                    width: 7,
-                    height: 7,
-                    borderRadius: '999px',
-                    background: totalEventsToday > 0 ? '#f97316' : '#3b82f6',
-                    boxShadow: '0 0 0 2px rgba(255,255,255,0.95)',
-                  }}
-                />
-              )}
             </button>
           </div>
         </div>
@@ -539,6 +518,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
                 const dateKey = day === null
                   ? null
                   : `${calYear}-${padDateValue(calMonth + 1)}-${padDateValue(day)}`;
+                const isSelected = dateKey !== null && dateKey === selectedDateKey;
                 const hasHoliday = dateKey ? holidayDates.has(dateKey) : false;
                 const hasBirthday = dateKey ? birthdayDates.has(dateKey) : false;
                 const tooltipText = dateKey
@@ -548,22 +528,32 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
                     )
                   : '';
                 return (
-                  <div key={i} style={{
-                    textAlign: 'center',
-                    fontSize: '11px',
-                    fontWeight: isToday ? '700' : '400',
-                    color: isToday ? '#fff' : day === null ? 'transparent' : isWeekend ? '#94a3b8' : '#334155',
-                    background: isToday ? '#3b82f6' : 'transparent',
-                    borderRadius: '6px',
-                    padding: '4px 2px',
-                    lineHeight: '16px',
-                    minWidth: 0,
-                    position: 'relative',
-                    cursor: tooltipText ? 'help' : 'default',
-                  }}>
-                    <span title={tooltipText || undefined}>
-                      {day ?? ''}
-                    </span>
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      if (dateKey) {
+                        setSelectedCalendarDate(dateKey);
+                      }
+                    }}
+                    disabled={day === null}
+                    title={tooltipText || undefined}
+                    style={{
+                      textAlign: 'center',
+                      fontSize: '11px',
+                      fontWeight: isToday || isSelected ? '700' : '400',
+                      color: day === null ? 'transparent' : isToday ? '#fff' : isSelected ? '#2563eb' : isWeekend ? '#94a3b8' : '#334155',
+                      background: isToday ? '#3b82f6' : isSelected ? 'rgba(59, 130, 246, 0.14)' : 'transparent',
+                      borderRadius: '8px',
+                      padding: '4px 2px',
+                      lineHeight: '16px',
+                      minWidth: 0,
+                      position: 'relative',
+                      cursor: day === null ? 'default' : 'pointer',
+                      border: 'none',
+                    }}
+                  >
+                    <span>{day ?? ''}</span>
                     {day !== null && (hasHoliday || hasBirthday) && (
                       <span style={{
                         position: 'absolute',
@@ -592,99 +582,74 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
                         )}
                       </span>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
-          </div>
-        )}
 
-        {eventsOpen && (
-          <div style={{
-            position: 'absolute',
-            bottom: 'calc(100% + 8px)',
-            left: 0,
-            right: 0,
-            background: '#fff',
-            borderRadius: '14px',
-            boxShadow: '0 8px 32px rgba(30,58,95,0.12), 0 1px 4px rgba(30,58,95,0.06)',
-            border: '1px solid rgba(59,130,246,0.1)',
-            padding: '12px',
-            zIndex: 55,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-                Сьогодні
-              </div>
-              {events && totalEventsToday > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {events.holidaysToday.map((holiday) => (
-                    <div key={`holiday-today-${holiday.date}-${holiday.name}`} style={eventCardStyle}>
-                      <Flag size={14} color="#2563eb" style={{ flexShrink: 0, marginTop: '1px' }} />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={eventTitleStyle}>{holiday.name}</div>
-                        <div style={eventMetaStyle}>Свято України</div>
-                      </div>
-                    </div>
-                  ))}
-                  {events.birthdaysToday.map((birthday) => (
-                    <TransitionLink
-                      key={`birthday-today-${birthday.id}`}
-                      href={`/students/${birthday.id}`}
-                      style={{ ...eventCardStyle, textDecoration: 'none' }}
-                    >
-                      <Gift size={14} color="#f97316" style={{ flexShrink: 0, marginTop: '1px' }} />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={eventTitleStyle}>{birthday.full_name}</div>
-                        <div style={eventMetaStyle}>{birthday.ageLabel}</div>
-                      </div>
-                    </TransitionLink>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                  На сьогодні подій немає
-                </div>
-              )}
-            </div>
-
-            {events && (events.upcomingHolidays.length > 0 || events.upcomingBirthdays.length > 0) && (
+            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
                 <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-                  Найближчі
+                  Події на {selectedDateLabel}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {events.upcomingHolidays.slice(0, 3).map((holiday) => (
-                    <div key={`holiday-upcoming-${holiday.date}-${holiday.name}`} style={eventCardStyle}>
-                      <Flag size={14} color="#2563eb" style={{ flexShrink: 0, marginTop: '1px' }} />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={eventTitleStyle}>{holiday.name}</div>
-                        <div style={eventMetaStyle}>{holiday.label}</div>
+                {selectedDateEvents.holidays.length > 0 || selectedDateEvents.birthdays.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {selectedDateEvents.holidays.map((holiday) => (
+                      <div key={`holiday-selected-${selectedDateKey}-${holiday.name}`} style={eventCardStyle}>
+                        <Flag size={14} color="#2563eb" style={{ flexShrink: 0, marginTop: '1px' }} />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={eventTitleStyle}>{holiday.name}</div>
+                          <div style={eventMetaStyle}>Свято України</div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {events.upcomingBirthdays.slice(0, 4).map((birthday) => (
-                    <TransitionLink
-                      key={`birthday-upcoming-${birthday.id}`}
-                      href={`/students/${birthday.id}`}
-                      style={{ ...eventCardStyle, textDecoration: 'none' }}
-                    >
-                      <Gift size={14} color="#f97316" style={{ flexShrink: 0, marginTop: '1px' }} />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={eventTitleStyle}>{birthday.full_name}</div>
-                        <div style={eventMetaStyle}>{birthday.label} · {birthday.ageLabel}</div>
-                      </div>
-                    </TransitionLink>
-                  ))}
-                </div>
+                    ))}
+                    {selectedDateEvents.birthdays.map((birthday) => (
+                      <TransitionLink
+                        key={`birthday-selected-${selectedDateKey}-${birthday.id}`}
+                        href={`/students/${birthday.id}`}
+                        style={{ ...eventCardStyle, textDecoration: 'none' }}
+                      >
+                        <Gift size={14} color="#f97316" style={{ flexShrink: 0, marginTop: '1px' }} />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={eventTitleStyle}>{birthday.full_name}</div>
+                          <div style={eventMetaStyle}>
+                            {isSelectedDateToday ? birthday.ageLabel : `День народження ${birthday.ageLabel}`}
+                          </div>
+                        </div>
+                      </TransitionLink>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    На цей день подій немає
+                  </div>
+                )}
               </div>
-            )}
+
+              <div style={{
+                borderTop: '1px solid rgba(148, 163, 184, 0.18)',
+                paddingTop: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '8px',
+              }}>
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#475569' }}>
+                  {eventSummary}
+                </span>
+                {hasEventSummary && (
+                  <span style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '999px',
+                    background: totalEventsToday > 0 ? '#f97316' : '#3b82f6',
+                    flexShrink: 0,
+                  }} />
+                )}
+              </div>
+            </div>
           </div>
         )}
-
         {weatherOpen && weather && (
           <div
             ref={weatherPopRef}
@@ -708,7 +673,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
               <span style={{ lineHeight: 1 }}>{weatherIcon(weather.code, 40)}</span>
               <div>
                 <div style={{ fontSize: '32px', fontWeight: '300', color: '#1e3a5f', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                  {weather.temp}°
+                  {weather.temp}В°
                 </div>
                 <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
                   {capitalize(weather.description)}
@@ -716,9 +681,9 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: forecast && forecast.length > 0 ? '12px' : 0 }}>
-              <span style={detailPill}>Відчувається {weather.feels_like}°</span>
-              <span style={detailPill}>Вологість {weather.humidity}%</span>
-              <span style={detailPill}>Вітер {weather.wind} м/с</span>
+              <span style={detailPill}>Р’С–РґС‡СѓРІР°С”С‚СЊСЃСЏ {weather.feels_like}В°</span>
+              <span style={detailPill}>Р’РѕР»РѕРіС–СЃС‚СЊ {weather.humidity}%</span>
+              <span style={detailPill}>Р’С–С‚РµСЂ {weather.wind} Рј/СЃ</span>
             </div>
             {forecast && forecast.length > 0 && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
@@ -726,8 +691,8 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
                   <div key={day.date} style={{ background: '#f8fbff', borderRadius: '12px', padding: '10px 8px', textAlign: 'center' }}>
                     <div style={{ fontSize: '10px', fontWeight: '600', color: '#64748b', marginBottom: '6px' }}>{day.weekday}</div>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px', color: '#3b82f6' }}>{weatherIcon(day.code, 16)}</div>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e3a5f' }}>{day.temp_max}°</div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>{day.temp_min}°</div>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e3a5f' }}>{day.temp_max}В°</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>{day.temp_min}В°</div>
                   </div>
                 ))}
               </div>
@@ -766,7 +731,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
         alignItems: 'center',
         transition: 'background 1s ease, box-shadow 1s ease',
       }}>
-        {/* Time — left, row 1 */}
+        {/* Time вЂ” left, row 1 */}
         <div style={{ gridColumn: 1, gridRow: 1, display: 'flex', alignItems: 'baseline', gap: '3px' }}>
           <span style={{ fontSize: '22px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
             {h}<span style={{ opacity: 0.3, margin: '0 1px' }}>:</span>{m}
@@ -776,7 +741,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
           </span>
         </div>
 
-        {/* Weather — right, spans row 1+2 */}
+        {/* Weather вЂ” right, spans row 1+2 */}
         {weather ? (
           <button
             className="weather-btn-hover"
@@ -810,12 +775,12 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
           >
             <span className="weather-icon-anim" style={{ lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code, 18)}</span>
             <span style={{ fontSize: '12px', fontWeight: '400', color: '#0f172a', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-              {weather.temp}°
+              {weather.temp}В°
             </span>
           </button>
         ) : <span style={{ gridColumn: 2, gridRow: '1 / 3' }} />}
 
-        {/* Day + Date — left, row 2 */}
+        {/* Day + Date вЂ” left, row 2 */}
         <div style={{ gridColumn: 1, gridRow: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '11px', fontWeight: '500', color: '#3b82f6', lineHeight: 1 }}>
             {dayName}
@@ -843,7 +808,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
           </button>
         </div>
 
-        {/* Events row — full width, row 3 */}
+        {/* Events row вЂ” full width, row 3 */}
         <button
           onClick={() => setEventsOpen(o => !o)}
           style={{
@@ -899,11 +864,11 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
           zIndex: 50,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <button onClick={prevMonth} style={calNavBtn}>‹</button>
+            <button onClick={prevMonth} style={calNavBtn}>вЂ№</button>
             <span style={{ fontSize: '12px', fontWeight: '600', color: '#1e3a5f', letterSpacing: '0.02em' }}>
               {MONTHS_FULL_UK[calMonth]} {calYear}
             </span>
-            <button onClick={nextMonth} style={calNavBtn}>›</button>
+            <button onClick={nextMonth} style={calNavBtn}>вЂє</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '4px' }}>
             {DAYS_SHORT_UK.map(d => (
@@ -979,11 +944,11 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
           <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '8px', fontSize: '9px', color: '#94a3b8' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ width: '5px', height: '5px', borderRadius: '999px', background: '#2563eb' }} />
-              Свято
+              РЎРІСЏС‚Рѕ
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ width: '5px', height: '5px', borderRadius: '999px', background: '#f97316' }} />
-              День народження
+              Р”РµРЅСЊ РЅР°СЂРѕРґР¶РµРЅРЅСЏ
             </span>
           </div>
         </div>
@@ -1007,7 +972,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
         }}>
           <div>
             <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-              Сьогодні
+              РЎСЊРѕРіРѕРґРЅС–
             </div>
             {events && totalEventsToday > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1016,7 +981,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
                     <Flag size={14} color="#2563eb" style={{ flexShrink: 0, marginTop: '1px' }} />
                     <div style={{ minWidth: 0 }}>
                       <div style={eventTitleStyle}>{holiday.name}</div>
-                      <div style={eventMetaStyle}>Свято України</div>
+                      <div style={eventMetaStyle}>РЎРІСЏС‚Рѕ РЈРєСЂР°С—РЅРё</div>
                     </div>
                   </div>
                 ))}
@@ -1036,7 +1001,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
               </div>
             ) : (
               <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                На сьогодні подій немає
+                РќР° СЃСЊРѕРіРѕРґРЅС– РїРѕРґС–Р№ РЅРµРјР°С”
               </div>
             )}
           </div>
@@ -1044,7 +1009,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
           {events && (events.upcomingHolidays.length > 0 || events.upcomingBirthdays.length > 0) && (
             <div>
               <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-                Найближчі
+                РќР°Р№Р±Р»РёР¶С‡С–
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {events.upcomingHolidays.slice(0, 3).map((holiday) => (
@@ -1065,7 +1030,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
                     <Gift size={14} color="#f97316" style={{ flexShrink: 0, marginTop: '1px' }} />
                     <div style={{ minWidth: 0 }}>
                       <div style={eventTitleStyle}>{birthday.full_name}</div>
-                      <div style={eventMetaStyle}>{birthday.label} · {birthday.ageLabel}</div>
+                      <div style={eventMetaStyle}>{birthday.label} В· {birthday.ageLabel}</div>
                     </div>
                   </TransitionLink>
                 ))}
@@ -1075,7 +1040,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
         </div>
       )}
 
-      {/* Weather detail popover — fixed to the right of sidebar */}
+      {/* Weather detail popover вЂ” fixed to the right of sidebar */}
       {weatherOpen && weather && (
         <div
           ref={weatherPopRef}
@@ -1102,7 +1067,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
             <span style={{ lineHeight: 1 }}>{weatherIcon(weather.code, 40)}</span>
             <div>
               <div style={{ fontSize: '32px', fontWeight: '300', color: '#1e3a5f', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                {weather.temp}°
+                {weather.temp}В°
               </div>
               <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
                 {capitalize(weather.description)}
@@ -1112,9 +1077,9 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
 
           {/* Detail pills */}
           <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '14px' }}>
-            <span style={detailPill}>відч. {weather.feels_like}°</span>
-            <span style={detailPill}>💧 {weather.humidity}%</span>
-            <span style={detailPill}>💨 {weather.wind} м/с</span>
+            <span style={detailPill}>РІС–РґС‡. {weather.feels_like}В°</span>
+            <span style={detailPill}>рџ’§ {weather.humidity}%</span>
+            <span style={detailPill}>рџ’Ё {weather.wind} Рј/СЃ</span>
           </div>
 
           {/* 5-day forecast */}
@@ -1127,14 +1092,14 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
                     {day.weekday}
                   </div>
                   <div style={{ lineHeight: 1, marginBottom: '4px' }}>{weatherIcon(day.code, 16)}</div>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e3a5f' }}>{day.temp_max}°</div>
-                  <div style={{ fontSize: '10px', color: '#b0bec5' }}>{day.temp_min}°</div>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e3a5f' }}>{day.temp_max}В°</div>
+                  <div style={{ fontSize: '10px', color: '#b0bec5' }}>{day.temp_min}В°</div>
                 </div>
               ))}
             </div>
           ) : (
             <div style={{ textAlign: 'center', fontSize: '11px', color: '#94a3b8', padding: '4px 0' }}>
-              Завантаження...
+              Р—Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ...
             </div>
           )}
         </div>
@@ -1180,7 +1145,7 @@ const eventMetaStyle: React.CSSProperties = {
   lineHeight: 1.3,
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// в”Ђв”Ђ Component в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTablet = false }: SidebarProps) {
   const pathname = usePathname();
@@ -1298,10 +1263,10 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
 
   // Click = random emotion
   const emotions = [
-    { name: 'love', eyeShape: '❤', color: '#f43f5e' },
-    { name: 'star', eyeShape: '★', color: '#eab308' },
-    { name: 'angry', eyeShape: '🔥', color: '#ef4444' },
-    { name: 'dance', eyeShape: '✨', color: '#a855f7' },
+    { name: 'love', eyeShape: 'вќ¤', color: '#f43f5e' },
+    { name: 'star', eyeShape: 'в…', color: '#eab308' },
+    { name: 'angry', eyeShape: 'рџ”Ґ', color: '#ef4444' },
+    { name: 'dance', eyeShape: 'вњЁ', color: '#a855f7' },
   ];
 
   const playBeep = useCallback(() => {
@@ -1464,7 +1429,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     try {
       const ctx = new AudioContext();
       const notes = [
-        // Bell chime pattern — ascending joyful
+        // Bell chime pattern вЂ” ascending joyful
         { freq: 523, start: 0, dur: 0.3, type: 'sine' as OscillatorType },
         { freq: 659, start: 0.25, dur: 0.3, type: 'sine' as OscillatorType },
         { freq: 784, start: 0.5, dur: 0.3, type: 'sine' as OscillatorType },
@@ -1564,7 +1529,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   }, [isSleeping, isNight, nightLampOn, isNewYear, playJingleBells, hasBirthday, playHappyBirthday, isHalloween, playHalloweenMelody, isSep1, playSchoolBell, isEaster, playEasterBells]);
 
   // Double click = beep + speech bubble
-  const bubbles = ['Біп-боп!', 'Привіт! 👋', 'Я робот! 🤖', 'Працюємо! 💪', '01100001'];
+  const bubbles = ['Р‘С–Рї-Р±РѕРї!', 'РџСЂРёРІС–С‚! рџ‘‹', 'РЇ СЂРѕР±РѕС‚! рџ¤–', 'РџСЂР°С†СЋС”РјРѕ! рџ’Є', '01100001'];
   const handleRobotDoubleClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1607,7 +1572,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
 
   // Seasonal accessory SVG (replaces antenna)
   const renderAccessory = () => {
-    // Birthday — big party hat replaces antenna
+    // Birthday вЂ” big party hat replaces antenna
     if (hasBirthday) return (
       <g className={birthdayParty ? 'hat-shake' : ''}>
         <polygon points="22,-6 12,11 32,11" fill="#f43f5e" />
@@ -1619,7 +1584,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         <circle cx="18" cy="7" r="0.8" fill="#a78bfa" />
       </g>
     );
-    // New Year — Santa hat with pompom replaces antenna
+    // New Year вЂ” Santa hat with pompom replaces antenna
     if (isNewYear) return (
       <g className={newYearParty ? 'hat-shake' : ''}>
         <path d="M8,12 Q22,-8 36,12" fill="#dc2626" />
@@ -1627,7 +1592,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         <circle cx="34" cy="-4" r="4" fill="white" className={hasNotifications && !newYearParty ? 'hat-star-pulse' : ''} style={{ transformOrigin: '34px -4px' }} />
       </g>
     );
-    // Sep 1 — graduation cap replaces antenna
+    // Sep 1 вЂ” graduation cap replaces antenna
     if (isSep1) return (
       <g className={sep1Party ? 'hat-shake' : ''}>
         <polygon points="22,-2 6,7 38,7" fill="#1e293b" />
@@ -1636,7 +1601,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         <rect x="34" y="9" width="5" height="2" rx="1" fill="#eab308" className={hasNotifications ? 'hat-star-pulse' : ''} style={{ transformOrigin: '36.5px 10px' }} />
       </g>
     );
-    // Easter — bunny ears (antenna stays)
+    // Easter вЂ” bunny ears (antenna stays)
     if (isEaster) return (
       <g className={easterParty ? 'bunny-wiggle' : ''}>
         <ellipse cx="13" cy="0" rx="4" ry="10" fill="#fecdd3" />
@@ -1676,7 +1641,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         {/* Trunk */}
         <rect x="5" y="14" width="4" height="4" rx="1" fill="#92400e" />
         {/* Star */}
-        <text x="7" y="0" textAnchor="middle" fontSize="5" fill="#eab308">★</text>
+        <text x="7" y="0" textAnchor="middle" fontSize="5" fill="#eab308">в…</text>
         {/* Ornaments */}
         <circle cx="5" cy="5" r="1.2" fill="#dc2626" />
         <circle cx="9" cy="8" r="1.2" fill="#eab308" />
@@ -1736,13 +1701,13 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       </g>
     );
     if (isHalloween) return (
-      // Pumpkin — scary glow when party
+      // Pumpkin вЂ” scary glow when party
       <g transform="translate(38, 26)" className={halloweenParty ? 'pumpkin-glow' : ''}>
         <ellipse cx="6" cy="7" rx="7" ry="6" fill="#f97316" />
         <rect x="5" y="-1" width="2" height="4" rx="0.8" fill="#65a30d" />
         {halloweenParty ? (
           <>
-            {/* Scary face — angry eyes + evil grin */}
+            {/* Scary face вЂ” angry eyes + evil grin */}
             <path d="M1,4 L3,6 L5,4" fill="#fbbf24" />
             <path d="M7,4 L9,6 L11,4" fill="#fbbf24" />
             <path d="M2,9 L3,8 L4.5,10 L6,8 L7.5,10 L9,8 L10,9" stroke="#fbbf24" strokeWidth="0.7" fill="none" />
@@ -1933,7 +1898,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 </defs>
                 {/* Seasonal accessory (replaces antenna when hat) */}
                 {renderAccessory()}
-                {/* Antenna — hidden when seasonal hat is on */}
+                {/* Antenna вЂ” hidden when seasonal hat is on */}
                 {!hasAccessoryHat && (
                   <g className={`logo-antenna${hasNotifications ? ' logo-antenna-pulse' : ''}`}>
                     <line x1="22" y1="4" x2="22" y2="10" stroke={isNight && !nightLampOn ? '#1e40af' : '#3b82f6'} strokeWidth="2" strokeLinecap="round" />
@@ -1965,27 +1930,27 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 <rect x="6" y="10" width="32" height="24" rx="7" fill="url(#logoGrad)" />
                 {/* Screen / face area */}
                 <rect x="10" y="14" width="24" height="12" rx="4" fill="white" opacity={isNight && !nightLampOn ? 0.1 : 0.2} />
-                {/* Eyes — white sclera */}
+                {/* Eyes вЂ” white sclera */}
                 <rect x="13" y="16" width="7" height="8" rx="3.5" fill="white" opacity={isSleeping ? 0.5 : 1} />
                 <rect x="24" y="16" width="7" height="8" rx="3.5" fill="white" opacity={isSleeping ? 0.5 : 1} />
-                {/* Sleeping — closed eyes (horizontal lines) */}
+                {/* Sleeping вЂ” closed eyes (horizontal lines) */}
                 {isSleeping && !robotEmotion && (
                   <>
                     <line x1="14" y1="20" x2="19" y2="20" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
                     <line x1="25" y1="20" x2="30" y2="20" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
                   </>
                 )}
-                {/* Halloween scared eyes — small fixed black pupils */}
+                {/* Halloween scared eyes вЂ” small fixed black pupils */}
                 {halloweenParty && !robotEmotion && (
                   <>
                     <circle cx="16.5" cy="19" r="1.3" fill="#1e293b" />
                     <circle cx="27.5" cy="19" r="1.3" fill="#1e293b" />
-                    {/* Raised eyebrows — scared look */}
+                    {/* Raised eyebrows вЂ” scared look */}
                     <line x1="14" y1="15.5" x2="19" y2="16.5" stroke="#1e293b" strokeWidth="1" strokeLinecap="round" />
                     <line x1="25" y1="16.5" x2="30" y2="15.5" stroke="#1e293b" strokeWidth="1" strokeLinecap="round" />
                   </>
                 )}
-                {/* Sep 1 happy eyes — upward arc smile eyes */}
+                {/* Sep 1 happy eyes вЂ” upward arc smile eyes */}
                 {sep1Party && !robotEmotion && (
                   <>
                     <circle cx="16.5" cy="18" r="2" fill="#1e293b" />
@@ -1994,14 +1959,14 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     <path d="M25.5,19.5 Q27.5,22 29.5,19.5" stroke="#1e293b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
                   </>
                 )}
-                {/* Easter party eyes — love hearts */}
+                {/* Easter party eyes вЂ” love hearts */}
                 {easterParty && !robotEmotion && (
                   <g className="robot-emotion">
-                    <text x="16.5" y="21" textAnchor="middle" dominantBaseline="central" fill="#f43f5e" fontSize="7" style={{ pointerEvents: 'none' }}>❤</text>
-                    <text x="27.5" y="21" textAnchor="middle" dominantBaseline="central" fill="#f43f5e" fontSize="7" style={{ pointerEvents: 'none' }}>❤</text>
+                    <text x="16.5" y="21" textAnchor="middle" dominantBaseline="central" fill="#f43f5e" fontSize="7" style={{ pointerEvents: 'none' }}>вќ¤</text>
+                    <text x="27.5" y="21" textAnchor="middle" dominantBaseline="central" fill="#f43f5e" fontSize="7" style={{ pointerEvents: 'none' }}>вќ¤</text>
                   </g>
                 )}
-                {/* Pupils — follow mouse (not when sleeping) */}
+                {/* Pupils вЂ” follow mouse (not when sleeping) */}
                 {!robotEmotion && !isSleeping && !halloweenParty && !sep1Party && !easterParty && (
                   <>
                     <circle
@@ -2171,17 +2136,17 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     ))}
                   </g>
                 )}
-                {/* Halloween party effects — ghosts */}
+                {/* Halloween party effects вЂ” ghosts */}
                 {halloweenParty && (
                   <g>
-                    {/* Ghost 1 — left */}
+                    {/* Ghost 1 вЂ” left */}
                     <g className="ghost-float" style={{ '--gx': '-8px', '--gy': '-12px', '--gx2': '-12px', '--gy2': '-20px' } as React.CSSProperties}>
                       <path d="M-6,8 Q-6,0 -2,0 Q2,0 2,8 L1,6 L0,8 L-1,6 L-2,8 L-3,6 L-4,8 L-5,6 Z" fill="white" opacity="0.8" />
                       <circle cx="-3" cy="3" r="1" fill="#1e293b" />
                       <circle cx="0" cy="3" r="1" fill="#1e293b" />
                       <ellipse cx="-1.5" cy="5.5" rx="1.5" ry="1" fill="#1e293b" />
                     </g>
-                    {/* Ghost 2 — right */}
+                    {/* Ghost 2 вЂ” right */}
                     <g className="ghost-float" style={{ '--gx': '6px', '--gy': '-14px', '--gx2': '10px', '--gy2': '-22px', animationDelay: '1s' } as React.CSSProperties}>
                       <g transform="translate(46, 4)">
                         <path d="M-3,8 Q-3,1 1,1 Q5,1 5,8 L4,6 L3,8 L2,6 L1,8 L0,6 L-1,8 L-2,6 Z" fill="white" opacity="0.7" />
@@ -2189,7 +2154,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                         <circle cx="2.5" cy="3.5" r="0.8" fill="#1e293b" />
                       </g>
                     </g>
-                    {/* Ghost 3 — top */}
+                    {/* Ghost 3 вЂ” top */}
                     <g className="ghost-float" style={{ '--gx': '3px', '--gy': '-10px', '--gx2': '-3px', '--gy2': '-16px', animationDelay: '1.8s' } as React.CSSProperties}>
                       <g transform="translate(10, -8) scale(0.7)">
                         <path d="M-3,8 Q-3,1 1,1 Q5,1 5,8 L4,6 L3,8 L2,6 L1,8 L0,6 L-1,8 L-2,6 Z" fill="white" opacity="0.6" />
@@ -2199,7 +2164,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     </g>
                   </g>
                 )}
-                {/* Sep 1 party effects — falling books */}
+                {/* Sep 1 party effects вЂ” falling books */}
                 {sep1Party && (
                   <g>
                     {[
@@ -2225,7 +2190,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     ))}
                   </g>
                 )}
-                {/* Easter party effects — bouncing eggs */}
+                {/* Easter party effects вЂ” bouncing eggs */}
                 {easterParty && (
                   <g>
                     {[
@@ -2249,7 +2214,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 {/* Ears / connectors */}
                 <rect x="2" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
                 <rect x="38" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
-                {/* Bottom — gear teeth */}
+                {/* Bottom вЂ” gear teeth */}
                 <rect x="14" y="34" width="4" height="4" rx="1" fill="#93c5fd" />
                 <rect x="20" y="34" width="4" height="4" rx="1" fill="#93c5fd" />
                 <rect x="26" y="34" width="4" height="4" rx="1" fill="#93c5fd" />
@@ -2272,7 +2237,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         <nav style={{ padding: isSmallScreen ? '12px 8px' : '24px 8px', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
           {isSmallScreen && (
             <div style={{ padding: '0 16px 10px', fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Основне
+              РћСЃРЅРѕРІРЅРµ
             </div>
           )}
           {primaryMenuItems.map((item) => {
@@ -2307,7 +2272,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
           <div style={{ height: '1px', backgroundColor: '#f0f0f0', margin: '16px 12px' }} />
           {isSmallScreen && (
             <div style={{ padding: '0 16px 10px', fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Додатково
+              Р”РѕРґР°С‚РєРѕРІРѕ
             </div>
           )}
           {(() => {
