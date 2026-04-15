@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { FileText, CheckSquare, Pin, Trash2, Plus, Search, X } from 'lucide-react';
+import { FileText, CheckSquare, Pin, Trash2, Plus, Search, X, ArrowLeft } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -114,11 +114,12 @@ function inlineFormat(html: string): string {
 
 // ── Formatting toolbar ────────────────────────────────────────────────────────
 
-function FormatToolbar({ textareaRef, noteId, content, onUpdate }: {
+function FormatToolbar({ textareaRef, noteId, content, onUpdate, compact = false }: {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   noteId: number;
   content: string;
   onUpdate: (id: number, patch: { content: string }) => void;
+  compact?: boolean;
 }) {
   const insert = (before: string, after: string = '') => {
     const ta = textareaRef.current;
@@ -160,7 +161,7 @@ function FormatToolbar({ textareaRef, noteId, content, onUpdate }: {
   ];
 
   return (
-    <div style={{ display: 'flex', gap: 1, padding: '0.5rem 2.5rem 0.25rem', flexShrink: 0 }}>
+    <div style={{ display: 'flex', gap: 1, padding: compact ? '0.5rem 1rem 0.25rem' : '0.5rem 2.5rem 0.25rem', flexShrink: 0 }}>
       {btns.map(b => (
         <button
           key={b.label}
@@ -369,14 +370,31 @@ export default function NotesModal({ isOpen, onClose }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pos, setPos]   = useState({ x: -1, y: -1 });
   const [size, setSize] = useState({ w: 800, h: 620 });
+  const [mobile, setMobile] = useState(false);
+  const [animateIn, setAnimateIn] = useState(false);
   const dragging  = useRef(false);
   const resizing  = useRef(false);
   const origin    = useRef({ mx: 0, my: 0, px: 0, py: 0 });
   const resizeOrigin = useRef({ mx: 0, my: 0, w: 800, h: 620 });
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setMobile(window.innerWidth < 768);
+    setAnimateIn(false);
+    requestAnimationFrame(() => setAnimateIn(true));
+
+    const onResize = () => {
+      setMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [isOpen]);
+
   // Restore or centre position/size on first open
   useEffect(() => {
-    if (isOpen && pos.x === -1) {
+    if (isOpen && !mobile && pos.x === -1) {
       try {
         const saved = localStorage.getItem('itrobot-notes-layout');
         if (saved) {
@@ -392,13 +410,13 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         y: Math.max(20, window.innerHeight / 2 - 310),
       });
     }
-  }, [isOpen, pos.x]);
+  }, [isOpen, pos.x, mobile]);
 
   // Persist layout when pos/size change
   useEffect(() => {
-    if (pos.x === -1) return;
+    if (mobile || pos.x === -1) return;
     localStorage.setItem('itrobot-notes-layout', JSON.stringify({ x: pos.x, y: pos.y, w: size.w, h: size.h, sw: sidebarW }));
-  }, [pos, size, sidebarW]);
+  }, [pos, size, sidebarW, mobile]);
 
   // Drag & Resize
   useEffect(() => {
@@ -693,36 +711,67 @@ export default function NotesModal({ isOpen, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen]);
 
-  if (!isOpen || pos.x === -1) return null;
+  if (!isOpen || (!mobile && pos.x === -1)) return null;
 
   const bg = selectedNote ? colorBg(selectedNote.color) : '#ffffff';
+  const contentPadX = mobile ? '1rem' : '2.5rem';
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9800, pointerEvents: 'none' }}>
-      <div style={{
-        position: 'absolute', left: pos.x, top: pos.y,
-        width: size.w, height: size.h,
+  const shellStyle = mobile
+    ? {
+        position: 'fixed' as const,
+        inset: 0,
+        width: '100vw',
+        height: '100dvh',
+        background: '#ffffff',
+        borderRadius: 0,
+        boxShadow: 'none',
+        overflow: 'hidden',
+        pointerEvents: 'all' as const,
+        userSelect: 'none' as const,
+        display: 'flex',
+        flexDirection: 'column' as const,
+        transform: animateIn ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+      }
+    : {
+        position: 'absolute' as const,
+        left: pos.x,
+        top: pos.y,
+        width: size.w,
+        height: size.h,
         background: '#ffffff',
         borderRadius: 24,
         boxShadow: '0 24px 64px rgba(0,0,0,0.14), 0 4px 20px rgba(0,0,0,0.07)',
         overflow: 'hidden',
-        pointerEvents: 'all',
-        userSelect: 'none',
+        pointerEvents: 'all' as const,
+        userSelect: 'none' as const,
         display: 'flex',
-        flexDirection: 'column',
-      }}>
+        flexDirection: 'column' as const,
+      };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9800, pointerEvents: mobile ? 'all' : 'none' }}>
+      <div style={shellStyle}>
 
         {/* ── Header ── */}
         <div
-          onMouseDown={startDrag}
+          onMouseDown={mobile ? undefined : startDrag}
           style={{
-            padding: '0 1.125rem',
-            height: 48,
+            padding: mobile ? 'max(0.25rem, env(safe-area-inset-top)) 0.875rem 0' : '0 1.125rem',
+            height: mobile ? 56 : 48,
             display: 'flex', alignItems: 'center', gap: '0.625rem',
-            cursor: 'grab', flexShrink: 0,
+            cursor: mobile ? 'default' : 'grab', flexShrink: 0,
             background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
           }}
         >
+          {mobile && selectedNote && (
+            <button
+              onClick={() => setSelectedId(null)}
+              style={{ background: 'rgba(255,255,255,0.12)', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', borderRadius: 8, width: 30, height: 30, transition: 'background 0.15s', flexShrink: 0 }}
+            >
+              <ArrowLeft size={15} strokeWidth={2.5} />
+            </button>
+          )}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="2" style={{ flexShrink: 0 }}>
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
@@ -753,7 +802,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
         )}
 
         {/* Resize handle */}
-        <div
+        {!mobile && <div
           onMouseDown={e => {
             resizing.current = true;
             resizeOrigin.current = { mx: e.clientX, my: e.clientY, w: size.w, h: size.h };
@@ -767,15 +816,15 @@ export default function NotesModal({ isOpen, onClose }: Props) {
             <line x1="9" y1="2" x2="2" y2="9" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round"/>
             <line x1="9" y1="5.5" x2="5.5" y2="9" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-        </div>
+        </div>}
 
         {/* ── Body ── */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
           {/* ── Left panel ── */}
-          <div style={{ width: sidebarW, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: '#f8f9fa', flexShrink: 0, position: 'relative' }}>
+          <div style={{ width: mobile ? '100%' : sidebarW, borderRight: mobile ? 'none' : '1px solid rgba(0,0,0,0.04)', display: mobile && selectedNote ? 'none' : 'flex', flexDirection: 'column', background: '#f8f9fa', flexShrink: 0, position: 'relative' }}>
             {/* Sidebar resize handle */}
-            <div
+            {!mobile && <div
               onMouseDown={e => {
                 sidebarResizing.current = true;
                 sidebarOrigin.current = { mx: e.clientX, w: sidebarW };
@@ -784,7 +833,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
               style={{ position: 'absolute', top: 0, right: -2, width: 5, height: '100%', cursor: 'col-resize', zIndex: 5 }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.15)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-            />
+            />}
 
             {/* Archive toggle */}
             <div style={{ padding: '1.25rem 1rem 0.5rem', flexShrink: 0 }}>
@@ -1073,7 +1122,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
           </div>
 
           {/* ── Right panel — editor ── */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: bg, transition: 'background 0.2s' }}>
+          <div style={{ flex: 1, display: mobile && !selectedNote ? 'none' : 'flex', flexDirection: 'column', overflow: 'hidden', background: bg, transition: 'background 0.2s' }}>
             {!selectedNote ? (
               /* Empty state */
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, color: '#cbd5e1' }}>
@@ -1095,7 +1144,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
               <>
                 {/* ── Title row ── */}
                 <div style={{
-                  padding: '2rem 2.5rem 0.5rem',
+                  padding: mobile ? '1rem 1rem 0.5rem' : '2rem 2.5rem 0.5rem',
                   flexShrink: 0,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1114,7 +1163,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                         }
                       }}
                       placeholder="Заголовок нотатки..."
-                      style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '1.5rem', fontWeight: 400, color: '#202124', userSelect: 'text', fontFamily: 'inherit' }}
+                      style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: mobile ? '1.125rem' : '1.5rem', fontWeight: 400, color: '#202124', userSelect: 'text', fontFamily: 'inherit' }}
                     />
                     {/* Save indicator */}
                     <span style={{
@@ -1137,8 +1186,8 @@ export default function NotesModal({ isOpen, onClose }: Props) {
 
                 {/* ── Action bar ── */}
                 <div style={{
-                  padding: '0 2.5rem 0.5rem',
-                  display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'nowrap',
+                  padding: mobile ? '0 1rem 0.5rem' : '0 2.5rem 0.5rem',
+                  display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: mobile ? 'wrap' : 'nowrap',
                 }}>
                   {/* Color dots */}
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginRight: 4 }}>
@@ -1280,7 +1329,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                 </div>
 
                 {/* ── Tags row ── */}
-                <TagsRow tags={selectedNote.tags} onAdd={addTag} onRemove={removeTag} bg={bg} />
+                <TagsRow tags={selectedNote.tags} onAdd={addTag} onRemove={removeTag} bg={bg} compact={mobile} />
 
                 {/* ── Linked entity row ── */}
                 <LinkedRow
@@ -1291,6 +1340,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                   bg={bg}
                   onChangeStudent={id => updateNote(selectedNote.id, { linked_student_id: id })}
                   onChangeGroup={id => updateNote(selectedNote.id, { linked_group_id: id })}
+                  compact={mobile}
                 />
 
                 {/* ── Content area ── */}
@@ -1307,7 +1357,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     <div
                       onClick={() => setMdPreview(false)}
                       style={{
-                        padding: showTaskSection ? '1.25rem 2.5rem 0.75rem' : '1.25rem 2.5rem',
+                        padding: showTaskSection ? `1rem ${contentPadX} 0.75rem` : `1rem ${contentPadX}`,
                         fontSize: '0.9375rem', lineHeight: 1.8, color: '#374151',
                         cursor: 'text', minHeight: 56,
                       }}
@@ -1315,7 +1365,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     />
                   ) : (
                   <>
-                  <FormatToolbar textareaRef={textareaRef} noteId={selectedNote.id} content={selectedNote.content} onUpdate={(id, patch) => updateNote(id, patch)} />
+                  <FormatToolbar textareaRef={textareaRef} noteId={selectedNote.id} content={selectedNote.content} onUpdate={(id, patch) => updateNote(id, patch)} compact={mobile} />
                   <textarea
                     ref={textareaRef}
                     value={selectedNote.content}
@@ -1342,7 +1392,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                     rows={1}
                     style={{
                       width: '100%', border: 'none', outline: 'none', resize: 'none',
-                      padding: showTaskSection ? '0.75rem 2.5rem 0.75rem' : '0.75rem 2.5rem',
+                      padding: showTaskSection ? `0.75rem ${contentPadX} 0.75rem` : `0.75rem ${contentPadX}`,
                       fontSize: '0.9375rem', lineHeight: 1.8, color: '#374151',
                       background: 'transparent', fontFamily: 'inherit', userSelect: 'text',
                       overflow: 'hidden', minHeight: 56, boxSizing: 'border-box',
@@ -1355,7 +1405,7 @@ export default function NotesModal({ isOpen, onClose }: Props) {
                   {showTaskSection && (
                     <div style={{
                       borderTop: tasksFull ? 'none' : '1px solid rgba(0,0,0,0.07)',
-                      padding: tasksFull ? '1.25rem 2.5rem' : '1rem 2.5rem 1.5rem',
+                      padding: tasksFull ? `1rem ${contentPadX}` : `1rem ${contentPadX} 1.5rem`,
                       background: 'transparent',
                       flexShrink: 0,
                     }}>
@@ -1580,7 +1630,7 @@ function TaskItem({ task, onToggle, onDelete, onRename }: {
 
 // ── Tags row ──────────────────────────────────────────────────────────────────
 
-function TagsRow({ tags, onAdd, onRemove, bg }: { tags: string[]; onAdd: (t: string) => void; onRemove: (t: string) => void; bg: string }) {
+function TagsRow({ tags, onAdd, onRemove, bg, compact = false }: { tags: string[]; onAdd: (t: string) => void; onRemove: (t: string) => void; bg: string; compact?: boolean }) {
   const [adding, setAdding] = useState(false);
   const [input, setInput]   = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -1592,7 +1642,7 @@ function TagsRow({ tags, onAdd, onRemove, bg }: { tags: string[]; onAdd: (t: str
   };
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0.25rem 2.5rem', background: bg, alignItems: 'center', minHeight: 36 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: compact ? '0.25rem 1rem' : '0.25rem 2.5rem', background: bg, alignItems: 'center', minHeight: 36 }}>
       {tags.map(tag => (
         <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 12px', borderRadius: 24, background: '#e8f0fe', fontSize: '0.75rem', fontWeight: 500, color: '#1a73e8' }}>
           #{tag}
@@ -1698,7 +1748,7 @@ function SearchableDropdown({ icon, placeholder, items, onSelect, activeBg, acti
 
 // ── Linked entity row (unified search) ────────────────────────────────────────
 
-function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, onChangeGroup }: {
+function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, onChangeGroup, compact = false }: {
   studentId: number | null;
   groupId: number | null;
   students: { id: number; name: string }[];
@@ -1706,6 +1756,7 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
   bg: string;
   onChangeStudent: (id: number | null) => void;
   onChangeGroup: (id: number | null) => void;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -1731,7 +1782,7 @@ function LinkedRow({ studentId, groupId, students, groups, bg, onChangeStudent, 
   const matchedGroups = q ? groups.filter(g => g.title.toLowerCase().includes(q)).slice(0, 15) : groups.slice(0, 10);
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0.25rem 2.5rem 0.5rem', background: bg, alignItems: 'center', minHeight: 36 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: compact ? '0.25rem 1rem 0.5rem' : '0.25rem 2.5rem 0.5rem', background: bg, alignItems: 'center', minHeight: 36 }}>
       {/* Linked student badge */}
       {studentId && studentName && (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 12px', borderRadius: 24, background: '#e8f0fe', fontSize: '0.75rem', fontWeight: 500, color: '#1a73e8' }}>
