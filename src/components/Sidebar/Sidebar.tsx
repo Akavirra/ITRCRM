@@ -345,6 +345,22 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
 
   const widgetTheme = getWidgetTheme();
 
+  const toggleCalendar = () => {
+    if (!calOpen) {
+      setCalYear(todayY);
+      setCalMonth(todayM);
+    }
+    setWeatherOpen(false);
+    setEventsOpen(false);
+    setCalOpen(o => !o);
+  };
+
+  const toggleEvents = () => {
+    setCalOpen(false);
+    setWeatherOpen(false);
+    setEventsOpen(o => !o);
+  };
+
   if (isCompact) {
     return (
       <div
@@ -365,14 +381,14 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
             WebkitBackdropFilter: 'blur(12px)',
             boxShadow: `${widgetTheme.shadow}, inset 0 0 0 1px ${widgetTheme.borderColor}`,
             border: 'none',
-            display: 'flex',
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) auto',
             alignItems: 'center',
-            justifyContent: 'space-between',
             gap: '10px',
             transition: 'background 1s ease, box-shadow 1s ease',
           }}
         >
-          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span
               style={{
                 fontSize: '20px',
@@ -400,42 +416,324 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
             </span>
           </div>
 
-          {weather ? (
-            <div
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            <button
+              onClick={toggleCalendar}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                flexShrink: 0,
-                padding: '6px 8px',
+                justifyContent: 'center',
+                width: 34,
+                height: 34,
                 borderRadius: '12px',
-                background: 'rgba(255, 255, 255, 0.45)',
+                border: 'none',
+                cursor: 'pointer',
+                background: calOpen ? 'rgba(59, 130, 246, 0.18)' : 'rgba(255, 255, 255, 0.52)',
+                color: calOpen ? '#2563eb' : '#64748b',
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
               }}
+              aria-label="Відкрити календар"
             >
-              <span style={{ lineHeight: 1, color: '#3b82f6' }}>{weatherIcon(weather.code, 16)}</span>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
+              <Calendar size={16} />
+            </button>
+
+            <button
+              className="weather-btn-hover"
+              ref={weatherBtnRef}
+              onClick={handleWeatherClick}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                minWidth: 70,
+                padding: '0 10px',
+                height: 34,
+                borderRadius: '12px',
+                border: 'none',
+                cursor: 'pointer',
+                background: weatherOpen ? 'rgba(59, 130, 246, 0.12)' : 'rgba(255, 255, 255, 0.52)',
+                color: '#0f172a',
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+              }}
+              aria-label="Відкрити погоду"
+            >
+              <span className="weather-icon-anim" style={{ lineHeight: 1, color: '#3b82f6' }}>
+                {weather ? weatherIcon(weather.code, 16) : <Cloud size={16} />}
+              </span>
+              <span style={{ fontSize: '13px', fontWeight: '600', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                {weather ? `${weather.temp}°` : '--'}
+              </span>
+            </button>
+
+            <button
+              onClick={toggleEvents}
+              style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 34,
+                height: 34,
+                borderRadius: '12px',
+                border: 'none',
+                cursor: 'pointer',
+                background: eventsOpen ? 'rgba(249, 115, 22, 0.16)' : 'rgba(255, 255, 255, 0.52)',
+                color: totalEventsToday > 0 ? '#f97316' : hasEventSummary ? '#2563eb' : '#64748b',
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+              }}
+              aria-label="Відкрити події"
+            >
+              <Flag size={15} />
+              {hasEventSummary && (
                 <span
                   style={{
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    color: '#0f172a',
-                    fontVariantNumeric: 'tabular-nums',
-                    lineHeight: 1,
+                    position: 'absolute',
+                    top: 6,
+                    right: 6,
+                    width: 7,
+                    height: 7,
+                    borderRadius: '999px',
+                    background: totalEventsToday > 0 ? '#f97316' : '#3b82f6',
+                    boxShadow: '0 0 0 2px rgba(255,255,255,0.95)',
                   }}
-                >
+                />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {calOpen && (
+          <div style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 8px)',
+            left: 0,
+            right: 0,
+            background: '#fff',
+            borderRadius: '14px',
+            boxShadow: '0 8px 32px rgba(30,58,95,0.12), 0 1px 4px rgba(30,58,95,0.06)',
+            border: '1px solid rgba(59,130,246,0.1)',
+            padding: '12px',
+            zIndex: 50,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <button onClick={prevMonth} style={calNavBtn}>‹</button>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: '#1e3a5f', letterSpacing: '0.02em' }}>
+                {MONTHS_FULL_UK[calMonth]} {calYear}
+              </span>
+              <button onClick={nextMonth} style={calNavBtn}>›</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '4px' }}>
+              {DAYS_SHORT_UK.map(d => (
+                <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '600', color: '#94a3b8', padding: '2px 0' }}>
+                  {d}
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+              {cells.map((day, i) => {
+                const isToday = day !== null && day === todayD && calMonth === todayM && calYear === todayY;
+                const isWeekend = i % 7 >= 5;
+                const dateKey = day === null
+                  ? null
+                  : `${calYear}-${padDateValue(calMonth + 1)}-${padDateValue(day)}`;
+                const hasHoliday = dateKey ? holidayDates.has(dateKey) : false;
+                const hasBirthday = dateKey ? birthdayDates.has(dateKey) : false;
+                const tooltipText = dateKey
+                  ? buildCalendarTooltip(
+                      calendarEventsByDate.get(dateKey)?.holidays ?? [],
+                      calendarEventsByDate.get(dateKey)?.birthdays ?? []
+                    )
+                  : '';
+                return (
+                  <div key={i} style={{
+                    textAlign: 'center',
+                    fontSize: '11px',
+                    fontWeight: isToday ? '700' : '400',
+                    color: isToday ? '#fff' : day === null ? 'transparent' : isWeekend ? '#94a3b8' : '#334155',
+                    background: isToday ? '#3b82f6' : 'transparent',
+                    borderRadius: '6px',
+                    padding: '4px 2px',
+                    lineHeight: '16px',
+                    minWidth: 0,
+                    position: 'relative',
+                    cursor: tooltipText ? 'help' : 'default',
+                  }}>
+                    <span title={tooltipText || undefined}>
+                      {day ?? ''}
+                    </span>
+                    {day !== null && (hasHoliday || hasBirthday) && (
+                      <span style={{
+                        position: 'absolute',
+                        left: '50%',
+                        bottom: '1px',
+                        transform: 'translateX(-50%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                      }}>
+                        {hasHoliday && (
+                          <span style={{
+                            width: '4px',
+                            height: '4px',
+                            borderRadius: '999px',
+                            background: isToday ? 'rgba(255,255,255,0.95)' : '#2563eb',
+                          }} />
+                        )}
+                        {hasBirthday && (
+                          <span style={{
+                            width: '4px',
+                            height: '4px',
+                            borderRadius: '999px',
+                            background: isToday ? 'rgba(255,255,255,0.75)' : '#f97316',
+                          }} />
+                        )}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {eventsOpen && (
+          <div style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 8px)',
+            left: 0,
+            right: 0,
+            background: '#fff',
+            borderRadius: '14px',
+            boxShadow: '0 8px 32px rgba(30,58,95,0.12), 0 1px 4px rgba(30,58,95,0.06)',
+            border: '1px solid rgba(59,130,246,0.1)',
+            padding: '12px',
+            zIndex: 55,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+                Сьогодні
+              </div>
+              {events && totalEventsToday > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {events.holidaysToday.map((holiday) => (
+                    <div key={`holiday-today-${holiday.date}-${holiday.name}`} style={eventCardStyle}>
+                      <Flag size={14} color="#2563eb" style={{ flexShrink: 0, marginTop: '1px' }} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={eventTitleStyle}>{holiday.name}</div>
+                        <div style={eventMetaStyle}>Свято України</div>
+                      </div>
+                    </div>
+                  ))}
+                  {events.birthdaysToday.map((birthday) => (
+                    <TransitionLink
+                      key={`birthday-today-${birthday.id}`}
+                      href={`/students/${birthday.id}`}
+                      style={{ ...eventCardStyle, textDecoration: 'none' }}
+                    >
+                      <Gift size={14} color="#f97316" style={{ flexShrink: 0, marginTop: '1px' }} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={eventTitleStyle}>{birthday.full_name}</div>
+                        <div style={eventMetaStyle}>{birthday.ageLabel}</div>
+                      </div>
+                    </TransitionLink>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                  На сьогодні подій немає
+                </div>
+              )}
+            </div>
+
+            {events && (events.upcomingHolidays.length > 0 || events.upcomingBirthdays.length > 0) && (
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+                  Найближчі
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {events.upcomingHolidays.slice(0, 3).map((holiday) => (
+                    <div key={`holiday-upcoming-${holiday.date}-${holiday.name}`} style={eventCardStyle}>
+                      <Flag size={14} color="#2563eb" style={{ flexShrink: 0, marginTop: '1px' }} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={eventTitleStyle}>{holiday.name}</div>
+                        <div style={eventMetaStyle}>{holiday.label}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {events.upcomingBirthdays.slice(0, 4).map((birthday) => (
+                    <TransitionLink
+                      key={`birthday-upcoming-${birthday.id}`}
+                      href={`/students/${birthday.id}`}
+                      style={{ ...eventCardStyle, textDecoration: 'none' }}
+                    >
+                      <Gift size={14} color="#f97316" style={{ flexShrink: 0, marginTop: '1px' }} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={eventTitleStyle}>{birthday.full_name}</div>
+                        <div style={eventMetaStyle}>{birthday.label} · {birthday.ageLabel}</div>
+                      </div>
+                    </TransitionLink>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {weatherOpen && weather && (
+          <div
+            ref={weatherPopRef}
+            style={{
+              position: 'absolute',
+              bottom: 'calc(100% + 8px)',
+              left: 0,
+              right: 0,
+              background: '#fff',
+              border: '1px solid #e8f0fe',
+              borderRadius: '16px',
+              padding: '16px',
+              zIndex: 60,
+              boxShadow: '0 2px 24px rgba(30,58,95,0.07)',
+            }}
+          >
+            <div style={{ fontSize: '10px', fontWeight: '700', color: '#3b82f6', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '12px' }}>
+              {weather.city}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+              <span style={{ lineHeight: 1 }}>{weatherIcon(weather.code, 40)}</span>
+              <div>
+                <div style={{ fontSize: '32px', fontWeight: '300', color: '#1e3a5f', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
                   {weather.temp}°
-                </span>
-                <span style={{ fontSize: '10px', color: '#94a3b8', lineHeight: 1 }}>
-                  {weather.city}
-                </span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                  {capitalize(weather.description)}
+                </div>
               </div>
             </div>
-          ) : (
-            <span style={{ fontSize: '10px', color: '#94a3b8', flexShrink: 0 }}>
-              --
-            </span>
-          )}
-        </div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: forecast && forecast.length > 0 ? '12px' : 0 }}>
+              <span style={detailPill}>Відчувається {weather.feels_like}°</span>
+              <span style={detailPill}>Вологість {weather.humidity}%</span>
+              <span style={detailPill}>Вітер {weather.wind} м/с</span>
+            </div>
+            {forecast && forecast.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {forecast.slice(0, 3).map((day) => (
+                  <div key={day.date} style={{ background: '#f8fbff', borderRadius: '12px', padding: '10px 8px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', fontWeight: '600', color: '#64748b', marginBottom: '6px' }}>{day.weekday}</div>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px', color: '#3b82f6' }}>{weatherIcon(day.code, 16)}</div>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e3a5f' }}>{day.temp_max}°</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>{day.temp_min}°</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
