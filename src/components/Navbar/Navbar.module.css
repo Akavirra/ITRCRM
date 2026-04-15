@@ -405,75 +405,10 @@
 
 
 
-  /* ── Center section (search) – collapsed by default on mobile ── */
-    .navbarCenter {
-      flex: 1 1 0%;
-      max-width: 0;
-      min-width: 0;
-      overflow: hidden;
-      opacity: 0;
-      pointer-events: none;
-      margin: 0;
-      padding: 0;
-      transition: max-width 0.4s cubic-bezier(0.32, 0.72, 0, 1),
-                  opacity 0.25s ease 0.1s,
-                  padding 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-    }
 
-    .navbarCenterExpanded {
-      max-width: 100%;
-      min-width: 0;
-      opacity: 1;
-      overflow: visible;
-      pointer-events: auto;
-      padding: 0;
-    }
-
-  /* ── Mobile close button inside search bar ── */
-  .mobileSearchClose {
-    display: flex;
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 28px;
-    height: 28px;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    background: #f1f5f9;
-    border-radius: 8px;
-    color: #64748b;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    z-index: 2;
-    padding: 0;
-  }
-
-  .mobileSearchClose:hover {
-    background: #e2e8f0;
-    color: #334155;
-  }
-
-  /* ── Right section: shrink when search is expanded ── */
-  .navbarRight {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: visible;
-  }
-
-  /* ── When search is expanded, hide right icons with smooth transition ── */
-  .navbarCenterExpanded ~ .navbarRight .iconButton:not(.mobileSearchToggle),
-  .navbarCenterExpanded ~ .navbarRight .userBlock {
-    width: 0;
-    opacity: 0;
-    margin: 0;
-    padding: 0;
-  pointer-events: none;
-  overflow: hidden;
-  }
-
-  .navbarCenterExpanded ~ .navbarRight {
-    gap: 0;
+  /* Center section (search) — hidden on mobile, opens as overlay */
+  .navbarCenter {
+    display: none;
   }
 
   /* ── Search hint always hidden on mobile ── */
@@ -572,6 +507,85 @@
     z-index: 99;
     animation: backdropFadeIn 0.25s ease forwards;
   }
+}
+
+/* Mobile full-screen search overlay */
+@media (max-width: 768px) {
+  .mobileSearchOverlay {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: #fafafa;
+    border-bottom: 1px solid #f0f0f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    align-items: center;
+    padding: 0 8px;
+    gap: 6px;
+    z-index: 200;
+    animation: mobileSearchSlideIn 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .mobileSearchOverlayInput {
+    flex: 1;
+    height: 38px;
+    padding: 0 14px 0 38px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 15px;
+    color: #1e293b;
+    outline: none;
+    font-family: inherit;
+    transition: all 0.2s ease;
+  }
+
+  .mobileSearchOverlayInput::placeholder {
+    color: #94a3b8;
+  }
+
+  .mobileSearchOverlayInput:focus {
+    background: #fff;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .mobileSearchOverlayIcon {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+  }
+
+  .mobileSearchOverlayClose {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    color: #64748b;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+
+  .mobileSearchOverlayClose:hover,
+  .mobileSearchOverlayClose:active {
+    background: #f1f5f9;
+    color: #334155;
+  }
+}
+
+@keyframes mobileSearchSlideIn {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes backdropFadeIn {

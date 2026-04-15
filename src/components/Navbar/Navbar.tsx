@@ -109,6 +109,8 @@ const Navbar: React.FC<NavbarProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [mobileOverlayFocused, setMobileOverlayFocused] = useState(false);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { calcOpen, toggleCalc } = useCalculator();
   const { notesOpen, toggleNotes } = useNotes();
@@ -323,7 +325,7 @@ const Navbar: React.FC<NavbarProps> = ({
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') {
         e.preventDefault();
         setMobileSearchOpen(true);
-        setTimeout(() => searchInputRef.current?.focus(), 50);
+        setTimeout(() => mobileSearchInputRef.current?.focus(), 50);
       }
       if (e.code === 'Escape' && mobileSearchOpen) {
         setMobileSearchOpen(false);
@@ -671,7 +673,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
   const openMobileSearch = useCallback(() => {
     setMobileSearchOpen(true);
-    setTimeout(() => searchInputRef.current?.focus(), 60);
+    setTimeout(() => mobileSearchInputRef.current?.focus(), 60);
   }, []);
 
   return (
@@ -1022,11 +1024,45 @@ const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
       </nav>
+            {/* Mobile search full-screen overlay */}
+      {mobileSearchOpen && (
+        <div className={styles.mobileSearchOverlay}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={16} className={styles.mobileSearchOverlayIcon} />
+            <input
+              ref={mobileSearchInputRef}
+              type="text"
+              className={styles.mobileSearchOverlayInput}
+              placeholder={t('search.placeholder') || ''}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setMobileOverlayFocused(true)}
+              onBlur={() => setTimeout(() => setMobileOverlayFocused(false), 200)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <GlobalSearch
+              query={searchQuery}
+              inputFocused={mobileOverlayFocused}
+              onClose={() => { setSearchQuery(''); setMobileOverlayFocused(false); closeMobileSearch(); }}
+            />
+          </div>
+          <button
+            className={styles.mobileSearchOverlayClose}
+            onClick={closeMobileSearch}
+            type="button"
+          >
+            <X size={20} strokeWidth={2} />
+          </button>
+        </div>
+      )}
+
       {/* Mobile search backdrop */}
       {mobileSearchOpen && (
         <div
           className={styles.mobileSearchBackdrop}
           onClick={closeMobileSearch}
+          style={{ top: '56px' }}
         />
       )}
 
