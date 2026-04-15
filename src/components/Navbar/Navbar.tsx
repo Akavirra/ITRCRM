@@ -204,8 +204,8 @@ const Navbar: React.FC<NavbarProps> = ({
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
   // ── Poll unread count every 60 s ──────────────────────────────────────────
@@ -271,8 +271,8 @@ const Navbar: React.FC<NavbarProps> = ({
         setNotifOpen(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
   }, []);
 
   // ── Clear all notifications for current user ──────────────────────────────
@@ -706,17 +706,6 @@ const Navbar: React.FC<NavbarProps> = ({
                 <Search size={20} strokeWidth={1.5} />
               </button>
             )}
-
-            {/* Mobile search toggle button (visible only on mobile when search is closed) */}
-            {!mobileSearchOpen && (
-              <button
-                className={`${styles.iconButton} ${styles.mobileSearchToggle}`}
-                onClick={openMobileSearch}
-                title="Пошук"
-              >
-                <Search size={20} strokeWidth={1.5} />
-              </button>
-            )}
             <div className={styles.searchContainer}>
               <Search size={18} className={styles.searchIcon} />
               <input
@@ -797,6 +786,7 @@ const Navbar: React.FC<NavbarProps> = ({
             {/* Notifications */}
             <div ref={notifRef} style={{ position: 'relative' }}>
               <button
+                type="button"
                 className={styles.iconButton}
                 title={t('notifications.title')}
                 onClick={handleBellClick}
@@ -982,7 +972,8 @@ const Navbar: React.FC<NavbarProps> = ({
 
             {/* User block with dropdown */}
             <div ref={dropdownRef} style={{ position: 'relative' }}>
-              <button 
+              <button
+                type="button"
                 className={styles.userBlock}
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               >
