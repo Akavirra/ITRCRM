@@ -888,6 +888,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const pathname = usePathname();
 
   const isSmallScreen = isMobile || isTablet;
+  const mobileNavbarHeight = isMobile ? 56 : 64;
 
   // --- Interactive robot logo ---
   const logoRef = useRef<HTMLDivElement>(null);
@@ -1468,12 +1469,12 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   };
 
   const getSidebarTop = () => {
-    if (isSmallScreen) return '0px';
+    if (isSmallScreen) return `${mobileNavbarHeight}px`;
     return '80px';
   };
 
   const getSidebarHeight = () => {
-    if (isSmallScreen) return '100dvh';
+    if (isSmallScreen) return `calc(100dvh - ${mobileNavbarHeight}px)`;
     return 'calc(100vh - 100px)';
   };
 
@@ -1483,7 +1484,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   };
 
   const getSidebarBorderRadius = () => {
-    if (isSmallScreen) return '0 16px 16px 0';
+    if (isSmallScreen) return '0 0 18px 0';
     return '16px';
   };
 
@@ -1511,13 +1512,13 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    padding: isMobile ? '14px 16px' : '12px 16px',
+    padding: isMobile ? '12px 14px' : '12px 16px',
     borderRadius: '12px',
     color: isActive ? '#1565c0' : '#666666',
     backgroundColor: isActive ? '#e3f2fd' : 'transparent',
     textDecoration: 'none',
     fontWeight: isActive ? '600' : '500',
-    fontSize: isMobile ? '15px' : '14px',
+    fontSize: isMobile ? '14px' : '14px',
     transition: 'all 0.2s ease',
     marginBottom: '4px',
     marginLeft: '12px',
@@ -1544,70 +1545,102 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         {/* Logo area */}
         <div style={{
           padding: isSmallScreen
-            ? 'max(1rem, env(safe-area-inset-top)) 1rem 0.875rem'
+            ? '0.75rem 1rem'
             : '1rem 1rem 0.875rem',
           backgroundColor: isNight && !nightLampOn ? '#1e293b' : '#ffffff',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
+          justifyContent: isSmallScreen ? 'space-between' : 'center',
           flexShrink: 0,
           borderBottom: '1px solid #f0f0f0',
-          minHeight: isSmallScreen ? '64px' : 'auto',
+          minHeight: isSmallScreen ? '52px' : '64px',
           transition: 'background-color 0.5s ease',
         }}>
-          <style dangerouslySetInnerHTML={{
-            __html: `
-            .itrcrm-logo { transition: transform 0.3s ease; }
-            .itrcrm-logo:hover { transform: scale(1.03); }
-            .itrcrm-logo:hover .logo-icon { filter: drop-shadow(0 3px 10px rgba(37,99,235,0.35)); }
-            .itrcrm-logo:hover .logo-antenna { animation: logoWiggle 0.6s ease; transform-origin: 50% 100%; }
-            .itrcrm-logo:hover .logo-letters { filter: drop-shadow(0 2px 6px rgba(37,99,235,0.2)); }
-            @keyframes logoWiggle { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(12deg); } 75% { transform: rotate(-8deg); } }
-            .robot-emotion { animation: emotionPop 0.4s ease; }
-            @keyframes emotionPop { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
-            .logo-antenna-pulse .logo-antenna-tip { animation: antennaPulse 1.5s ease-in-out infinite; }
-            @keyframes antennaPulse { 0%,100% { fill: #60a5fa; filter: drop-shadow(0 0 2px #60a5fa); } 50% { fill: #f59e0b; filter: drop-shadow(0 0 8px #f59e0b); } }
-            .hat-star-pulse { animation: hatStarPulse 1.5s ease-in-out infinite; }
-            @keyframes hatStarPulse { 0%,100% { fill: #eab308; filter: drop-shadow(0 0 2px #eab308); transform: scale(1); } 50% { fill: #f59e0b; filter: drop-shadow(0 0 8px #f59e0b); transform: scale(1.3); } }
-            .robot-sleeping .logo-icon { filter: brightness(0.85); transition: filter 1s ease; }
-            .robot-zzz { animation: zzzFloat 2s ease-in-out infinite; }
-            @keyframes zzzFloat { 0% { opacity: 0; transform: translate(0,0) scale(0.5); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(6px,-12px) scale(1.1); } }
-            .robot-speech { animation: speechIn 0.3s ease; position: absolute; top: -8px; right: -12px; background: white; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 3px 8px; font-size: 11px; font-weight: 600; color: #334155; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10; pointer-events: none; }
-            @keyframes speechIn { 0% { opacity: 0; transform: scale(0.5) translateY(4px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
-            .robot-night .logo-icon { filter: brightness(0.7) saturate(0.7); }
-            .robot-lamp-on .logo-icon { filter: brightness(1) saturate(1) drop-shadow(0 0 12px rgba(251,191,36,0.4)); transition: filter 0.5s ease; }
-            .logo-lamp { transition: opacity 0.4s ease; }
-            @keyframes lampSwing { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
-            .logo-lamp-swing { animation: lampSwing 3s ease-in-out infinite; transform-origin: 50% 0%; }
-            @keyframes robotDance { 0%,100% { transform: translateY(0) rotate(0deg); } 15% { transform: translateY(-3px) rotate(-4deg); } 30% { transform: translateY(0) rotate(4deg); } 45% { transform: translateY(-2px) rotate(-3deg); } 60% { transform: translateY(0) rotate(3deg); } 75% { transform: translateY(-3px) rotate(-2deg); } 90% { transform: translateY(0) rotate(2deg); } }
-            .robot-dancing { animation: robotDance 0.8s ease-in-out infinite; }
-            @keyframes hatShake { 0%,100% { transform: rotate(0deg) translateY(0); } 20% { transform: rotate(-8deg) translateY(-1px); } 40% { transform: rotate(8deg) translateY(0); } 60% { transform: rotate(-6deg) translateY(-1px); } 80% { transform: rotate(5deg) translateY(0); } }
-            .hat-shake { animation: hatShake 0.5s ease-in-out infinite; transform-origin: 22px 11px; }
-            @keyframes confettiFall { 0% { transform: translateY(-16px) rotate(0deg); opacity: 1; } 100% { transform: translateY(38px) rotate(360deg); opacity: 0; } }
-            .confetti-piece { animation: confettiFall 1.8s ease-in forwards; }
-            @keyframes fireworkBurst { 0% { transform: scale(0); opacity: 1; } 50% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
-            .firework { animation: fireworkBurst 1.2s ease-out infinite; transform-origin: center; }
-            @keyframes santaFly { 0% { transform: translateX(60px); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateX(-60px); opacity: 0; } }
-            .santa-sleigh { animation: santaFly 4s linear infinite; }
-            @keyframes snowfall { 0% { transform: translateY(-10px); opacity: 0.8; } 100% { transform: translateY(42px); opacity: 0; } }
-            .snowflake { animation: snowfall 2s linear infinite; }
-            @keyframes scaredShake { 0%,100% { transform: translateX(0); } 10% { transform: translateX(-2px) rotate(-2deg); } 20% { transform: translateX(2px) rotate(2deg); } 30% { transform: translateX(-2px); } 40% { transform: translateX(2px); } 50% { transform: translateX(-1px) rotate(-1deg); } 60% { transform: translateX(1px) rotate(1deg); } 70% { transform: translateX(-1px); } 80% { transform: translateX(1px); } }
-            .robot-scared { animation: scaredShake 0.6s ease-in-out infinite; }
-            @keyframes ghostFloat { 0% { transform: translate(0,0) scale(0.8); opacity: 0; } 20% { opacity: 0.7; } 50% { transform: translate(var(--gx,5px), var(--gy,-10px)) scale(1); opacity: 0.6; } 80% { opacity: 0.4; } 100% { transform: translate(var(--gx2,10px), var(--gy2,-18px)) scale(0.7); opacity: 0; } }
-            .ghost-float { animation: ghostFloat 3s ease-in-out infinite; }
-            .pumpkin-glow { filter: drop-shadow(0 0 4px #fbbf24) drop-shadow(0 0 8px #f97316); }
-            @keyframes bookFall { 0% { transform: translateY(-14px) rotate(0deg); opacity: 0; } 10% { opacity: 1; } 85% { opacity: 0.8; } 100% { transform: translateY(44px) rotate(var(--br, 180deg)); opacity: 0; } }
-            .book-fall { animation: bookFall 3.5s ease-in infinite; }
-            @keyframes bunnyWiggle { 0%,100% { transform: rotate(0deg) scaleY(1); } 20% { transform: rotate(-6deg) scaleY(0.95); } 40% { transform: rotate(6deg) scaleY(1.05); } 60% { transform: rotate(-4deg) scaleY(0.97); } 80% { transform: rotate(4deg) scaleY(1.03); } }
-            .bunny-wiggle { animation: bunnyWiggle 0.7s ease-in-out infinite; transform-origin: 22px 10px; }
-            @keyframes eggBounce { 0% { transform: translateY(0); } 40% { transform: translateY(var(--ey, -8px)); } 60% { transform: translateY(var(--ey, -8px)); } 100% { transform: translateY(0); } }
-            .egg-bounce { animation: eggBounce 1.2s ease-in-out infinite; }
-            @keyframes chickPop { 0% { transform: scale(0) translateY(4px); opacity: 0; } 30% { transform: scale(1.3) translateY(-2px); opacity: 1; } 50% { transform: scale(0.9) translateY(0); } 70% { transform: scale(1.1) translateY(-1px); } 100% { transform: scale(1) translateY(0); opacity: 1; } }
-            .chick-pop { animation: chickPop 0.8s ease forwards; }
-            @keyframes basketShake { 0%,100% { transform: translate(38px,26px) rotate(0deg); } 25% { transform: translate(38px,26px) rotate(-3deg); } 75% { transform: translate(38px,26px) rotate(3deg); } }
-            .basket-shake { animation: basketShake 0.4s ease-in-out infinite; }
-          `}} />
-          <TransitionLink
+          {isSmallScreen ? (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Меню
+                </span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#0f172a' }}>
+                  Навігація CRM
+                </span>
+              </div>
+              <TransitionLink
+                href="/dashboard"
+                onClick={onClose}
+                style={{
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 12px',
+                  borderRadius: 12,
+                  background: '#eff6ff',
+                  color: '#2563eb',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                }}
+              >
+                <Home size={16} />
+                Головна
+              </TransitionLink>
+            </>
+          ) : (
+            <>
+              <style dangerouslySetInnerHTML={{
+                __html: `
+                .itrcrm-logo { transition: transform 0.3s ease; }
+                .itrcrm-logo:hover { transform: scale(1.03); }
+                .itrcrm-logo:hover .logo-icon { filter: drop-shadow(0 3px 10px rgba(37,99,235,0.35)); }
+                .itrcrm-logo:hover .logo-antenna { animation: logoWiggle 0.6s ease; transform-origin: 50% 100%; }
+                .itrcrm-logo:hover .logo-letters { filter: drop-shadow(0 2px 6px rgba(37,99,235,0.2)); }
+                @keyframes logoWiggle { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(12deg); } 75% { transform: rotate(-8deg); } }
+                .robot-emotion { animation: emotionPop 0.4s ease; }
+                @keyframes emotionPop { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
+                .logo-antenna-pulse .logo-antenna-tip { animation: antennaPulse 1.5s ease-in-out infinite; }
+                @keyframes antennaPulse { 0%,100% { fill: #60a5fa; filter: drop-shadow(0 0 2px #60a5fa); } 50% { fill: #f59e0b; filter: drop-shadow(0 0 8px #f59e0b); } }
+                .hat-star-pulse { animation: hatStarPulse 1.5s ease-in-out infinite; }
+                @keyframes hatStarPulse { 0%,100% { fill: #eab308; filter: drop-shadow(0 0 2px #eab308); transform: scale(1); } 50% { fill: #f59e0b; filter: drop-shadow(0 0 8px #f59e0b); transform: scale(1.3); } }
+                .robot-sleeping .logo-icon { filter: brightness(0.85); transition: filter 1s ease; }
+                .robot-zzz { animation: zzzFloat 2s ease-in-out infinite; }
+                @keyframes zzzFloat { 0% { opacity: 0; transform: translate(0,0) scale(0.5); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(6px,-12px) scale(1.1); } }
+                .robot-speech { animation: speechIn 0.3s ease; position: absolute; top: -8px; right: -12px; background: white; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 3px 8px; font-size: 11px; font-weight: 600; color: #334155; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10; pointer-events: none; }
+                @keyframes speechIn { 0% { opacity: 0; transform: scale(0.5) translateY(4px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+                .robot-night .logo-icon { filter: brightness(0.7) saturate(0.7); }
+                .robot-lamp-on .logo-icon { filter: brightness(1) saturate(1) drop-shadow(0 0 12px rgba(251,191,36,0.4)); transition: filter 0.5s ease; }
+                .logo-lamp { transition: opacity 0.4s ease; }
+                @keyframes lampSwing { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+                .logo-lamp-swing { animation: lampSwing 3s ease-in-out infinite; transform-origin: 50% 0%; }
+                @keyframes robotDance { 0%,100% { transform: translateY(0) rotate(0deg); } 15% { transform: translateY(-3px) rotate(-4deg); } 30% { transform: translateY(0) rotate(4deg); } 45% { transform: translateY(-2px) rotate(-3deg); } 60% { transform: translateY(0) rotate(3deg); } 75% { transform: translateY(-3px) rotate(-2deg); } 90% { transform: translateY(0) rotate(2deg); } }
+                .robot-dancing { animation: robotDance 0.8s ease-in-out infinite; }
+                @keyframes hatShake { 0%,100% { transform: rotate(0deg) translateY(0); } 20% { transform: rotate(-8deg) translateY(-1px); } 40% { transform: rotate(8deg) translateY(0); } 60% { transform: rotate(-6deg) translateY(-1px); } 80% { transform: rotate(5deg) translateY(0); } }
+                .hat-shake { animation: hatShake 0.5s ease-in-out infinite; transform-origin: 22px 11px; }
+                @keyframes confettiFall { 0% { transform: translateY(-16px) rotate(0deg); opacity: 1; } 100% { transform: translateY(38px) rotate(360deg); opacity: 0; } }
+                .confetti-piece { animation: confettiFall 1.8s ease-in forwards; }
+                @keyframes fireworkBurst { 0% { transform: scale(0); opacity: 1; } 50% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
+                .firework { animation: fireworkBurst 1.2s ease-out infinite; transform-origin: center; }
+                @keyframes santaFly { 0% { transform: translateX(60px); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateX(-60px); opacity: 0; } }
+                .santa-sleigh { animation: santaFly 4s linear infinite; }
+                @keyframes snowfall { 0% { transform: translateY(-10px); opacity: 0.8; } 100% { transform: translateY(42px); opacity: 0; } }
+                .snowflake { animation: snowfall 2s linear infinite; }
+                @keyframes scaredShake { 0%,100% { transform: translateX(0); } 10% { transform: translateX(-2px) rotate(-2deg); } 20% { transform: translateX(2px) rotate(2deg); } 30% { transform: translateX(-2px); } 40% { transform: translateX(2px); } 50% { transform: translateX(-1px) rotate(-1deg); } 60% { transform: translateX(1px) rotate(1deg); } 70% { transform: translateX(-1px); } 80% { transform: translateX(1px); } }
+                .robot-scared { animation: scaredShake 0.6s ease-in-out infinite; }
+                @keyframes ghostFloat { 0% { transform: translate(0,0) scale(0.8); opacity: 0; } 20% { opacity: 0.7; } 50% { transform: translate(var(--gx,5px), var(--gy,-10px)) scale(1); opacity: 0.6; } 80% { opacity: 0.4; } 100% { transform: translate(var(--gx2,10px), var(--gy2,-18px)) scale(0.7); opacity: 0; } }
+                .ghost-float { animation: ghostFloat 3s ease-in-out infinite; }
+                .pumpkin-glow { filter: drop-shadow(0 0 4px #fbbf24) drop-shadow(0 0 8px #f97316); }
+                @keyframes bookFall { 0% { transform: translateY(-14px) rotate(0deg); opacity: 0; } 10% { opacity: 1; } 85% { opacity: 0.8; } 100% { transform: translateY(44px) rotate(var(--br, 180deg)); opacity: 0; } }
+                .book-fall { animation: bookFall 3.5s ease-in infinite; }
+                @keyframes bunnyWiggle { 0%,100% { transform: rotate(0deg) scaleY(1); } 20% { transform: rotate(-6deg) scaleY(0.95); } 40% { transform: rotate(6deg) scaleY(1.05); } 60% { transform: rotate(-4deg) scaleY(0.97); } 80% { transform: rotate(4deg) scaleY(1.03); } }
+                .bunny-wiggle { animation: bunnyWiggle 0.7s ease-in-out infinite; transform-origin: 22px 10px; }
+                @keyframes eggBounce { 0% { transform: translateY(0); } 40% { transform: translateY(var(--ey, -8px)); } 60% { transform: translateY(var(--ey, -8px)); } 100% { transform: translateY(0); } }
+                .egg-bounce { animation: eggBounce 1.2s ease-in-out infinite; }
+                @keyframes chickPop { 0% { transform: scale(0) translateY(4px); opacity: 0; } 30% { transform: scale(1.3) translateY(-2px); opacity: 1; } 50% { transform: scale(0.9) translateY(0); } 70% { transform: scale(1.1) translateY(-1px); } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+                .chick-pop { animation: chickPop 0.8s ease forwards; }
+                @keyframes basketShake { 0%,100% { transform: translate(38px,26px) rotate(0deg); } 25% { transform: translate(38px,26px) rotate(-3deg); } 75% { transform: translate(38px,26px) rotate(3deg); } }
+                .basket-shake { animation: basketShake 0.4s ease-in-out infinite; }
+              `}} />
+              <TransitionLink
             href="/dashboard"
             onClick={isSmallScreen ? onClose : undefined}
             style={{ textDecoration: 'none' }}
@@ -1962,11 +1995,18 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 </span>
               </div>
             </div>
-          </TransitionLink>
+              </TransitionLink>
+            </>
+          )}
         </div>
 
         {/* Navigation */}
-        <nav style={{ padding: isSmallScreen ? '16px 8px' : '24px 8px', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
+        <nav style={{ padding: isSmallScreen ? '12px 8px' : '24px 8px', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
+          {isSmallScreen && (
+            <div style={{ padding: '0 16px 10px', fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Основне
+            </div>
+          )}
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -1997,6 +2037,11 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
 
           {/* Files section */}
           <div style={{ height: '1px', backgroundColor: '#f0f0f0', margin: '16px 12px' }} />
+          {isSmallScreen && (
+            <div style={{ padding: '0 16px 10px', fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Додатково
+            </div>
+          )}
           {(() => {
             const Icon = filesMenuItem.icon;
             const isActive = pathname === filesMenuItem.href;
