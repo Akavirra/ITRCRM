@@ -26,12 +26,15 @@ export default function CalculatorWidget({ onRestore, onClose }: Props) {
   const [pos, setPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [visible, setVisible] = useState(false);
   const [showClose, setShowClose] = useState(false);
-  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [mobileCloseVisible, setMobileCloseVisible] = useState(false);
 
   const dragging = useRef(false);
   const moved = useRef(false);
   const origin = useRef({ mx: 0, my: 0, px: 0, py: 0 });
   const posRef = useRef(pos);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hideCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressRestoreRef = useRef(false);
 
   const clampPos = useCallback((next: { x: number; y: number }) => {
     const maxX = Math.max(12, window.innerWidth - 64);
@@ -53,13 +56,11 @@ export default function CalculatorWidget({ onRestore, onClose }: Props) {
     const next = clampPos(initial);
     setPos(next);
     posRef.current = next;
-    setIsMobileViewport(window.innerWidth < 768);
     requestAnimationFrame(() => setVisible(true));
   }, [clampPos]);
 
   useEffect(() => {
     const onResize = () => {
-      setIsMobileViewport(window.innerWidth < 768);
       setPos(prev => {
         const next = clampPos(prev);
         posRef.current = next;
@@ -71,6 +72,41 @@ export default function CalculatorWidget({ onRestore, onClose }: Props) {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, [clampPos]);
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+      if (hideCloseTimerRef.current) {
+        clearTimeout(hideCloseTimerRef.current);
+      }
+    };
+  }, []);
+
+  const scheduleHideMobileClose = useCallback(() => {
+    if (hideCloseTimerRef.current) {
+      clearTimeout(hideCloseTimerRef.current);
+    }
+
+    hideCloseTimerRef.current = setTimeout(() => {
+      setMobileCloseVisible(false);
+    }, 2500);
+  }, []);
+
+  const clearLongPressTimer = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const clearHideCloseTimer = useCallback(() => {
+    if (hideCloseTimerRef.current) {
+      clearTimeout(hideCloseTimerRef.current);
+      hideCloseTimerRef.current = null;
+    }
+  }, []);
 
   /* --- mouse drag --- */
   useEffect(() => {
@@ -108,15 +144,29 @@ export default function CalculatorWidget({ onRestore, onClose }: Props) {
 
   /* --- touch drag --- */
   const handleTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('[data-close-button="true"]')) {
+      suppressRestoreRef.current = true;
+      return;
+    }
+
     const t = e.touches[0];
     dragging.current = true;
     moved.current = false;
     origin.current = { mx: t.clientX, my: t.clientY, px: pos.x, py: pos.y };
+
+    clearLongPressTimer();
+    longPressTimerRef.current = setTimeout(() => {
+      suppressRestoreRef.current = true;
+      setMobileCloseVisible(true);
+      scheduleHideMobileClose();
+    }, 450);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!dragging.current) return;
     e.preventDefault();
+    clearLongPressTimer();
     moved.current = true;
     const t = e.touches[0];
     const next = clampPos({
@@ -128,22 +178,34 @@ export default function CalculatorWidget({ onRestore, onClose }: Props) {
   };
 
   const handleTouchEnd = () => {
+    clearLongPressTimer();
+
     if (dragging.current && moved.current) {
       savePos(posRef.current);
     }
+
     dragging.current = false;
     moved.current = false;
   };
 
   /* --- click vs drag --- */
   const handleClick = () => {
+    if (suppressRestoreRef.current) {
+      suppressRestoreRef.current = false;
+      return;
+    }
+
     if (!moved.current) {
       onRestore();
     }
   };
 
   const handleClose = (e: React.MouseEvent | React.TouchEvent) => {
+    suppressRestoreRef.current = true;
     e.stopPropagation();
+    clearLongPressTimer();
+    clearHideCloseTimer();
+    setMobileCloseVisible(false);
     onClose();
   };
 
@@ -184,7 +246,6 @@ export default function CalculatorWidget({ onRestore, onClose }: Props) {
         onClick={handleClick}
         onMouseEnter={() => setShowClose(true)}
         onMouseLeave={() => setShowClose(false)}
-        onTouchStartCapture={() => setShowClose(true)}
       >
         <div
           style={{
@@ -199,14 +260,15 @@ export default function CalculatorWidget({ onRestore, onClose }: Props) {
         >
           <Calculator size={22} color="#2563eb" strokeWidth={2} />
         </div>
-        {(showClose || isMobileViewport) && (
+        {(showClose || mobileCloseVisible) && (
           <button
             onClick={handleClose}
             onTouchEnd={handleClose}
+            data-close-button="true"
             style={{
               position: 'absolute',
-              top: -6,
-              right: -6,
+              top: -8,
+              right: -8,
               width: 20,
               height: 20,
               borderRadius: '50%',
