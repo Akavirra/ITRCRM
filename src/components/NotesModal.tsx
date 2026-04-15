@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { FileText, CheckSquare, Pin, Trash2, Plus, Search, X, ArrowLeft } from 'lucide-react';
+import { FileText, CheckSquare, Pin, Trash2, Plus, Search, X, ArrowLeft, Minus } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -332,9 +332,13 @@ const TEMPLATES: { icon: string; label: string; desc: string; type: 'note' | 'to
 
 // ── Main modal ────────────────────────────────────────────────────────────────
 
-interface Props { isOpen: boolean; onClose: () => void; }
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  onMinimize: () => void;
+}
 
-export default function NotesModal({ isOpen, onClose }: Props) {
+export default function NotesModal({ isOpen, onClose, onMinimize }: Props) {
   const [notes, setNotes]           = useState<Note[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch]         = useState('');
@@ -782,6 +786,15 @@ export default function NotesModal({ isOpen, onClose }: Props) {
           <span title={"Ctrl+N — нова нотатка\nCtrl+T — новий список\nCtrl+W / Esc — закрити"} style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#ffffff', letterSpacing: '0.03em', flex: 1 }}>
             Записник
           </span>
+          <button
+            onClick={onMinimize}
+            style={{ background: 'rgba(255,255,255,0.12)', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', borderRadius: 8, width: 30, height: 30, transition: 'background 0.15s', flexShrink: 0 }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+            aria-label="Згорнути записник"
+          >
+            <Minus size={15} strokeWidth={2.5} />
+          </button>
           <button
             onClick={onClose}
             style={{ background: 'rgba(255,255,255,0.12)', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', borderRadius: 8, width: 30, height: 30, transition: 'background 0.15s', flexShrink: 0 }}
