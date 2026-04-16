@@ -780,7 +780,7 @@ export default function PaymentsPage() {
             onClick={() => setShowHistoryModal(true)}
             style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: '600' }}
           >
-            Р†СЃС‚РѕСЂС–СЏ РѕРїР»Р°С‚
+            Історія оплат
           </button>
 
           {tab === 'group' && (
@@ -1276,9 +1276,9 @@ export default function PaymentsPage() {
               style={{ justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}
             >
               <div>
-                <div style={{ fontSize: '1.125rem', fontWeight: '700', color: '#111827' }}>Р†СЃС‚РѕСЂС–СЏ РѕРїР»Р°С‚</div>
+                <div style={{ fontSize: '1.125rem', fontWeight: '700', color: '#111827' }}>Історія оплат</div>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                  {historyTotal} Р·Р°РїРёСЃС–РІ
+                  {historyTotal} записів
                 </div>
               </div>
               <button
@@ -1286,7 +1286,7 @@ export default function PaymentsPage() {
                 onClick={() => setShowHistoryModal(false)}
                 style={{ padding: '0.5rem 0.875rem', fontSize: '0.875rem' }}
               >
-                Р—Р°РєСЂРёС‚Рё
+                Закрити
               </button>
             </div>
 
@@ -1294,7 +1294,7 @@ export default function PaymentsPage() {
               <input
                 type="text"
                 className="form-input"
-                placeholder="РџРѕС€СѓРє Р·Р° С–Рј'СЏРј..."
+                placeholder="Пошук за ім'ям..."
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
                 style={{ width: '200px', padding: '0.375rem 0.75rem', fontSize: '0.8125rem' }}
@@ -1305,9 +1305,9 @@ export default function PaymentsPage() {
                 onChange={(e) => setHistoryTypeFilter(e.target.value)}
                 style={{ width: '140px', padding: '0.375rem 0.75rem', fontSize: '0.8125rem' }}
               >
-                <option value="">РЈСЃС– С‚РёРїРё</option>
-                <option value="group">Р“СЂСѓРїРѕРІС–</option>
-                <option value="individual">Р†РЅРґРёРІС–РґСѓР°Р»СЊРЅС–</option>
+                <option value="">Усі типи</option>
+                <option value="group">Групові</option>
+                <option value="individual">Індивідуальні</option>
               </select>
               <select
                 className="form-input"
@@ -1315,27 +1315,27 @@ export default function PaymentsPage() {
                 onChange={(e) => setHistoryMethodFilter(e.target.value)}
                 style={{ width: '150px', padding: '0.375rem 0.75rem', fontSize: '0.8125rem' }}
               >
-                <option value="">РЈСЃС– СЃРїРѕСЃРѕР±Рё</option>
-                <option value="cash">Р“РѕС‚С–РІРєР°</option>
-                <option value="account">Р‘РµР·РіРѕС‚С–РІРєРѕРІРѕ</option>
+                <option value="">Усі способи</option>
+                <option value="cash">Готівка</option>
+                <option value="account">Безготівково</option>
               </select>
             </div>
 
             <div style={{ padding: '1rem 1.25rem 1.25rem', overflowY: 'auto' }}>
               <div className="table-container">
                 {historyLoading ? (
-                  <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Р—Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ...</div>
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Завантаження...</div>
                 ) : historyPayments.length > 0 ? (
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>Р”Р°С‚Р°</th>
-                        <th>РЈС‡РµРЅСЊ</th>
-                        <th>РўРёРї</th>
-                        <th>Р“СЂСѓРїР° / Р”РµС‚Р°Р»С–</th>
-                        <th style={{ textAlign: 'right' }}>РЎСѓРјР°</th>
-                        <th>РЎРїРѕСЃС–Р±</th>
-                        <th style={{ textAlign: 'center', width: '60px' }}>Р”С–С—</th>
+                        <th>Дата</th>
+                        <th>Учень</th>
+                        <th>Тип</th>
+                        <th>Група / Деталі</th>
+                        <th style={{ textAlign: 'right' }}>Сума</th>
+                        <th>Спосіб</th>
+                        <th style={{ textAlign: 'center', width: '60px' }}>Дії</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1358,7 +1358,7 @@ export default function PaymentsPage() {
                               backgroundColor: p.type === 'group' ? '#dbeafe' : '#f3e8ff',
                               color: p.type === 'group' ? '#1d4ed8' : '#7c3aed',
                             }}>
-                              {p.type === 'group' ? 'Р“СЂСѓРїРѕРІР°' : 'Р†РЅРґРёРІС–Рґ.'}
+                              {p.type === 'group' ? 'Групова' : 'Індивід.'}
                             </span>
                           </td>
                           <td style={{ fontSize: '0.8125rem' }}>
@@ -1373,11 +1373,11 @@ export default function PaymentsPage() {
                                 {p.month && <span style={{ color: '#9ca3af', marginLeft: '0.375rem' }}>({p.month.substring(0, 7)})</span>}
                               </>
                             ) : (
-                              <span style={{ color: '#6b7280' }}>{p.lessons_count} Р·Р°РЅ.</span>
+                              <span style={{ color: '#6b7280' }}>{p.lessons_count} зан.</span>
                             )}
                           </td>
                           <td style={{ textAlign: 'right', fontWeight: '600', fontSize: '0.875rem' }}>
-                            {p.amount} в‚ґ
+                            {p.amount} ₴
                           </td>
                           <td>
                             <span style={{
@@ -1385,7 +1385,7 @@ export default function PaymentsPage() {
                               backgroundColor: p.method === 'cash' ? '#dcfce7' : '#e0f2fe',
                               color: p.method === 'cash' ? '#16a34a' : '#0284c7',
                             }}>
-                              {p.method === 'cash' ? 'Р“РѕС‚С–РІРєР°' : 'Р‘РµР·РіРѕС‚.'}
+                              {p.method === 'cash' ? 'Готівка' : 'Безгот.'}
                             </span>
                           </td>
                           <td style={{ textAlign: 'center' }}>
@@ -1395,9 +1395,9 @@ export default function PaymentsPage() {
                                 background: 'none', border: '1px solid #e5e7eb', borderRadius: '0.25rem',
                                 padding: '0.25rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', color: '#6b7280',
                               }}
-                              title="Р”РµС‚Р°Р»С–"
+                              title="Деталі"
                             >
-                              рџ‘Ѓ
+                              👁
                             </button>
                           </td>
                         </tr>
@@ -1406,7 +1406,7 @@ export default function PaymentsPage() {
                   </table>
                 ) : (
                   <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                    РќРµРјР°С” Р·Р°РїРёСЃС–РІ
+                    Немає записів
                   </div>
                 )}
               </div>
@@ -1419,10 +1419,10 @@ export default function PaymentsPage() {
                     disabled={historyPage === 0}
                     style={{ fontSize: '0.8125rem' }}
                   >
-                    в†ђ РќР°Р·Р°Рґ
+                    ← Назад
                   </button>
                   <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                    {historyPage * HISTORY_LIMIT + 1}вЂ“{Math.min((historyPage + 1) * HISTORY_LIMIT, historyTotal)} Р· {historyTotal}
+                    {historyPage * HISTORY_LIMIT + 1}–{Math.min((historyPage + 1) * HISTORY_LIMIT, historyTotal)} з {historyTotal}
                   </span>
                   <button
                     className="btn btn-secondary btn-sm"
@@ -1430,7 +1430,7 @@ export default function PaymentsPage() {
                     disabled={(historyPage + 1) * HISTORY_LIMIT >= historyTotal}
                     style={{ fontSize: '0.8125rem' }}
                   >
-                    Р”Р°Р»С– в†’
+                    Далі →
                   </button>
                 </div>
               )}
