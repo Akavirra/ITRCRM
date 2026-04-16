@@ -1,0 +1,21 @@
+# EditorConfig — https://editorconfig.org
+# Ensures consistent file encoding and formatting across editors (VSCode, WebStorm, etc.)
+# Prevents the UTF-8 → Windows-1251 mojibake corruption that hit Sidebar.tsx and payments/page.tsx.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Markdown — preserve trailing whitespace (it's used for line breaks)
+[*.md]
+trim_trailing_whitespace = false
+
+# Windows .bat / .cmd files need CRLF
+[*.{bat,cmd}]
+end_of_line = crlf
