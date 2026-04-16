@@ -732,7 +732,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
             {debtsTab === 'allTime' && (
               <div className={styles.modalFilterBar}>
                 <label className={styles.monthPickerWrap}>
-                  <span className={styles.monthPickerLabel}>{'\u041c\u0456\u0441\u044f\u0446\u044c'}</span>
+                  <span className={styles.monthPickerLabel}>Місяць</span>
                   <span className={styles.monthPickerShell}>
                     <Calendar size={15} className={styles.monthPickerIcon} />
                     <select
@@ -744,7 +744,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                         if (nextValue) loadDebtMonth(nextValue);
                       }}
                     >
-                      <option value="">{'\u0423\u0441\u0456 \u043c\u0456\u0441\u044f\u0446\u0456'}</option>
+                      <option value="">Усі місяці</option>
                       {debtMonthOptions.map((monthValue) => (
                         <option key={monthValue} value={monthValue}>
                           {formatMonthLabel(monthValue)}
@@ -975,7 +975,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 <>
                   <div className={styles.modalFilterBar}>
                     <label className={styles.monthPickerWrap}>
-                      <span className={styles.monthPickerLabel}>{'\u041c\u0456\u0441\u044f\u0446\u044c'}</span>
+                      <span className={styles.monthPickerLabel}>Місяць</span>
                       <span className={styles.monthPickerShell}>
                         <Calendar size={15} className={styles.monthPickerIcon} />
                         <select
@@ -983,7 +983,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                           value={attendanceAllTimeMonthFilter}
                           onChange={(e) => setAttendanceAllTimeMonthFilter(e.target.value)}
                         >
-                          <option value="">{'\u0423\u0441\u0456 \u043c\u0456\u0441\u044f\u0446\u0456'}</option>
+                          <option value="">Усі місяці</option>
                           {allTimeAbsenceMonths.map((monthValue) => (
                             <option key={monthValue} value={monthValue}>
                               {formatMonthLabel(monthValue)}
