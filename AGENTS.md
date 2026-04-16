@@ -42,6 +42,44 @@ git diff --cached | grep -E "Р[А-Яа-я]|СЏ|С–|С‚|вЂ|рџ|В°|в�
 
 ---
 
+## 🎨 Design & UI work
+
+Any time you write, edit, or review UI code (components, pages, modals, animations, CSS, Tailwind), you **must** apply the design-engineering philosophy of Emil Kowalski — that is the bar for UI in this project.
+
+### For Claude Code (and other Claude-based agents)
+
+Invoke the `emil-design-eng` skill **before** producing UI code. Use it for:
+- Animation decisions (duration, easing, whether to animate at all)
+- Component polish (`:active` states, focus rings, hover scoping, micro-feedback)
+- Reviewing diffs on `.tsx` / `.css` files
+- Any "make this feel better" request
+
+When reviewing, output in the required Before/After/Why markdown table format from the skill.
+
+### For Codex CLI, Copilot, and any agent without skill access
+
+Follow the same philosophy manually. Canonical reference: Emil Kowalski's course at [animations.dev](https://animations.dev/). Core rules you must respect:
+
+1. **Never use `transition: all`.** Specify exact properties: `transition: transform 200ms var(--ease-out), background 150ms ease`.
+2. **Favor `ease-out` over `ease-in` for entries.** `ease-in` feels sluggish; `ease-out` gives instant feedback.
+3. **Scale from 0.95–0.98, not from 0.** Nothing in the real world appears from nothing. `scale(0.95); opacity: 0` → `scale(1); opacity: 1`.
+4. **Every interactive element needs a `:active` state.** Usually `transform: scale(0.97)` or `scale(0.98)`. Buttons must feel responsive to press.
+5. **Gate hover behind pointer-fine devices:** `@media (hover: hover) and (pointer: fine) { .x:hover { ... } }`. Touch devices get stuck hover states otherwise.
+6. **Animation frequency rule:**
+   - 100+/day (keyboard shortcuts, command palette) → **no animation**
+   - Tens/day (hover, list nav) → **minimal or none**
+   - Occasional (modals, drawers) → **standard animation** (~200–300ms)
+   - Rare (onboarding, celebrations) → delight is OK
+7. **Respect `prefers-reduced-motion: reduce`.** Disable transforms; shorten transitions.
+8. **Popovers scale from their trigger** (`transform-origin` tied to trigger position); **modals stay centered**.
+9. **Unseen details compound.** The goal is not to be noticed — it's for interactions to feel inevitable.
+
+### Project-specific design rules
+
+The visual system (colors, typography, 4px spacing grid, 8/12px radii, Lucide icons, component rules) is codified in [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md). The Emil-philosophy rules above describe **how** things should feel; DESIGN_SYSTEM.md describes **what** they should look like. Both apply, always.
+
+---
+
 ## Commands
 
 ```bash
