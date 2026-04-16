@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle, BarChart3, BookOpen, Calendar, Check, ChevronLeft, ChevronRight, Clock, CreditCard, DollarSign,
-  ExternalLink, GraduationCap, Plus, RefreshCw, SquareArrowOutUpRight, TrendingDown, TrendingUp, User as UserIcon, Users, Users2, X,
+  ChevronDown, ExternalLink, GraduationCap, Plus, RefreshCw, SquareArrowOutUpRight, TrendingDown, TrendingUp, User as UserIcon, Users, Users2, X,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { uk } from 'date-fns/locale';
@@ -96,6 +96,16 @@ function formatMonthLabel(monthValue: string) {
 
 function getMonthValueFromDate(dateValue: string) {
   return dateValue.slice(0, 7);
+}
+
+function getRecentMonthValues(count: number) {
+  const now = new Date();
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - index, 1);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  });
 }
 
 const studentsLabels: Record<StudentsPeriod, string> = {
@@ -239,6 +249,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const allTimeAbsenceMonths = Array.from(
     new Set((allTimeAbsences ?? []).map((absence) => getMonthValueFromDate(absence.lesson_date)))
   ).sort((a, b) => b.localeCompare(a));
+  const debtMonthOptions = getRecentMonthValues(24);
 
   const filteredAllTimeAbsences = attendanceAllTimeMonthFilter
     ? (allTimeAbsences ?? []).filter((absence) => getMonthValueFromDate(absence.lesson_date) === attendanceAllTimeMonthFilter)
@@ -722,26 +733,27 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               <div className={styles.modalFilterBar}>
                 <label className={styles.monthPickerWrap}>
                   <span className={styles.monthPickerLabel}>{'\u041c\u0456\u0441\u044f\u0446\u044c'}</span>
-                  <input
-                    type="month"
-                    className={styles.monthPicker}
-                    value={debtMonthFilter}
-                    onChange={(e) => {
-                      const nextValue = e.target.value;
-                      setDebtMonthFilter(nextValue);
-                      if (nextValue) loadDebtMonth(nextValue);
-                    }}
-                  />
+                  <span className={styles.monthPickerShell}>
+                    <Calendar size={15} className={styles.monthPickerIcon} />
+                    <select
+                      className={styles.monthPickerSelect}
+                      value={debtMonthFilter}
+                      onChange={(e) => {
+                        const nextValue = e.target.value;
+                        setDebtMonthFilter(nextValue);
+                        if (nextValue) loadDebtMonth(nextValue);
+                      }}
+                    >
+                      <option value="">{'\u0423\u0441\u0456 \u043c\u0456\u0441\u044f\u0446\u0456'}</option>
+                      {debtMonthOptions.map((monthValue) => (
+                        <option key={monthValue} value={monthValue}>
+                          {formatMonthLabel(monthValue)}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={15} className={styles.monthPickerChevron} />
+                  </span>
                 </label>
-                {debtMonthFilter && (
-                  <button
-                    type="button"
-                    className={styles.filterResetBtn}
-                    onClick={() => setDebtMonthFilter('')}
-                  >
-                    {'\u0423\u0441\u0456 \u043c\u0456\u0441\u044f\u0446\u0456'}
-                  </button>
-                )}
               </div>
             )}
 
@@ -964,28 +976,23 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   <div className={styles.modalFilterBar}>
                     <label className={styles.monthPickerWrap}>
                       <span className={styles.monthPickerLabel}>{'\u041c\u0456\u0441\u044f\u0446\u044c'}</span>
-                      <input
-                        type="month"
-                        className={styles.monthPicker}
-                        value={attendanceAllTimeMonthFilter}
-                        onChange={(e) => setAttendanceAllTimeMonthFilter(e.target.value)}
-                        list="attendance-all-time-months"
-                      />
+                      <span className={styles.monthPickerShell}>
+                        <Calendar size={15} className={styles.monthPickerIcon} />
+                        <select
+                          className={styles.monthPickerSelect}
+                          value={attendanceAllTimeMonthFilter}
+                          onChange={(e) => setAttendanceAllTimeMonthFilter(e.target.value)}
+                        >
+                          <option value="">{'\u0423\u0441\u0456 \u043c\u0456\u0441\u044f\u0446\u0456'}</option>
+                          {allTimeAbsenceMonths.map((monthValue) => (
+                            <option key={monthValue} value={monthValue}>
+                              {formatMonthLabel(monthValue)}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown size={15} className={styles.monthPickerChevron} />
+                      </span>
                     </label>
-                    {attendanceAllTimeMonthFilter && (
-                      <button
-                        type="button"
-                        className={styles.filterResetBtn}
-                        onClick={() => setAttendanceAllTimeMonthFilter('')}
-                      >
-                        {'\u0423\u0441\u0456 \u043c\u0456\u0441\u044f\u0446\u0456'}
-                      </button>
-                    )}
-                    <datalist id="attendance-all-time-months">
-                      {allTimeAbsenceMonths.map((monthValue) => (
-                        <option key={monthValue} value={monthValue} />
-                      ))}
-                    </datalist>
                   </div>
                   <div className={styles.modalBody}>
                     <div className={styles.modalList}>

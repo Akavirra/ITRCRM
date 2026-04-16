@@ -597,9 +597,34 @@
   color: var(--muted);
 }
 
-.monthPicker {
-  min-width: 11.5rem;
+.monthPickerShell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 12.5rem;
+}
+
+.monthPickerIcon {
+  position: absolute;
+  left: 0.75rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.monthPickerChevron {
+  position: absolute;
+  right: 0.75rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.monthPickerSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
   padding: 0.55rem 0.75rem;
+  padding-left: 2.25rem;
+  padding-right: 2rem;
   border: 1px solid #dbe2ea;
   border-radius: 10px;
   background: #fff;
@@ -608,34 +633,12 @@
   outline: none;
   box-shadow: var(--shadow-sm);
   transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), background 160ms ease;
+  cursor: pointer;
 }
 
-.monthPicker:focus {
+.monthPickerSelect:focus {
   border-color: #93c5fd;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
-}
-
-.filterResetBtn {
-  border: 0;
-  border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
-  padding: 0.55rem 0.8rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 160ms var(--ease-out), background 150ms ease, color 150ms ease;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .filterResetBtn:hover {
-    background: #e0e7ff;
-    color: #312e81;
-  }
-}
-
-.filterResetBtn:active {
-  transform: scale(0.98);
 }
 
 /* ── Trend badges ── */
@@ -1410,7 +1413,7 @@
     padding: 0 1rem 0.75rem;
   }
 
-  .monthPicker {
+  .monthPickerShell {
     min-width: 0;
     width: 100%;
   }
@@ -1447,8 +1450,7 @@
   .statItemClickable,
   .makeupBtn,
   .modalClose,
-  .filterResetBtn,
-  .monthPicker {
+  .monthPickerSelect {
     transition: background 100ms ease, border-color 100ms ease, color 100ms ease;
   }
   .actionChip:hover { transform: none; }
