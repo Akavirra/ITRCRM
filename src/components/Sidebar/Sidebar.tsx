@@ -1077,9 +1077,9 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
 
           {/* Detail pills */}
           <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '14px' }}>
-            <span style={detailPill}>РІС–РґС‡. {weather.feels_like}В°</span>
-            <span style={detailPill}>рџ’§ {weather.humidity}%</span>
-            <span style={detailPill}>рџ’Ё {weather.wind} Рј/СЃ</span>
+            <span style={detailPill}>Відчувається {weather.feels_like}°</span>
+            <span style={detailPill}>Вологість {weather.humidity}%</span>
+            <span style={detailPill}>Вітер {weather.wind} м/с</span>
           </div>
 
           {/* 5-day forecast */}
