@@ -88,6 +88,16 @@ interface AttendanceStatsData {
   absencesByMonth: AttAbsence[];
 }
 
+function formatMonthLabel(monthValue: string) {
+  const [year, month] = monthValue.split('-');
+  const date = new Date(Number(year), Number(month) - 1, 1);
+  return new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numeric' }).format(date);
+}
+
+function getMonthValueFromDate(dateValue: string) {
+  return dateValue.slice(0, 7);
+}
+
 const studentsLabels: Record<StudentsPeriod, string> = {
   today: 'Дітей сьогодні',
   month: 'Дітей за місяць',
@@ -147,15 +157,20 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
 
   const [allTimeDebtors, setAllTimeDebtors] = useState<AllTimeDebtor[] | null>(null);
   const [allTimeDebtsLoading, setAllTimeDebtsLoading] = useState(false);
+  const [debtMonthFilter, setDebtMonthFilter] = useState('');
+  const [debtsByMonth, setDebtsByMonth] = useState<Record<string, AllTimeDebtor[]>>({});
+  const [debtsByMonthLoading, setDebtsByMonthLoading] = useState(false);
   const [attendanceView, setAttendanceView] = useState<AttendanceView>('month');
   const [attendanceStats, setAttendanceStats] = useState<AttendanceStatsData | null>(null);
   const [attendanceStatsLoading, setAttendanceStatsLoading] = useState(false);
   const [attMonthFilter, setAttMonthFilter] = useState<string | null>(null);
   const [allTimeAbsences, setAllTimeAbsences] = useState<AllTimeAbsence[] | null>(null);
   const [allTimeAbsencesLoading, setAllTimeAbsencesLoading] = useState(false);
+  const [attendanceAllTimeMonthFilter, setAttendanceAllTimeMonthFilter] = useState('');
 
   const handleDebtsTabChange = (tab: PeriodTab) => {
     setDebtsTab(tab);
+    setDebtMonthFilter('');
     if (tab === 'allTime' && allTimeDebtors === null && !allTimeDebtsLoading) {
       setAllTimeDebtsLoading(true);
       fetch('/api/reports/debts?period=all')
@@ -189,6 +204,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const handleAttendanceViewChange = (view: AttendanceView) => {
     setAttendanceView(view);
     setAttMonthFilter(null);
+    setAttendanceAllTimeMonthFilter('');
     if (view === 'stats') loadAttendanceStats();
     if (view === 'allTime') loadAllTimeAbsences();
   };
@@ -197,7 +213,42 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
     setShowAbsencesModal(true);
     setAttendanceView('month');
     setAttMonthFilter(null);
+    setAttendanceAllTimeMonthFilter('');
   };
+
+  const loadDebtMonth = (monthValue: string) => {
+    if (!monthValue || debtsByMonth[monthValue] || debtsByMonthLoading) return;
+    setDebtsByMonthLoading(true);
+    fetch(`/api/reports/debts?month=${monthValue}-01`)
+      .then((res) => res.json())
+      .then((data) => {
+        setDebtsByMonth((current) => ({
+          ...current,
+          [monthValue]: data.debtors ?? [],
+        }));
+      })
+      .catch(() => {
+        setDebtsByMonth((current) => ({
+          ...current,
+          [monthValue]: [],
+        }));
+      })
+      .finally(() => setDebtsByMonthLoading(false));
+  };
+
+  const allTimeAbsenceMonths = Array.from(
+    new Set((allTimeAbsences ?? []).map((absence) => getMonthValueFromDate(absence.lesson_date)))
+  ).sort((a, b) => b.localeCompare(a));
+
+  const filteredAllTimeAbsences = attendanceAllTimeMonthFilter
+    ? (allTimeAbsences ?? []).filter((absence) => getMonthValueFromDate(absence.lesson_date) === attendanceAllTimeMonthFilter)
+    : (allTimeAbsences ?? []);
+
+  const visibleDebtors = debtMonthFilter
+    ? (debtsByMonth[debtMonthFilter] ?? [])
+    : (allTimeDebtors ?? []);
+
+  const visibleDebtorsTotal = visibleDebtors.reduce((sum, debtor) => sum + debtor.debt, 0);
 
   const completedLessons = initialData.todaySchedule.filter((l) => l.status === 'completed' || l.status === 'done').length;
   const visiblePayments = initialData.recentPayments.slice(0, 6);
@@ -636,14 +687,14 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
 
       {/* Debts Modal */}
       {canUsePortal && showDebtsModal && createPortal(
-        <div className={styles.modalOverlay} onClick={() => { setShowDebtsModal(false); setDebtsTab('month'); }}>
+        <div className={styles.modalOverlay} onClick={() => { setShowDebtsModal(false); setDebtsTab('month'); setDebtMonthFilter(''); }}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>
                 <AlertTriangle size={18} />
                 {debtsTab === 'month' ? 'Борги за поточний місяць' : 'Борги за увесь період'}
               </h2>
-              <button type="button" className={styles.modalClose} onClick={() => { setShowDebtsModal(false); setDebtsTab('month'); }}>
+              <button type="button" className={styles.modalClose} onClick={() => { setShowDebtsModal(false); setDebtsTab('month'); setDebtMonthFilter(''); }}>
                 <X size={18} />
               </button>
             </div>
@@ -667,6 +718,33 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               </div>
             </div>
 
+            {debtsTab === 'allTime' && (
+              <div className={styles.modalFilterBar}>
+                <label className={styles.monthPickerWrap}>
+                  <span className={styles.monthPickerLabel}>{'\u041c\u0456\u0441\u044f\u0446\u044c'}</span>
+                  <input
+                    type="month"
+                    className={styles.monthPicker}
+                    value={debtMonthFilter}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      setDebtMonthFilter(nextValue);
+                      if (nextValue) loadDebtMonth(nextValue);
+                    }}
+                  />
+                </label>
+                {debtMonthFilter && (
+                  <button
+                    type="button"
+                    className={styles.filterResetBtn}
+                    onClick={() => setDebtMonthFilter('')}
+                  >
+                    {'\u0423\u0441\u0456 \u043c\u0456\u0441\u044f\u0446\u0456'}
+                  </button>
+                )}
+              </div>
+            )}
+
             {debtsTab === 'month' ? (
               initialData.debtorsList.length === 0 ? (
                 <div className={styles.modalBody}>
@@ -683,7 +761,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                               <button
                                 type="button"
                                 className={styles.modalStudentName}
-                                onClick={() => { router.push(`/students/${debtor.id}`); setShowDebtsModal(false); setDebtsTab('month'); }}
+                                onClick={() => { router.push(`/students/${debtor.id}`); setShowDebtsModal(false); setDebtsTab('month'); setDebtMonthFilter(''); }}
                               >
                                 {debtor.full_name}
                               </button>
@@ -718,11 +796,11 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   </div>
                 </>
               )
-            ) : allTimeDebtsLoading ? (
+            ) : (allTimeDebtsLoading || (debtMonthFilter && debtsByMonthLoading && !debtsByMonth[debtMonthFilter])) ? (
               <div className={styles.modalBody}>
                 <div className={styles.compactEmpty}>Завантаження...</div>
               </div>
-            ) : !allTimeDebtors || allTimeDebtors.length === 0 ? (
+            ) : visibleDebtors.length === 0 ? (
               <div className={styles.modalBody}>
                 <div className={styles.compactEmpty}>Боржників немає.</div>
               </div>
@@ -730,14 +808,14 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               <>
                 <div className={styles.modalBody}>
                   <div className={styles.modalList}>
-                    {allTimeDebtors.map((debtor, idx) => (
+                    {visibleDebtors.map((debtor, idx) => (
                       <div key={`${debtor.id}-${debtor.group_title}-${idx}`} className={styles.modalListItem}>
                         <div className={styles.modalListItemMain}>
                           <div className={styles.modalStudentRow}>
                             <button
                               type="button"
                               className={styles.modalStudentName}
-                              onClick={() => { router.push(`/students/${debtor.id}`); setShowDebtsModal(false); setDebtsTab('month'); }}
+                              onClick={() => { router.push(`/students/${debtor.id}`); setShowDebtsModal(false); setDebtsTab('month'); setDebtMonthFilter(''); }}
                             >
                               {debtor.full_name}
                             </button>
@@ -767,9 +845,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 </div>
                 <div className={styles.modalFooter}>
                   Загальний борг: <strong>
-                    {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', minimumFractionDigits: 0 }).format(
-                      allTimeDebtors.reduce((sum, d) => sum + d.debt, 0)
-                    )}
+                    {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', minimumFractionDigits: 0 }).format(visibleDebtorsTotal)}
                   </strong>
                 </div>
               </>
@@ -781,7 +857,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
 
       {/* Attendance Panel */}
       {canUsePortal && showAbsencesModal && createPortal(
-        <div className={styles.modalOverlay} onClick={() => setShowAbsencesModal(false)}>
+        <div className={styles.modalOverlay} onClick={() => { setShowAbsencesModal(false); setAttendanceAllTimeMonthFilter(''); }}>
           <div className={`${styles.modalContent} ${attendanceView === 'stats' ? styles.modalWide : ''}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>
@@ -800,7 +876,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   <><Check size={18} /> Пропуски за місяць</>
                 )}
               </h2>
-              <button type="button" className={styles.modalClose} onClick={() => setShowAbsencesModal(false)}>
+              <button type="button" className={styles.modalClose} onClick={() => { setShowAbsencesModal(false); setAttendanceAllTimeMonthFilter(''); }}>
                 <X size={18} />
               </button>
             </div>
@@ -885,9 +961,35 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 <div className={styles.modalBody}><div className={styles.compactEmpty}>Пропусків немає.</div></div>
               ) : (
                 <>
+                  <div className={styles.modalFilterBar}>
+                    <label className={styles.monthPickerWrap}>
+                      <span className={styles.monthPickerLabel}>{'\u041c\u0456\u0441\u044f\u0446\u044c'}</span>
+                      <input
+                        type="month"
+                        className={styles.monthPicker}
+                        value={attendanceAllTimeMonthFilter}
+                        onChange={(e) => setAttendanceAllTimeMonthFilter(e.target.value)}
+                        list="attendance-all-time-months"
+                      />
+                    </label>
+                    {attendanceAllTimeMonthFilter && (
+                      <button
+                        type="button"
+                        className={styles.filterResetBtn}
+                        onClick={() => setAttendanceAllTimeMonthFilter('')}
+                      >
+                        {'\u0423\u0441\u0456 \u043c\u0456\u0441\u044f\u0446\u0456'}
+                      </button>
+                    )}
+                    <datalist id="attendance-all-time-months">
+                      {allTimeAbsenceMonths.map((monthValue) => (
+                        <option key={monthValue} value={monthValue} />
+                      ))}
+                    </datalist>
+                  </div>
                   <div className={styles.modalBody}>
                     <div className={styles.modalList}>
-                      {allTimeAbsences.map((absence) => (
+                      {filteredAllTimeAbsences.map((absence) => (
                         <div key={absence.id} className={styles.modalListItem}>
                           <div className={styles.modalListItemMain}>
                             <div className={styles.modalStudentRow}>
@@ -917,7 +1019,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                     </div>
                   </div>
                   <div className={styles.modalFooter}>
-                    Всього пропусків: <strong>{allTimeAbsences.length}</strong>
+                    Всього пропусків: <strong>{filteredAllTimeAbsences.length}</strong>
                   </div>
                 </>
               )
