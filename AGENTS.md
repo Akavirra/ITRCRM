@@ -2,6 +2,46 @@
 
 This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
+---
+
+## ⚠️ CRITICAL: File encoding
+
+**All files in this repo MUST be read and saved as UTF-8 with LF line endings.**
+
+This repo is Ukrainian-language. In the past, files were silently re-encoded as Windows-1251 (cp1251), producing mojibake like `РќРµРґС–Р»СЏ` (which is `Неділя` double-encoded through UTF-8 → cp1251 → UTF-8). Restoring the file required rewriting hundreds of strings. This happened after Codex sessions — so Codex specifically must not repeat it.
+
+### Mandatory rules
+
+1. **Writing files:** use UTF-8 explicitly. Never use `windows-1251`, `cp1251`, `latin-1`, or "system default" — especially on Windows, where the OEM codepage may be 1251/1252. If your file-write API accepts an encoding argument, pass `utf-8`.
+2. **Reading files:** decode as UTF-8. If you see byte sequences like `Р`, `С`, `в”`, `вЂ`, `рџ`, `В°` inside Ukrainian text, **stop immediately**. That is mojibake, not content. Do not preserve it, do not propagate it across edits. Flag it to the user and recover the intended UTF-8 original.
+3. **Do not add a BOM.** Node/Next.js dislikes BOM in `.ts`/`.tsx`/`.json`.
+4. **Line endings:** LF only. Respect [`.editorconfig`](.editorconfig) (`end_of_line = lf`) and [`.gitattributes`](.gitattributes) (`*.ts text eol=lf`).
+5. **Ukrainian is the UI language.** User-facing strings must be plain UTF-8 Cyrillic — never transliteration, never HTML entities like `&#1053;`.
+
+### Mojibake cheat-sheet
+
+If you see any of these in source, the file is already corrupted — do not commit, do not "adjust around it", recover it:
+
+| Visible in file | Actual character | Meaning |
+|---|---|---|
+| `РќРµРґС–Р»СЏ` | `Неділя` | Sunday (example of double-encoded Cyrillic) |
+| `В°` | `°` | degree sign |
+| `вЂ”` | `—` | em-dash |
+| `вЂ“` | `–` | en-dash |
+| `в†’` / `в†ђ` | `→` / `←` | arrows |
+| `в‚ґ` | `₴` | hryvnia |
+| `рџ‘‹` / `рџ¤–` / `рџ”Ґ` | `👋` / `🤖` / `🔥` | emoji |
+| `в”Ђ` | `─` | box-drawing line |
+
+### Verify before committing
+
+```bash
+# Detect mojibake in staged changes. Must print "OK".
+git diff --cached | grep -E "Р[А-Яа-я]|СЏ|С–|С‚|вЂ|рџ|В°|в‚|в†|в”" && echo "MOJIBAKE DETECTED — do not commit" || echo "OK"
+```
+
+---
+
 ## Commands
 
 ```bash
