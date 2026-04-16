@@ -55,12 +55,12 @@ const reportsMenuItems = [
 ];
 
 
-// в”Ђв”Ђ Combined date/time + weather widget в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ── Combined date/time + weather widget ──────────────────────────────────────
 
-const DAYS_UK = ['РќРµРґС–Р»СЏ', 'РџРѕРЅРµРґС–Р»РѕРє', 'Р’С–РІС‚РѕСЂРѕРє', 'РЎРµСЂРµРґР°', 'Р§РµС‚РІРµСЂ', 'Рџ\u2019СЏС‚РЅРёС†СЏ', 'РЎСѓР±РѕС‚Р°'];
-const DAYS_SHORT_UK = ['РџРЅ', 'Р’С‚', 'РЎСЂ', 'Р§С‚', 'РџС‚', 'РЎР±', 'РќРґ'];
-const MONTHS_UK = ['СЃС–С‡РЅСЏ', 'Р»СЋС‚РѕРіРѕ', 'Р±РµСЂРµР·РЅСЏ', 'РєРІС–С‚РЅСЏ', 'С‚СЂР°РІРЅСЏ', 'С‡РµСЂРІРЅСЏ', 'Р»РёРїРЅСЏ', 'СЃРµСЂРїРЅСЏ', 'РІРµСЂРµСЃРЅСЏ', 'Р¶РѕРІС‚РЅСЏ', 'Р»РёСЃС‚РѕРїР°РґР°', 'РіСЂСѓРґРЅСЏ'];
-const MONTHS_FULL_UK = ['РЎС–С‡РµРЅСЊ', 'Р›СЋС‚РёР№', 'Р‘РµСЂРµР·РµРЅСЊ', 'РљРІС–С‚РµРЅСЊ', 'РўСЂР°РІРµРЅСЊ', 'Р§РµСЂРІРµРЅСЊ', 'Р›РёРїРµРЅСЊ', 'РЎРµСЂРїРµРЅСЊ', 'Р’РµСЂРµСЃРµРЅСЊ', 'Р–РѕРІС‚РµРЅСЊ', 'Р›РёСЃС‚РѕРїР°Рґ', 'Р“СЂСѓРґРµРЅСЊ'];
+const DAYS_UK = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'П\u2019ятниця', 'Субота'];
+const DAYS_SHORT_UK = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+const MONTHS_UK = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
+const MONTHS_FULL_UK = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
 
 interface WeatherData {
   city: string;
@@ -168,10 +168,10 @@ function buildCalendarDays(year: number, month: number): (number | null)[] {
 function eventWord(count: number): string {
   const mod10 = count % 10;
   const mod100 = count % 100;
-  if (mod100 >= 11 && mod100 <= 19) return 'РїРѕРґС–Р№';
-  if (mod10 === 1) return 'РїРѕРґС–СЏ';
-  if (mod10 >= 2 && mod10 <= 4) return 'РїРѕРґС–С—';
-  return 'РїРѕРґС–Р№';
+  if (mod100 >= 11 && mod100 <= 19) return 'подій';
+  if (mod10 === 1) return 'подія';
+  if (mod10 >= 2 && mod10 <= 4) return 'події';
+  return 'подій';
 }
 
 function padDateValue(value: number): string {
@@ -182,8 +182,8 @@ function buildCalendarTooltip(
   holidays: SidebarHolidayEvent[],
   birthdays: SidebarBirthdayEvent[]
 ): string {
-  const holidayLines = holidays.map((holiday) => `РЎРІСЏС‚Рѕ: ${holiday.name}`);
-  const birthdayLines = birthdays.map((birthday) => `Р”РµРЅСЊ РЅР°СЂРѕРґР¶РµРЅРЅСЏ: ${birthday.full_name} (${birthday.ageLabel})`);
+  const holidayLines = holidays.map((holiday) => `Свято: ${holiday.name}`);
+  const birthdayLines = birthdays.map((birthday) => `День народження: ${birthday.full_name} (${birthday.ageLabel})`);
   return [...holidayLines, ...birthdayLines].join('\n');
 }
 
@@ -312,13 +312,13 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
     calendarEventsByDate.set(birthday.next_birthday, existing);
   }
 
-  let eventSummary = 'РџРѕРґС–Р№ РЅРµРјР°С”';
+  let eventSummary = 'Подій немає';
   if (totalEventsToday > 0) {
-    eventSummary = `${totalEventsToday} ${eventWord(totalEventsToday)} СЃСЊРѕРіРѕРґРЅС–`;
+    eventSummary = `${totalEventsToday} ${eventWord(totalEventsToday)} сьогодні`;
   } else if (nextHoliday) {
     eventSummary = `${nextHoliday.label}: ${nextHoliday.name}`;
   } else if (nextBirthday) {
-    eventSummary = `${nextBirthday.label}: РґРµРЅСЊ РЅР°СЂРѕРґР¶РµРЅРЅСЏ`;
+    eventSummary = `${nextBirthday.label}: день народження`;
   }
 
   const handleWeatherClick = () => {
@@ -409,7 +409,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
               cursor: 'pointer',
               textAlign: 'left',
             }}
-            aria-label="Р’С–РґРєСЂРёС‚Рё РєР°Р»РµРЅРґР°СЂ С– РїРѕРґС–С—"
+            aria-label="Відкрити календар і події"
           >
             <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
               <span
@@ -673,7 +673,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
               <span style={{ lineHeight: 1 }}>{weatherIcon(weather.code, 40)}</span>
               <div>
                 <div style={{ fontSize: '32px', fontWeight: '300', color: '#1e3a5f', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                  {weather.temp}В°
+                  {weather.temp}°
                 </div>
                 <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
                   {capitalize(weather.description)}
@@ -681,9 +681,9 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: forecast && forecast.length > 0 ? '12px' : 0 }}>
-              <span style={detailPill}>Р’С–РґС‡СѓРІР°С”С‚СЊСЃСЏ {weather.feels_like}В°</span>
-              <span style={detailPill}>Р’РѕР»РѕРіС–СЃС‚СЊ {weather.humidity}%</span>
-              <span style={detailPill}>Р’С–С‚РµСЂ {weather.wind} Рј/СЃ</span>
+              <span style={detailPill}>Відчувається {weather.feels_like}°</span>
+              <span style={detailPill}>Вологість {weather.humidity}%</span>
+              <span style={detailPill}>Вітер {weather.wind} м/с</span>
             </div>
             {forecast && forecast.length > 0 && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
@@ -691,8 +691,8 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
                   <div key={day.date} style={{ background: '#f8fbff', borderRadius: '12px', padding: '10px 8px', textAlign: 'center' }}>
                     <div style={{ fontSize: '10px', fontWeight: '600', color: '#64748b', marginBottom: '6px' }}>{day.weekday}</div>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px', color: '#3b82f6' }}>{weatherIcon(day.code, 16)}</div>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e3a5f' }}>{day.temp_max}В°</div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>{day.temp_min}В°</div>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e3a5f' }}>{day.temp_max}°</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>{day.temp_min}°</div>
                   </div>
                 ))}
               </div>
@@ -731,7 +731,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
         alignItems: 'center',
         transition: 'background 1s ease, box-shadow 1s ease',
       }}>
-        {/* Time вЂ” left, row 1 */}
+        {/* Time — left, row 1 */}
         <div style={{ gridColumn: 1, gridRow: 1, display: 'flex', alignItems: 'baseline', gap: '3px' }}>
           <span style={{ fontSize: '22px', fontWeight: '300', color: '#0f172a', letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
             {h}<span style={{ opacity: 0.3, margin: '0 1px' }}>:</span>{m}
@@ -741,7 +741,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
           </span>
         </div>
 
-        {/* Weather вЂ” right, spans row 1+2 */}
+        {/* Weather — right, spans row 1+2 */}
         {weather ? (
           <button
             className="weather-btn-hover"
@@ -775,12 +775,12 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
           >
             <span className="weather-icon-anim" style={{ lineHeight: 1, willChange: 'transform' }}>{weatherIcon(weather.code, 18)}</span>
             <span style={{ fontSize: '12px', fontWeight: '400', color: '#0f172a', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-              {weather.temp}В°
+              {weather.temp}°
             </span>
           </button>
         ) : <span style={{ gridColumn: 2, gridRow: '1 / 3' }} />}
 
-        {/* Day + Date вЂ” left, row 2 */}
+        {/* Day + Date — left, row 2 */}
         <div style={{ gridColumn: 1, gridRow: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '11px', fontWeight: '500', color: '#3b82f6', lineHeight: 1 }}>
             {dayName}
@@ -808,7 +808,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
           </button>
         </div>
 
-        {/* Events row вЂ” full width, row 3 */}
+        {/* Events row — full width, row 3 */}
         <button
           onClick={() => setEventsOpen(o => !o)}
           style={{
@@ -864,11 +864,11 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
           zIndex: 50,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <button onClick={prevMonth} style={calNavBtn}>вЂ№</button>
+            <button onClick={prevMonth} style={calNavBtn}>‹</button>
             <span style={{ fontSize: '12px', fontWeight: '600', color: '#1e3a5f', letterSpacing: '0.02em' }}>
               {MONTHS_FULL_UK[calMonth]} {calYear}
             </span>
-            <button onClick={nextMonth} style={calNavBtn}>вЂє</button>
+            <button onClick={nextMonth} style={calNavBtn}>›</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '4px' }}>
             {DAYS_SHORT_UK.map(d => (
@@ -944,11 +944,11 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
           <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '8px', fontSize: '9px', color: '#94a3b8' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ width: '5px', height: '5px', borderRadius: '999px', background: '#2563eb' }} />
-              РЎРІСЏС‚Рѕ
+              Свято
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ width: '5px', height: '5px', borderRadius: '999px', background: '#f97316' }} />
-              Р”РµРЅСЊ РЅР°СЂРѕРґР¶РµРЅРЅСЏ
+              День народження
             </span>
           </div>
         </div>
@@ -972,7 +972,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
         }}>
           <div>
             <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-              РЎСЊРѕРіРѕРґРЅС–
+              Сьогодні
             </div>
             {events && totalEventsToday > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -981,7 +981,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
                     <Flag size={14} color="#2563eb" style={{ flexShrink: 0, marginTop: '1px' }} />
                     <div style={{ minWidth: 0 }}>
                       <div style={eventTitleStyle}>{holiday.name}</div>
-                      <div style={eventMetaStyle}>РЎРІСЏС‚Рѕ РЈРєСЂР°С—РЅРё</div>
+                      <div style={eventMetaStyle}>Свято України</div>
                     </div>
                   </div>
                 ))}
@@ -1001,7 +1001,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
               </div>
             ) : (
               <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                РќР° СЃСЊРѕРіРѕРґРЅС– РїРѕРґС–Р№ РЅРµРјР°С”
+                На сьогодні подій немає
               </div>
             )}
           </div>
@@ -1009,7 +1009,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
           {events && (events.upcomingHolidays.length > 0 || events.upcomingBirthdays.length > 0) && (
             <div>
               <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-                РќР°Р№Р±Р»РёР¶С‡С–
+                Найближчі
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {events.upcomingHolidays.slice(0, 3).map((holiday) => (
@@ -1030,7 +1030,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
                     <Gift size={14} color="#f97316" style={{ flexShrink: 0, marginTop: '1px' }} />
                     <div style={{ minWidth: 0 }}>
                       <div style={eventTitleStyle}>{birthday.full_name}</div>
-                      <div style={eventMetaStyle}>{birthday.label} В· {birthday.ageLabel}</div>
+                      <div style={eventMetaStyle}>{birthday.label} · {birthday.ageLabel}</div>
                     </div>
                   </TransitionLink>
                 ))}
@@ -1040,7 +1040,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
         </div>
       )}
 
-      {/* Weather detail popover вЂ” fixed to the right of sidebar */}
+      {/* Weather detail popover — fixed to the right of sidebar */}
       {weatherOpen && weather && (
         <div
           ref={weatherPopRef}
@@ -1067,7 +1067,7 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
             <span style={{ lineHeight: 1 }}>{weatherIcon(weather.code, 40)}</span>
             <div>
               <div style={{ fontSize: '32px', fontWeight: '300', color: '#1e3a5f', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                {weather.temp}В°
+                {weather.temp}°
               </div>
               <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
                 {capitalize(weather.description)}
@@ -1092,14 +1092,14 @@ function SidebarInfoWidget({ isCompact = false }: { isCompact?: boolean }) {
                     {day.weekday}
                   </div>
                   <div style={{ lineHeight: 1, marginBottom: '4px' }}>{weatherIcon(day.code, 16)}</div>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e3a5f' }}>{day.temp_max}В°</div>
-                  <div style={{ fontSize: '10px', color: '#b0bec5' }}>{day.temp_min}В°</div>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e3a5f' }}>{day.temp_max}°</div>
+                  <div style={{ fontSize: '10px', color: '#b0bec5' }}>{day.temp_min}°</div>
                 </div>
               ))}
             </div>
           ) : (
             <div style={{ textAlign: 'center', fontSize: '11px', color: '#94a3b8', padding: '4px 0' }}>
-              Р—Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ...
+              Завантаження...
             </div>
           )}
         </div>
@@ -1145,7 +1145,7 @@ const eventMetaStyle: React.CSSProperties = {
   lineHeight: 1.3,
 };
 
-// в”Ђв”Ђ Component в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ── Component ────────────────────────────────────────────────────────────────
 
 export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTablet = false }: SidebarProps) {
   const pathname = usePathname();
@@ -1265,7 +1265,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const emotions = [
     { name: 'love', eyeShape: 'вќ¤', color: '#f43f5e' },
     { name: 'star', eyeShape: 'в…', color: '#eab308' },
-    { name: 'angry', eyeShape: 'рџ”Ґ', color: '#ef4444' },
+    { name: 'angry', eyeShape: '🔥', color: '#ef4444' },
     { name: 'dance', eyeShape: 'вњЁ', color: '#a855f7' },
   ];
 
@@ -1429,7 +1429,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
     try {
       const ctx = new AudioContext();
       const notes = [
-        // Bell chime pattern вЂ” ascending joyful
+        // Bell chime pattern — ascending joyful
         { freq: 523, start: 0, dur: 0.3, type: 'sine' as OscillatorType },
         { freq: 659, start: 0.25, dur: 0.3, type: 'sine' as OscillatorType },
         { freq: 784, start: 0.5, dur: 0.3, type: 'sine' as OscillatorType },
@@ -1529,7 +1529,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   }, [isSleeping, isNight, nightLampOn, isNewYear, playJingleBells, hasBirthday, playHappyBirthday, isHalloween, playHalloweenMelody, isSep1, playSchoolBell, isEaster, playEasterBells]);
 
   // Double click = beep + speech bubble
-  const bubbles = ['Р‘С–Рї-Р±РѕРї!', 'РџСЂРёРІС–С‚! рџ‘‹', 'РЇ СЂРѕР±РѕС‚! рџ¤–', 'РџСЂР°С†СЋС”РјРѕ! рџ’Є', '01100001'];
+  const bubbles = ['Біп-боп!', 'Привіт! 👋', 'Я робот! 🤖', 'Працюємо! 💪', '01100001'];
   const handleRobotDoubleClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1572,7 +1572,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
 
   // Seasonal accessory SVG (replaces antenna)
   const renderAccessory = () => {
-    // Birthday вЂ” big party hat replaces antenna
+    // Birthday — big party hat replaces antenna
     if (hasBirthday) return (
       <g className={birthdayParty ? 'hat-shake' : ''}>
         <polygon points="22,-6 12,11 32,11" fill="#f43f5e" />
@@ -1584,7 +1584,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         <circle cx="18" cy="7" r="0.8" fill="#a78bfa" />
       </g>
     );
-    // New Year вЂ” Santa hat with pompom replaces antenna
+    // New Year — Santa hat with pompom replaces antenna
     if (isNewYear) return (
       <g className={newYearParty ? 'hat-shake' : ''}>
         <path d="M8,12 Q22,-8 36,12" fill="#dc2626" />
@@ -1592,7 +1592,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         <circle cx="34" cy="-4" r="4" fill="white" className={hasNotifications && !newYearParty ? 'hat-star-pulse' : ''} style={{ transformOrigin: '34px -4px' }} />
       </g>
     );
-    // Sep 1 вЂ” graduation cap replaces antenna
+    // Sep 1 — graduation cap replaces antenna
     if (isSep1) return (
       <g className={sep1Party ? 'hat-shake' : ''}>
         <polygon points="22,-2 6,7 38,7" fill="#1e293b" />
@@ -1601,7 +1601,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         <rect x="34" y="9" width="5" height="2" rx="1" fill="#eab308" className={hasNotifications ? 'hat-star-pulse' : ''} style={{ transformOrigin: '36.5px 10px' }} />
       </g>
     );
-    // Easter вЂ” bunny ears (antenna stays)
+    // Easter — bunny ears (antenna stays)
     if (isEaster) return (
       <g className={easterParty ? 'bunny-wiggle' : ''}>
         <ellipse cx="13" cy="0" rx="4" ry="10" fill="#fecdd3" />
@@ -1701,13 +1701,13 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
       </g>
     );
     if (isHalloween) return (
-      // Pumpkin вЂ” scary glow when party
+      // Pumpkin — scary glow when party
       <g transform="translate(38, 26)" className={halloweenParty ? 'pumpkin-glow' : ''}>
         <ellipse cx="6" cy="7" rx="7" ry="6" fill="#f97316" />
         <rect x="5" y="-1" width="2" height="4" rx="0.8" fill="#65a30d" />
         {halloweenParty ? (
           <>
-            {/* Scary face вЂ” angry eyes + evil grin */}
+            {/* Scary face — angry eyes + evil grin */}
             <path d="M1,4 L3,6 L5,4" fill="#fbbf24" />
             <path d="M7,4 L9,6 L11,4" fill="#fbbf24" />
             <path d="M2,9 L3,8 L4.5,10 L6,8 L7.5,10 L9,8 L10,9" stroke="#fbbf24" strokeWidth="0.7" fill="none" />
@@ -1898,7 +1898,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 </defs>
                 {/* Seasonal accessory (replaces antenna when hat) */}
                 {renderAccessory()}
-                {/* Antenna вЂ” hidden when seasonal hat is on */}
+                {/* Antenna — hidden when seasonal hat is on */}
                 {!hasAccessoryHat && (
                   <g className={`logo-antenna${hasNotifications ? ' logo-antenna-pulse' : ''}`}>
                     <line x1="22" y1="4" x2="22" y2="10" stroke={isNight && !nightLampOn ? '#1e40af' : '#3b82f6'} strokeWidth="2" strokeLinecap="round" />
@@ -1930,27 +1930,27 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 <rect x="6" y="10" width="32" height="24" rx="7" fill="url(#logoGrad)" />
                 {/* Screen / face area */}
                 <rect x="10" y="14" width="24" height="12" rx="4" fill="white" opacity={isNight && !nightLampOn ? 0.1 : 0.2} />
-                {/* Eyes вЂ” white sclera */}
+                {/* Eyes — white sclera */}
                 <rect x="13" y="16" width="7" height="8" rx="3.5" fill="white" opacity={isSleeping ? 0.5 : 1} />
                 <rect x="24" y="16" width="7" height="8" rx="3.5" fill="white" opacity={isSleeping ? 0.5 : 1} />
-                {/* Sleeping вЂ” closed eyes (horizontal lines) */}
+                {/* Sleeping — closed eyes (horizontal lines) */}
                 {isSleeping && !robotEmotion && (
                   <>
                     <line x1="14" y1="20" x2="19" y2="20" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
                     <line x1="25" y1="20" x2="30" y2="20" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" />
                   </>
                 )}
-                {/* Halloween scared eyes вЂ” small fixed black pupils */}
+                {/* Halloween scared eyes — small fixed black pupils */}
                 {halloweenParty && !robotEmotion && (
                   <>
                     <circle cx="16.5" cy="19" r="1.3" fill="#1e293b" />
                     <circle cx="27.5" cy="19" r="1.3" fill="#1e293b" />
-                    {/* Raised eyebrows вЂ” scared look */}
+                    {/* Raised eyebrows — scared look */}
                     <line x1="14" y1="15.5" x2="19" y2="16.5" stroke="#1e293b" strokeWidth="1" strokeLinecap="round" />
                     <line x1="25" y1="16.5" x2="30" y2="15.5" stroke="#1e293b" strokeWidth="1" strokeLinecap="round" />
                   </>
                 )}
-                {/* Sep 1 happy eyes вЂ” upward arc smile eyes */}
+                {/* Sep 1 happy eyes — upward arc smile eyes */}
                 {sep1Party && !robotEmotion && (
                   <>
                     <circle cx="16.5" cy="18" r="2" fill="#1e293b" />
@@ -1959,14 +1959,14 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     <path d="M25.5,19.5 Q27.5,22 29.5,19.5" stroke="#1e293b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
                   </>
                 )}
-                {/* Easter party eyes вЂ” love hearts */}
+                {/* Easter party eyes — love hearts */}
                 {easterParty && !robotEmotion && (
                   <g className="robot-emotion">
                     <text x="16.5" y="21" textAnchor="middle" dominantBaseline="central" fill="#f43f5e" fontSize="7" style={{ pointerEvents: 'none' }}>вќ¤</text>
                     <text x="27.5" y="21" textAnchor="middle" dominantBaseline="central" fill="#f43f5e" fontSize="7" style={{ pointerEvents: 'none' }}>вќ¤</text>
                   </g>
                 )}
-                {/* Pupils вЂ” follow mouse (not when sleeping) */}
+                {/* Pupils — follow mouse (not when sleeping) */}
                 {!robotEmotion && !isSleeping && !halloweenParty && !sep1Party && !easterParty && (
                   <>
                     <circle
@@ -2136,17 +2136,17 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     ))}
                   </g>
                 )}
-                {/* Halloween party effects вЂ” ghosts */}
+                {/* Halloween party effects — ghosts */}
                 {halloweenParty && (
                   <g>
-                    {/* Ghost 1 вЂ” left */}
+                    {/* Ghost 1 — left */}
                     <g className="ghost-float" style={{ '--gx': '-8px', '--gy': '-12px', '--gx2': '-12px', '--gy2': '-20px' } as React.CSSProperties}>
                       <path d="M-6,8 Q-6,0 -2,0 Q2,0 2,8 L1,6 L0,8 L-1,6 L-2,8 L-3,6 L-4,8 L-5,6 Z" fill="white" opacity="0.8" />
                       <circle cx="-3" cy="3" r="1" fill="#1e293b" />
                       <circle cx="0" cy="3" r="1" fill="#1e293b" />
                       <ellipse cx="-1.5" cy="5.5" rx="1.5" ry="1" fill="#1e293b" />
                     </g>
-                    {/* Ghost 2 вЂ” right */}
+                    {/* Ghost 2 — right */}
                     <g className="ghost-float" style={{ '--gx': '6px', '--gy': '-14px', '--gx2': '10px', '--gy2': '-22px', animationDelay: '1s' } as React.CSSProperties}>
                       <g transform="translate(46, 4)">
                         <path d="M-3,8 Q-3,1 1,1 Q5,1 5,8 L4,6 L3,8 L2,6 L1,8 L0,6 L-1,8 L-2,6 Z" fill="white" opacity="0.7" />
@@ -2154,7 +2154,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                         <circle cx="2.5" cy="3.5" r="0.8" fill="#1e293b" />
                       </g>
                     </g>
-                    {/* Ghost 3 вЂ” top */}
+                    {/* Ghost 3 — top */}
                     <g className="ghost-float" style={{ '--gx': '3px', '--gy': '-10px', '--gx2': '-3px', '--gy2': '-16px', animationDelay: '1.8s' } as React.CSSProperties}>
                       <g transform="translate(10, -8) scale(0.7)">
                         <path d="M-3,8 Q-3,1 1,1 Q5,1 5,8 L4,6 L3,8 L2,6 L1,8 L0,6 L-1,8 L-2,6 Z" fill="white" opacity="0.6" />
@@ -2164,7 +2164,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     </g>
                   </g>
                 )}
-                {/* Sep 1 party effects вЂ” falling books */}
+                {/* Sep 1 party effects — falling books */}
                 {sep1Party && (
                   <g>
                     {[
@@ -2190,7 +2190,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                     ))}
                   </g>
                 )}
-                {/* Easter party effects вЂ” bouncing eggs */}
+                {/* Easter party effects — bouncing eggs */}
                 {easterParty && (
                   <g>
                     {[
@@ -2214,7 +2214,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
                 {/* Ears / connectors */}
                 <rect x="2" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
                 <rect x="38" y="18" width="4" height="8" rx="2" fill="#93c5fd" />
-                {/* Bottom вЂ” gear teeth */}
+                {/* Bottom — gear teeth */}
                 <rect x="14" y="34" width="4" height="4" rx="1" fill="#93c5fd" />
                 <rect x="20" y="34" width="4" height="4" rx="1" fill="#93c5fd" />
                 <rect x="26" y="34" width="4" height="4" rx="1" fill="#93c5fd" />
@@ -2237,7 +2237,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
         <nav style={{ padding: isSmallScreen ? '12px 8px' : '24px 8px', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
           {isSmallScreen && (
             <div style={{ padding: '0 16px 10px', fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              РћСЃРЅРѕРІРЅРµ
+              Основне
             </div>
           )}
           {primaryMenuItems.map((item) => {
@@ -2272,7 +2272,7 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
           <div style={{ height: '1px', backgroundColor: '#f0f0f0', margin: '16px 12px' }} />
           {isSmallScreen && (
             <div style={{ padding: '0 16px 10px', fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Р”РѕРґР°С‚РєРѕРІРѕ
+              Додатково
             </div>
           )}
           {(() => {
