@@ -116,20 +116,12 @@ const studentsLabels: Record<StudentsPeriod, string> = {
 
 /* ── Lesson card style logic — matches schedule page exactly ── */
 
-function getLessonStyle(status: string, isMakeup?: boolean, groupId?: number | null) {
-  if (status === 'done') return { background: '#f0fdf4', borderColor: '#16a34a', color: '#166534', accentColor: '#16a34a' };
-  if (status === 'canceled') return { background: '#fef2f2', borderColor: '#dc2626', color: '#991b1b', accentColor: '#dc2626' };
-  if (isMakeup) return { background: '#fff7ed', borderColor: '#f97316', color: '#7c2d12', accentColor: '#f97316' };
-  if (!groupId) return { background: '#f5f3ff', borderColor: '#8b5cf6', color: '#4c1d95', accentColor: '#8b5cf6' };
-  return { background: '#eff6ff', borderColor: '#3b82f6', color: '#1e40af', accentColor: '#3b82f6' };
-}
-
-function getStatusBadgeStyle(status: string, isMakeup?: boolean, groupId?: number | null) {
-  if (status === 'done') return { background: '#16a34a', color: 'white' };
-  if (status === 'canceled') return { background: '#dc2626', color: 'white' };
-  if (isMakeup) return { background: '#f97316', color: 'white' };
-  if (!groupId) return { background: '#8b5cf6', color: 'white' };
-  return { background: '#3b82f6', color: 'white' };
+function getLessonTone(status: string, isMakeup?: boolean, groupId?: number | null) {
+  if (status === 'done') return 'done';
+  if (status === 'canceled') return 'canceled';
+  if (isMakeup) return 'makeup';
+  if (!groupId) return 'individual';
+  return 'scheduled';
 }
 
 function NextLessonCountdown({ startDatetime }: { startDatetime: string }) {
@@ -261,9 +253,9 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
 
   const visibleDebtorsTotal = visibleDebtors.reduce((sum, debtor) => sum + debtor.debt, 0);
 
-  const completedLessons = initialData.todaySchedule.filter((l) => l.status === 'completed' || l.status === 'done').length;
   const visiblePayments = initialData.recentPayments.slice(0, 6);
   const visibleHistory = initialData.recentHistory.slice(0, 6);
+  const isMonthPeriod = statsPeriod === 'month';
 
   const formattedDate = format(new Date(initialData.todayDate), 'd MMMM, EEEE', { locale: uk });
   const canUsePortal = typeof window !== 'undefined';
@@ -356,14 +348,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                     const pct = Math.round(((curr - prev) / prev) * 100);
                     const isUp = pct >= 0;
                     return (
-                      <span 
-                        className={isUp ? styles.trendUp : styles.trendDown}
-                        style={{ 
-                          opacity: statsPeriod === 'month' ? 1 : 0, 
-                          visibility: statsPeriod === 'month' ? 'visible' : 'hidden',
-                          transition: 'opacity 0.2s ease, visibility 0.2s ease'
-                        }}
-                      >
+                      <span className={`${isUp ? styles.trendUp : styles.trendDown} ${!isMonthPeriod ? styles.isHidden : ''}`}>
                         {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                         {isUp ? '+' : ''}{pct}%
                       </span>
@@ -372,13 +357,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   return null;
                 })()}
               </div>
-              <div 
-                className={styles.sparklineContainer}
-                style={{ 
-                  opacity: statsPeriod === 'month' ? 0.8 : 0,
-                  transition: 'opacity 0.2s ease'
-                }}
-              >
+              <div className={`${styles.sparklineContainer} ${!isMonthPeriod ? styles.sparklineHidden : ''}`}>
                 {initialData.stats.revenueTrend && <Sparkline data={initialData.stats.revenueTrend} color="#10b981" />}
               </div>
             </div>
@@ -415,7 +394,6 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               const pct = statsPeriod === 'month'
                 ? initialData.stats.attendancePercent
                 : initialData.stats.allTimeAttendancePercent;
-              const value = pct !== null ? `${pct}%` : '—';
               let valueClass = styles.statItemValue;
               if (pct !== null && pct < 70) valueClass = `${styles.statItemValue} ${styles.statValueDanger}`;
               else if (pct !== null && pct >= 90) valueClass = `${styles.statItemValue} ${styles.statValueGood}`;
@@ -434,13 +412,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   <div className={valueClass}>
                     {pct !== null ? <AnimatedNumber value={pct} formatFn={(v) => `${v}%`} /> : '—'}
                   </div>
-                  <div 
-                    className={styles.sparklineContainer}
-                    style={{ 
-                      opacity: statsPeriod === 'month' ? 0.8 : 0,
-                      transition: 'opacity 0.2s ease'
-                    }}
-                  >
+                  <div className={`${styles.sparklineContainer} ${!isMonthPeriod ? styles.sparklineHidden : ''}`}>
                     {initialData.stats.attendanceTrend && <Sparkline data={initialData.stats.attendanceTrend} color="#3b82f6" />}
                   </div>
                 </div>
@@ -462,14 +434,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                     : initialData.stats.yearStudents
                 } />
               </div>
-              <div 
-                style={{ 
-                  opacity: statsPeriod === 'month' ? 1 : 0, 
-                  visibility: statsPeriod === 'month' ? 'visible' : 'hidden',
-                  pointerEvents: statsPeriod === 'month' ? 'auto' : 'none',
-                  transition: 'opacity 0.2s ease, visibility 0.2s ease'
-                }}
-              >
+              <div className={`${styles.periodControls} ${!isMonthPeriod ? styles.isHiddenInteractive : ''}`}>
                 <div className={styles.miniSegmented}>
                   <button
                     type="button"
@@ -530,7 +495,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
 
             {initialData.todaySchedule.length === 0 ? (
               <div className={styles.emptyState}>
-                <Calendar size={20} style={{ opacity: 0.3 }} />
+                <Calendar size={20} className={styles.emptyStateIcon} />
                 <div className={styles.emptyTitle}>На сьогодні занять немає</div>
                 <div className={styles.emptyText}>
                   Можна зосередитись на платежах, групах або плануванні.
@@ -539,28 +504,28 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
             ) : (
               <div className={styles.lessonsList}>
                 {initialData.todaySchedule.slice(0, 10).map((lesson) => {
-                  const ls = getLessonStyle(lesson.status, lesson.is_makeup, lesson.group_id);
+                  const lessonTone = getLessonTone(lesson.status, lesson.is_makeup, lesson.group_id);
                   return (
-                    <div key={lesson.id} className={styles.lessonCard}>
-                      <div className={styles.lessonCardIndicator} style={{ background: ls.borderColor }} />
+                    <div key={lesson.id} className={styles.lessonCard} data-tone={lessonTone}>
+                      <div className={styles.lessonCardIndicator} />
                       
                       <div className={styles.typeBadgeWrapper}>
                         {/* Time */}
-                        <div className={styles.lessonTime} style={{ color: ls.accentColor }}>
+                        <div className={styles.lessonTime}>
                           {lesson.startTimeLabel} - {lesson.endTimeLabel}
                         </div>
 
                         {/* Type badge */}
                         {lesson.is_makeup ? (
-                          <span className={styles.typeBadge} style={{ color: '#c2410c', background: '#fff7ed' }}>
+                          <span className={styles.typeBadge} data-badge-tone="makeup">
                             Відпрацювання
                           </span>
                         ) : !lesson.group_id && lesson.is_trial ? (
-                          <span className={styles.typeBadge} style={{ color: '#15803d', background: '#f0fdf4' }}>
+                          <span className={styles.typeBadge} data-badge-tone="trial">
                             Пробне
                           </span>
                         ) : !lesson.group_id ? (
-                          <span className={styles.typeBadge} style={{ color: '#6d28d9', background: '#f5f3ff' }}>
+                          <span className={styles.typeBadge} data-badge-tone="individual">
                             Інд.
                           </span>
                         ) : null}
@@ -571,7 +536,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                         <div className={styles.lessonRow}>
                           <Users size={12} />
                           <strong>{lesson.group_title}</strong> 
-                          <span style={{ opacity: 0.5 }}>·</span> 
+                          <span className={styles.lessonSeparator}>·</span> 
                           <span>{lesson.course_title}</span>
                         </div>
                       )}
@@ -875,7 +840,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               <h2 className={styles.modalTitle}>
                 {attendanceView === 'stats' && attMonthFilter ? (
                   <>
-                    <button type="button" className={styles.modalClose} onClick={() => setAttMonthFilter(null)} title="Назад" style={{ marginRight: '0.25rem' }}>
+                    <button type="button" className={`${styles.modalClose} ${styles.modalBackButton}`} onClick={() => setAttMonthFilter(null)} title="Назад">
                       <ChevronLeft size={18} />
                     </button>
                     {attendanceStats?.monthlyStats.find(m => m.month === attMonthFilter)?.monthLabel || 'Пропуски'}
