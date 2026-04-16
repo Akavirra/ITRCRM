@@ -15,6 +15,10 @@
   --radius: 12px;
   --radius-sm: 8px;
 
+  /* Easing curves — strong variants for snappy UI */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
   color: var(--ink);
 }
 
@@ -75,15 +79,21 @@
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 160ms var(--ease-out), background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
   white-space: nowrap;
   box-shadow: var(--shadow-sm);
 }
 
-.actionChip:hover {
-  background: var(--surface-soft);
-  border-color: #d1d5db;
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .actionChip:hover {
+    background: var(--surface-soft);
+    border-color: #d1d5db;
+    transform: translateY(-1px);
+  }
+}
+
+.actionChip:active {
+  transform: scale(0.97);
 }
 
 .actionChipIcon {
@@ -213,7 +223,7 @@
   font-size: 0.65rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 150ms ease, background 150ms ease;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -297,7 +307,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  transition: all 0.15s ease;
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
   position: relative;
   overflow: hidden;
 }
@@ -419,7 +429,7 @@
   background: #ffffff;
   border-radius: 16px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.05);
-  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 200ms var(--ease-in-out);
   pointer-events: none;
   z-index: 0;
 }
@@ -786,7 +796,7 @@
 /* ── Clickable stat card ── */
 .statItemClickable {
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 150ms ease, box-shadow 150ms ease, transform 160ms var(--ease-out);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.75rem;
   margin: -0.5rem -0.75rem;
@@ -795,6 +805,10 @@
 .statItemClickable:hover {
   background: var(--surface-soft);
   box-shadow: var(--shadow-sm);
+}
+
+.statItemClickable:active {
+  transform: scale(0.98);
 }
 
 .statItemClickable:focus-visible {
@@ -812,7 +826,7 @@
   justify-content: center;
   z-index: 1000;
   padding: 1rem;
-  animation: fadeIn 0.15s ease;
+  animation: fadeIn 0.18s ease-out;
 }
 
 @keyframes fadeIn {
@@ -830,12 +844,12 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: slideUp 0.2s ease;
+  animation: slideUp 0.25s var(--ease-out) both;
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .modalHeader {
@@ -866,12 +880,16 @@
   cursor: pointer;
   padding: 0.35rem;
   border-radius: 6px;
-  transition: all 0.15s;
+  transition: background 150ms ease, color 150ms ease, transform 160ms var(--ease-out);
 }
 
 .modalClose:hover {
   background: var(--surface-soft);
   color: var(--ink);
+}
+
+.modalClose:active {
+  transform: scale(0.88);
 }
 
 .modalTabBar {
@@ -966,8 +984,12 @@
   background: var(--surface);
   color: var(--muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease, transform 160ms var(--ease-out);
   flex-shrink: 0;
+}
+
+.makeupBtn:active {
+  transform: scale(0.90);
 }
 
 .makeupBtn:hover {
@@ -1029,7 +1051,7 @@
   padding: 0.2rem;
   color: var(--muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: opacity 150ms ease, background 150ms ease, border-color 150ms ease, color 150ms ease;
   flex-shrink: 0;
   opacity: 0;
 }
@@ -1340,4 +1362,22 @@
     align-items: flex-start;
     gap: 0.35rem;
   }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .modalOverlay { animation: fadeIn 0.1s ease; }
+  .modalContent { animation: none; }
+  .actionChip,
+  .lessonCard,
+  .statItemClickable,
+  .makeupBtn,
+  .modalClose {
+    transition: background 100ms ease, border-color 100ms ease, color 100ms ease;
+  }
+  .actionChip:hover { transform: none; }
+  .actionChip:active,
+  .statItemClickable:active,
+  .makeupBtn:active,
+  .modalClose:active { transform: none; }
 }
