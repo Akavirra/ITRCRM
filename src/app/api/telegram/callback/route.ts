@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
               student_name: string;
               status: string | null;
             }>(
-              `SELECT 
+              `SELECT
                 s.id as student_id,
                 s.full_name as student_name,
                 a.status
@@ -110,7 +110,22 @@ export async function POST(request: NextRequest) {
               WHERE sg.group_id = (
                 SELECT group_id FROM lessons WHERE id = $1
               ) AND sg.is_active = TRUE
-              ORDER BY s.full_name`,
+              UNION
+              SELECT
+                s.id as student_id,
+                s.full_name as student_name,
+                a.status
+              FROM attendance a
+              JOIN students s ON a.student_id = s.id
+              WHERE a.lesson_id = $1
+                AND COALESCE(a.is_trial, FALSE) = TRUE
+                AND NOT EXISTS (
+                  SELECT 1 FROM student_groups sg2
+                  WHERE sg2.group_id = (SELECT group_id FROM lessons WHERE id = $1)
+                    AND sg2.student_id = s.id
+                    AND sg2.is_active = TRUE
+                )
+              ORDER BY student_name`,
               [lessonId]
             );
             

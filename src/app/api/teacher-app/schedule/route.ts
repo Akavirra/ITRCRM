@@ -134,7 +134,16 @@ export async function GET(request: NextRequest) {
         ru.name as replacement_teacher_name,
         CASE
           WHEN l.group_id IS NOT NULL THEN
-            (SELECT COUNT(*)::int FROM student_groups sg WHERE sg.group_id = l.group_id AND sg.is_active = TRUE)
+            (
+              (SELECT COUNT(*)::int FROM student_groups sg WHERE sg.group_id = l.group_id AND sg.is_active = TRUE)
+              +
+              (SELECT COUNT(*)::int FROM attendance a
+               WHERE a.lesson_id = l.id AND COALESCE(a.is_trial, FALSE) = TRUE
+                 AND a.student_id NOT IN (
+                   SELECT student_id FROM student_groups
+                   WHERE group_id = l.group_id AND is_active = TRUE
+                 ))
+            )
           ELSE
             (SELECT COUNT(*)::int FROM attendance a WHERE a.lesson_id = l.id)
         END as student_count
