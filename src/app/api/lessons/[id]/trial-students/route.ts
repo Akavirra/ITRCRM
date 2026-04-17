@@ -4,7 +4,7 @@ import { get } from '@/db';
 import {
   addTrialStudentsToLesson,
   listTrialStudentsForLesson,
-} from '@/lib/attendance';
+} from '@/lib/trial-attendance';
 
 export const dynamic = 'force-dynamic';
 

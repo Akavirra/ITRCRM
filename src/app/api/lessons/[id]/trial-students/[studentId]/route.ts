@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, checkGroupAccess, forbidden, badRequest, notFound } from '@/lib/api-utils';
 import { get } from '@/db';
-import { removeTrialStudentFromLesson } from '@/lib/attendance';
+import { removeTrialStudentFromLesson } from '@/lib/trial-attendance';
 
 export const dynamic = 'force-dynamic';
 
