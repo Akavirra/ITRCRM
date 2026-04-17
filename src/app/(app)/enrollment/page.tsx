@@ -193,6 +193,8 @@ export default function EnrollmentPage() {
     return { label: 'Активний', color: '#16a34a' };
   };
 
+  const isTokenActive = (token: EnrollmentToken) => !token.used_at && new Date(token.expires_at) >= new Date();
+
   const qrLink = typeof window !== 'undefined' && qrToken
     ? `${window.location.origin}/enroll/${qrToken}`
     : '';
@@ -499,12 +501,27 @@ export default function EnrollmentPage() {
           ) : (
             tokens.map(token => {
               const st = getTokenStatus(token);
+              const tokenLink = `${window.location.origin}/enroll/${token.token}`;
+              const tokenIsActive = isTokenActive(token);
               return (
-                <div key={token.id} style={{
-                  background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px',
-                  padding: '0.875rem 1.25rem', display: 'flex', justifyContent: 'space-between',
-                  alignItems: 'center', gap: '1rem',
-                }}>
+                <div
+                  key={token.id}
+                  onClick={() => {
+                    if (tokenIsActive) {
+                      window.open(tokenLink, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
+                  title={tokenIsActive ? 'Відкрити анкету в новій вкладці' : undefined}
+                  style={{
+                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px',
+                    padding: '0.875rem 1.25rem', display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'center', gap: '1rem',
+                    cursor: tokenIsActive ? 'pointer' : 'default',
+                    transition: 'transform 160ms ease-out, box-shadow 160ms ease-out, border-color 160ms ease-out',
+                    boxShadow: tokenIsActive ? '0 6px 18px rgba(15, 23, 42, 0.04)' : 'none',
+                    borderColor: tokenIsActive ? '#cbd5e1' : '#e2e8f0',
+                  }}
+                >
                   <div>
                     <div style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#475569' }}>
                       {token.token.slice(0, 8)}...
@@ -512,6 +529,11 @@ export default function EnrollmentPage() {
                     <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.125rem' }}>
                       Створено: {formatDateTime(token.created_at)} · Дійсний до: {formatDateTime(token.expires_at)}
                     </div>
+                    {tokenIsActive && (
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.25rem' }}>
+                        Натисніть, щоб відкрити анкету
+                      </div>
+                    )}
                   </div>
                   <span style={{
                     padding: '0.2rem 0.625rem', borderRadius: '9999px', fontSize: '0.7rem',
