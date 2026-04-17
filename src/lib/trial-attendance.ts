@@ -10,6 +10,7 @@ import {
   formatTrialStudentRemovedDescription,
 } from '@/lib/group-history';
 import type { AttendanceStatus } from '@/lib/attendance';
+import { logLessonChange } from '@/lib/lessons';
 
 export interface TrialAdditionResult {
   added: number[];
@@ -130,6 +131,18 @@ export async function addTrialStudentsToLesson(
         actorName
       );
     }
+
+    if (student?.full_name) {
+      await logLessonChange(
+        lessonId,
+        'attendance',
+        null,
+        `Додано пробного учня: ${student.full_name}`,
+        addedBy,
+        actorName,
+        'admin'
+      );
+    }
   }
 
   return result;
@@ -137,7 +150,8 @@ export async function addTrialStudentsToLesson(
 
 export async function removeTrialStudentFromLesson(
   lessonId: number,
-  studentId: number
+  studentId: number,
+  removedBy?: { id: number; name: string }
 ): Promise<{ removed: boolean; reason?: string }> {
   const row = await get<{ is_trial: boolean; status: AttendanceStatus | null; added_by: number | null }>(
     `SELECT is_trial, status, added_by FROM attendance
@@ -177,8 +191,8 @@ export async function removeTrialStudentFromLesson(
       const actor = row.added_by
         ? await get<{ name: string }>(`SELECT name FROM users WHERE id = $1`, [row.added_by])
         : null;
-      const actorName = actor?.name ?? 'Система';
-      const actorId = row.added_by ?? 0;
+      const actorName = removedBy?.name ?? actor?.name ?? 'Система';
+      const actorId = removedBy?.id ?? row.added_by ?? 0;
 
       await safeAddStudentHistoryEntry(
         studentId,
@@ -195,6 +209,18 @@ export async function removeTrialStudentFromLesson(
           formatTrialStudentRemovedDescription(student.full_name, lesson.lesson_date),
           actorId,
           actorName
+        );
+      }
+
+      if (student?.full_name) {
+        await logLessonChange(
+          lessonId,
+          'attendance',
+          null,
+          `Видалено пробного учня: ${student.full_name}`,
+          actorId,
+          actorName,
+          'admin'
         );
       }
     } catch (err) {

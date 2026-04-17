@@ -1522,14 +1522,28 @@ export async function getGroupAllTimeRegister(groupId: number, options: { includ
 
   const lessonIds = lessons.map(l => l.lesson_id).join(',');
 
-  // All students who ever attended this group OR are currently active
+  // All regular students who ever attended this group OR are currently active.
+  // Trial visitors added to a single lesson must not become part of the group's
+  // long-term register.
   const students = await all<{ student_id: number; student_name: string }>(
     `SELECT s.id as student_id, s.full_name as student_name
      FROM students s
      WHERE s.id IN (
-       SELECT DISTINCT a.student_id FROM attendance a WHERE a.lesson_id IN (${lessonIds})
+       SELECT DISTINCT a.student_id
+       FROM attendance a
+       WHERE a.lesson_id IN (${lessonIds})
+         AND COALESCE(a.is_trial, FALSE) = FALSE
        UNION
-       SELECT sg.student_id FROM student_groups sg WHERE sg.group_id = $1 AND sg.is_active = TRUE AND sg.student_id NOT IN (SELECT DISTINCT a.student_id FROM attendance a WHERE a.lesson_id IN (${lessonIds}))
+       SELECT sg.student_id
+       FROM student_groups sg
+       WHERE sg.group_id = $1
+         AND sg.is_active = TRUE
+         AND sg.student_id NOT IN (
+           SELECT DISTINCT a.student_id
+           FROM attendance a
+           WHERE a.lesson_id IN (${lessonIds})
+             AND COALESCE(a.is_trial, FALSE) = FALSE
+         )
      )
      ORDER BY s.full_name`,
     [groupId]

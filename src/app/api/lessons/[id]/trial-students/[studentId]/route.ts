@@ -31,7 +31,10 @@ export async function DELETE(
   }
 
   try {
-    const result = await removeTrialStudentFromLesson(lessonId, studentId);
+    const result = await removeTrialStudentFromLesson(lessonId, studentId, {
+      id: user.id,
+      name: user.name,
+    });
 
     if (!result.removed) {
       if (result.reason === 'not_found') {
