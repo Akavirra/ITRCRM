@@ -54,6 +54,7 @@ export default function EnrollmentPage() {
   const [generatingQr, setGeneratingQr] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [approving, setApproving] = useState(false);
+  const [closingTokenId, setClosingTokenId] = useState<number | null>(null);
 
   // Edit state for selected submission
   const [editData, setEditData] = useState<Partial<Submission>>({});
@@ -173,6 +174,34 @@ export default function EnrollmentPage() {
       source: s.source,
     });
     setEditing(false);
+  };
+
+  const handleCloseToken = async (token: EnrollmentToken) => {
+    if (!confirm(`Закрити активний токен ${token.token.slice(0, 8)}...?`)) return;
+
+    setClosingTokenId(token.id);
+    try {
+      const res = await fetch(`/api/enrollment/tokens/${token.id}/close`, {
+        method: 'PATCH',
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || 'Не вдалося закрити токен');
+      }
+
+      if (qrToken === token.token) {
+        setQrDataUrl(null);
+        setQrToken(null);
+      }
+
+      await fetchTokens();
+    } catch (err) {
+      console.error('Token close error:', err);
+      alert(err instanceof Error ? err.message : 'Не вдалося закрити токен');
+    } finally {
+      setClosingTokenId(null);
+    }
   };
 
   const formatDate = (d: string) => {
@@ -542,12 +571,34 @@ export default function EnrollmentPage() {
                       </div>
                     )}
                   </div>
-                  <span style={{
-                    padding: '0.2rem 0.625rem', borderRadius: '9999px', fontSize: '0.7rem',
-                    fontWeight: '600', color: st.color, border: `1px solid ${st.color}`,
-                  }}>
-                    {st.label}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                    {tokenIsActive && (
+                      <button
+                        className="btn btn-outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleCloseToken(token);
+                        }}
+                        disabled={closingTokenId === token.id}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.75rem',
+                          color: '#b91c1c',
+                          borderColor: '#fecaca',
+                          background: '#fff',
+                        }}
+                        title="Закрити токен вручну"
+                      >
+                        {closingTokenId === token.id ? 'Закриття...' : 'Закрити'}
+                      </button>
+                    )}
+                    <span style={{
+                      padding: '0.2rem 0.625rem', borderRadius: '9999px', fontSize: '0.7rem',
+                      fontWeight: '600', color: st.color, border: `1px solid ${st.color}`,
+                    }}>
+                      {st.label}
+                    </span>
+                  </div>
                 </div>
               );
             })

@@ -59,6 +59,13 @@ export async function getEnrollmentToken(token: string): Promise<EnrollmentToken
   );
 }
 
+export async function getEnrollmentTokenById(id: number): Promise<EnrollmentToken | undefined> {
+  return get<EnrollmentToken>(
+    `SELECT * FROM enrollment_tokens WHERE id = $1`,
+    [id]
+  );
+}
+
 export async function validateToken(token: string): Promise<{ valid: boolean; reason?: string; tokenData?: EnrollmentToken }> {
   const tokenData = await getEnrollmentToken(token);
 
@@ -80,6 +87,15 @@ export async function validateToken(token: string): Promise<{ valid: boolean; re
 export async function markTokenUsed(tokenId: number): Promise<void> {
   await run(
     `UPDATE enrollment_tokens SET used_at = NOW() WHERE id = $1`,
+    [tokenId]
+  );
+}
+
+export async function closeEnrollmentToken(tokenId: number): Promise<void> {
+  await run(
+    `UPDATE enrollment_tokens
+     SET used_at = NOW()
+     WHERE id = $1 AND used_at IS NULL AND expires_at > NOW()`,
     [tokenId]
   );
 }
