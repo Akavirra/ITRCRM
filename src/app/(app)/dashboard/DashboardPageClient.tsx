@@ -15,9 +15,12 @@ import CreateStudentModal from '@/components/CreateStudentModal';
 import TransitionLink from '@/components/TransitionLink';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import Sparkline from '@/components/Sparkline';
+import { useCourseModals } from '@/components/CourseModalsContext';
+import { useGroupModals } from '@/components/GroupModalsContext';
 import { useStudentModals } from '@/components/StudentModalsContext';
+import { useTeacherModals } from '@/components/TeacherModalsContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
-import type { DashboardHistoryPagePayload, DashboardStatsPayload } from '@/lib/dashboard-types';
+import type { DashboardHistoryEntry, DashboardHistoryPagePayload, DashboardStatsPayload } from '@/lib/dashboard-types';
 import styles from './dashboard.module.css';
 
 type ActivityTab = 'payments' | 'history';
@@ -155,7 +158,10 @@ function NextLessonCountdown({ startDatetime }: { startDatetime: string }) {
 
 export default function DashboardPageClient({ initialData }: { initialData: DashboardStatsPayload }) {
   const router = useRouter();
+  const { openCourseModal } = useCourseModals();
+  const { openGroupModal } = useGroupModals();
   const { openStudentModal } = useStudentModals();
+  const { openTeacherModal } = useTeacherModals();
   const { openLessonModal } = useLessonModals();
   const [activeTab, setActiveTab] = useState<ActivityTab>('payments');
   const [statsPeriod, setStatsPeriod] = useState<PeriodTab>('month');
@@ -340,6 +346,35 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
 
   const formattedDate = format(new Date(initialData.todayDate), 'd MMMM, EEEE', { locale: uk });
   const canUsePortal = typeof window !== 'undefined';
+
+  const canOpenHistoryEntityModal = (history: DashboardHistoryEntry) => {
+    return history.entity_id !== null
+      && ['student', 'group', 'course', 'lesson', 'teacher'].includes(history.entity_type);
+  };
+
+  const openHistoryEntityModal = (history: DashboardHistoryEntry) => {
+    if (history.entity_id === null) return;
+
+    switch (history.entity_type) {
+      case 'student':
+        openStudentModal(history.entity_id, history.entity_title);
+        break;
+      case 'group':
+        openGroupModal(history.entity_id, history.entity_title);
+        break;
+      case 'course':
+        openCourseModal(history.entity_id, history.entity_title);
+        break;
+      case 'lesson':
+        openLessonModal(history.entity_id, history.entity_title);
+        break;
+      case 'teacher':
+        openTeacherModal(history.entity_id, history.entity_title);
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <>
@@ -1326,9 +1361,34 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                       className={`${styles.modalListItem} ${styles.historyListItem}`}
                     >
                       <div className={styles.modalListItemMain}>
-                        <div className={styles.activityTitle}>{history.entity_title}</div>
+                        {canOpenHistoryEntityModal(history) ? (
+                          <button
+                            type="button"
+                            className={styles.historyEntityButton}
+                            onClick={() => openHistoryEntityModal(history)}
+                            title="Відкрити картку"
+                          >
+                            {history.entity_title}
+                          </button>
+                        ) : (
+                          <div className={styles.activityTitle}>{history.entity_title}</div>
+                        )}
                         <div className={styles.activityMeta}>
-                          {history.entity_public_id ? `${history.entity_public_id} · ` : ''}
+                          {history.entity_public_id ? (
+                            canOpenHistoryEntityModal(history) ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className={styles.historyMetaLink}
+                                  onClick={() => openHistoryEntityModal(history)}
+                                  title="Відкрити картку"
+                                >
+                                  {history.entity_public_id}
+                                </button>
+                                {' · '}
+                              </>
+                            ) : `${history.entity_public_id} · `
+                          ) : null}
                           {history.createdAtLabel} · {history.user_name}
                         </div>
                         <div className={styles.activityDescription}>{history.description}</div>

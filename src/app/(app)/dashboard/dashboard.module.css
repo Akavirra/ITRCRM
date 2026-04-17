@@ -1139,6 +1139,52 @@
   padding: 0.95rem 0;
 }
 
+.historyEntityButton {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .historyEntityButton:hover {
+    color: var(--accent);
+  }
+}
+
+.historyEntityButton:active {
+  transform: scale(0.99);
+}
+
+.historyMetaLink {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: color 150ms ease, text-decoration-color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .historyMetaLink:hover {
+    color: var(--accent);
+    text-decoration-color: var(--accent);
+  }
+}
+
 .historyFooterMeta {
   color: var(--muted);
   font-size: 0.85rem;
