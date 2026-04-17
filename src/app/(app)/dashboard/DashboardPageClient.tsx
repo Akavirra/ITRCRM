@@ -17,7 +17,7 @@ import AnimatedNumber from '@/components/AnimatedNumber';
 import Sparkline from '@/components/Sparkline';
 import { useStudentModals } from '@/components/StudentModalsContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
-import type { DashboardHistoryEntry, DashboardHistoryPagePayload, DashboardStatsPayload } from '@/lib/dashboard-types';
+import type { DashboardHistoryPagePayload, DashboardStatsPayload } from '@/lib/dashboard-types';
 import styles from './dashboard.module.css';
 
 type ActivityTab = 'payments' | 'history';
@@ -133,24 +133,6 @@ function getHistoryEntityLabel(entityType: string) {
     default:
       return 'Запис';
   }
-}
-
-function getHistoryBadgeTone(entry: DashboardHistoryEntry) {
-  const value = `${entry.event_type} ${entry.event_badge}`.toLowerCase();
-
-  if (value.includes('remove') || value.includes('leave') || value.includes('cancel') || value.includes('delete')) {
-    return styles.historyTypeDanger;
-  }
-
-  if (value.includes('trial') || value.includes('schedule') || value.includes('attendance')) {
-    return styles.historyTypeAccent;
-  }
-
-  if (value.includes('add') || value.includes('create') || value.includes('payment')) {
-    return styles.historyTypeSuccess;
-  }
-
-  return styles.historyTypeNeutral;
 }
 
 /* ── Lesson card style logic — matches schedule page exactly ── */
@@ -741,7 +723,6 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                       </div>
                       <div className={styles.activityDescription}>{history.description}</div>
                     </div>
-                    <div className={styles.historyType}>{history.event_badge}</div>
                   </div>
                 ))
               ) : (
@@ -1368,7 +1349,6 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                               {history.createdAtLabel} • {history.user_name}
                             </span>
                           </div>
-                          <div className={`${styles.historyType} ${getHistoryBadgeTone(history)}`}>{history.event_badge}</div>
                         </div>
                         <div className={styles.activityTitle}>{history.entity_title}</div>
                         <div className={styles.activityDescription}>{history.description}</div>
