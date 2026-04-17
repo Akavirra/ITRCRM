@@ -1,3 +1,26 @@
+export interface DashboardHistoryEntry {
+  entity_type: string;
+  entity_id: number | null;
+  entity_public_id: string | null;
+  entity_title: string;
+  event_type: string;
+  event_badge: string;
+  description: string;
+  created_at: string;
+  createdAtLabel: string;
+  user_name: string;
+}
+
+export interface DashboardHistoryPagePayload {
+  items: DashboardHistoryEntry[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export interface DashboardStatsPayload {
   generatedAtLabel: string;
   todayDate: string;
@@ -105,16 +128,5 @@ export interface DashboardStatsPayload {
     student_name: string;
     student_public_id: string;
   }>;
-  recentHistory: Array<{
-    entity_type: string;
-    entity_id: number | null;
-    entity_public_id: string | null;
-    entity_title: string;
-    event_type: string;
-    event_badge: string;
-    description: string;
-    created_at: string;
-    createdAtLabel: string;
-    user_name: string;
-  }>;
+  recentHistory: DashboardHistoryEntry[];
 }

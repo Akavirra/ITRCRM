@@ -1,6 +1,6 @@
 import { all, get } from '@/db';
 import { getStudentsWithDebt } from '@/lib/students';
-import type { DashboardStatsPayload } from '@/lib/dashboard-types';
+import type { DashboardHistoryEntry, DashboardHistoryPagePayload, DashboardStatsPayload } from '@/lib/dashboard-types';
 import { addDays, format, startOfMonth, startOfYear, subMonths, subDays } from 'date-fns';
 
 const KYIV_TIME_ZONE = 'Europe/Kyiv';
@@ -50,6 +50,124 @@ function formatFullDateLabel(date: Date) {
     year: 'numeric',
     timeZone: KYIV_TIME_ZONE,
   }).format(date);
+}
+
+function mapDashboardHistoryEntries<T extends {
+  entity_type: string;
+  entity_id: number | null;
+  entity_public_id: string | null;
+  entity_title: string;
+  event_type: string;
+  event_badge: string;
+  description: string;
+  created_at: string;
+  user_name: string;
+}>(items: T[]): DashboardHistoryEntry[] {
+  return items.map((history) => ({
+    ...history,
+    createdAtLabel: formatDateLabel(history.created_at),
+  }));
+}
+
+async function loadDashboardHistoryEntries(limit: number, offset = 0): Promise<DashboardHistoryEntry[]> {
+  try {
+    const auditEvents = await all<{
+      entity_type: string;
+      entity_id: number | null;
+      entity_public_id: string | null;
+      entity_title: string;
+      event_type: string;
+      event_badge: string;
+      description: string;
+      created_at: string;
+      user_name: string;
+    }>(
+      `SELECT
+        entity_type,
+        entity_id,
+        entity_public_id,
+        entity_title,
+        event_type,
+        event_badge,
+        description,
+        created_at,
+        user_name
+       FROM audit_events
+       ORDER BY created_at DESC
+       LIMIT $1
+       OFFSET $2`,
+      [limit, offset]
+    );
+
+    if (auditEvents.length > 0) {
+      return mapDashboardHistoryEntries(auditEvents);
+    }
+  } catch (error) {
+    console.error('[dashboard] Failed to load audit_events, falling back to student_history:', error);
+  }
+
+  const legacyHistory = await all<{
+    entity_type: string;
+    entity_id: number | null;
+    entity_public_id: string | null;
+    entity_title: string;
+    event_type: string;
+    event_badge: string;
+    description: string;
+    created_at: string;
+    user_name: string;
+  }>(
+    `SELECT
+      'student' as entity_type,
+      s.id as entity_id,
+      s.public_id as entity_public_id,
+      s.full_name as entity_title,
+      h.action_type as event_type,
+      UPPER(h.action_type) as event_badge,
+      h.action_description as description,
+      h.created_at,
+      h.user_name
+     FROM student_history h
+     JOIN students s ON h.student_id = s.id
+     ORDER BY h.created_at DESC
+     LIMIT $1
+     OFFSET $2`,
+    [limit, offset]
+  );
+
+  return mapDashboardHistoryEntries(legacyHistory);
+}
+
+export async function getDashboardHistoryPage(page = 1, pageSize = 30): Promise<DashboardHistoryPagePayload> {
+  const safePage = Math.max(1, Math.floor(page));
+  const safePageSize = Math.min(100, Math.max(1, Math.floor(pageSize)));
+  const offset = (safePage - 1) * safePageSize;
+
+  let total = 0;
+
+  try {
+    const auditTotal = await get<{ count: number }>(`SELECT COUNT(*) as count FROM audit_events`);
+    total = Number(auditTotal?.count || 0);
+  } catch (error) {
+    console.error('[dashboard] Failed to count audit_events, falling back to student_history:', error);
+  }
+
+  if (total === 0) {
+    const legacyTotal = await get<{ count: number }>(`SELECT COUNT(*) as count FROM student_history`);
+    total = Number(legacyTotal?.count || 0);
+  }
+
+  const items = await loadDashboardHistoryEntries(safePageSize, offset);
+
+  return {
+    items,
+    pagination: {
+      page: safePage,
+      pageSize: safePageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / safePageSize)),
+    },
+  };
 }
 
 export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload> {
@@ -235,58 +353,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
      LIMIT 5`
   );
 
-  const recentHistoryPromise = (async () => {
-    try {
-      const auditEvents = await all<{
-        entity_type: string;
-        entity_id: number | null;
-        entity_public_id: string | null;
-        entity_title: string;
-        event_type: string;
-        event_badge: string;
-        description: string;
-        created_at: string;
-        user_name: string;
-      }>(
-        `SELECT
-          entity_type,
-          entity_id,
-          entity_public_id,
-          entity_title,
-          event_type,
-          event_badge,
-          description,
-          created_at,
-          user_name
-         FROM audit_events
-         ORDER BY created_at DESC
-         LIMIT 12`
-      );
-
-      if (auditEvents.length > 0) {
-        return auditEvents;
-      }
-    } catch (error) {
-      console.error('[dashboard] Failed to load audit_events, falling back to student_history:', error);
-    }
-
-    return all<DashboardStatsPayload['recentHistory'][number]>(
-      `SELECT
-        'student' as entity_type,
-        s.id as entity_id,
-        s.public_id as entity_public_id,
-        s.full_name as entity_title,
-        h.action_type as event_type,
-        UPPER(h.action_type) as event_badge,
-        h.action_description as description,
-        h.created_at,
-        h.user_name
-       FROM student_history h
-       JOIN students s ON h.student_id = s.id
-       ORDER BY h.created_at DESC
-       LIMIT 12`
-    );
-  })();
+  const recentHistoryPromise = loadDashboardHistoryEntries(12);
 
   const debtorsPromise = getStudentsWithDebt(firstDayOfMonth);
 
@@ -451,9 +518,6 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
       amountLabel: formatCurrencyLabel(payment.amount),
       paidAtLabel: formatDateLabel(payment.paid_at),
     })),
-    recentHistory: recentHistory.map((history) => ({
-      ...history,
-      createdAtLabel: formatDateLabel(history.created_at),
-    })),
+    recentHistory,
   };
 }

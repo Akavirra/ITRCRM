@@ -1,5 +1,15 @@
 import { run, get, all, transaction } from '@/db';
 import { format } from 'date-fns';
+import {
+  safeAddStudentHistoryEntry,
+  formatTrialScheduledDescription,
+  formatTrialRemovedDescription,
+} from '@/lib/student-history';
+import {
+  addGroupHistoryEntry,
+  formatTrialStudentAddedDescription,
+  formatTrialStudentRemovedDescription,
+} from '@/lib/group-history';
 
 export type AttendanceStatus = 'present' | 'absent' | 'makeup_planned' | 'makeup_done';
 export type StudyStatus = 'studying' | 'not_studying';
@@ -13,6 +23,8 @@ export interface AttendanceRecord {
   makeup_lesson_id: number | null;
   updated_by: number;
   updated_at: string;
+  is_trial: boolean;
+  added_by: number | null;
 }
 
 export interface AttendanceWithStudent extends AttendanceRecord {
@@ -32,7 +44,9 @@ export async function getAttendanceForLesson(lessonId: number): Promise<Attendan
   );
 }
 
-// Get attendance for a lesson (with all students in group, or individual lesson students)
+// Get attendance for a lesson (with all students in group, or individual lesson students).
+// For group lessons: returns regular group members (student_groups) PLUS trial visitors
+// whose attendance rows have is_trial = TRUE.
 export async function getAttendanceForLessonWithStudents(lessonId: number): Promise<Array<{
   student_id: number;
   student_name: string;
@@ -41,20 +55,21 @@ export async function getAttendanceForLessonWithStudents(lessonId: number): Prom
   status: AttendanceStatus | null;
   comment: string | null;
   makeup_lesson_id: number | null;
+  is_trial: boolean;
 }>> {
   // Get the lesson's group
   const lesson = await get<{ group_id: number }>(
     `SELECT group_id FROM lessons WHERE id = $1`,
     [lessonId]
   );
-  
+
   if (!lesson) {
     return [];
   }
-  
+
   const groupId = lesson.group_id;
-  
-  // If there's a group, get students from the group
+
+  // If there's a group, get students from the group PLUS trial visitors.
   if (groupId) {
     return await all<{
       student_id: number;
@@ -64,24 +79,46 @@ export async function getAttendanceForLessonWithStudents(lessonId: number): Prom
       status: AttendanceStatus | null;
       comment: string | null;
       makeup_lesson_id: number | null;
+      is_trial: boolean;
     }>(
-      `SELECT 
-        s.id as student_id,
-        s.full_name as student_name,
-        s.phone as student_phone,
-        a.id as attendance_id,
-        a.status,
-        a.comment,
-        a.makeup_lesson_id
+      `SELECT
+         s.id as student_id,
+         s.full_name as student_name,
+         s.phone as student_phone,
+         a.id as attendance_id,
+         a.status,
+         a.comment,
+         a.makeup_lesson_id,
+         COALESCE(a.is_trial, FALSE) as is_trial
        FROM students s
        JOIN student_groups sg ON s.id = sg.student_id
        LEFT JOIN attendance a ON a.student_id = s.id AND a.lesson_id = $1
        WHERE sg.group_id = $2 AND sg.is_active = TRUE AND s.is_active = TRUE
-       ORDER BY s.full_name`,
+
+       UNION ALL
+
+       SELECT
+         s.id as student_id,
+         s.full_name as student_name,
+         s.phone as student_phone,
+         a.id as attendance_id,
+         a.status,
+         a.comment,
+         a.makeup_lesson_id,
+         TRUE as is_trial
+       FROM attendance a
+       JOIN students s ON a.student_id = s.id
+       WHERE a.lesson_id = $1
+         AND a.is_trial = TRUE
+         AND s.id NOT IN (
+           SELECT sg2.student_id FROM student_groups sg2
+           WHERE sg2.group_id = $2 AND sg2.is_active = TRUE
+         )
+       ORDER BY is_trial, student_name`,
       [lessonId, groupId]
     );
   }
-  
+
   // For individual lessons (no group), get students from attendance table
   return await all<{
     student_id: number;
@@ -91,15 +128,17 @@ export async function getAttendanceForLessonWithStudents(lessonId: number): Prom
     status: AttendanceStatus | null;
     comment: string | null;
     makeup_lesson_id: number | null;
+    is_trial: boolean;
   }>(
-    `SELECT 
+    `SELECT
       s.id as student_id,
       s.full_name as student_name,
       s.phone as student_phone,
       a.id as attendance_id,
       a.status,
       a.comment,
-      a.makeup_lesson_id
+      a.makeup_lesson_id,
+      COALESCE(a.is_trial, FALSE) as is_trial
      FROM students s
      JOIN attendance a ON a.student_id = s.id
      WHERE a.lesson_id = $1
@@ -138,7 +177,9 @@ export async function setAttendance(
   }
 }
 
-// Set attendance for all students in a lesson (bulk)
+// Set attendance for all students in a lesson (bulk). For group lessons this
+// includes both regular roster and any trial visitors already attached to the
+// lesson via attendance.is_trial = TRUE.
 export async function setAttendanceForAll(
   lessonId: number,
   status: AttendanceStatus,
@@ -149,24 +190,46 @@ export async function setAttendanceForAll(
     `SELECT group_id FROM lessons WHERE id = $1`,
     [lessonId]
   );
-  
+
   if (!lesson) {
     return;
   }
-  
+
   const groupId = lesson.group_id;
-  
-  // Get all students in the group
-  const students = await all<{ id: number }>(
-    `SELECT s.id FROM students s
-     JOIN student_groups sg ON s.id = sg.student_id
-     WHERE sg.group_id = $1 AND sg.is_active = TRUE AND s.is_active = TRUE`,
-    [groupId]
-  );
-  
+
+  let studentIds: number[] = [];
+
+  if (groupId) {
+    // Group members
+    const members = await all<{ id: number }>(
+      `SELECT s.id FROM students s
+       JOIN student_groups sg ON s.id = sg.student_id
+       WHERE sg.group_id = $1 AND sg.is_active = TRUE AND s.is_active = TRUE`,
+      [groupId]
+    );
+    studentIds = members.map(m => m.id);
+
+    // Trial visitors attached to this lesson
+    const trialVisitors = await all<{ student_id: number }>(
+      `SELECT student_id FROM attendance
+       WHERE lesson_id = $1 AND is_trial = TRUE`,
+      [lessonId]
+    );
+    for (const v of trialVisitors) {
+      if (!studentIds.includes(v.student_id)) studentIds.push(v.student_id);
+    }
+  } else {
+    // Individual lesson — use whoever is already in attendance
+    const rows = await all<{ student_id: number }>(
+      `SELECT student_id FROM attendance WHERE lesson_id = $1`,
+      [lessonId]
+    );
+    studentIds = rows.map(r => r.student_id);
+  }
+
   await transaction(async () => {
-    for (const student of students) {
-      await setAttendance(lessonId, student.id, status, updatedBy);
+    for (const studentId of studentIds) {
+      await setAttendance(lessonId, studentId, status, updatedBy);
     }
   });
 }
@@ -1743,4 +1806,264 @@ export async function getCalendarData(year: number): Promise<Record<string, Cale
     result[key].push(row);
   }
   return result;
+}
+
+// ─── Trial students on a lesson ───────────────────────────────────────────
+
+export interface TrialAdditionResult {
+  added: number[];
+  skipped: Array<{ student_id: number; reason: string }>;
+}
+
+/**
+ * Attach one or more students to an existing lesson as trial participants.
+ *
+ * Behavior:
+ *  - Creates an attendance row with is_trial = TRUE and status = NULL
+ *    (so the teacher can still mark present/absent later).
+ *  - If the student is already a regular member of the lesson's group
+ *    (for a group lesson), they are skipped — they don't need to be trial.
+ *  - If an attendance row already exists (trial or not), it is skipped.
+ */
+export async function addTrialStudentsToLesson(
+  lessonId: number,
+  studentIds: number[],
+  addedBy: number
+): Promise<TrialAdditionResult> {
+  const result: TrialAdditionResult = { added: [], skipped: [] };
+
+  if (studentIds.length === 0) return result;
+
+  const lesson = await get<{ id: number; group_id: number | null; status: string; lesson_date: string }>(
+    `SELECT id, group_id, status, lesson_date::text as lesson_date FROM lessons WHERE id = $1`,
+    [lessonId]
+  );
+
+  if (!lesson) {
+    for (const id of studentIds) result.skipped.push({ student_id: id, reason: 'lesson_not_found' });
+    return result;
+  }
+
+  if (lesson.status === 'canceled') {
+    for (const id of studentIds) result.skipped.push({ student_id: id, reason: 'lesson_canceled' });
+    return result;
+  }
+
+  // De-dupe and validate student existence
+  const uniqueIds = Array.from(new Set(
+    studentIds
+      .map(id => Number(id))
+      .filter(id => Number.isInteger(id) && id > 0)
+  ));
+
+  if (uniqueIds.length === 0) return result;
+
+  const existingStudents = await all<{ id: number; is_active: boolean }>(
+    `SELECT id, is_active FROM students WHERE id = ANY($1::int[])`,
+    [uniqueIds]
+  );
+  const activeStudentIds = new Set(existingStudents.filter(s => s.is_active).map(s => s.id));
+
+  for (const id of uniqueIds) {
+    if (!activeStudentIds.has(id)) {
+      result.skipped.push({ student_id: id, reason: 'student_inactive_or_missing' });
+    }
+  }
+
+  // For group lessons: skip students already in the group roster
+  let rosterIds = new Set<number>();
+  let groupTitle: string | null = null;
+  if (lesson.group_id) {
+    const roster = await all<{ student_id: number }>(
+      `SELECT student_id FROM student_groups
+       WHERE group_id = $1 AND is_active = TRUE`,
+      [lesson.group_id]
+    );
+    rosterIds = new Set(roster.map(r => r.student_id));
+
+    const group = await get<{ title: string }>(
+      `SELECT title FROM groups WHERE id = $1`,
+      [lesson.group_id]
+    );
+    groupTitle = group?.title ?? null;
+  }
+
+  // Existing attendance rows for this lesson
+  const existingAttendance = await all<{ student_id: number; is_trial: boolean }>(
+    `SELECT student_id, is_trial FROM attendance WHERE lesson_id = $1`,
+    [lessonId]
+  );
+  const existingAttendanceIds = new Set(existingAttendance.map(a => a.student_id));
+
+  for (const studentId of uniqueIds) {
+    if (!activeStudentIds.has(studentId)) continue;
+
+    if (rosterIds.has(studentId)) {
+      result.skipped.push({ student_id: studentId, reason: 'already_in_group' });
+      continue;
+    }
+
+    if (existingAttendanceIds.has(studentId)) {
+      result.skipped.push({ student_id: studentId, reason: 'already_in_lesson' });
+      continue;
+    }
+
+    await run(
+      `INSERT INTO attendance (lesson_id, student_id, status, is_trial, added_by, updated_by)
+       VALUES ($1, $2, NULL, TRUE, $3, $3)`,
+      [lessonId, studentId, addedBy]
+    );
+    result.added.push(studentId);
+
+    const student = await get<{ full_name: string }>(
+      `SELECT full_name FROM students WHERE id = $1`,
+      [studentId]
+    );
+    const actor = await get<{ name: string }>(
+      `SELECT name FROM users WHERE id = $1`,
+      [addedBy]
+    );
+
+    await safeAddStudentHistoryEntry(
+      studentId,
+      'trial_lesson_scheduled',
+      formatTrialScheduledDescription(lesson.lesson_date, groupTitle, null),
+      addedBy,
+      actor?.name ?? 'Система'
+    );
+
+    if (lesson.group_id && student?.full_name) {
+      await addGroupHistoryEntry(
+        lesson.group_id,
+        'trial_student_added',
+        formatTrialStudentAddedDescription(student.full_name, lesson.lesson_date),
+        addedBy,
+        actor?.name ?? 'Система'
+      );
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Remove a trial student from a lesson. Only rows with is_trial = TRUE can
+ * be removed this way — regular group members are kept intact. If attendance
+ * has been recorded (status not null), we still allow removal, but callers
+ * may want to warn the user in the UI.
+ */
+export async function removeTrialStudentFromLesson(
+  lessonId: number,
+  studentId: number
+): Promise<{ removed: boolean; reason?: string }> {
+  const row = await get<{ id: number; is_trial: boolean; status: AttendanceStatus | null; added_by: number | null }>(
+    `SELECT id, is_trial, status, added_by FROM attendance
+     WHERE lesson_id = $1 AND student_id = $2`,
+    [lessonId, studentId]
+  );
+
+  if (!row) return { removed: false, reason: 'not_found' };
+  if (!row.is_trial) return { removed: false, reason: 'not_trial' };
+
+  const lesson = await get<{ lesson_date: string; group_id: number | null }>(
+    `SELECT lesson_date::text as lesson_date, group_id FROM lessons WHERE id = $1`,
+    [lessonId]
+  );
+
+  await run(
+    `DELETE FROM attendance WHERE lesson_id = $1 AND student_id = $2 AND is_trial = TRUE`,
+    [lessonId, studentId]
+  );
+
+  if (lesson) {
+    try {
+      const student = await get<{ full_name: string }>(
+        `SELECT full_name FROM students WHERE id = $1`,
+        [studentId]
+      );
+
+      let groupTitle: string | null = null;
+      if (lesson.group_id) {
+        const group = await get<{ title: string }>(
+          `SELECT title FROM groups WHERE id = $1`,
+          [lesson.group_id]
+        );
+        groupTitle = group?.title ?? null;
+      }
+
+      const actor = row.added_by
+        ? await get<{ name: string }>(`SELECT name FROM users WHERE id = $1`, [row.added_by])
+        : null;
+      const actorName = actor?.name ?? 'Система';
+      const actorId = row.added_by ?? 0;
+
+      await safeAddStudentHistoryEntry(
+        studentId,
+        'trial_lesson_removed',
+        formatTrialRemovedDescription(lesson.lesson_date, groupTitle),
+        actorId,
+        actorName,
+      );
+
+      if (lesson.group_id && student?.full_name) {
+        await addGroupHistoryEntry(
+          lesson.group_id,
+          'trial_student_removed',
+          formatTrialStudentRemovedDescription(student.full_name, lesson.lesson_date),
+          actorId,
+          actorName,
+        );
+      }
+    } catch (err) {
+      console.error('[attendance] Failed to log trial removal history:', err);
+    }
+  }
+
+  return { removed: true };
+}
+
+/**
+ * List all trial students attached to a specific lesson.
+ */
+export async function listTrialStudentsForLesson(
+  lessonId: number,
+): Promise<Array<{
+  student_id: number;
+  full_name: string;
+  public_id: string | null;
+  status: AttendanceStatus | null;
+  added_by: number | null;
+  added_by_name: string | null;
+}>> {
+  return await all(
+    `SELECT
+       a.student_id,
+       s.full_name,
+       s.public_id,
+       a.status,
+       a.added_by,
+       u.name as added_by_name
+     FROM attendance a
+     JOIN students s ON a.student_id = s.id
+     LEFT JOIN users u ON a.added_by = u.id
+     WHERE a.lesson_id = $1 AND COALESCE(a.is_trial, FALSE) = TRUE
+     ORDER BY s.full_name`,
+    [lessonId],
+  );
+}
+
+/**
+ * Check whether a given student is attending a lesson as a trial.
+ */
+export async function isStudentTrialOnLesson(
+  lessonId: number,
+  studentId: number,
+): Promise<boolean> {
+  const row = await get<{ is_trial: boolean }>(
+    `SELECT COALESCE(is_trial, FALSE) as is_trial
+     FROM attendance
+     WHERE lesson_id = $1 AND student_id = $2`,
+    [lessonId, studentId],
+  );
+  return !!row?.is_trial;
 }
