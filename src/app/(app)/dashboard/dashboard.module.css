@@ -1185,6 +1185,28 @@
   }
 }
 
+.historyInlineLink {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: rgba(37, 99, 235, 0.45);
+  text-underline-offset: 2px;
+  transition: color 150ms ease, text-decoration-color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .historyInlineLink:hover {
+    color: #1d4ed8;
+    text-decoration-color: #1d4ed8;
+  }
+}
+
 .historyFooterMeta {
   color: var(--muted);
   font-size: 0.85rem;

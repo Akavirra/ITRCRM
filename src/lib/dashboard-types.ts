@@ -3,6 +3,12 @@ export interface DashboardHistoryEntry {
   entity_id: number | null;
   entity_public_id: string | null;
   entity_title: string;
+  student_id?: number | null;
+  student_title?: string | null;
+  group_id?: number | null;
+  group_title?: string | null;
+  course_id?: number | null;
+  course_title?: string | null;
   event_type: string;
   event_badge: string;
   description: string;

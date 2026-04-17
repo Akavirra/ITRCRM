@@ -376,6 +376,81 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
     }
   };
 
+  const renderHistoryDescription = (history: DashboardHistoryEntry) => {
+    const inlineTargets = [
+      history.student_id && history.student_title && history.student_title !== history.entity_title
+        ? {
+            key: `student-${history.student_id}`,
+            title: history.student_title,
+            onClick: () => openStudentModal(history.student_id as number, history.student_title as string),
+            label: 'Відкрити учня',
+          }
+        : null,
+      history.group_id && history.group_title && history.group_title !== history.entity_title
+        ? {
+            key: `group-${history.group_id}`,
+            title: history.group_title,
+            onClick: () => openGroupModal(history.group_id as number, history.group_title as string),
+            label: 'Відкрити групу',
+          }
+        : null,
+      history.course_id && history.course_title && history.course_title !== history.entity_title
+        ? {
+            key: `course-${history.course_id}`,
+            title: history.course_title,
+            onClick: () => openCourseModal(history.course_id as number, history.course_title as string),
+            label: 'Відкрити курс',
+          }
+        : null,
+    ]
+      .filter((target): target is { key: string; title: string; onClick: () => void; label: string } => Boolean(target))
+      .filter((target, index, array) => array.findIndex((item) => item.title === target.title) === index)
+      .sort((a, b) => b.title.length - a.title.length);
+
+    if (inlineTargets.length === 0) {
+      return history.description;
+    }
+
+    let segments: Array<string | { key: string; title: string; onClick: () => void; label: string }> = [history.description];
+
+    inlineTargets.forEach((target) => {
+      segments = segments.flatMap((segment) => {
+        if (typeof segment !== 'string' || !segment.includes(target.title)) {
+          return [segment];
+        }
+
+        const parts = segment.split(target.title);
+        const nextSegments: Array<string | { key: string; title: string; onClick: () => void; label: string }> = [];
+
+        parts.forEach((part, index) => {
+          if (part) {
+            nextSegments.push(part);
+          }
+
+          if (index < parts.length - 1) {
+            nextSegments.push(target);
+          }
+        });
+
+        return nextSegments;
+      });
+    });
+
+    return segments.map((segment, index) => (typeof segment === 'string' ? (
+      <span key={`${history.created_at}-text-${index}`}>{segment}</span>
+    ) : (
+      <button
+        key={`${history.created_at}-${segment.key}-${index}`}
+        type="button"
+        className={styles.historyInlineLink}
+        onClick={segment.onClick}
+        title={segment.label}
+      >
+        {segment.title}
+      </button>
+    )));
+  };
+
   return (
     <>
       <div className={styles.page}>
@@ -1391,7 +1466,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                           ) : null}
                           {history.createdAtLabel} · {history.user_name}
                         </div>
-                        <div className={styles.activityDescription}>{history.description}</div>
+                        <div className={styles.activityDescription}>{renderHistoryDescription(history)}</div>
                       </div>
                     </div>
                   ))}
