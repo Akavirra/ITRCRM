@@ -17,7 +17,7 @@ import AnimatedNumber from '@/components/AnimatedNumber';
 import Sparkline from '@/components/Sparkline';
 import { useStudentModals } from '@/components/StudentModalsContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
-import type { DashboardHistoryPagePayload, DashboardStatsPayload } from '@/lib/dashboard-types';
+import type { DashboardHistoryEntry, DashboardHistoryPagePayload, DashboardStatsPayload } from '@/lib/dashboard-types';
 import styles from './dashboard.module.css';
 
 type ActivityTab = 'payments' | 'history';
@@ -113,6 +113,45 @@ const studentsLabels: Record<StudentsPeriod, string> = {
   month: 'Дітей за місяць',
   year: 'Дітей за рік',
 };
+
+function getHistoryEntityLabel(entityType: string) {
+  switch (entityType) {
+    case 'student':
+      return 'Учень';
+    case 'group':
+      return 'Група';
+    case 'lesson':
+      return 'Заняття';
+    case 'payment':
+      return 'Оплата';
+    case 'course':
+      return 'Курс';
+    case 'teacher':
+      return 'Викладач';
+    case 'user':
+      return 'Адмін';
+    default:
+      return 'Запис';
+  }
+}
+
+function getHistoryBadgeTone(entry: DashboardHistoryEntry) {
+  const value = `${entry.event_type} ${entry.event_badge}`.toLowerCase();
+
+  if (value.includes('remove') || value.includes('leave') || value.includes('cancel') || value.includes('delete')) {
+    return styles.historyTypeDanger;
+  }
+
+  if (value.includes('trial') || value.includes('schedule') || value.includes('attendance')) {
+    return styles.historyTypeAccent;
+  }
+
+  if (value.includes('add') || value.includes('create') || value.includes('payment')) {
+    return styles.historyTypeSuccess;
+  }
+
+  return styles.historyTypeNeutral;
+}
 
 /* ── Lesson card style logic — matches schedule page exactly ── */
 
@@ -295,6 +334,11 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const completedLessons = initialData.todaySchedule.filter((l) => l.status === 'completed' || l.status === 'done').length;
   const visiblePayments = initialData.recentPayments.slice(0, 6);
   const visibleHistory = initialData.recentHistory.slice(0, 6);
+  const historyPagination = historyPageData?.pagination ?? null;
+  const historyStart = historyPagination ? (historyPagination.page - 1) * historyPagination.pageSize + 1 : 0;
+  const historyEnd = historyPagination
+    ? Math.min(historyPagination.page * historyPagination.pageSize, historyPagination.total)
+    : 0;
 
   const formattedDate = format(new Date(initialData.todayDate), 'd MMMM, EEEE', { locale: uk });
   const canUsePortal = typeof window !== 'undefined';
@@ -1265,34 +1309,70 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
         <div className={styles.modalOverlay} onClick={() => setShowHistoryModal(false)}>
           <div className={`${styles.modalContent} ${styles.modalWide}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>
-                <Clock size={18} />
-                Повна історія змін
-              </h2>
+              <div className={styles.modalHeaderContent}>
+                <div className={styles.modalEyebrow}>Dashboard activity</div>
+                <h2 className={styles.modalTitle}>
+                  <Clock size={18} />
+                  Повна історія змін
+                </h2>
+                <p className={styles.modalSubtitle}>
+                  Усі останні дії по учнях, групах і заняттях в одному компактному журналі.
+                </p>
+              </div>
               <button type="button" className={styles.modalClose} onClick={() => setShowHistoryModal(false)}>
                 <X size={18} />
               </button>
+            </div>
+
+            <div className={styles.historySummaryBar}>
+              <div className={styles.historySummaryItem}>
+                <span className={styles.historySummaryLabel}>Записів</span>
+                <strong className={styles.historySummaryValue}>
+                  {historyPagination ? historyPagination.total : '—'}
+                </strong>
+              </div>
+              <div className={styles.historySummaryItem}>
+                <span className={styles.historySummaryLabel}>Поточна сторінка</span>
+                <strong className={styles.historySummaryValue}>
+                  {historyPagination ? `${historyPagination.page} / ${historyPagination.totalPages}` : '—'}
+                </strong>
+              </div>
+              <div className={styles.historySummaryItem}>
+                <span className={styles.historySummaryLabel}>Показано</span>
+                <strong className={styles.historySummaryValue}>
+                  {historyPagination && historyPagination.total > 0 ? `${historyStart}–${historyEnd}` : '—'}
+                </strong>
+              </div>
             </div>
 
             <div className={styles.modalBody}>
               {historyLoading && !historyPageData ? (
                 <div className={styles.compactEmpty}>Завантаження історії...</div>
               ) : historyPageData && historyPageData.items.length > 0 ? (
-                <div className={styles.modalList}>
+                <div className={`${styles.modalList} ${styles.historyTimeline}`}>
                   {historyPageData.items.map((history, index) => (
                     <div
                       key={`${history.entity_type}-${history.entity_id ?? history.entity_public_id ?? index}-${history.created_at}-${index}`}
                       className={`${styles.modalListItem} ${styles.historyListItem}`}
                     >
+                      <div className={styles.historyTimelineRail} aria-hidden="true">
+                        <span className={styles.historyTimelineDot} />
+                      </div>
                       <div className={styles.modalListItemMain}>
-                        <div className={styles.activityTitle}>{history.entity_title}</div>
-                        <div className={styles.activityMeta}>
-                          {history.entity_public_id ? `${history.entity_public_id} · ` : ''}
-                          {history.createdAtLabel} · {history.user_name}
+                        <div className={styles.historyTopRow}>
+                          <div className={styles.historyMetaCluster}>
+                            <span className={styles.historyEntityLabel}>{getHistoryEntityLabel(history.entity_type)}</span>
+                            <span className={styles.historyMetaDivider}>•</span>
+                            <span className={styles.activityMeta}>
+                              {history.entity_public_id ? `${history.entity_public_id} • ` : ''}
+                              {history.createdAtLabel} • {history.user_name}
+                            </span>
+                          </div>
+                          <div className={`${styles.historyType} ${getHistoryBadgeTone(history)}`}>{history.event_badge}</div>
                         </div>
+                        <div className={styles.activityTitle}>{history.entity_title}</div>
                         <div className={styles.activityDescription}>{history.description}</div>
                       </div>
-                      <div className={styles.historyType}>{history.event_badge}</div>
                     </div>
                   ))}
                 </div>
@@ -1303,8 +1383,8 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
 
             <div className={styles.modalFooter}>
               <div className={styles.historyFooterMeta}>
-                {historyPageData
-                  ? `Сторінка ${historyPageData.pagination.page} з ${historyPageData.pagination.totalPages} · всього ${historyPageData.pagination.total} записів`
+                {historyPagination
+                  ? `Сторінка ${historyPagination.page} з ${historyPagination.totalPages} • показано ${historyStart}–${historyEnd} із ${historyPagination.total}`
                   : 'Повна історія доступна посторінково'}
               </div>
               <div className={styles.historyPagination}>
