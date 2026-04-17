@@ -9,6 +9,8 @@ interface EnrollmentToken {
   token: string;
   expires_at: string;
   used_at: string | null;
+  manually_closed_at?: string | null;
+  has_submission?: boolean;
   created_by: number;
   created_at: string;
 }
@@ -218,6 +220,9 @@ export default function EnrollmentPage() {
   };
 
   const getTokenStatus = (token: EnrollmentToken) => {
+    if (token.manually_closed_at || (token.used_at && !token.has_submission)) {
+      return { label: 'Закритий вручну', color: '#b45309' };
+    }
     if (token.used_at) return { label: 'Використаний', color: '#64748b' };
     if (new Date(token.expires_at) < new Date()) return { label: 'Протермінований', color: '#ef4444' };
     return { label: 'Активний', color: '#16a34a' };

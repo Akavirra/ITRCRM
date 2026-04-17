@@ -35,6 +35,7 @@ async function migrate() {
         token TEXT UNIQUE NOT NULL,
         expires_at TIMESTAMPTZ NOT NULL,
         used_at TIMESTAMPTZ,
+        manually_closed_at TIMESTAMPTZ,
         created_by INTEGER REFERENCES users(id),
         created_at TIMESTAMPTZ DEFAULT NOW()
       )

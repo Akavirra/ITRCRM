@@ -7,6 +7,8 @@ export interface EnrollmentToken {
   token: string;
   expires_at: string;
   used_at: string | null;
+  manually_closed_at?: string | null;
+  has_submission?: boolean;
   created_by: number;
   created_at: string;
 }
@@ -86,7 +88,9 @@ export async function validateToken(token: string): Promise<{ valid: boolean; re
 
 export async function markTokenUsed(tokenId: number): Promise<void> {
   await run(
-    `UPDATE enrollment_tokens SET used_at = NOW() WHERE id = $1`,
+    `UPDATE enrollment_tokens
+     SET used_at = NOW(), manually_closed_at = NULL
+     WHERE id = $1`,
     [tokenId]
   );
 }
@@ -94,7 +98,7 @@ export async function markTokenUsed(tokenId: number): Promise<void> {
 export async function closeEnrollmentToken(tokenId: number): Promise<void> {
   await run(
     `UPDATE enrollment_tokens
-     SET used_at = NOW()
+     SET used_at = NOW(), manually_closed_at = NOW()
      WHERE id = $1 AND used_at IS NULL AND expires_at > NOW()`,
     [tokenId]
   );
@@ -110,7 +114,16 @@ export async function getActiveTokens(): Promise<EnrollmentToken[]> {
 
 export async function getAllTokens(limit: number = 50): Promise<EnrollmentToken[]> {
   return all<EnrollmentToken>(
-    `SELECT * FROM enrollment_tokens ORDER BY created_at DESC LIMIT $1`,
+    `SELECT
+       et.*,
+       EXISTS(
+         SELECT 1
+         FROM enrollment_submissions es
+         WHERE es.token_id = et.id
+       ) AS has_submission
+     FROM enrollment_tokens et
+     ORDER BY et.created_at DESC
+     LIMIT $1`,
     [limit]
   );
 }
