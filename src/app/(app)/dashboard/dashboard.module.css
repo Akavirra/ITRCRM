@@ -978,21 +978,6 @@
   flex-shrink: 0;
 }
 
-.modalHeaderContent {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-.modalEyebrow {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
 .modalTitle {
   margin: 0;
   font-size: 1.25rem;
@@ -1001,14 +986,6 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.modalSubtitle {
-  margin: 0;
-  max-width: 38rem;
-  font-size: 0.88rem;
-  line-height: 1.55;
-  color: var(--muted);
 }
 
 .modalClose {
@@ -1043,9 +1020,6 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  background:
-    linear-gradient(180deg, rgba(249, 250, 251, 0.65) 0%, rgba(249, 250, 251, 0) 10rem),
-    var(--surface);
 }
 
 .modalList {
@@ -1162,102 +1136,7 @@
 }
 
 .historyListItem {
-  align-items: flex-start;
-  gap: 0.9rem;
-  padding: 1rem 0;
-}
-
-.historyTimeline {
-  position: relative;
-}
-
-.historyTimeline::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 1.9rem;
-  width: 1px;
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.15), rgba(148, 163, 184, 0.28));
-}
-
-.historyTimelineRail {
-  position: relative;
-  width: 0.9rem;
-  flex-shrink: 0;
-  padding-top: 0.35rem;
-}
-
-.historyTimelineDot {
-  display: block;
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #3b82f6, #60a5fa);
-  box-shadow: 0 0 0 4px #eff6ff;
-}
-
-.historyTopRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-
-.historyMetaCluster {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.historyEntityLabel {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.5rem;
-  padding: 0 0.5rem;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.historyMetaDivider {
-  color: #cbd5e1;
-  font-size: 0.72rem;
-}
-
-.historySummaryBar {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
-  padding: 1rem 1.5rem 0;
-}
-
-.historySummaryItem {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.9rem 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 12px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-}
-
-.historySummaryLabel {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.historySummaryValue {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--ink);
+  padding: 0.95rem 0;
 }
 
 .historyFooterMeta {
@@ -1266,43 +1145,15 @@
   line-height: 1.5;
 }
 
-.historyPagination {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+.historyLoadMoreTrigger {
+  height: 1px;
 }
 
-.historyPagerButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-height: 2.25rem;
-  padding: 0.45rem 0.8rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--ink);
+.historyLoadMoreText {
+  padding: 0.2rem 0 1rem;
+  color: var(--muted);
   font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: transform 160ms var(--ease-out), background 150ms ease, border-color 150ms ease, color 150ms ease;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .historyPagerButton:hover:not(:disabled) {
-    background: var(--surface-soft);
-    border-color: #d1d5db;
-  }
-}
-
-.historyPagerButton:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.historyPagerButton:disabled {
-  cursor: not-allowed;
-  color: #9ca3af;
-  background: #f8fafc;
+  text-align: center;
 }
 
 /* ── Modal student row (name + open-modal button) ── */
@@ -1609,10 +1460,6 @@
     padding: 1rem 1rem 0.75rem;
   }
 
-  .modalSubtitle {
-    max-width: none;
-  }
-
   .modalTabBar {
     padding: 0.75rem 1rem 0;
   }
@@ -1641,30 +1488,6 @@
 
   .modalWide {
     max-width: 100%;
-  }
-
-  .historySummaryBar {
-    grid-template-columns: 1fr;
-    padding: 0.75rem 1rem 0;
-  }
-
-  .historyTimeline::before {
-    left: 1.4rem;
-  }
-
-  .historyTopRow {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .historyPagination {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .historyPagerButton {
-    flex: 1;
-    justify-content: center;
   }
 
   .modalFilterBar {

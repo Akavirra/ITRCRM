@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
-  AlertTriangle, BarChart3, BookOpen, Calendar, Check, ChevronLeft, ChevronRight, Clock, CreditCard, DollarSign,
+  AlertTriangle, BarChart3, BookOpen, Calendar, Check, ChevronLeft, Clock, CreditCard, DollarSign,
   ChevronDown, ExternalLink, GraduationCap, Plus, RefreshCw, SquareArrowOutUpRight, TrendingDown, TrendingUp, User as UserIcon, Users, Users2, X,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -114,26 +114,7 @@ const studentsLabels: Record<StudentsPeriod, string> = {
   year: 'Дітей за рік',
 };
 
-function getHistoryEntityLabel(entityType: string) {
-  switch (entityType) {
-    case 'student':
-      return 'Учень';
-    case 'group':
-      return 'Група';
-    case 'lesson':
-      return 'Заняття';
-    case 'payment':
-      return 'Оплата';
-    case 'course':
-      return 'Курс';
-    case 'teacher':
-      return 'Викладач';
-    case 'user':
-      return 'Адмін';
-    default:
-      return 'Запис';
-  }
-}
+const HISTORY_PAGE_SIZE = 30;
 
 /* ── Lesson card style logic — matches schedule page exactly ── */
 
@@ -188,6 +169,8 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const [debtsTab, setDebtsTab] = useState<PeriodTab>('month');
   const [historyPageData, setHistoryPageData] = useState<DashboardHistoryPagePayload | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const historyBodyRef = useRef<HTMLDivElement | null>(null);
+  const historyLoadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const [allTimeDebtors, setAllTimeDebtors] = useState<AllTimeDebtor[] | null>(null);
   const [allTimeDebtsLoading, setAllTimeDebtsLoading] = useState(false);
@@ -254,15 +237,26 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
     if (historyLoading) return;
 
     setHistoryLoading(true);
-    fetch(`/api/dashboard/history?page=${page}&pageSize=30`)
+    fetch(`/api/dashboard/history?page=${page}&pageSize=${HISTORY_PAGE_SIZE}`)
       .then((res) => res.json())
-      .then((data) => setHistoryPageData(data))
+      .then((data: DashboardHistoryPagePayload) => {
+        setHistoryPageData((current) => {
+          if (!current || page <= 1) {
+            return data;
+          }
+
+          return {
+            items: [...current.items, ...data.items],
+            pagination: data.pagination,
+          };
+        });
+      })
       .catch(() => {
         setHistoryPageData({
           items: [],
           pagination: {
             page: 1,
-            pageSize: 30,
+            pageSize: HISTORY_PAGE_SIZE,
             total: 0,
             totalPages: 1,
           },
@@ -277,6 +271,29 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
       loadHistoryPage(1);
     }
   };
+
+  useEffect(() => {
+    if (!showHistoryModal || !historyBodyRef.current || !historyLoadMoreRef.current) return;
+    if (!historyPageData || historyLoading) return;
+    if (historyPageData.pagination.page >= historyPageData.pagination.totalPages) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) return;
+        loadHistoryPage(historyPageData.pagination.page + 1);
+      },
+      {
+        root: historyBodyRef.current,
+        rootMargin: '0px 0px 160px 0px',
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(historyLoadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [showHistoryModal, historyPageData, historyLoading]);
 
   const loadDebtMonth = (monthValue: string) => {
     if (!monthValue || debtsByMonth[monthValue] || debtsByMonthLoading) return;
@@ -317,10 +334,9 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const visiblePayments = initialData.recentPayments.slice(0, 6);
   const visibleHistory = initialData.recentHistory.slice(0, 6);
   const historyPagination = historyPageData?.pagination ?? null;
-  const historyStart = historyPagination ? (historyPagination.page - 1) * historyPagination.pageSize + 1 : 0;
-  const historyEnd = historyPagination
-    ? Math.min(historyPagination.page * historyPagination.pageSize, historyPagination.total)
-    : 0;
+  const historyLoadedCount = historyPageData?.items.length ?? 0;
+  const historyTotalCount = historyPagination?.total ?? 0;
+  const historyHasMore = historyPagination ? historyPagination.page < historyPagination.totalPages : false;
 
   const formattedDate = format(new Date(initialData.todayDate), 'd MMMM, EEEE', { locale: uk });
   const canUsePortal = typeof window !== 'undefined';
@@ -1288,73 +1304,41 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
 
       {canUsePortal && showHistoryModal && createPortal(
         <div className={styles.modalOverlay} onClick={() => setShowHistoryModal(false)}>
-          <div className={`${styles.modalContent} ${styles.modalWide}`} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <div className={styles.modalHeaderContent}>
-                <div className={styles.modalEyebrow}>Dashboard activity</div>
-                <h2 className={styles.modalTitle}>
-                  <Clock size={18} />
-                  Повна історія змін
-                </h2>
-                <p className={styles.modalSubtitle}>
-                  Усі останні дії по учнях, групах і заняттях в одному компактному журналі.
-                </p>
-              </div>
+              <h2 className={styles.modalTitle}>
+                <Clock size={18} />
+                Повна історія змін
+              </h2>
               <button type="button" className={styles.modalClose} onClick={() => setShowHistoryModal(false)}>
                 <X size={18} />
               </button>
             </div>
 
-            <div className={styles.historySummaryBar}>
-              <div className={styles.historySummaryItem}>
-                <span className={styles.historySummaryLabel}>Записів</span>
-                <strong className={styles.historySummaryValue}>
-                  {historyPagination ? historyPagination.total : '—'}
-                </strong>
-              </div>
-              <div className={styles.historySummaryItem}>
-                <span className={styles.historySummaryLabel}>Поточна сторінка</span>
-                <strong className={styles.historySummaryValue}>
-                  {historyPagination ? `${historyPagination.page} / ${historyPagination.totalPages}` : '—'}
-                </strong>
-              </div>
-              <div className={styles.historySummaryItem}>
-                <span className={styles.historySummaryLabel}>Показано</span>
-                <strong className={styles.historySummaryValue}>
-                  {historyPagination && historyPagination.total > 0 ? `${historyStart}–${historyEnd}` : '—'}
-                </strong>
-              </div>
-            </div>
-
-            <div className={styles.modalBody}>
+            <div ref={historyBodyRef} className={styles.modalBody}>
               {historyLoading && !historyPageData ? (
                 <div className={styles.compactEmpty}>Завантаження історії...</div>
               ) : historyPageData && historyPageData.items.length > 0 ? (
-                <div className={`${styles.modalList} ${styles.historyTimeline}`}>
+                <div className={styles.modalList}>
                   {historyPageData.items.map((history, index) => (
                     <div
                       key={`${history.entity_type}-${history.entity_id ?? history.entity_public_id ?? index}-${history.created_at}-${index}`}
                       className={`${styles.modalListItem} ${styles.historyListItem}`}
                     >
-                      <div className={styles.historyTimelineRail} aria-hidden="true">
-                        <span className={styles.historyTimelineDot} />
-                      </div>
                       <div className={styles.modalListItemMain}>
-                        <div className={styles.historyTopRow}>
-                          <div className={styles.historyMetaCluster}>
-                            <span className={styles.historyEntityLabel}>{getHistoryEntityLabel(history.entity_type)}</span>
-                            <span className={styles.historyMetaDivider}>•</span>
-                            <span className={styles.activityMeta}>
-                              {history.entity_public_id ? `${history.entity_public_id} • ` : ''}
-                              {history.createdAtLabel} • {history.user_name}
-                            </span>
-                          </div>
-                        </div>
                         <div className={styles.activityTitle}>{history.entity_title}</div>
+                        <div className={styles.activityMeta}>
+                          {history.entity_public_id ? `${history.entity_public_id} · ` : ''}
+                          {history.createdAtLabel} · {history.user_name}
+                        </div>
                         <div className={styles.activityDescription}>{history.description}</div>
                       </div>
                     </div>
                   ))}
+                  <div ref={historyLoadMoreRef} className={styles.historyLoadMoreTrigger} aria-hidden="true" />
+                  {historyLoading && historyHasMore && (
+                    <div className={styles.historyLoadMoreText}>Завантажуємо ще записи...</div>
+                  )}
                 </div>
               ) : (
                 <div className={styles.compactEmpty}>Історія змін поки порожня.</div>
@@ -1364,28 +1348,10 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
             <div className={styles.modalFooter}>
               <div className={styles.historyFooterMeta}>
                 {historyPagination
-                  ? `Сторінка ${historyPagination.page} з ${historyPagination.totalPages} • показано ${historyStart}–${historyEnd} із ${historyPagination.total}`
+                  ? historyHasMore
+                    ? `Показано ${historyLoadedCount} із ${historyTotalCount} записів`
+                    : `Усі записи завантажено: ${historyTotalCount}`
                   : 'Повна історія доступна посторінково'}
-              </div>
-              <div className={styles.historyPagination}>
-                <button
-                  type="button"
-                  className={styles.historyPagerButton}
-                  onClick={() => historyPageData && loadHistoryPage(Math.max(1, historyPageData.pagination.page - 1))}
-                  disabled={!historyPageData || historyLoading || historyPageData.pagination.page <= 1}
-                >
-                  <ChevronLeft size={16} />
-                  Назад
-                </button>
-                <button
-                  type="button"
-                  className={styles.historyPagerButton}
-                  onClick={() => historyPageData && loadHistoryPage(Math.min(historyPageData.pagination.totalPages, historyPageData.pagination.page + 1))}
-                  disabled={!historyPageData || historyLoading || historyPageData.pagination.page >= historyPageData.pagination.totalPages}
-                >
-                  Далі
-                  <ChevronRight size={16} />
-                </button>
               </div>
             </div>
           </div>
