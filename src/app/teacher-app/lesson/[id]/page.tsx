@@ -37,6 +37,7 @@ interface Student {
   student_public_id: string;
   attendance_status: 'present' | 'absent' | null;
   attendance_updated: string | null;
+  is_trial?: boolean;
   original_lesson_id?: number | null;
   original_lesson_date?: string | null;
   original_lesson_topic?: string | null;
@@ -1669,7 +1670,26 @@ export default function LessonDetailPage() {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--tg-text-color)' }}>{student.full_name}</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--tg-text-color)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    {student.full_name}
+                    {student.is_trial && (
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          background: '#ede9fe',
+                          color: '#6d28d9',
+                          lineHeight: 1.2,
+                          whiteSpace: 'nowrap',
+                        }}
+                        title="Учень запрошений на пробне заняття"
+                      >
+                        Пробне
+                      </span>
+                    )}
+                  </span>
                   <div className="tg-actions">
                     <button
                       onClick={() => updateAttendance(student.id, 'present')}

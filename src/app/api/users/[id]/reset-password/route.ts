@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, notFound, unauthorized } from '@/lib/api-utils';
 import { get, run } from '@/db';
 import { hashPassword } from '@/lib/auth';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,6 +75,19 @@ export async function POST(
     );
 
     await run(`DELETE FROM sessions WHERE user_id = $1`, [targetId]);
+    await safeAddAuditEvent({
+      entityType: 'user',
+      entityId: targetUser.id,
+      entityTitle: targetUser.name,
+      eventType: 'user_password_reset',
+      eventBadge: toAuditBadge('user_password_reset'),
+      description: `Скинуто пароль користувача ${targetUser.name}`,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      metadata: {
+        email: targetUser.email,
+      },
+    });
 
     return NextResponse.json({
       message: 'Тимчасовий пароль створено',

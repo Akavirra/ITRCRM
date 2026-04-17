@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
 import { getCoursesWithStats, getCourses, createCourse, searchCourses } from '@/lib/courses';
 import { clearServerCache, getOrSetServerCache } from '@/lib/server-cache';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,58 +78,62 @@ export async function POST(request: NextRequest) {
     const { title, description, age_min, duration_months, program } = body;
 
     if (!title || title.trim().length === 0) {
-      return NextResponse.json(
-        { error: ERROR_MESSAGES.titleRequired },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: ERROR_MESSAGES.titleRequired }, { status: 400 });
     }
 
     if (title.trim().length < 2) {
-      return NextResponse.json(
-        { error: ERROR_MESSAGES.titleMinLength },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: ERROR_MESSAGES.titleMinLength }, { status: 400 });
     }
 
     if (age_min === undefined || age_min === null) {
-      return NextResponse.json(
-        { error: ERROR_MESSAGES.ageMinRequired },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: ERROR_MESSAGES.ageMinRequired }, { status: 400 });
     }
 
     const ageMinValue = Number(age_min);
     if (!validateAgeMin(ageMinValue)) {
-      return NextResponse.json(
-        { error: ERROR_MESSAGES.ageMinInvalid },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: ERROR_MESSAGES.ageMinInvalid }, { status: 400 });
     }
 
     if (duration_months === undefined || duration_months === null) {
-      return NextResponse.json(
-        { error: ERROR_MESSAGES.durationRequired },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: ERROR_MESSAGES.durationRequired }, { status: 400 });
     }
 
     const duration = Number(duration_months);
     if (!validateDurationMonths(duration)) {
-      return NextResponse.json(
-        { error: ERROR_MESSAGES.durationInvalid },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: ERROR_MESSAGES.durationInvalid }, { status: 400 });
     }
 
+    const trimmedTitle = title.trim();
+    const trimmedDescription = description?.trim();
+    const trimmedProgram = program?.trim();
+
     const result = await createCourse(
-      title.trim(),
-      description?.trim(),
+      trimmedTitle,
+      trimmedDescription,
       ageMinValue,
       duration,
-      program?.trim()
+      trimmedProgram
     );
 
     clearServerCache('courses:');
+    await safeAddAuditEvent({
+      entityType: 'course',
+      entityId: result.id,
+      entityPublicId: result.public_id,
+      entityTitle: trimmedTitle,
+      eventType: 'course_created',
+      eventBadge: toAuditBadge('course_created'),
+      description: `Створено курс "${trimmedTitle}"`,
+      userId: user.id,
+      userName: user.name,
+      courseId: result.id,
+      metadata: {
+        description: trimmedDescription || null,
+        ageMin: ageMinValue,
+        durationMonths: duration,
+        hasProgram: Boolean(trimmedProgram),
+      },
+    });
 
     return NextResponse.json({
       id: result.id,
@@ -137,9 +142,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Create course error:', error);
-    return NextResponse.json(
-      { error: ERROR_MESSAGES.createFailed },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: ERROR_MESSAGES.createFailed }, { status: 500 });
   }
 }

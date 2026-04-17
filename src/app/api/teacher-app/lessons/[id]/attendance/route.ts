@@ -277,12 +277,25 @@ export async function POST(
     const cancelled = await checkAndAutoCancelLesson(lessonId, teacher.id, teacher.name, 'telegram', telegramId);
 
     if (!cancelled) {
+      // For group lessons, total = group roster members + trial visitors on this lesson (de-duped)
       const counts = await queryOne(
         `SELECT
           CASE
             WHEN (SELECT group_id FROM lessons WHERE id = $1) IS NULL
             THEN (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1)
-            ELSE (SELECT COUNT(*) FROM student_groups WHERE group_id = (SELECT group_id FROM lessons WHERE id = $1) AND is_active = TRUE)
+            ELSE (
+              SELECT COUNT(*) FROM (
+                SELECT sg.student_id
+                FROM student_groups sg
+                WHERE sg.group_id = (SELECT group_id FROM lessons WHERE id = $1)
+                  AND sg.is_active = TRUE
+                UNION
+                SELECT a.student_id
+                FROM attendance a
+                WHERE a.lesson_id = $1
+                  AND COALESCE(a.is_trial, FALSE) = TRUE
+              ) AS roster
+            )
           END as total,
           (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
         [lessonId]
@@ -302,17 +315,20 @@ export async function POST(
         );
         await safeCreateLessonDoneNotification(lessonId, teacher.name);
 
-        // Deduct from individual balance for individual lessons
+        // Deduct from individual balance for individual lessons — skip trial lessons and trial visitors
         const lessonForBalance = await queryOne(
-          `SELECT group_id FROM lessons WHERE id = $1`,
+          `SELECT group_id, COALESCE(is_trial, FALSE) AS is_trial FROM lessons WHERE id = $1`,
           [lessonId]
-        ) as { group_id: number | null } | null;
-        if (lessonForBalance && lessonForBalance.group_id === null) {
+        ) as { group_id: number | null; is_trial: boolean } | null;
+        if (lessonForBalance && lessonForBalance.group_id === null && !lessonForBalance.is_trial) {
           const presentRows = await query(
-            `SELECT student_id FROM attendance WHERE lesson_id = $1 AND status = 'present'`,
+            `SELECT student_id FROM attendance
+             WHERE lesson_id = $1
+               AND status = 'present'
+               AND COALESCE(is_trial, FALSE) = FALSE`,
             [lessonId]
-          );
-          for (const ps of presentRows.rows) {
+          ) as Array<{ student_id: number }>;
+          for (const ps of (presentRows || [])) {
             await useIndividualLesson(ps.student_id);
           }
         }

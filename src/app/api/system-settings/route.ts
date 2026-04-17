@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, forbidden } from '@/lib/api-utils';
 import { all, run } from '@/db';
 import { clearServerCache, getOrSetServerCache } from '@/lib/server-cache';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,9 @@ export async function PUT(request: NextRequest) {
   if (user.role !== 'admin') return forbidden();
 
   let body: Record<string, string>;
-  try { body = await request.json(); } catch {
+  try {
+    body = await request.json();
+  } catch {
     return NextResponse.json({ error: 'Невірний формат' }, { status: 400 });
   }
 
@@ -51,6 +54,13 @@ export async function PUT(request: NextRequest) {
     'individual_lesson_price',
     'assistant_widget_enabled',
   ];
+
+  const beforeRows = await all<{ key: string; value: string }>(
+    `SELECT key, value FROM system_settings WHERE key = ANY($1::text[])`,
+    [allowed]
+  );
+  const before = Object.fromEntries(beforeRows.map((row) => [row.key, row.value]));
+
   for (const key of allowed) {
     if (key in body) {
       if (key === 'assistant_widget_enabled') {
@@ -65,6 +75,7 @@ export async function PUT(request: NextRequest) {
         );
         continue;
       }
+
       const val = parseFloat(body[key]);
       if (isNaN(val) || val < 0) {
         return NextResponse.json({ error: `Невірне значення для ${key}` }, { status: 400 });
@@ -78,6 +89,19 @@ export async function PUT(request: NextRequest) {
   }
 
   clearServerCache('system-settings:');
+  await safeAddAuditEvent({
+    entityType: 'system',
+    entityTitle: 'Системні налаштування',
+    eventType: 'system_settings_updated',
+    eventBadge: toAuditBadge('system_settings_updated'),
+    description: 'Оновлено системні налаштування',
+    userId: user.id,
+    userName: user.name,
+    metadata: {
+      before,
+      changed: Object.fromEntries(Object.entries(body).filter(([key]) => allowed.includes(key))),
+    },
+  });
 
   return NextResponse.json({ success: true });
 }

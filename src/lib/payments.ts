@@ -311,7 +311,7 @@ export async function getPaymentsForExport(
 
 // Payment status for a specific lesson (per student)
 export interface LessonPaymentInfo {
-  status: 'paid' | 'partial' | 'unpaid';
+  status: 'paid' | 'partial' | 'unpaid' | 'trial';
   label: string;
 }
 
@@ -320,13 +320,25 @@ export async function getPaymentStatusForLesson(
 ): Promise<Map<number, LessonPaymentInfo>> {
   const result = new Map<number, LessonPaymentInfo>();
 
-  const lesson = await get<{ group_id: number | null; month_str: string }>(
-    `SELECT group_id, TO_CHAR(lesson_date, 'YYYY-MM') as month_str FROM lessons WHERE id = $1`,
+  const lesson = await get<{ group_id: number | null; month_str: string; is_trial: boolean }>(
+    `SELECT group_id, TO_CHAR(lesson_date, 'YYYY-MM') as month_str,
+            COALESCE(is_trial, FALSE) as is_trial
+     FROM lessons WHERE id = $1`,
     [lessonId]
   );
   if (!lesson) return result;
 
   const lessonPrice = await getLessonPrice();
+
+  // Trial visitors on this lesson are ALWAYS free for the student, regardless
+  // of the lesson type. We load them up-front so we can override payment
+  // status for them below.
+  const trialVisitors = await all<{ student_id: number }>(
+    `SELECT student_id FROM attendance
+     WHERE lesson_id = $1 AND is_trial = TRUE`,
+    [lessonId]
+  );
+  const trialVisitorIds = new Set(trialVisitors.map(r => r.student_id));
 
   if (lesson.group_id) {
     // Group lesson: check monthly payment status per student
@@ -368,21 +380,34 @@ export async function getPaymentStatusForLesson(
       }
       result.set(row.student_id, { status, label });
     }
+
+    // Override for trial visitors (they are free regardless of group membership)
+    for (const studentId of Array.from(trialVisitorIds)) {
+      result.set(studentId, { status: 'trial', label: 'Пробне (безкоштовно)' });
+    }
   } else {
-    // Individual lesson: check balance for each student in the attendance list
+    // Individual lesson: check balance for each student in the attendance list.
+    // Any student marked as trial (either at lesson level via lessons.is_trial,
+    // or individually via attendance.is_trial) is free.
     const attendanceStudents = await all<{
       student_id: number;
       lessons_paid: number | null;
       lessons_used: number | null;
+      att_is_trial: boolean;
     }>(
-      `SELECT a.student_id, ib.lessons_paid, ib.lessons_used
+      `SELECT a.student_id, ib.lessons_paid, ib.lessons_used,
+              COALESCE(a.is_trial, FALSE) as att_is_trial
        FROM attendance a
        LEFT JOIN individual_balances ib ON ib.student_id = a.student_id
        WHERE a.lesson_id = $1`,
       [lessonId]
     );
 
-    for (const { student_id, lessons_paid, lessons_used } of attendanceStudents) {
+    for (const { student_id, lessons_paid, lessons_used, att_is_trial } of attendanceStudents) {
+      if (lesson.is_trial || att_is_trial) {
+        result.set(student_id, { status: 'trial', label: 'Пробне (безкоштовно)' });
+        continue;
+      }
       const remaining = (lessons_paid || 0) - (lessons_used || 0);
       if (remaining > 0) {
         result.set(student_id, { status: 'paid', label: 'Оплачено' });

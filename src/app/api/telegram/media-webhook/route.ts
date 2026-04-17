@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
 import { get, run, all } from '@/db';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 import {
   getOrCreateTopicFolder,
   uploadFileToDrive,
@@ -18,7 +19,6 @@ function verifySecret(request: NextRequest): boolean {
   const secret = request.headers.get('x-telegram-bot-api-secret-token');
   const expected = process.env.MEDIA_BOT_SECRET;
   if (!expected || !secret) return false;
-  // Constant-time comparison
   const expectedBuf = Buffer.from(expected);
   const secretBuf = Buffer.from(secret);
   if (expectedBuf.length !== secretBuf.length) return false;
@@ -133,7 +133,6 @@ async function downloadFromTelegram(fileId: string): Promise<{ buffer: Buffer; f
   if (!info.ok) throw new Error(`Telegram getFile error: ${info.description}`);
 
   const filePath: string = info.result.file_path;
-  // Extract actual filename from Telegram's file path (e.g. "photos/file_abc123.jpg" → "file_abc123.jpg")
   const telegramFileName = filePath.split('/').pop() ?? filePath;
 
   const fileRes = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
@@ -167,18 +166,42 @@ async function handleTopicCreated(msg: TelegramMessage, name: string): Promise<v
     [threadId]
   );
   if (existing) {
-    // Update name and Drive folder name
     const driveFolderId = await getOrCreateTopicFolder(name);
     await run(
       'UPDATE media_topics SET name = $1, drive_folder_id = $2 WHERE thread_id = $3',
       [name, driveFolderId, threadId]
     );
+    await safeAddAuditEvent({
+      entityType: 'media',
+      entityId: existing.id,
+      entityTitle: name,
+      eventType: 'media_topic_synced',
+      eventBadge: toAuditBadge('media_topic_synced'),
+      description: `Синхронізовано медіа-топік "${name}" з Telegram`,
+      userName: 'Telegram media bot',
+      metadata: {
+        threadId,
+      },
+    });
   } else {
     const driveFolderId = await getOrCreateTopicFolder(name);
-    await run(
-      'INSERT INTO media_topics (thread_id, name, drive_folder_id) VALUES ($1, $2, $3)',
+    const created = await get<{ id: number }>(
+      'INSERT INTO media_topics (thread_id, name, drive_folder_id) VALUES ($1, $2, $3) RETURNING id',
       [threadId, name, driveFolderId]
     );
+    await safeAddAuditEvent({
+      entityType: 'media',
+      entityId: created?.id,
+      entityTitle: name,
+      eventType: 'media_topic_created',
+      eventBadge: toAuditBadge('media_topic_created'),
+      description: `Створено медіа-топік "${name}"`,
+      userName: 'Telegram media bot',
+      metadata: {
+        threadId,
+        driveFolderId,
+      },
+    });
   }
   console.log(`[media-webhook] Topic ${threadId} registered/updated: "${name}"`);
 }
@@ -193,12 +216,24 @@ async function handleTopicEdited(msg: TelegramMessage, name: string): Promise<vo
   );
   if (!existing) return;
 
-  // Create new Drive folder with updated name, keep old files where they are
   const driveFolderId = await getOrCreateTopicFolder(name);
   await run(
     'UPDATE media_topics SET name = $1, drive_folder_id = $2 WHERE thread_id = $3',
     [name, driveFolderId, threadId]
   );
+  await safeAddAuditEvent({
+    entityType: 'media',
+    entityId: existing.id,
+    entityTitle: name,
+    eventType: 'media_topic_renamed',
+    eventBadge: toAuditBadge('media_topic_renamed'),
+    description: `Telegram перейменував медіа-топік на "${name}"`,
+    userName: 'Telegram media bot',
+    metadata: {
+      threadId,
+      driveFolderId,
+    },
+  });
   console.log(`[media-webhook] Topic ${threadId} renamed to: "${name}"`);
 }
 
@@ -217,59 +252,53 @@ export async function POST(request: NextRequest) {
   const msg = update.message;
   if (!msg) return NextResponse.json({ ok: true });
 
-  // Only process messages from the school group
   const groupId = process.env.TELEGRAM_SCHOOL_GROUP_ID;
   if (groupId && String(msg.chat.id) !== groupId) {
     return NextResponse.json({ ok: true });
   }
 
-  // Handle topic created/edited service messages
   if (msg.forum_topic_created?.name) {
-    try { await handleTopicCreated(msg, msg.forum_topic_created.name); } catch (err) {
+    try {
+      await handleTopicCreated(msg, msg.forum_topic_created.name);
+    } catch (err) {
       console.error('[media-webhook] Error handling topic_created:', err);
     }
     return NextResponse.json({ ok: true });
   }
   if (msg.forum_topic_edited?.name) {
-    try { await handleTopicEdited(msg, msg.forum_topic_edited.name); } catch (err) {
+    try {
+      await handleTopicEdited(msg, msg.forum_topic_edited.name);
+    } catch (err) {
       console.error('[media-webhook] Error handling topic_edited:', err);
     }
     return NextResponse.json({ ok: true });
   }
 
-  // Only process messages in a thread (topic)
   if (!msg.message_thread_id) return NextResponse.json({ ok: true });
 
   const media = extractMedia(msg);
   if (!media) return NextResponse.json({ ok: true });
 
-  // Ignore files > 20MB (Telegram Bot API limit)
   if (media.fileSize > 20 * 1024 * 1024) {
     console.warn(`File too large (${media.fileSize} bytes), skipping`);
     return NextResponse.json({ ok: true });
   }
 
   try {
-    // Use thread_id as topic identifier; name will be updated when admin configures it
     const topicName = `Топік ${msg.message_thread_id}`;
     const topicId = await getOrCreateTopic(msg.message_thread_id, topicName);
 
-    // Get Drive folder for this topic
-    const topic = await get<{ drive_folder_id: string }>(
-      'SELECT drive_folder_id FROM media_topics WHERE id = $1',
+    const topic = await get<{ drive_folder_id: string; name: string }>(
+      'SELECT drive_folder_id, name FROM media_topics WHERE id = $1',
       [topicId]
     );
     if (!topic) throw new Error('Topic not found after creation');
 
-    // Download from Telegram
     const { buffer, telegramFileName } = await downloadFromTelegram(media.fileId);
-
-    // For photos/voice (no original name), use Telegram's server filename
     const fileName = (media.type === 'photo' || media.type === 'voice')
       ? telegramFileName
       : media.fileName;
 
-    // Upload to Google Drive
     const driveFile = await uploadFileToDrive(
       buffer,
       fileName,
@@ -277,18 +306,17 @@ export async function POST(request: NextRequest) {
       topic.drive_folder_id
     );
 
-    // Make publicly accessible
     await makeFilePublic(driveFile.id);
 
     const uploaderName = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ') || msg.from?.username || null;
 
-    // Save to DB
-    await run(
+    const insertedFile = await get<{ id: number }>(
       `INSERT INTO media_files
         (topic_id, telegram_file_id, telegram_message_id, file_name, file_type, file_size,
          drive_file_id, drive_view_url, drive_download_url, uploaded_by_telegram_id, uploaded_by_name,
          media_width, media_height)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       RETURNING id`,
       [
         topicId,
         media.fileId,
@@ -306,10 +334,27 @@ export async function POST(request: NextRequest) {
       ]
     );
 
+    await safeAddAuditEvent({
+      entityType: 'media',
+      entityId: insertedFile?.id,
+      entityTitle: fileName,
+      eventType: 'media_file_uploaded',
+      eventBadge: toAuditBadge('media_file_uploaded'),
+      description: `Завантажено медіафайл "${fileName}"`,
+      userName: uploaderName || 'Telegram media bot',
+      metadata: {
+        topicId,
+        topicName: topic.name,
+        topicThreadId: msg.message_thread_id,
+        fileType: media.type,
+        fileSize: media.fileSize,
+        driveFileId: driveFile.id,
+      },
+    });
+
     console.log(`[media-webhook] Uploaded ${media.fileName} to Drive (topic ${msg.message_thread_id})`);
   } catch (err) {
     console.error('[media-webhook] Error processing file:', err);
-    // Return 200 so Telegram doesn't retry — log the error but don't crash
   }
 
   return NextResponse.json({ ok: true });

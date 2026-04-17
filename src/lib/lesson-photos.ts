@@ -12,6 +12,7 @@ import {
   deleteDriveFolder,
   getDriveViewUrl,
 } from '@/lib/google-drive';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 const LESSON_PHOTOS_ROOT_NAME = process.env.GOOGLE_DRIVE_LESSON_PHOTOS_ROOT_NAME || 'Фото занять';
 const LESSON_PHOTOS_FALLBACK_TOPIC = 'Без теми';
@@ -161,6 +162,58 @@ async function getLessonPhotoContext(lessonId: number): Promise<LessonPhotoConte
   )) ?? null;
 }
 
+async function addLessonMediaAuditEvent(input: {
+  lessonId: number;
+  eventType: string;
+  description: string;
+  userId?: number | null;
+  userName: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  const lesson = await get<{
+    public_id: string | null;
+    lesson_date: string;
+    group_id: number | null;
+    group_title: string | null;
+  }>(
+    `SELECT
+      l.public_id,
+      l.lesson_date::text as lesson_date,
+      l.group_id,
+      g.title as group_title
+     FROM lessons l
+     LEFT JOIN groups g ON g.id = l.group_id
+     WHERE l.id = $1`,
+    [input.lessonId]
+  );
+
+  if (!lesson) {
+    return;
+  }
+
+  const title = lesson.group_title
+    ? `${lesson.group_title} · ${formatLessonFolderDate(lesson.lesson_date)}`
+    : `Заняття · ${formatLessonFolderDate(lesson.lesson_date)}`;
+
+  await safeAddAuditEvent({
+    entityType: 'lesson',
+    entityId: input.lessonId,
+    entityPublicId: lesson.public_id ?? null,
+    entityTitle: title,
+    eventType: input.eventType,
+    eventBadge: toAuditBadge(input.eventType),
+    description: input.description,
+    userId: input.userId ?? null,
+    userName: input.userName,
+    lessonId: input.lessonId,
+    groupId: lesson.group_id ?? null,
+    metadata: {
+      source: 'lesson_media',
+      ...(input.metadata ?? {}),
+    },
+  });
+}
+
 async function getStoredLessonPhotoFolder(lessonId: number): Promise<LessonPhotoFolderRow | null> {
   return (await get<LessonPhotoFolderRow>(
     `SELECT lesson_id, course_folder_id, group_folder_id, lesson_folder_id, lesson_folder_name, drive_url
@@ -244,6 +297,18 @@ export async function ensureLessonPhotoFolder(lessonId: number): Promise<LessonP
      VALUES ($1, 'photos', $2, $3, $4, $5)`,
     [lessonId, null, `Створено папку: ${lessonFolderName}`, 'System', 'admin']
   );
+
+  await addLessonMediaAuditEvent({
+    lessonId,
+    eventType: 'lesson_media_folder_created',
+    description: `Створено папку медіа «${lessonFolderName}»`,
+    userName: 'System',
+    metadata: {
+      folderId: lessonFolder.id,
+      folderName: lessonFolderName,
+      driveUrl,
+    },
+  });
 
   return {
     id: lessonFolder.id,
@@ -406,6 +471,22 @@ async function registerUploadedDriveFile(input: RegisterLessonDriveFileInput): P
     ]
   );
 
+  await addLessonMediaAuditEvent({
+    lessonId: input.lessonId,
+    eventType: 'lesson_media_uploaded',
+    description: `Завантажено файл «${driveFile.name}»`,
+    userId: input.uploadedBy ?? null,
+    userName: input.uploadedByName ?? 'System',
+    metadata: {
+      fileName: driveFile.name,
+      driveFileId: input.driveFileId,
+      mimeType: input.mimeType,
+      fileSize: input.fileSize,
+      uploadedVia: input.uploadedVia,
+      uploadedByTelegramId: input.uploadedByTelegramId ?? null,
+    },
+  });
+
   return mapPhoto(row!);
 }
 
@@ -452,6 +533,20 @@ export async function deleteLessonPhoto(
     ]
   );
 
+  await addLessonMediaAuditEvent({
+    lessonId: photo.lesson_id,
+    eventType: 'lesson_media_deleted',
+    description: `Видалено файл «${photo.file_name}»`,
+    userId: actor?.id ?? null,
+    userName: actor?.name ?? 'System',
+    metadata: {
+      fileName: photo.file_name,
+      driveFileId: photo.drive_file_id,
+      via: actor?.via ?? 'admin',
+      telegramId: actor?.telegramId ?? null,
+    },
+  });
+
   return true;
 }
 
@@ -495,6 +590,20 @@ export async function deleteLessonPhotoFolder(
       actor?.via ?? 'admin',
     ]
   );
+
+  await addLessonMediaAuditEvent({
+    lessonId,
+    eventType: 'lesson_media_folder_deleted',
+    description: 'Видалено папку медіа заняття',
+    userId: actor?.id ?? null,
+    userName: actor?.name ?? 'System',
+    metadata: {
+      folderName: storedFolder?.lesson_folder_name ?? null,
+      fileCount: storedFiles.length,
+      via: actor?.via ?? 'admin',
+      telegramId: actor?.telegramId ?? null,
+    },
+  });
 
   return true;
 }

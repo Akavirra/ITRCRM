@@ -1,6 +1,8 @@
 import { run, get, all, transaction } from '@/db';
 import { addDays, addMonths, setHours, setMinutes, format, parse, isAfter, isBefore, startOfDay, endOfMonth } from 'date-fns';
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
+import { formatShortDateKyiv } from '@/lib/date-utils';
 import { deleteLessonPhotoFolder } from '@/lib/lesson-photos';
 
 // Character set for generating random alphanumeric strings (uppercase only)
@@ -381,10 +383,22 @@ export async function checkAndAutoCancelLesson(
 
   if (!lesson || lesson.status !== 'scheduled') return false;
 
+  // For group lessons: total = regular roster size + trial visitors attached
+  // via attendance.is_trial = TRUE. Trial visitors should count toward the
+  // auto-cancel threshold just like regular students.
   const counts = lesson.group_id !== null
     ? await get<{ total: number; absent: number; recorded: number }>(
         `SELECT
-          (SELECT COUNT(*) FROM student_groups WHERE group_id = $2 AND is_active = TRUE) as total,
+          (
+            (SELECT COUNT(*) FROM student_groups WHERE group_id = $2 AND is_active = TRUE)
+            +
+            (SELECT COUNT(*) FROM attendance a
+              WHERE a.lesson_id = $1 AND a.is_trial = TRUE
+                AND a.student_id NOT IN (
+                  SELECT student_id FROM student_groups
+                  WHERE group_id = $2 AND is_active = TRUE
+                ))
+          ) as total,
           (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IN ('absent', 'makeup_planned')) as absent,
           (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
         [lessonId, lesson.group_id]
@@ -446,6 +460,71 @@ export async function logLessonChange(
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [lessonId, fieldName, oldValue || null, newValue || null, changedBy, changedByName, changedByTelegramId, changedVia]
   );
+
+  try {
+    const lesson = await get<{
+      public_id: string | null;
+      lesson_date: string;
+      group_id: number | null;
+      group_title: string | null;
+      group_public_id: string | null;
+      course_title: string | null;
+    }>(
+      `SELECT
+        l.public_id,
+        l.lesson_date::text as lesson_date,
+        l.group_id,
+        g.title as group_title,
+        g.public_id as group_public_id,
+        c.title as course_title
+       FROM lessons l
+       LEFT JOIN groups g ON l.group_id = g.id
+       LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
+       WHERE l.id = $1`,
+      [lessonId]
+    );
+
+    if (lesson) {
+      const lessonDateLabel = formatShortDateKyiv(lesson.lesson_date);
+      const entityTitle = lesson.group_title
+        ? `${lesson.group_title} · ${lessonDateLabel}`
+        : `Індивідуальне заняття · ${lessonDateLabel}`;
+      const eventType = `lesson_${fieldName}_updated`;
+      const description = fieldName === 'topic'
+        ? `Оновлено тему заняття${newValue ? `: ${newValue}` : ''}`
+        : fieldName === 'notes'
+          ? 'Оновлено нотатки заняття'
+          : fieldName === 'photos'
+            ? 'Оновлено фото заняття'
+            : newValue || 'Оновлено відвідуваність заняття';
+
+      await safeAddAuditEvent({
+        entityType: 'lesson',
+        entityId: lessonId,
+        entityPublicId: lesson.public_id ?? null,
+        entityTitle,
+        eventType,
+        eventBadge: toAuditBadge(fieldName),
+        description,
+        userId: changedBy ?? null,
+        userName: changedByName || (changedVia === 'telegram' ? 'Telegram' : 'Система'),
+        groupId: lesson.group_id ?? null,
+        lessonId,
+        metadata: {
+          source: 'lesson_change_logs',
+          fieldName,
+          oldValue: oldValue ?? null,
+          newValue: newValue ?? null,
+          changedVia,
+          changedByTelegramId: changedByTelegramId ?? null,
+          groupPublicId: lesson.group_public_id ?? null,
+          courseTitle: lesson.course_title ?? null,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('[lessons] Failed to mirror audit event:', error);
+  }
 }
 
 // Get lesson change history

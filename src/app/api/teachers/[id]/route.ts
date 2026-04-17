@@ -4,6 +4,7 @@ import { get, all, run } from '@/db';
 import { verifyPassword } from '@/lib/auth';
 import { uploadImage, deleteImage, getPublicIdFromUrl } from '@/lib/cloudinary';
 import { clearServerCache } from '@/lib/server-cache';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,8 +89,19 @@ export async function PUT(
       return badRequest("Ім'я та email обов'язкові");
     }
 
-    const existingTeacher = await get<{ id: number; public_id: string | null }>(
-      `SELECT id, public_id FROM users WHERE id = $1 AND role = 'teacher'`,
+    const existingTeacher = await get<{
+      id: number;
+      public_id: string | null;
+      name: string;
+      email: string;
+      phone: string | null;
+      telegram_id: string | null;
+      notes: string | null;
+      photo_url: string | null;
+    }>(
+      `SELECT id, public_id, name, email, phone, telegram_id, notes, photo_url
+       FROM users
+       WHERE id = $1 AND role = 'teacher'`,
       [params.id]
     );
 
@@ -99,13 +111,8 @@ export async function PUT(
 
     let photoUrl: string | null | undefined = undefined;
     if (photo && photo.startsWith('data:')) {
-      const existingTeacherWithPhoto = await get<{ photo_url: string | null }>(
-        `SELECT photo_url FROM users WHERE id = $1 AND role = 'teacher'`,
-        [params.id]
-      );
-
-      if (existingTeacherWithPhoto?.photo_url?.startsWith('https://')) {
-        const oldPublicId = getPublicIdFromUrl(existingTeacherWithPhoto.photo_url);
+      if (existingTeacher.photo_url?.startsWith('https://')) {
+        const oldPublicId = getPublicIdFromUrl(existingTeacher.photo_url);
         if (oldPublicId) {
           await deleteImage(oldPublicId);
         }
@@ -114,13 +121,8 @@ export async function PUT(
       const uploadResult = await uploadImage(photo, 'teachers');
       photoUrl = uploadResult.url;
     } else if (photo === null) {
-      const existingTeacherWithPhoto = await get<{ photo_url: string | null }>(
-        `SELECT photo_url FROM users WHERE id = $1 AND role = 'teacher'`,
-        [params.id]
-      );
-
-      if (existingTeacherWithPhoto?.photo_url?.startsWith('https://')) {
-        const oldPublicId = getPublicIdFromUrl(existingTeacherWithPhoto.photo_url);
+      if (existingTeacher.photo_url?.startsWith('https://')) {
+        const oldPublicId = getPublicIdFromUrl(existingTeacher.photo_url);
         if (oldPublicId) {
           await deleteImage(oldPublicId);
         }
@@ -131,9 +133,21 @@ export async function PUT(
       photoUrl = photo;
     }
 
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+    const normalizedPhone = phone || null;
+    const normalizedTelegramId = telegram_id || null;
+    const normalizedNotes = notes || null;
+
     let updateQuery = `UPDATE users
      SET name = $1, email = $2, phone = $3, telegram_id = $4, notes = $5, updated_at = NOW()`;
-    const updateParams: (string | number | null)[] = [name.trim(), email.trim().toLowerCase(), phone || null, telegram_id || null, notes || null];
+    const updateParams: (string | number | null)[] = [
+      trimmedName,
+      trimmedEmail,
+      normalizedPhone,
+      normalizedTelegramId,
+      normalizedNotes,
+    ];
 
     if (photoUrl !== undefined) {
       updateQuery += `, photo_url = $${updateParams.length + 1}`;
@@ -145,6 +159,36 @@ export async function PUT(
 
     await run(updateQuery, updateParams);
     clearServerCache('teachers:');
+
+    await safeAddAuditEvent({
+      entityType: 'teacher',
+      entityId: existingTeacher.id,
+      entityPublicId: existingTeacher.public_id,
+      entityTitle: trimmedName,
+      eventType: 'teacher_updated',
+      eventBadge: toAuditBadge('teacher_updated'),
+      description: `Оновлено дані викладача ${trimmedName}`,
+      userId: user.id,
+      userName: user.name,
+      metadata: {
+        previous: {
+          name: existingTeacher.name,
+          email: existingTeacher.email,
+          phone: existingTeacher.phone,
+          telegramId: existingTeacher.telegram_id,
+          notes: existingTeacher.notes,
+          photoUrl: existingTeacher.photo_url,
+        },
+        next: {
+          name: trimmedName,
+          email: trimmedEmail,
+          phone: normalizedPhone,
+          telegramId: normalizedTelegramId,
+          notes: normalizedNotes,
+          photoUrl: photoUrl === undefined ? existingTeacher.photo_url : photoUrl,
+        },
+      },
+    });
 
     return NextResponse.json({ success: true, message: 'Дані викладача оновлено' });
   } catch (error: any) {
@@ -169,6 +213,14 @@ export async function DELETE(
     return forbidden();
   }
 
+  const teacherRecord = await get<{ id: number; public_id: string | null; name: string; is_active: boolean }>(
+    `SELECT id, public_id, name, is_active FROM users WHERE id = $1 AND role = 'teacher'`,
+    [params.id]
+  );
+  if (!teacherRecord) {
+    return notFound(ERROR_MESSAGES.teacherNotFound);
+  }
+
   const { searchParams } = new URL(request.url);
   const checkOnly = searchParams.get('check') === 'true';
   const permanent = searchParams.get('permanent') === 'true';
@@ -179,12 +231,12 @@ export async function DELETE(
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json({ error: 'Пароль обов\'язковий' }, { status: 400 });
+      return NextResponse.json({ error: "Пароль обов'язковий" }, { status: 400 });
     }
 
     const { password } = body;
     if (!password) {
-      return NextResponse.json({ error: 'Пароль обов\'язковий' }, { status: 400 });
+      return NextResponse.json({ error: "Пароль обов'язковий" }, { status: 400 });
     }
 
     const userWithPassword = await get<{ password_hash: string }>(
@@ -201,11 +253,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Невірний пароль' }, { status: 401 });
     }
 
-    const activeGroups = await all<{
-      id: number;
-      title: string;
-      course_title: string;
-    }>(
+    const activeGroups = await all<{ id: number; title: string; course_title: string }>(
       `SELECT g.id, g.title, c.title as course_title
        FROM groups g
        LEFT JOIN courses c ON g.course_id = c.id
@@ -217,9 +265,24 @@ export async function DELETE(
     await run(`DELETE FROM users WHERE id = $1 AND role = 'teacher'`, [params.id]);
     clearServerCache('teachers:');
 
+    await safeAddAuditEvent({
+      entityType: 'teacher',
+      entityId: teacherRecord.id,
+      entityPublicId: teacherRecord.public_id,
+      entityTitle: teacherRecord.name,
+      eventType: 'teacher_deleted',
+      eventBadge: toAuditBadge('teacher_deleted'),
+      description: `Викладача ${teacherRecord.name} остаточно видалено`,
+      userId: user.id,
+      userName: user.name,
+      metadata: {
+        deletedGroups: activeGroups.length,
+      },
+    });
+
     return NextResponse.json({
       message: 'Викладача остаточно видалено',
-      deletedGroups: activeGroups.length
+      deletedGroups: activeGroups.length,
     });
   }
 
@@ -248,8 +311,8 @@ export async function DELETE(
           id: g.id,
           title: g.title,
           course_title: g.course_title,
-          schedule: `${g.weekly_day}, ${g.start_time}`
-        }))
+          schedule: `${g.weekly_day}, ${g.start_time}`,
+        })),
       }, { status: 409 });
     }
     return NextResponse.json({ canDelete: true });
@@ -262,32 +325,39 @@ export async function DELETE(
       groups: activeGroups.map(g => ({
         id: g.id,
         title: g.title,
-        course_title: g.course_title
-      }))
+        course_title: g.course_title,
+      })),
     }, { status: 409 });
-  }
-
-  const teacher = await get<{ is_active: boolean }>(
-    `SELECT is_active FROM users WHERE id = $1 AND role = 'teacher'`,
-    [params.id]
-  );
-
-  if (!teacher) {
-    return notFound(ERROR_MESSAGES.teacherNotFound);
-  }
-
-  if (permanent && teacher.is_active === true) {
-    await run(`UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1`, [params.id]);
-    clearServerCache('teachers:');
-    return NextResponse.json({
-      success: true,
-      message: 'Викладача деактивовано. Тепер можна видалити остаточно.',
-      deactivated: true
-    });
   }
 
   await run(`UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1`, [params.id]);
   clearServerCache('teachers:');
+
+  await safeAddAuditEvent({
+    entityType: 'teacher',
+    entityId: teacherRecord.id,
+    entityPublicId: teacherRecord.public_id,
+    entityTitle: teacherRecord.name,
+    eventType: 'teacher_deactivated',
+    eventBadge: toAuditBadge('teacher_deactivated'),
+    description: permanent && teacherRecord.is_active
+      ? `Викладача ${teacherRecord.name} деактивовано перед остаточним видаленням`
+      : `Викладача ${teacherRecord.name} деактивовано`,
+    userId: user.id,
+    userName: user.name,
+    metadata: {
+      permanent,
+      activeGroups: activeGroups.length,
+    },
+  });
+
+  if (permanent && teacherRecord.is_active) {
+    return NextResponse.json({
+      success: true,
+      message: 'Викладача деактивовано. Тепер можна видалити остаточно.',
+      deactivated: true,
+    });
+  }
 
   return NextResponse.json({ success: true, message: 'Викладача деактивовано' });
 }

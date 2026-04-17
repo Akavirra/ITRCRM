@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, badRequest, notFound } from '@/lib/api-utils';
 import { closeEnrollmentToken, getEnrollmentTokenById } from '@/lib/enrollment';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,5 +26,20 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 
   await closeEnrollmentToken(tokenId);
+  await safeAddAuditEvent({
+    entityType: 'enrollment',
+    entityId: token.id,
+    entityTitle: `Токен анкети #${token.id}`,
+    eventType: 'enrollment_token_closed',
+    eventBadge: toAuditBadge('enrollment_token_closed'),
+    description: 'Токен анкети закрито вручну',
+    userId: user.id,
+    userName: user.name,
+    metadata: {
+      tokenId: token.id,
+      expiresAt: token.expires_at,
+    },
+  });
+
   return NextResponse.json({ success: true });
 }

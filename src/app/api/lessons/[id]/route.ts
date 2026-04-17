@@ -22,6 +22,7 @@ interface Lesson {
   notes: string | null;
   status: string;
   is_makeup: boolean;
+  is_trial: boolean | null;
   created_by: number;
   topic_set_by: number | null;
   topic_set_at: string | null;
@@ -313,10 +314,14 @@ export async function PATCH(
             user.id,
             user.name
           );
-        } else {
+        } else if (!lesson.is_trial) {
           // Individual lesson: deduct from balance for each present student
+          // Skip the whole lesson when it's a trial lesson, and skip any trial visitors on paid lessons.
           const presentStudents = await all<{ student_id: number }>(
-            `SELECT student_id FROM attendance WHERE lesson_id = $1 AND status = 'present'`,
+            `SELECT student_id FROM attendance
+             WHERE lesson_id = $1
+               AND status = 'present'
+               AND COALESCE(is_trial, FALSE) = FALSE`,
             [lessonId]
           );
           for (const ps of presentStudents) {

@@ -6,6 +6,7 @@ import {
   type ManualLessonSlot,
 } from '@/lib/lessons';
 import { get, run } from '@/db';
+import { safeAddStudentHistoryEntry, formatTrialScheduledDescription } from '@/lib/student-history';
 
 export const dynamic = 'force-dynamic';
 
@@ -271,6 +272,29 @@ export async function POST(request: NextRequest) {
            ON CONFLICT (lesson_id, student_id) DO NOTHING`,
           params
         );
+      }
+    }
+
+    if (isTrial && uniqueStudentIds.length > 0) {
+      let groupTitle: string | null = null;
+      if (groupId) {
+        const group = await get<{ title: string }>(
+          `SELECT title FROM groups WHERE id = $1`,
+          [groupId]
+        );
+        groupTitle = group?.title ?? null;
+      }
+
+      for (const lesson of lessons) {
+        for (const studentId of uniqueStudentIds) {
+          await safeAddStudentHistoryEntry(
+            studentId,
+            'trial_lesson_scheduled',
+            formatTrialScheduledDescription(lesson.lessonDate, groupTitle, null),
+            user.id,
+            user.name
+          );
+        }
       }
     }
 

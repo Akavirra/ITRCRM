@@ -160,8 +160,8 @@ export async function POST(
           }
         }
 
-        const lessonInfo = await get<{ group_id: number | null; status: string; lesson_date: string; topic: string }>(
-          `SELECT group_id, status, lesson_date, topic FROM lessons WHERE id = $1`,
+        const lessonInfo = await get<{ group_id: number | null; status: string; lesson_date: string; topic: string | null; is_trial: boolean }>(
+          `SELECT group_id, status, lesson_date, topic, COALESCE(is_trial, FALSE) as is_trial FROM lessons WHERE id = $1`,
           [lessonId]
         );
 
@@ -170,9 +170,20 @@ export async function POST(
           const cancelled = await checkAndAutoCancelLesson(lessonId, user.id, user.name, 'admin');
 
           if (!cancelled && lessonInfo.group_id !== null) {
+            // Total includes regular group roster PLUS trial visitors that were
+            // attached to this specific lesson.
             const counts = await get<{ total: number; recorded: number }>(
               `SELECT
-                (SELECT COUNT(*) FROM student_groups WHERE group_id = $2 AND is_active = TRUE) as total,
+                (
+                  (SELECT COUNT(*) FROM student_groups WHERE group_id = $2 AND is_active = TRUE)
+                  +
+                  (SELECT COUNT(*) FROM attendance a
+                   WHERE a.lesson_id = $1 AND a.is_trial = TRUE
+                     AND a.student_id NOT IN (
+                       SELECT student_id FROM student_groups
+                       WHERE group_id = $2 AND is_active = TRUE
+                     ))
+                ) as total,
                 (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
               [lessonId, lessonInfo.group_id]
             );
@@ -204,13 +215,19 @@ export async function POST(
             if (indCounts && indCounts.total > 0 && indCounts.recorded >= indCounts.total) {
               await run(`UPDATE lessons SET status = 'done', updated_at = NOW() WHERE id = $1`, [lessonId]);
 
-              // Deduct from individual balance for each present student
-              const presentStudents = await all<{ student_id: number }>(
-                `SELECT student_id FROM attendance WHERE lesson_id = $1 AND status = 'present'`,
-                [lessonId]
-              );
-              for (const ps of presentStudents) {
-                await useIndividualLesson(ps.student_id);
+              // Deduct from individual balance for each present student,
+              // except when the lesson is a trial (free) or the individual
+              // student is attending as a trial.
+              if (!lessonInfo.is_trial) {
+                const presentStudents = await all<{ student_id: number }>(
+                  `SELECT student_id FROM attendance
+                   WHERE lesson_id = $1 AND status = 'present'
+                     AND COALESCE(is_trial, FALSE) = FALSE`,
+                  [lessonId]
+                );
+                for (const ps of presentStudents) {
+                  await useIndividualLesson(ps.student_id);
+                }
               }
             }
           }
@@ -218,12 +235,19 @@ export async function POST(
 
         // Log student history entry for attendance
         if (lessonInfo && studentId) {
+          const attendanceInfo = await get<{ is_trial: boolean }>(
+            `SELECT COALESCE(is_trial, FALSE) as is_trial
+             FROM attendance
+             WHERE lesson_id = $1 AND student_id = $2`,
+            [lessonId, parseInt(studentId)]
+          );
+          const isTrialAttendance = lessonInfo.is_trial || !!attendanceInfo?.is_trial;
           let historyActionType: StudentHistoryActionType;
-          if (status === 'present') historyActionType = 'lesson_attended';
-          else if (status === 'absent') historyActionType = 'lesson_missed';
+          if (status === 'present') historyActionType = isTrialAttendance ? 'trial_lesson_attended' : 'lesson_attended';
+          else if (status === 'absent') historyActionType = isTrialAttendance ? 'trial_lesson_missed' : 'lesson_missed';
           else if (status === 'makeup_planned') historyActionType = 'lesson_makeup_planned';
           else if (status === 'makeup_done') historyActionType = 'lesson_makeup_done';
-          else historyActionType = 'lesson_attended';
+          else historyActionType = isTrialAttendance ? 'trial_lesson_attended' : 'lesson_attended';
 
           let groupTitle: string | null = null;
           if (lessonInfo.group_id) {
@@ -232,7 +256,7 @@ export async function POST(
           }
 
           const isIndividual = lessonInfo.group_id === null;
-          const description = formatAttendanceDescription(status, lessonInfo.lesson_date, groupTitle, lessonInfo.topic, isIndividual);
+          const description = formatAttendanceDescription(status, lessonInfo.lesson_date, groupTitle, lessonInfo.topic, isIndividual, isTrialAttendance);
 
           await safeAddStudentHistoryEntry(parseInt(studentId), historyActionType, description, user.id, user.name);
         }
@@ -270,7 +294,16 @@ export async function POST(
             if (!cancelled && setAllLessonInfo.group_id !== null) {
               const counts = await get<{ total: number; recorded: number }>(
                 `SELECT
-                  (SELECT COUNT(*) FROM student_groups WHERE group_id = $2 AND is_active = TRUE) as total,
+                  (
+                    (SELECT COUNT(*) FROM student_groups WHERE group_id = $2 AND is_active = TRUE)
+                    +
+                    (SELECT COUNT(*) FROM attendance a
+                     WHERE a.lesson_id = $1 AND a.is_trial = TRUE
+                       AND a.student_id NOT IN (
+                         SELECT student_id FROM student_groups
+                         WHERE group_id = $2 AND is_active = TRUE
+                       ))
+                  ) as total,
                   (SELECT COUNT(*) FROM attendance WHERE lesson_id = $1 AND status IS NOT NULL) as recorded`,
                 [lessonId, setAllLessonInfo.group_id]
               );
@@ -331,12 +364,12 @@ export async function POST(
           user.name,
           'admin'
         );
-        
-        return NextResponse.json({ 
-          message: 'Відвідуваність успішно скопійована',
-          copied: result.copied 
+
+        return NextResponse.json({
+          message: `Скопійовано ${result.copied} записів`,
+          copied: result.copied,
         });
-        
+
       default:
         return NextResponse.json(
           { error: ERROR_MESSAGES.invalidAction },

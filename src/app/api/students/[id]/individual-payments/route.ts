@@ -7,6 +7,8 @@ import {
   deleteIndividualPayment,
   calculateIndividualAmount,
 } from '@/lib/individual-payments';
+import { get } from '@/db';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,6 +72,33 @@ export async function POST(
       paid_at
     );
 
+    const student = await get<{ full_name: string; public_id: string | null }>(
+      `SELECT full_name, public_id FROM students WHERE id = $1`,
+      [studentId]
+    );
+
+    if (student) {
+      await safeAddAuditEvent({
+        entityType: 'individual_payment',
+        entityId: paymentId,
+        entityTitle: student.full_name,
+        entityPublicId: student.public_id ?? null,
+        eventType: 'individual_payment_created',
+        eventBadge: toAuditBadge('individual_payment_created'),
+        description: `Створено індивідуальну оплату ${amount} грн (${lessonsCount} зан.)`,
+        userId: user.id,
+        userName: user.name,
+        studentId,
+        metadata: {
+          amount,
+          lessonsCount,
+          method,
+          note: note ?? null,
+          paidAt: paid_at ?? null,
+        },
+      });
+    }
+
     return NextResponse.json({
       id: paymentId,
       amount,
@@ -90,6 +119,11 @@ export async function DELETE(
   if (!user) return unauthorized();
   if (!isAdmin(user)) return forbidden();
 
+  const studentId = parseInt(params.id, 10);
+  if (isNaN(studentId)) {
+    return NextResponse.json({ error: 'Невірний ID учня' }, { status: 400 });
+  }
+
   const { searchParams } = new URL(request.url);
   const paymentId = searchParams.get('paymentId');
 
@@ -98,7 +132,35 @@ export async function DELETE(
   }
 
   try {
+    const existingPayment = await get<{ student_id: number; lessons_count: number; amount: number }>(
+      `SELECT student_id, lessons_count, amount FROM individual_payments WHERE id = $1`,
+      [parseInt(paymentId, 10)]
+    );
     await deleteIndividualPayment(parseInt(paymentId, 10));
+
+    const student = await get<{ full_name: string; public_id: string | null }>(
+      `SELECT full_name, public_id FROM students WHERE id = $1`,
+      [studentId]
+    );
+
+    if (existingPayment && student) {
+      await safeAddAuditEvent({
+        entityType: 'individual_payment',
+        entityId: parseInt(paymentId, 10),
+        entityTitle: student.full_name,
+        entityPublicId: student.public_id ?? null,
+        eventType: 'individual_payment_deleted',
+        eventBadge: toAuditBadge('individual_payment_deleted'),
+        description: `Видалено індивідуальну оплату ${existingPayment.amount} грн (${existingPayment.lessons_count} зан.)`,
+        userId: user.id,
+        userName: user.name,
+        studentId,
+        metadata: {
+          deletedPayment: existingPayment,
+        },
+      });
+    }
+
     return NextResponse.json({ message: 'Оплату видалено' });
   } catch (error) {
     console.error('Delete individual payment error:', error);

@@ -26,8 +26,9 @@ interface AttendanceRecord {
   status: 'present' | 'absent' | 'makeup_planned' | 'makeup_done' | null;
   comment: string | null;
   makeup_lesson_id: number | null;
-  payment_status: 'paid' | 'partial' | 'unpaid' | null;
+  payment_status: 'paid' | 'partial' | 'unpaid' | 'trial' | null;
   payment_label: string | null;
+  is_trial?: boolean;
 }
 
 interface LessonData {
@@ -232,6 +233,13 @@ export default function LessonModalsManager() {
   const [attendance, setAttendance] = useState<Record<number, AttendanceRecord[]>>({});
   const [attendanceLoading, setAttendanceLoading] = useState<Record<number, boolean>>({});
   const [attendanceSaving, setAttendanceSaving] = useState<Record<number, boolean>>({});
+
+  // Trial student picker state
+  const [trialPickerOpen, setTrialPickerOpen] = useState<Record<number, boolean>>({});
+  const [trialPickerQuery, setTrialPickerQuery] = useState<Record<number, string>>({});
+  const [trialPickerLoading, setTrialPickerLoading] = useState<Record<number, boolean>>({});
+  const [trialCandidates, setTrialCandidates] = useState<Record<number, Array<{ id: number; full_name: string; phone: string | null }>>>({});
+  const [trialSavingStudentId, setTrialSavingStudentId] = useState<Record<number, number | null>>({});
   const [photoFolders, setPhotoFolders] = useState<Record<number, LessonPhotoFolder | null>>({});
   const [lessonPhotos, setLessonPhotos] = useState<Record<number, LessonPhotoFile[]>>({});
   const [canManagePhotos, setCanManagePhotos] = useState<Record<number, boolean>>({});
@@ -315,6 +323,84 @@ export default function LessonModalsManager() {
       console.error('Error setting attendance:', error);
     } finally {
       setAttendanceSaving(prev => ({ ...prev, [lessonId]: false }));
+    }
+  };
+
+  // Load candidate students for the trial picker (those not already on the lesson)
+  const openTrialPicker = async (lessonId: number) => {
+    setTrialPickerOpen(prev => ({ ...prev, [lessonId]: true }));
+    setTrialPickerLoading(prev => ({ ...prev, [lessonId]: true }));
+    try {
+      const response = await fetch(`/api/students?limit=500`);
+      if (response.ok) {
+        const data = await response.json();
+        const list: Array<{ id: number; full_name: string; phone: string | null }> = Array.isArray(data)
+          ? data
+          : data.students || [];
+        const existing = new Set((attendance[lessonId] || []).map(a => a.student_id));
+        const filtered = list
+          .filter(s => !existing.has(s.id))
+          .map(s => ({ id: s.id, full_name: s.full_name, phone: s.phone ?? null }));
+        setTrialCandidates(prev => ({ ...prev, [lessonId]: filtered }));
+      }
+    } catch (error) {
+      console.error('Error loading trial candidates:', error);
+    } finally {
+      setTrialPickerLoading(prev => ({ ...prev, [lessonId]: false }));
+    }
+  };
+
+  const closeTrialPicker = (lessonId: number) => {
+    setTrialPickerOpen(prev => ({ ...prev, [lessonId]: false }));
+    setTrialPickerQuery(prev => ({ ...prev, [lessonId]: '' }));
+  };
+
+  const addTrialStudent = async (lessonId: number, studentId: number) => {
+    setTrialSavingStudentId(prev => ({ ...prev, [lessonId]: studentId }));
+    try {
+      const response = await fetch(`/api/lessons/${lessonId}/trial-students`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId }),
+      });
+      if (response.ok) {
+        await loadAttendance(lessonId);
+        setTrialCandidates(prev => ({
+          ...prev,
+          [lessonId]: (prev[lessonId] || []).filter(c => c.id !== studentId),
+        }));
+        window.dispatchEvent(new Event('itrobot-lesson-updated'));
+      } else {
+        const data = await response.json().catch(() => ({}));
+        alert(data.error || 'Не вдалося додати пробного учня');
+      }
+    } catch (error) {
+      console.error('Error adding trial student:', error);
+      alert('Не вдалося додати пробного учня');
+    } finally {
+      setTrialSavingStudentId(prev => ({ ...prev, [lessonId]: null }));
+    }
+  };
+
+  const removeTrialStudent = async (lessonId: number, studentId: number) => {
+    if (!window.confirm('Видалити цього пробного учня із заняття?')) return;
+    setTrialSavingStudentId(prev => ({ ...prev, [lessonId]: studentId }));
+    try {
+      const response = await fetch(`/api/lessons/${lessonId}/trial-students/${studentId}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        await loadAttendance(lessonId);
+        window.dispatchEvent(new Event('itrobot-lesson-updated'));
+      } else {
+        const data = await response.json().catch(() => ({}));
+        alert(data.error || 'Не вдалося видалити пробного учня');
+      }
+    } catch (error) {
+      console.error('Error removing trial student:', error);
+      alert('Не вдалося видалити пробного учня');
+    } finally {
+      setTrialSavingStudentId(prev => ({ ...prev, [lessonId]: null }));
     }
   };
 
@@ -2319,6 +2405,11 @@ export default function LessonModalsManager() {
                             >
                               {att.student_name}
                             </button>
+                            {att.is_trial && (
+                              <span style={{ padding: '1px 5px', borderRadius: 4, backgroundColor: '#ede9fe', color: '#6d28d9', fontSize: '0.5625rem', fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' }} title="Пробне — безкоштовно для учня">
+                                Пробне
+                              </span>
+                            )}
                             {att.status !== 'makeup_done' && att.status !== 'makeup_planned' && att.payment_status === 'paid' && (
                               <span style={{ padding: '1px 5px', borderRadius: 4, backgroundColor: '#dcfce7', color: '#16a34a', fontSize: '0.5625rem', fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
                                 Оплачено
@@ -2332,6 +2423,11 @@ export default function LessonModalsManager() {
                             {att.status !== 'makeup_done' && att.status !== 'makeup_planned' && att.payment_status === 'partial' && (
                               <span style={{ padding: '1px 5px', borderRadius: 4, backgroundColor: '#fef9c3', color: '#a16207', fontSize: '0.5625rem', fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
                                 Частково
+                              </span>
+                            )}
+                            {att.status !== 'makeup_done' && att.status !== 'makeup_planned' && att.payment_status === 'trial' && !att.is_trial && (
+                              <span style={{ padding: '1px 5px', borderRadius: 4, backgroundColor: '#ede9fe', color: '#6d28d9', fontSize: '0.5625rem', fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                                Безкоштовно
                               </span>
                             )}
                             {att.status === 'makeup_done' && (
@@ -2398,6 +2494,32 @@ export default function LessonModalsManager() {
                             >
                               <X size={14} />
                             </button>
+                            {att.is_trial && (
+                              <button
+                                onClick={() => removeTrialStudent(modal.id, att.student_id)}
+                                disabled={trialSavingStudentId[modal.id] === att.student_id}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '28px',
+                                  height: '28px',
+                                  padding: 0,
+                                  border: '1px solid #ddd6fe',
+                                  borderRadius: '0.25rem',
+                                  backgroundColor: '#f5f3ff',
+                                  color: '#6d28d9',
+                                  cursor: trialSavingStudentId[modal.id] === att.student_id ? 'not-allowed' : 'pointer',
+                                  opacity: trialSavingStudentId[modal.id] === att.student_id ? 0.5 : 1,
+                                  transition: 'all 0.15s ease',
+                                  fontSize: '0.875rem',
+                                  fontWeight: 600,
+                                }}
+                                title="Видалити пробного учня з заняття"
+                              >
+                                ×
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -2432,8 +2554,102 @@ export default function LessonModalsManager() {
                       Немає студентів у групі
                     </div>
                   )}
+
+                  {/* Trial student picker */}
+                  {lessonData[modal.id]?.status === 'scheduled' && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      {!trialPickerOpen[modal.id] ? (
+                        <button
+                          type="button"
+                          onClick={() => openTrialPicker(modal.id)}
+                          style={{
+                            padding: '0.375rem 0.625rem',
+                            borderRadius: '0.375rem',
+                            backgroundColor: '#f5f3ff',
+                            border: '1px dashed #c4b5fd',
+                            color: '#6d28d9',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          + Додати пробного учня
+                        </button>
+                      ) : (
+                        <div style={{ border: '1px solid #ddd6fe', borderRadius: '0.5rem', padding: '0.5rem', backgroundColor: '#faf5ff' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6d28d9' }}>
+                              Пошук учня для пробного заняття
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => closeTrialPicker(modal.id)}
+                              style={{ fontSize: '0.75rem', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}
+                            >
+                              Закрити
+                            </button>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Ім'я або телефон…"
+                            value={trialPickerQuery[modal.id] || ''}
+                            onChange={(e) => setTrialPickerQuery(prev => ({ ...prev, [modal.id]: e.target.value }))}
+                            style={{
+                              width: '100%',
+                              padding: '0.375rem 0.5rem',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.8125rem',
+                              marginBottom: '0.5rem',
+                            }}
+                            autoFocus
+                          />
+                          <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '0.25rem', backgroundColor: 'white' }}>
+                            {trialPickerLoading[modal.id] ? (
+                              <div style={{ padding: '0.5rem', fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>Завантаження…</div>
+                            ) : (
+                              (() => {
+                                const q = (trialPickerQuery[modal.id] || '').trim().toLowerCase();
+                                const list = (trialCandidates[modal.id] || []).filter(c => {
+                                  if (!q) return true;
+                                  return c.full_name.toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q);
+                                }).slice(0, 30);
+                                if (list.length === 0) {
+                                  return <div style={{ padding: '0.5rem', fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>Учнів не знайдено</div>;
+                                }
+                                return list.map((c, i) => (
+                                  <button
+                                    type="button"
+                                    key={c.id}
+                                    onClick={() => addTrialStudent(modal.id, c.id)}
+                                    disabled={trialSavingStudentId[modal.id] === c.id}
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center',
+                                      width: '100%',
+                                      padding: '0.375rem 0.5rem',
+                                      background: trialSavingStudentId[modal.id] === c.id ? '#f3f4f6' : 'white',
+                                      border: 'none',
+                                      borderBottom: i < list.length - 1 ? '1px solid #f3f4f6' : 'none',
+                                      textAlign: 'left',
+                                      cursor: trialSavingStudentId[modal.id] === c.id ? 'not-allowed' : 'pointer',
+                                      fontSize: '0.8125rem',
+                                    }}
+                                  >
+                                    <span style={{ color: '#374151' }}>{c.full_name}</span>
+                                    <span style={{ color: '#9ca3af', fontSize: '0.6875rem' }}>{c.phone || ''}</span>
+                                  </button>
+                                ));
+                              })()
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                
+
                 {/* Actions - removed "Проведено" and "Скасовано" buttons, status is now auto-set based on attendance */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.25rem' }}>
                   {/* Delete button - only for scheduled lessons - MOVED TO HEADER */}

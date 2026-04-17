@@ -1,4 +1,5 @@
 import { run, get, all } from '@/db';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 import { formatShortDateKyiv } from '@/lib/date-utils';
 
 // Types for group history
@@ -12,7 +13,9 @@ export type GroupHistoryActionType =
   | 'lesson_conducted'
   | 'status_changed'
   | 'deleted'
-  | 'schedule_changed';
+  | 'schedule_changed'
+  | 'trial_student_added'
+  | 'trial_student_removed';
 
 export interface GroupHistoryEntry {
   id: number;
@@ -49,7 +52,37 @@ export async function addGroupHistoryEntry(
       userName,
     ]
   );
-  
+
+  try {
+    const group = await get<{ title: string; public_id: string | null; course_id: number | null }>(
+      `SELECT title, public_id, course_id FROM groups WHERE id = $1`,
+      [groupId]
+    );
+
+    if (group) {
+      await safeAddAuditEvent({
+        entityType: 'group',
+        entityId: groupId,
+        entityPublicId: group.public_id ?? null,
+        entityTitle: group.title,
+        eventType: actionType,
+        eventBadge: toAuditBadge(actionType),
+        description: actionDescription,
+        userId,
+        userName,
+        groupId,
+        courseId: group.course_id ?? null,
+        metadata: {
+          source: 'group_history',
+          oldValue: oldValue ?? null,
+          newValue: newValue ?? null,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('[group-history] Failed to mirror audit event:', error);
+  }
+
   return Number(result[0]?.id);
 }
 
@@ -85,6 +118,16 @@ export function formatStudentAddedDescription(studentName: string): string {
 // Helper function to format action description for student removed
 export function formatStudentRemovedDescription(studentName: string): string {
   return `Видалено учня: ${studentName}`;
+}
+
+// Helper function to format action description for trial student added to a lesson
+export function formatTrialStudentAddedDescription(studentName: string, lessonDate: string): string {
+  return `Додано пробного учня ${studentName} на заняття ${formatShortDateKyiv(lessonDate)}`;
+}
+
+// Helper function to format action description for trial student removed from a lesson
+export function formatTrialStudentRemovedDescription(studentName: string, lessonDate: string): string {
+  return `Видалено пробного учня ${studentName} з заняття ${formatShortDateKyiv(lessonDate)}`;
 }
 
 // Helper function to format action description for student graduated

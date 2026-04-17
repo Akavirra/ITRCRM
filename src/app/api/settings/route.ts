@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized } from '@/lib/api-utils';
 import { run, get } from '@/db';
 import { clearServerCache, getOrSetServerCache } from '@/lib/server-cache';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,10 +84,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Get settings error:', error);
-    return NextResponse.json(
-      { error: ERROR_MESSAGES.updateFailed },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: ERROR_MESSAGES.updateFailed }, { status: 500 });
   }
 }
 
@@ -113,6 +111,26 @@ export async function PUT(request: NextRequest) {
       weeklyReport,
       weatherCity,
     } = body;
+
+    const before = await get(
+      `SELECT
+        u.name,
+        u.phone,
+        up.language,
+        up.timezone,
+        up.date_format,
+        up.currency,
+        up.email_notifications,
+        up.push_notifications,
+        up.lesson_reminders,
+        up.payment_alerts,
+        up.weekly_report,
+        up.weather_city
+       FROM users u
+       LEFT JOIN user_settings up ON u.id = up.user_id
+       WHERE u.id = $1`,
+      [user.id]
+    );
 
     if (displayName !== undefined) {
       await run(`UPDATE users SET name = $1 WHERE id = $2`, [displayName, user.id]);
@@ -149,7 +167,7 @@ export async function PUT(request: NextRequest) {
           paymentAlerts ? 1 : 0,
           weeklyReport ? 1 : 0,
           weatherCity || 'Kyiv',
-          user.id
+          user.id,
         ]
       );
     } else {
@@ -184,15 +202,37 @@ export async function PUT(request: NextRequest) {
     }
 
     clearServerCache(`settings:${user.id}`);
-
-    return NextResponse.json({
-      message: 'Налаштування успішно збережено',
+    await safeAddAuditEvent({
+      entityType: 'user',
+      entityId: user.id,
+      entityTitle: user.name,
+      eventType: 'user_settings_updated',
+      eventBadge: toAuditBadge('user_settings_updated'),
+      description: 'Оновлено персональні налаштування',
+      userId: user.id,
+      userName: user.name,
+      metadata: {
+        before,
+        after: {
+          displayName: displayName ?? (before as any)?.name ?? user.name,
+          phone: phone ?? (before as any)?.phone ?? null,
+          language: language || 'uk',
+          timezone: timezone || 'Europe/Kyiv',
+          dateFormat: dateFormat || 'DD.MM.YYYY',
+          currency: currency || 'UAH',
+          emailNotifications: Boolean(emailNotifications),
+          pushNotifications: Boolean(pushNotifications),
+          lessonReminders: Boolean(lessonReminders),
+          paymentAlerts: Boolean(paymentAlerts),
+          weeklyReport: Boolean(weeklyReport),
+          weatherCity: weatherCity || 'Kyiv',
+        },
+      },
     });
+
+    return NextResponse.json({ message: 'Налаштування успішно збережено' });
   } catch (error) {
     console.error('Update settings error:', error);
-    return NextResponse.json(
-      { error: ERROR_MESSAGES.updateFailed },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: ERROR_MESSAGES.updateFailed }, { status: 500 });
   }
 }

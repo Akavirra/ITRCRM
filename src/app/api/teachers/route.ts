@@ -5,6 +5,7 @@ import { hashPassword } from '@/lib/auth';
 import { generatePublicId } from '@/lib/public-id';
 import { uploadImage } from '@/lib/cloudinary';
 import { clearServerCache, getOrSetServerCache } from '@/lib/server-cache';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -120,7 +121,8 @@ export async function POST(req: NextRequest) {
       retries++;
     }
 
-    const emailConflict = await get<{ role: string }>('SELECT role FROM users WHERE email = $1', [email.trim().toLowerCase()]);
+    const trimmedEmail = email.trim().toLowerCase();
+    const emailConflict = await get<{ role: string }>('SELECT role FROM users WHERE email = $1', [trimmedEmail]);
     if (emailConflict) {
       if (emailConflict.role === 'admin') {
         return badRequest('Цей email вже використовується адміністратором. Вкажіть інший email для викладача.');
@@ -134,20 +136,37 @@ export async function POST(req: NextRequest) {
       photoUrl = uploadResult.url;
     }
 
-    const result = await run(`
-      INSERT INTO users (public_id, name, email, password_hash, role, phone, telegram_id, notes, photo_url, is_active)
-      VALUES ($1, $2, $3, $4, 'teacher', $5, $6, $7, $8, TRUE)
-      RETURNING id
-    `, [publicId, name, email, hashedPassword, phone || null, telegram_id || null, notes || null, photoUrl]);
+    const trimmedName = name.trim();
+    const result = await run(
+      `INSERT INTO users (public_id, name, email, password_hash, role, phone, telegram_id, notes, photo_url, is_active)
+       VALUES ($1, $2, $3, $4, 'teacher', $5, $6, $7, $8, TRUE)
+       RETURNING id`,
+      [publicId, trimmedName, trimmedEmail, hashedPassword, phone || null, telegram_id || null, notes || null, photoUrl]
+    );
 
     clearServerCache('teachers:');
+    await safeAddAuditEvent({
+      entityType: 'teacher',
+      entityId: result[0]?.id,
+      entityPublicId: publicId,
+      entityTitle: trimmedName,
+      eventType: 'teacher_created',
+      eventBadge: toAuditBadge('teacher_created'),
+      description: `Створено викладача ${trimmedName}`,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      metadata: {
+        email: trimmedEmail,
+        hasPhoto: Boolean(photoUrl),
+      },
+    });
 
     return NextResponse.json({
       id: result[0]?.id,
       public_id: publicId,
-      name,
-      email,
-      auto_password: password
+      name: trimmedName,
+      email: trimmedEmail,
+      auto_password: password,
     }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating teacher:', error);

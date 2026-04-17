@@ -235,13 +235,58 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
      LIMIT 5`
   );
 
-  const recentHistoryPromise = all<DashboardStatsPayload['recentHistory'][number]>(
-    `SELECT h.action_type, h.action_description, h.created_at, h.user_name, s.full_name as student_name, s.public_id as student_public_id
-     FROM student_history h
-     JOIN students s ON h.student_id = s.id
-     ORDER BY h.created_at DESC
-     LIMIT 5`
-  );
+  const recentHistoryPromise = (async () => {
+    try {
+      const auditEvents = await all<{
+        entity_type: string;
+        entity_id: number | null;
+        entity_public_id: string | null;
+        entity_title: string;
+        event_type: string;
+        event_badge: string;
+        description: string;
+        created_at: string;
+        user_name: string;
+      }>(
+        `SELECT
+          entity_type,
+          entity_id,
+          entity_public_id,
+          entity_title,
+          event_type,
+          event_badge,
+          description,
+          created_at,
+          user_name
+         FROM audit_events
+         ORDER BY created_at DESC
+         LIMIT 12`
+      );
+
+      if (auditEvents.length > 0) {
+        return auditEvents;
+      }
+    } catch (error) {
+      console.error('[dashboard] Failed to load audit_events, falling back to student_history:', error);
+    }
+
+    return all<DashboardStatsPayload['recentHistory'][number]>(
+      `SELECT
+        'student' as entity_type,
+        s.id as entity_id,
+        s.public_id as entity_public_id,
+        s.full_name as entity_title,
+        h.action_type as event_type,
+        UPPER(h.action_type) as event_badge,
+        h.action_description as description,
+        h.created_at,
+        h.user_name
+       FROM student_history h
+       JOIN students s ON h.student_id = s.id
+       ORDER BY h.created_at DESC
+       LIMIT 12`
+    );
+  })();
 
   const debtorsPromise = getStudentsWithDebt(firstDayOfMonth);
 

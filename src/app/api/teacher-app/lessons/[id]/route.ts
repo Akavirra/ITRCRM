@@ -151,25 +151,43 @@ export async function GET(
 
     // Get students with attendance
     // For individual lessons (group_id IS NULL), get students from attendance table
-    // For group lessons, get students from the group
+    // For group lessons, UNION the group roster with trial visitors attached via attendance.is_trial
     const students = lesson.group_id
       ? await query(
-          `SELECT 
+          `SELECT
             s.id, s.full_name, s.public_id as student_public_id,
-            a.status as attendance_status, a.updated_at as attendance_updated
+            a.status as attendance_status, a.updated_at as attendance_updated,
+            COALESCE(a.is_trial, FALSE) as is_trial
           FROM student_groups sg
           JOIN students s ON sg.student_id = s.id
           LEFT JOIN attendance a ON a.student_id = s.id AND a.lesson_id = $1
           WHERE sg.group_id = $2
-          AND sg.is_active = TRUE
-          AND s.is_active = TRUE
-          ORDER BY s.full_name`,
+            AND sg.is_active = TRUE
+            AND s.is_active = TRUE
+          UNION
+          SELECT
+            s.id, s.full_name, s.public_id as student_public_id,
+            a.status as attendance_status, a.updated_at as attendance_updated,
+            TRUE as is_trial
+          FROM attendance a
+          JOIN students s ON a.student_id = s.id
+          WHERE a.lesson_id = $1
+            AND COALESCE(a.is_trial, FALSE) = TRUE
+            AND s.is_active = TRUE
+            AND NOT EXISTS (
+              SELECT 1 FROM student_groups sg2
+              WHERE sg2.group_id = $2
+                AND sg2.student_id = s.id
+                AND sg2.is_active = TRUE
+            )
+          ORDER BY full_name`,
           [lessonId, lesson.group_id]
         )
       : await query(
-          `SELECT 
+          `SELECT
             s.id, s.full_name, s.public_id as student_public_id,
-            a.status as attendance_status, a.updated_at as attendance_updated
+            a.status as attendance_status, a.updated_at as attendance_updated,
+            COALESCE(a.is_trial, FALSE) as is_trial
           FROM attendance a
           JOIN students s ON a.student_id = s.id
           WHERE a.lesson_id = $1

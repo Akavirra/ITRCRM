@@ -4,6 +4,7 @@ import { getCourseById, updateCourse, restoreCourse, deleteCourse } from '@/lib/
 import { verifyPassword } from '@/lib/auth';
 import { get } from '@/db';
 import { clearServerCache } from '@/lib/server-cache';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,7 @@ const ERROR_MESSAGES = {
   durationInvalid: 'Тривалість повинна бути цілим числом від 1 до 36 місяців',
   updateFailed: 'Не вдалося оновити курс',
   deleteFailed: 'Не вдалося видалити курс',
-  passwordRequired: 'Пароль обов\'язковий для підтвердження видалення',
+  passwordRequired: "Пароль обов'язковий для підтвердження видалення",
   invalidPassword: 'Неправильний пароль',
 };
 
@@ -41,13 +42,11 @@ export async function GET(
   }
 
   const courseId = parseInt(params.id, 10);
-
   if (isNaN(courseId)) {
     return NextResponse.json({ error: ERROR_MESSAGES.invalidCourseId }, { status: 400 });
   }
 
   const course = await getCourseById(courseId);
-
   if (!course) {
     return notFound(ERROR_MESSAGES.courseNotFound);
   }
@@ -70,13 +69,11 @@ export async function PUT(
   }
 
   const courseId = parseInt(params.id, 10);
-
   if (isNaN(courseId)) {
     return NextResponse.json({ error: ERROR_MESSAGES.invalidCourseId }, { status: 400 });
   }
 
   const existingCourse = await getCourseById(courseId);
-
   if (!existingCourse) {
     return notFound(ERROR_MESSAGES.courseNotFound);
   }
@@ -111,8 +108,40 @@ export async function PUT(
       return NextResponse.json({ error: ERROR_MESSAGES.durationInvalid }, { status: 400 });
     }
 
-    await updateCourse(courseId, title.trim(), description?.trim(), ageMinValue, duration, program?.trim());
+    const trimmedTitle = title.trim();
+    const trimmedDescription = description?.trim();
+    const trimmedProgram = program?.trim();
+
+    await updateCourse(courseId, trimmedTitle, trimmedDescription, ageMinValue, duration, trimmedProgram);
     clearServerCache('courses:');
+    await safeAddAuditEvent({
+      entityType: 'course',
+      entityId: courseId,
+      entityPublicId: existingCourse.public_id,
+      entityTitle: trimmedTitle,
+      eventType: 'course_updated',
+      eventBadge: toAuditBadge('course_updated'),
+      description: `Оновлено курс "${trimmedTitle}"`,
+      userId: user.id,
+      userName: user.name,
+      courseId,
+      metadata: {
+        previous: {
+          title: existingCourse.title,
+          description: existingCourse.description,
+          ageMin: existingCourse.age_min,
+          durationMonths: existingCourse.duration_months,
+          program: existingCourse.program,
+        },
+        next: {
+          title: trimmedTitle,
+          description: trimmedDescription || null,
+          ageMin: ageMinValue,
+          durationMonths: duration,
+          program: trimmedProgram || null,
+        },
+      },
+    });
 
     return NextResponse.json({ message: 'Курс успішно оновлено' });
   } catch (error) {
@@ -127,7 +156,6 @@ export async function DELETE(
 ) {
   try {
     const user = await getAuthUser(request);
-
     if (!user) {
       return unauthorized();
     }
@@ -137,13 +165,11 @@ export async function DELETE(
     }
 
     const courseId = parseInt(params.id, 10);
-
     if (isNaN(courseId)) {
       return NextResponse.json({ error: ERROR_MESSAGES.invalidCourseId }, { status: 400 });
     }
 
     const existingCourse = await getCourseById(courseId);
-
     if (!existingCourse) {
       return notFound(ERROR_MESSAGES.courseNotFound);
     }
@@ -180,6 +206,21 @@ export async function DELETE(
     }
 
     clearServerCache('courses:');
+    await safeAddAuditEvent({
+      entityType: 'course',
+      entityId: courseId,
+      entityPublicId: existingCourse.public_id,
+      entityTitle: existingCourse.title,
+      eventType: 'course_deleted',
+      eventBadge: toAuditBadge('course_deleted'),
+      description: `Курс "${existingCourse.title}" видалено`,
+      userId: user.id,
+      userName: user.name,
+      courseId,
+      metadata: {
+        title: existingCourse.title,
+      },
+    });
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -203,19 +244,29 @@ export async function PATCH(
   }
 
   const courseId = parseInt(params.id, 10);
-
   if (isNaN(courseId)) {
     return NextResponse.json({ error: ERROR_MESSAGES.invalidCourseId }, { status: 400 });
   }
 
   const existingCourse = await getCourseById(courseId);
-
   if (!existingCourse) {
     return notFound(ERROR_MESSAGES.courseNotFound);
   }
 
   await restoreCourse(courseId);
   clearServerCache('courses:');
+  await safeAddAuditEvent({
+    entityType: 'course',
+    entityId: courseId,
+    entityPublicId: existingCourse.public_id,
+    entityTitle: existingCourse.title,
+    eventType: 'course_restored',
+    eventBadge: toAuditBadge('course_restored'),
+    description: `Курс "${existingCourse.title}" відновлено`,
+    userId: user.id,
+    userName: user.name,
+    courseId,
+  });
 
   return NextResponse.json({ message: 'Курс успішно відновлено' });
 }

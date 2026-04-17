@@ -106,12 +106,15 @@ export interface DashboardStatsPayload {
     student_public_id: string;
   }>;
   recentHistory: Array<{
-    action_type: string;
-    action_description: string;
+    entity_type: string;
+    entity_id: number | null;
+    entity_public_id: string | null;
+    entity_title: string;
+    event_type: string;
+    event_badge: string;
+    description: string;
     created_at: string;
     createdAtLabel: string;
     user_name: string;
-    student_name: string;
-    student_public_id: string;
   }>;
 }

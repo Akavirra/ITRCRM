@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateToken, markTokenUsed, createSubmission } from '@/lib/enrollment';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
-// GET — validate token (public, no auth)
 export async function GET(request: NextRequest, { params }: { params: { token: string } }) {
   const { valid, reason } = await validateToken(params.token);
 
@@ -14,7 +14,6 @@ export async function GET(request: NextRequest, { params }: { params: { token: s
   return NextResponse.json({ valid: true });
 }
 
-// POST — submit enrollment form (public, no auth)
 export async function POST(request: NextRequest, { params }: { params: { token: string } }) {
   const { valid, reason, tokenData } = await validateToken(params.token);
 
@@ -23,11 +22,10 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
   }
 
   const body = await request.json();
-
-  // Server-side validation
   const errors: string[] = [];
+
   if (!body.child_first_name?.trim()) errors.push("Ім'я дитини обов'язкове");
-  if (!body.child_last_name?.trim()) errors.push("Прізвище дитини обов'язкове");
+  if (!body.child_last_name?.trim()) errors.push('Прізвище дитини обов’язкове');
   if (!body.parent_name?.trim()) errors.push("Ім'я батьків обов'язкове");
   if (!body.parent_phone?.trim()) errors.push("Телефон обов'язковий");
 
@@ -35,7 +33,6 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     return NextResponse.json({ error: 'Validation failed', errors }, { status: 400 });
   }
 
-  // Sanitize phone
   const phone = body.parent_phone.replace(/[^\d+]/g, '');
   if (phone.length < 10) {
     return NextResponse.json({ error: 'Невірний формат телефону' }, { status: 400 });
@@ -57,8 +54,21 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     source: body.source?.trim() || undefined,
   });
 
-  // Mark token as used (one-time only)
   await markTokenUsed(tokenData.id);
+  await safeAddAuditEvent({
+    entityType: 'enrollment',
+    entityId: submission.id,
+    entityTitle: `${submission.child_last_name} ${submission.child_first_name}`.trim(),
+    eventType: 'enrollment_submission_created',
+    eventBadge: toAuditBadge('enrollment_submission_created'),
+    description: 'Створено нову анкету вступу',
+    userName: 'Публічна форма',
+    metadata: {
+      submissionId: submission.id,
+      tokenId: tokenData.id,
+      parentPhone: phone,
+    },
+  });
 
   return NextResponse.json({ success: true, id: submission.id }, { status: 201 });
 }

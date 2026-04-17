@@ -648,15 +648,16 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 )
               ) : visibleHistory.length > 0 ? (
                 visibleHistory.map((history, index) => (
-                  <div key={`${history.student_public_id}-${index}`} className={styles.activityItem}>
+                  <div key={`${history.entity_type}-${history.entity_id ?? history.entity_public_id ?? index}-${index}`} className={styles.activityItem}>
                     <div>
-                      <div className={styles.activityTitle}>{history.student_name}</div>
+                      <div className={styles.activityTitle}>{history.entity_title}</div>
                       <div className={styles.activityMeta}>
+                        {history.entity_public_id ? `${history.entity_public_id} · ` : ''}
                         {history.createdAtLabel} · {history.user_name}
                       </div>
-                      <div className={styles.activityDescription}>{history.action_description}</div>
+                      <div className={styles.activityDescription}>{history.description}</div>
                     </div>
-                    <div className={styles.historyType}>{history.action_type}</div>
+                    <div className={styles.historyType}>{history.event_badge}</div>
                   </div>
                 ))
               ) : (

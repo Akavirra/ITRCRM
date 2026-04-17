@@ -1,4 +1,5 @@
-import { run, all } from '@/db';
+import { get, run, all } from '@/db';
+import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 import { formatShortDateKyiv } from '@/lib/date-utils';
 
 // Types for student history
@@ -13,7 +14,11 @@ export type StudentHistoryActionType =
   | 'lesson_attended'
   | 'lesson_missed'
   | 'lesson_makeup_planned'
-  | 'lesson_makeup_done';
+  | 'lesson_makeup_done'
+  | 'trial_lesson_scheduled'
+  | 'trial_lesson_attended'
+  | 'trial_lesson_missed'
+  | 'trial_lesson_removed';
 
 export interface StudentHistoryEntry {
   id: number;
@@ -54,6 +59,43 @@ export async function addStudentHistoryEntry(
   return Number(result[0]?.id);
 }
 
+async function mirrorStudentHistoryToAudit(
+  studentId: number,
+  actionType: StudentHistoryActionType,
+  actionDescription: string,
+  userId: number,
+  userName: string,
+  oldValue?: string | null,
+  newValue?: string | null
+): Promise<void> {
+  const student = await get<{ full_name: string; public_id: string | null }>(
+    `SELECT full_name, public_id FROM students WHERE id = $1`,
+    [studentId]
+  );
+
+  if (!student) {
+    return;
+  }
+
+  await safeAddAuditEvent({
+    entityType: 'student',
+    entityId: studentId,
+    entityPublicId: student.public_id ?? null,
+    entityTitle: student.full_name,
+    eventType: actionType,
+    eventBadge: toAuditBadge(actionType),
+    description: actionDescription,
+    userId,
+    userName,
+    studentId,
+    metadata: {
+      source: 'student_history',
+      oldValue: oldValue ?? null,
+      newValue: newValue ?? null,
+    },
+  });
+}
+
 // Non-fatal wrapper — history logging must never break the main operation
 export async function safeAddStudentHistoryEntry(
   studentId: number,
@@ -68,7 +110,10 @@ export async function safeAddStudentHistoryEntry(
     await addStudentHistoryEntry(studentId, actionType, actionDescription, userId, userName, oldValue, newValue);
   } catch (err) {
     console.error('[student-history] Failed to log entry:', err);
+    return;
   }
+
+  await mirrorStudentHistoryToAudit(studentId, actionType, actionDescription, userId, userName, oldValue, newValue);
 }
 
 // Get student history entries
@@ -137,22 +182,46 @@ export function formatAttendanceDescription(
   lessonDate: string,
   groupTitle: string | null,
   topic: string | null,
-  isIndividual: boolean
+  isIndividual: boolean,
+  isTrial: boolean = false
 ): string {
   const formattedDate = formatShortDateKyiv(lessonDate);
   const groupPart = isIndividual ? ' (індивідуальне)' : groupTitle ? ` — ${groupTitle}` : '';
   const topicPart = topic ? ` (${topic})` : '';
+  const trialSuffix = isTrial ? ' (пробне)' : '';
 
   switch (status) {
     case 'present':
-      return `Присутній на занятті: ${formattedDate}${groupPart}${topicPart}`;
+      return `Присутній на занятті: ${formattedDate}${groupPart}${topicPart}${trialSuffix}`;
     case 'absent':
-      return `Пропустив заняття: ${formattedDate}${groupPart}${topicPart}`;
+      return `Пропустив заняття: ${formattedDate}${groupPart}${topicPart}${trialSuffix}`;
     case 'makeup_planned':
       return `Заплановано відпрацювання: ${formattedDate}${groupPart}`;
     case 'makeup_done':
       return `Відпрацював пропуск: ${formattedDate}${groupPart}`;
     default:
-      return `Відвідуваність: ${status} — ${formattedDate}${groupPart}`;
+      return `${status}: ${formattedDate}${groupPart}${topicPart}${trialSuffix}`;
   }
+}
+
+// Helper function to format action description for trial lesson scheduled
+export function formatTrialScheduledDescription(
+  lessonDate: string,
+  groupTitle: string | null,
+  topic: string | null,
+): string {
+  const formattedDate = formatShortDateKyiv(lessonDate);
+  const groupPart = groupTitle ? ` — ${groupTitle}` : '';
+  const topicPart = topic ? ` (${topic})` : '';
+  return `Заплановано пробне заняття: ${formattedDate}${groupPart}${topicPart}`;
+}
+
+// Helper function to format action description for trial lesson removed
+export function formatTrialRemovedDescription(
+  lessonDate: string,
+  groupTitle: string | null,
+): string {
+  const formattedDate = formatShortDateKyiv(lessonDate);
+  const groupPart = groupTitle ? ` — ${groupTitle}` : '';
+  return `Скасовано пробне заняття: ${formattedDate}${groupPart}`;
 }
