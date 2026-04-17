@@ -78,6 +78,18 @@ export default function EnrollmentPage() {
       .finally(() => setLoading(false));
   }, [fetchSubmissions, fetchTokens]);
 
+  const openQrModal = async (tokenValue: string) => {
+    const enrollUrl = `${window.location.origin}/enroll/${tokenValue}`;
+    const dataUrl = await QRCode.toDataURL(enrollUrl, {
+      width: 400,
+      margin: 2,
+      color: { dark: '#1e293b', light: '#ffffff' },
+    });
+
+    setQrDataUrl(dataUrl);
+    setQrToken(tokenValue);
+  };
+
   // Generate new QR token
   const generateToken = async () => {
     setGeneratingQr(true);
@@ -88,18 +100,7 @@ export default function EnrollmentPage() {
         body: JSON.stringify({ expires_in_minutes: 60 }),
       });
       const token: EnrollmentToken = await res.json();
-
-      const baseUrl = window.location.origin;
-      const enrollUrl = `${baseUrl}/enroll/${token.token}`;
-
-      const dataUrl = await QRCode.toDataURL(enrollUrl, {
-        width: 400,
-        margin: 2,
-        color: { dark: '#1e293b', light: '#ffffff' },
-      });
-
-      setQrDataUrl(dataUrl);
-      setQrToken(token.token);
+      await openQrModal(token.token);
       fetchTokens();
     } catch (err) {
       console.error('QR generation error:', err);
@@ -501,17 +502,23 @@ export default function EnrollmentPage() {
           ) : (
             tokens.map(token => {
               const st = getTokenStatus(token);
-              const tokenLink = `${window.location.origin}/enroll/${token.token}`;
               const tokenIsActive = isTokenActive(token);
               return (
                 <div
                   key={token.id}
-                  onClick={() => {
+                  onClick={async () => {
                     if (tokenIsActive) {
-                      window.open(tokenLink, '_blank', 'noopener,noreferrer');
+                      setGeneratingQr(true);
+                      try {
+                        await openQrModal(token.token);
+                      } catch (err) {
+                        console.error('QR generation error:', err);
+                      } finally {
+                        setGeneratingQr(false);
+                      }
                     }
                   }}
-                  title={tokenIsActive ? 'Відкрити анкету в новій вкладці' : undefined}
+                  title={tokenIsActive ? 'Відкрити QR-код' : undefined}
                   style={{
                     background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px',
                     padding: '0.875rem 1.25rem', display: 'flex', justifyContent: 'space-between',
@@ -531,7 +538,7 @@ export default function EnrollmentPage() {
                     </div>
                     {tokenIsActive && (
                       <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.25rem' }}>
-                        Натисніть, щоб відкрити анкету
+                        Натисніть, щоб відкрити QR-код
                       </div>
                     )}
                   </div>
