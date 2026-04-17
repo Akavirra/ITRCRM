@@ -193,6 +193,10 @@ export default function EnrollmentPage() {
     return { label: 'Активний', color: '#16a34a' };
   };
 
+  const qrLink = typeof window !== 'undefined' && qrToken
+    ? `${window.location.origin}/enroll/${qrToken}`
+    : '';
+
   return (
     <div className="page-container">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
@@ -224,11 +228,41 @@ export default function EnrollmentPage() {
             <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
               Дійсний 60 хвилин. Одноразовий.
             </p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrDataUrl} alt="QR Code" style={{ width: '280px', height: '280px', margin: '0 auto' }} />
-            <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.75rem', wordBreak: 'break-all' }}>
-              {window.location.origin}/enroll/{qrToken}
-            </p>
+            <a
+              href={qrLink}
+              target="_blank"
+              rel="noreferrer"
+              title="Відкрити анкету в новій вкладці"
+              style={{
+                display: 'inline-block',
+                borderRadius: '12px',
+                transition: 'transform 160ms ease-out, opacity 160ms ease-out',
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrDataUrl}
+                alt="QR Code"
+                style={{ width: '280px', height: '280px', margin: '0 auto', cursor: 'pointer' }}
+              />
+            </a>
+            <a
+              href={qrLink}
+              target="_blank"
+              rel="noreferrer"
+              title="Відкрити анкету в новій вкладці"
+              style={{
+                display: 'block',
+                fontSize: '0.75rem',
+                color: '#94a3b8',
+                marginTop: '0.75rem',
+                wordBreak: 'break-all',
+                textDecoration: 'none',
+                transition: 'color 160ms ease-out, opacity 160ms ease-out',
+              }}
+            >
+              {qrLink}
+            </a>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'center' }}>
               <button className="btn btn-secondary" onClick={() => {
                 const link = document.createElement('a');
@@ -239,7 +273,7 @@ export default function EnrollmentPage() {
                 Завантажити
               </button>
               <button className="btn btn-secondary" onClick={() => {
-                navigator.clipboard.writeText(`${window.location.origin}/enroll/${qrToken}`);
+                navigator.clipboard.writeText(qrLink);
               }}>
                 Копіювати посилання
               </button>
