@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 interface SearchResult {
   id: number;
   public_id?: string;
+  avatar_url?: string | null;
   title: string;
   subtitle: string;
   type: 'student' | 'group' | 'course' | 'teacher';
@@ -30,8 +31,8 @@ export async function GET(request: NextRequest) {
     // Run all searches in parallel for speed
     const [students, groups, courses, teachers] = await Promise.all([
       // Students
-      all<{ id: number; public_id: string; full_name: string; phone: string | null; parent_name: string | null; study_status: string }>(
-        `SELECT id, public_id, full_name, phone, parent_name,
+      all<{ id: number; public_id: string; full_name: string; phone: string | null; parent_name: string | null; photo: string | null; study_status: string }>(
+        `SELECT id, public_id, full_name, phone, parent_name, photo,
            CASE WHEN (SELECT COUNT(*) FROM student_groups WHERE student_id = students.id AND is_active = TRUE) > 0
                 THEN 'studying' ELSE 'not_studying' END as study_status
          FROM students
@@ -69,8 +70,8 @@ export async function GET(request: NextRequest) {
       ),
 
       // Teachers
-      all<{ id: number; public_id: string; name: string; email: string; phone: string | null; active_groups_count: number }>(
-        `SELECT u.id, u.public_id, u.name, u.email, u.phone,
+      all<{ id: number; public_id: string; name: string; email: string; phone: string | null; photo_url: string | null; active_groups_count: number }>(
+        `SELECT u.id, u.public_id, u.name, u.email, u.phone, u.photo_url,
            (SELECT COUNT(*) FROM groups WHERE teacher_id = u.id AND status = 'active') as active_groups_count
          FROM users u
          WHERE u.role = 'teacher' AND u.is_active = TRUE
@@ -88,6 +89,7 @@ export async function GET(request: NextRequest) {
       results.push({
         id: s.id,
         public_id: s.public_id,
+        avatar_url: s.photo,
         title: s.full_name,
         subtitle: [s.phone, s.parent_name].filter(Boolean).join(' · ') || (s.study_status === 'studying' ? 'Навчається' : 'Не навчається'),
         type: 'student',
@@ -118,6 +120,7 @@ export async function GET(request: NextRequest) {
       results.push({
         id: t.id,
         public_id: t.public_id,
+        avatar_url: t.photo_url,
         title: t.name,
         subtitle: [t.email, t.phone, `${t.active_groups_count} груп`].filter(Boolean).join(' · '),
         type: 'teacher',

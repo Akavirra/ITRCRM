@@ -7,6 +7,7 @@ import styles from './GlobalSearch.module.css';
 interface SearchResult {
   id: number;
   public_id?: string;
+  avatar_url?: string | null;
   title: string;
   subtitle: string;
   type: 'student' | 'group' | 'course' | 'teacher';
@@ -26,6 +27,10 @@ const CATEGORY_META: Record<string, { label: string; icon: React.ReactNode; icon
 };
 
 const CATEGORY_ORDER: string[] = ['student', 'group', 'course', 'teacher'];
+
+function shouldShowAvatar(result: SearchResult) {
+  return (result.type === 'student' || result.type === 'teacher') && Boolean(result.avatar_url);
+}
 
 export default function GlobalSearch({ query, inputFocused, onClose }: GlobalSearchProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -175,9 +180,17 @@ export default function GlobalSearch({ query, inputFocused, onClose }: GlobalSea
                   }}
                   onMouseEnter={() => setActiveIndex(thisIndex)}
                 >
-                  <div className={`${styles.itemIcon} ${styles[meta.iconClass] || ''}`}>
-                    {meta.icon}
-                  </div>
+                  {shouldShowAvatar(item) ? (
+                    <img
+                      src={item.avatar_url || ''}
+                      alt={item.title}
+                      className={styles.itemAvatar}
+                    />
+                  ) : (
+                    <div className={`${styles.itemIcon} ${styles[meta.iconClass] || ''}`}>
+                      {meta.icon}
+                    </div>
+                  )}
                   <div className={styles.itemContent}>
                     <div className={styles.itemTitle}>{item.title}</div>
                     <div className={styles.itemSubtitle}>{item.subtitle}</div>
