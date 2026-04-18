@@ -23,7 +23,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   const student = await createStudent(
     fullName,
     undefined,
-    undefined,
+    submission.email || undefined,
     body.parent_name || submission.parent_name,
     body.parent_phone || submission.parent_phone,
     submission.notes || undefined,
@@ -55,6 +55,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       tokenId: submission.token_id,
       studentId: student.id,
       studentPublicId: student.public_id,
+      email: submission.email,
+      interestedCourses: submission.interested_courses,
     },
   });
 

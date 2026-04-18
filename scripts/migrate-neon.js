@@ -117,6 +117,7 @@ async function migrate() {
         discount TEXT,
         parent_relation TEXT,
         parent2_name TEXT,
+        parent2_phone TEXT,
         parent2_relation TEXT,
         interested_courses TEXT,
         source TEXT,

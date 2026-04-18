@@ -4,6 +4,24 @@ import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+function normalizeInterestedCourses(value: unknown): string | undefined {
+  if (Array.isArray(value)) {
+    const normalized = value.map((course) => String(course).trim()).filter(Boolean);
+    return normalized.length > 0 ? normalized.join(', ') : undefined;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    return normalized || undefined;
+  }
+
+  return undefined;
+}
+
 export async function GET(request: NextRequest, { params }: { params: { token: string } }) {
   const { valid, reason } = await validateToken(params.token);
 
@@ -25,9 +43,10 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
   const errors: string[] = [];
 
   if (!body.child_first_name?.trim()) errors.push("Ім'я дитини обов'язкове");
-  if (!body.child_last_name?.trim()) errors.push('Прізвище дитини обов’язкове');
+  if (!body.child_last_name?.trim()) errors.push("Прізвище дитини обов'язкове");
   if (!body.parent_name?.trim()) errors.push("Ім'я батьків обов'язкове");
   if (!body.parent_phone?.trim()) errors.push("Телефон обов'язковий");
+  if (body.email?.trim() && !isValidEmail(body.email)) errors.push('Невірний формат email');
 
   if (errors.length > 0) {
     return NextResponse.json({ error: 'Validation failed', errors }, { status: 400 });
@@ -43,6 +62,7 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     child_last_name: body.child_last_name.trim(),
     birth_date: body.birth_date || undefined,
     school: body.school?.trim() || undefined,
+    email: body.email?.trim() || undefined,
     parent_name: body.parent_name.trim(),
     parent_phone: phone,
     parent_relation: body.parent_relation || undefined,
@@ -50,7 +70,7 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     parent2_phone: body.parent2_phone?.replace(/[^\d+]/g, '') || undefined,
     parent2_relation: body.parent2_relation || undefined,
     notes: body.notes?.trim() || undefined,
-    interested_courses: body.interested_courses || undefined,
+    interested_courses: normalizeInterestedCourses(body.interested_courses),
     source: body.source?.trim() || undefined,
   });
 
@@ -67,6 +87,7 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
       submissionId: submission.id,
       tokenId: tokenData.id,
       parentPhone: phone,
+      email: submission.email,
     },
   });
 

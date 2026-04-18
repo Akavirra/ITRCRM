@@ -22,6 +22,7 @@ interface Submission {
   child_last_name: string;
   birth_date: string | null;
   school: string | null;
+  email: string | null;
   parent_name: string;
   parent_phone: string;
   parent_relation: string | null;
@@ -166,6 +167,7 @@ export default function EnrollmentPage() {
       child_last_name: s.child_last_name,
       birth_date: s.birth_date,
       school: s.school,
+      email: s.email,
       parent_name: s.parent_name,
       parent_phone: s.parent_phone,
       parent_relation: s.parent_relation,
@@ -173,6 +175,7 @@ export default function EnrollmentPage() {
       parent2_phone: s.parent2_phone,
       parent2_relation: s.parent2_relation,
       notes: s.notes,
+      interested_courses: s.interested_courses,
       source: s.source,
     });
     setEditing(false);

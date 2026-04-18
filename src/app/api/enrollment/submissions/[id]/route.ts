@@ -28,10 +28,20 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
   const body = await request.json();
   const allowedFields = [
-    'child_first_name', 'child_last_name', 'birth_date', 'school',
-    'parent_name', 'parent_phone', 'parent_relation',
-    'parent2_name', 'parent2_phone', 'parent2_relation',
-    'notes', 'interested_courses', 'source',
+    'child_first_name',
+    'child_last_name',
+    'birth_date',
+    'school',
+    'email',
+    'parent_name',
+    'parent_phone',
+    'parent_relation',
+    'parent2_name',
+    'parent2_phone',
+    'parent2_relation',
+    'notes',
+    'interested_courses',
+    'source',
   ];
 
   const updates: Record<string, unknown> = {};

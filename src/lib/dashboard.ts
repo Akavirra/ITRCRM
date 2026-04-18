@@ -95,26 +95,26 @@ async function loadDashboardHistoryEntries(limit: number, offset = 0): Promise<D
       user_name: string;
     }>(
       `SELECT
-        entity_type,
-        entity_id,
-        entity_public_id,
-        entity_title,
-        student_id,
-        COALESCE(related_student.full_name, CASE WHEN entity_type = 'student' THEN entity_title ELSE NULL END) as student_title,
-        group_id,
-        COALESCE(related_group.title, CASE WHEN entity_type = 'group' THEN entity_title ELSE NULL END) as group_title,
-        course_id,
-        COALESCE(related_course.title, CASE WHEN entity_type = 'course' THEN entity_title ELSE NULL END) as course_title,
-        event_type,
-        event_badge,
-        description,
-        created_at,
-        user_name
+        audit_events.entity_type,
+        audit_events.entity_id,
+        audit_events.entity_public_id,
+        audit_events.entity_title,
+        audit_events.student_id,
+        COALESCE(related_student.full_name, CASE WHEN audit_events.entity_type = 'student' THEN audit_events.entity_title ELSE NULL END) as student_title,
+        audit_events.group_id,
+        COALESCE(related_group.title, CASE WHEN audit_events.entity_type = 'group' THEN audit_events.entity_title ELSE NULL END) as group_title,
+        audit_events.course_id,
+        COALESCE(related_course.title, CASE WHEN audit_events.entity_type = 'course' THEN audit_events.entity_title ELSE NULL END) as course_title,
+        audit_events.event_type,
+        audit_events.event_badge,
+        audit_events.description,
+        audit_events.created_at,
+        audit_events.user_name
        FROM audit_events
        LEFT JOIN students related_student ON audit_events.student_id = related_student.id
        LEFT JOIN groups related_group ON audit_events.group_id = related_group.id
        LEFT JOIN courses related_course ON audit_events.course_id = related_course.id
-       ORDER BY created_at DESC
+       ORDER BY audit_events.created_at DESC
        LIMIT $1
        OFFSET $2`,
       [limit, offset]
@@ -146,23 +146,23 @@ async function loadDashboardHistoryEntries(limit: number, offset = 0): Promise<D
       user_name: string;
     }>(
       `SELECT
-        entity_type,
-        entity_id,
-        entity_public_id,
-        entity_title,
+        audit_events.entity_type,
+        audit_events.entity_id,
+        audit_events.entity_public_id,
+        audit_events.entity_title,
         NULL as student_id,
         NULL as student_title,
         NULL as group_id,
         NULL as group_title,
         NULL as course_id,
         NULL as course_title,
-        event_type,
-        event_badge,
-        description,
-        created_at,
-        user_name
+        audit_events.event_type,
+        audit_events.event_badge,
+        audit_events.description,
+        audit_events.created_at,
+        audit_events.user_name
        FROM audit_events
-       ORDER BY created_at DESC
+       ORDER BY audit_events.created_at DESC
        LIMIT $1
        OFFSET $2`,
       [limit, offset]

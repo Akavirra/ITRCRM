@@ -20,6 +20,7 @@ export interface EnrollmentSubmission {
   child_last_name: string;
   birth_date: string | null;
   school: string | null;
+  email: string | null;
   parent_name: string;
   parent_phone: string;
   parent_relation: string | null;
@@ -137,6 +138,7 @@ export async function createSubmission(
     child_last_name: string;
     birth_date?: string;
     school?: string;
+    email?: string;
     parent_name: string;
     parent_phone: string;
     parent_relation?: string;
@@ -150,10 +152,10 @@ export async function createSubmission(
 ): Promise<EnrollmentSubmission> {
   const result = await run(
     `INSERT INTO enrollment_submissions
-     (token_id, child_first_name, child_last_name, birth_date, school,
+     (token_id, child_first_name, child_last_name, birth_date, school, email,
       parent_name, parent_phone, parent_relation,
       parent2_name, parent2_phone, parent2_relation, notes, interested_courses, source)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      RETURNING *`,
     [
       tokenId,
@@ -161,6 +163,7 @@ export async function createSubmission(
       data.child_last_name,
       data.birth_date || null,
       data.school || null,
+      data.email || null,
       data.parent_name,
       data.parent_phone,
       data.parent_relation || null,
@@ -202,6 +205,7 @@ export async function updateSubmission(
     child_last_name: string;
     birth_date: string | null;
     school: string | null;
+    email: string | null;
     parent_name: string;
     parent_phone: string;
     parent_relation: string | null;

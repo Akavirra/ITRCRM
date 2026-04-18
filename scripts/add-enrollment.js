@@ -51,6 +51,7 @@ async function migrate() {
         child_last_name TEXT NOT NULL,
         birth_date DATE,
         school TEXT,
+        email TEXT,
         parent_name TEXT NOT NULL,
         parent_phone TEXT NOT NULL,
         parent_relation TEXT,
