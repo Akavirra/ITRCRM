@@ -124,7 +124,55 @@ async function loadDashboardHistoryEntries(limit: number, offset = 0): Promise<D
       return mapDashboardHistoryEntries(auditEvents);
     }
   } catch (error) {
-    console.error('[dashboard] Failed to load audit_events, falling back to student_history:', error);
+    console.error('[dashboard] Failed to load extended audit_events history, retrying basic query:', error);
+  }
+
+  try {
+    const basicAuditEvents = await all<{
+      entity_type: string;
+      entity_id: number | null;
+      entity_public_id: string | null;
+      entity_title: string;
+      student_id: number | null;
+      student_title: string | null;
+      group_id: number | null;
+      group_title: string | null;
+      course_id: number | null;
+      course_title: string | null;
+      event_type: string;
+      event_badge: string;
+      description: string;
+      created_at: string;
+      user_name: string;
+    }>(
+      `SELECT
+        entity_type,
+        entity_id,
+        entity_public_id,
+        entity_title,
+        NULL as student_id,
+        NULL as student_title,
+        NULL as group_id,
+        NULL as group_title,
+        NULL as course_id,
+        NULL as course_title,
+        event_type,
+        event_badge,
+        description,
+        created_at,
+        user_name
+       FROM audit_events
+       ORDER BY created_at DESC
+       LIMIT $1
+       OFFSET $2`,
+      [limit, offset]
+    );
+
+    if (basicAuditEvents.length > 0) {
+      return mapDashboardHistoryEntries(basicAuditEvents);
+    }
+  } catch (error) {
+    console.error('[dashboard] Failed to load basic audit_events history, falling back to student_history:', error);
   }
 
   const legacyHistory = await all<{
