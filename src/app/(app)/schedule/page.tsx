@@ -11,6 +11,7 @@ import { uk } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Calendar, CalendarDays, Clock, User as UserIcon, Users, BookOpen, Check, X, RefreshCw, Plus } from 'lucide-react';
 import PageLoading from '@/components/PageLoading';
 import CreateLessonModal from '@/components/CreateLessonModal';
+import CampsTab from '@/components/camp/CampsTab';
 
 
 interface Lesson {
@@ -79,6 +80,9 @@ export default function SchedulePage() {
   
   // Create lesson modal state
   const [showCreateLessonModal, setShowCreateLessonModal] = useState(false);
+
+  // Top-level tab: lessons vs. camps
+  const [topTab, setTopTab] = useState<'lessons' | 'camps'>('lessons');
 
   // Swipe State
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -324,6 +328,49 @@ export default function SchedulePage() {
 
   return (
     <>
+      {/* ===== Top-level tabs: Заняття / Табори ===== */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.25rem',
+          borderBottom: '1px solid #e5e7eb',
+          marginBottom: '1.25rem',
+          overflowX: 'auto',
+        }}
+      >
+        {([
+          { key: 'lessons' as const, label: 'Заняття' },
+          { key: 'camps' as const, label: 'Табори' },
+        ]).map(t => {
+          const isActive = topTab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTopTab(t.key)}
+              style={{
+                padding: '0.625rem 1.125rem',
+                fontSize: '0.9375rem',
+                fontWeight: isActive ? 600 : 500,
+                color: isActive ? '#111827' : '#6b7280',
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
+                cursor: 'pointer',
+                marginBottom: '-1px',
+                transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {topTab === 'camps' ? (
+        <CampsTab />
+      ) : (<>
+
       {/* ===== DESKTOP header: h1 top left, buttons top right, toggle below ===== */}
       <div className="sched-header-desktop" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -900,6 +947,7 @@ export default function SchedulePage() {
         onClose={() => setShowCreateLessonModal(false)}
         onSuccess={() => fetchSchedule()}
       />
+      </>)}
     </>
   );
 }

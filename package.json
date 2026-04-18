@@ -51,6 +51,7 @@
     "db:add-enrollment": "node scripts/add-enrollment.js",
     "db:add-enrollment-manual-close": "node scripts/add-enrollment-manual-close.js",
     "db:add-parent2-phone": "node scripts/add-parent2-phone.js",
+    "db:add-camps": "node scripts/add-camps.js",
     "db:schema:dump": "node scripts/dump-schema.js",
     "test": "jest"
   },

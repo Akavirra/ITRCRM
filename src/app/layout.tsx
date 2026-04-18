@@ -17,6 +17,8 @@ import { TeacherModalsProvider } from '@/components/TeacherModalsProvider';
 import TeacherModalsWrapper from '@/components/TeacherModalsWrapper';
 import { LessonModalsProvider } from '@/components/LessonModalsProvider';
 import LessonModalsWrapper from '@/components/LessonModalsWrapper';
+import { CampModalsProvider } from '@/components/CampModalsProvider';
+import CampModalsWrapper from '@/components/CampModalsWrapper';
 import { PageTransitionProvider } from '@/components/PageTransitionProvider';
 import PageTransitionLoader from '@/components/PageTransitionLoader';
 import { ToastProvider } from '@/components/Toast/ToastContext';
@@ -48,14 +50,17 @@ export default function RootLayout({
                     <CourseModalsProvider>
                       <TeacherModalsProvider>
                         <LessonModalsProvider>
-                          {children}
-                          <GroupModalsWrapper />
-                          <StudentModalsWrapper />
-                          <CourseModalsWrapper />
-                          <TeacherModalsWrapper />
-                          <LessonModalsWrapper />
-                          <PageTransitionLoader />
-                          <ToastContainer />
+                          <CampModalsProvider>
+                            {children}
+                            <GroupModalsWrapper />
+                            <StudentModalsWrapper />
+                            <CourseModalsWrapper />
+                            <TeacherModalsWrapper />
+                            <LessonModalsWrapper />
+                            <CampModalsWrapper />
+                            <PageTransitionLoader />
+                            <ToastContainer />
+                          </CampModalsProvider>
                         </LessonModalsProvider>
                       </TeacherModalsProvider>
                     </CourseModalsProvider>
