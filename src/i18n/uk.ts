@@ -17,6 +17,7 @@ export const uk = {
     users: 'Користувачі',
     settings: 'Налаштування',
     camps: 'Табори',
+    certificates: 'Сертифікати',
   },
 
   // Search
@@ -366,6 +367,8 @@ export const uk = {
     addStudentToGroup: 'Додати учня до групи',
 
     noUsers: 'Користувачів не знайдено',
+    noCertificates: 'Сертифікатів не знайдено',
+    noCertificatesHint: 'Створіть перший сертифікат для видачі',
 
     noLessons: 'Немає запланованих занять',
     noLessonsHint: 'Виберіть фільтри та натисніть "Оновити" для перерахунку',
@@ -386,6 +389,7 @@ export const uk = {
     confirmArchive: 'Архівувати?',
     confirmRestore: 'Відновити?',
     addStudentToGroup: 'Додати учня до групи',
+    newCertificate: 'Новий сертифікат',
   },
 
   // Form sections

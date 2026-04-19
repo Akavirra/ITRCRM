@@ -46,6 +46,7 @@ const menuItems = [
   { href: '/attendance', labelKey: 'nav.attendance', icon: ClipboardList },
   { href: '/payments', labelKey: 'nav.payments', icon: Wallet },
   { href: '/enrollment', labelKey: 'nav.enrollment', icon: FileText },
+  { href: '/certificates', labelKey: 'nav.certificates', icon: Gift },
 ];
 
 const filesMenuItem = { href: '/materials', labelKey: 'nav.materials', icon: FolderOpen };

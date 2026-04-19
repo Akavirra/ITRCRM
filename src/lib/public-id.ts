@@ -11,6 +11,7 @@ export const PUBLIC_ID_PREFIXES = {
   teacher: 'TCH',
   camp: 'CMP',
   campParticipant: 'CPT',
+  certificate: 'CRT',
 } as const;
 
 // Default length of the random part (after prefix and hyphen)

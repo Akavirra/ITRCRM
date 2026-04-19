@@ -31,6 +31,7 @@ const menuItems = [
   { href: '/students', labelKey: 'nav.students', icon: 'user' },
   { href: '/teachers', labelKey: 'nav.teachers', icon: 'teacher' },
   { href: '/reports', labelKey: 'nav.reports', icon: 'chart' },
+  { href: '/certificates', labelKey: 'nav.certificates', icon: 'award' },
 ];
 
 const adminMenuItems = [
