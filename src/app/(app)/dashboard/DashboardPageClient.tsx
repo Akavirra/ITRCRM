@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
@@ -158,6 +158,7 @@ function NextLessonCountdown({ startDatetime }: { startDatetime: string }) {
 
 export default function DashboardPageClient({ initialData }: { initialData: DashboardStatsPayload }) {
   const router = useRouter();
+  const createMenuId = useId();
   const { openCourseModal } = useCourseModals();
   const { openGroupModal } = useGroupModals();
   const { openStudentModal } = useStudentModals();
@@ -169,6 +170,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showCreateLessonModal, setShowCreateLessonModal] = useState(false);
+  const [showMobileCreateMenu, setShowMobileCreateMenu] = useState(false);
   const [showDebtsModal, setShowDebtsModal] = useState(false);
   const [showAbsencesModal, setShowAbsencesModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -177,6 +179,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const [historyLoading, setHistoryLoading] = useState(false);
   const historyBodyRef = useRef<HTMLDivElement | null>(null);
   const historyLoadMoreRef = useRef<HTMLDivElement | null>(null);
+  const mobileCreateMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [allTimeDebtors, setAllTimeDebtors] = useState<AllTimeDebtor[] | null>(null);
   const [allTimeDebtsLoading, setAllTimeDebtsLoading] = useState(false);
@@ -238,6 +241,43 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
     setAttMonthFilter(null);
     setAttendanceAllTimeMonthFilter('');
   };
+
+  useEffect(() => {
+    if (!showMobileCreateMenu) return undefined;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (!mobileCreateMenuRef.current?.contains(event.target as Node)) {
+        setShowMobileCreateMenu(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowMobileCreateMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showMobileCreateMenu]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 720) {
+        setShowMobileCreateMenu(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const loadHistoryPage = (page: number) => {
     if (historyLoading) return;
@@ -339,6 +379,41 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
   const completedLessons = initialData.todaySchedule.filter((l) => l.status === 'completed' || l.status === 'done').length;
   const visiblePayments = initialData.recentPayments.slice(0, 6);
   const visibleHistory = initialData.recentHistory.slice(0, 6);
+  const mobileCreateActions = [
+    {
+      key: 'student',
+      label: 'Учень',
+      icon: <Plus size={14} />,
+      onClick: () => {
+        setShowMobileCreateMenu(false);
+        setShowCreateStudentModal(true);
+      },
+    },
+    {
+      key: 'group',
+      label: 'Група',
+      icon: <Users2 size={14} />,
+      onClick: () => {
+        setShowMobileCreateMenu(false);
+        setShowCreateGroupModal(true);
+      },
+    },
+    {
+      key: 'lesson',
+      label: 'Заняття',
+      icon: <Calendar size={14} />,
+      onClick: () => {
+        setShowMobileCreateMenu(false);
+        setShowCreateLessonModal(true);
+      },
+    },
+    {
+      key: 'payment',
+      label: 'Оплата',
+      icon: <CreditCard size={14} />,
+      href: '/payments?newPayment=1',
+    },
+  ] as const;
   const historyPagination = historyPageData?.pagination ?? null;
   const historyLoadedCount = historyPageData?.items.length ?? 0;
   const historyTotalCount = historyPagination?.total ?? 0;
@@ -478,6 +553,53 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               <span className={styles.actionChipIcon}><CreditCard size={14} /></span>
               Оплата
             </TransitionLink>
+          </div>
+
+          <div className={styles.mobileCreateWrap} ref={mobileCreateMenuRef}>
+            <button
+              type="button"
+              className={styles.mobileCreateButton}
+              aria-expanded={showMobileCreateMenu}
+              aria-controls={createMenuId}
+              onClick={() => setShowMobileCreateMenu((current) => !current)}
+            >
+              <span className={styles.mobileCreateButtonIcon}><Plus size={16} /></span>
+              Створити
+              <ChevronDown
+                size={16}
+                className={`${styles.mobileCreateChevron} ${showMobileCreateMenu ? styles.mobileCreateChevronOpen : ''}`}
+              />
+            </button>
+
+            <div
+              id={createMenuId}
+              className={`${styles.mobileCreateMenu} ${showMobileCreateMenu ? styles.mobileCreateMenuOpen : ''}`}
+              aria-hidden={!showMobileCreateMenu}
+            >
+              {mobileCreateActions.map((action) => (
+                'href' in action ? (
+                  <TransitionLink
+                    key={action.key}
+                    href={action.href}
+                    className={styles.mobileCreateItem}
+                    onClick={() => setShowMobileCreateMenu(false)}
+                  >
+                    <span className={styles.mobileCreateItemIcon}>{action.icon}</span>
+                    {action.label}
+                  </TransitionLink>
+                ) : (
+                  <button
+                    key={action.key}
+                    type="button"
+                    className={styles.mobileCreateItem}
+                    onClick={action.onClick}
+                  >
+                    <span className={styles.mobileCreateItemIcon}>{action.icon}</span>
+                    {action.label}
+                  </button>
+                )
+              ))}
+            </div>
           </div>
         </section>
 
