@@ -5,6 +5,29 @@ import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
+function normalizeInterestedCourses(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    const normalized = value
+      .map((course) => String(course).trim())
+      .filter(Boolean);
+
+    return normalized.length > 0 ? normalized.join(', ') : null;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    return normalized || null;
+  }
+
+  return null;
+}
+
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized || null;
+}
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const user = await getAuthUser(request);
   if (!user) return unauthorized();
@@ -47,7 +70,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   const updates: Record<string, unknown> = {};
   for (const field of allowedFields) {
     if (field in body) {
-      updates[field] = body[field];
+      if (field === 'interested_courses') {
+        updates[field] = normalizeInterestedCourses(body[field]);
+      } else if (field === 'birth_date') {
+        updates[field] = body[field] || null;
+      } else {
+        updates[field] = normalizeOptionalString(body[field]);
+      }
     }
   }
 

@@ -39,12 +39,106 @@ interface Submission {
   created_at: string;
 }
 
+interface CourseOption {
+  id: number;
+  title: string;
+  public_id: string;
+}
+
+interface SubmissionEditData {
+  child_first_name: string;
+  child_last_name: string;
+  birth_date: string;
+  school: string;
+  email: string;
+  parent_name: string;
+  parent_phone: string;
+  parent_relation: string;
+  parent_relation_other: string;
+  parent2_name: string;
+  parent2_phone: string;
+  parent2_relation: string;
+  parent2_relation_other: string;
+  notes: string;
+  interested_courses: string[];
+  source: string;
+  source_other: string;
+}
+
 type Tab = 'submissions' | 'tokens';
 
-const RELATIONS: Record<string, string> = {
-  mother: 'Мама', father: 'Тато', grandmother: 'Бабуся',
-  grandfather: 'Дідусь', other: 'Інше',
+const RELATION_OPTIONS = [
+  { value: 'mother', label: 'Мама' },
+  { value: 'father', label: 'Тато' },
+  { value: 'grandmother', label: 'Бабуся' },
+  { value: 'grandfather', label: 'Дідусь' },
+  { value: 'other', label: 'Інше' },
+];
+
+const SOURCE_OPTIONS = [
+  { value: 'social', label: 'Соціальні мережі' },
+  { value: 'friends', label: 'Знайомі / рекомендації' },
+  { value: 'search', label: 'Пошук в інтернеті' },
+  { value: 'other', label: 'Інше' },
+];
+
+const EMPTY_EDIT_DATA: SubmissionEditData = {
+  child_first_name: '',
+  child_last_name: '',
+  birth_date: '',
+  school: '',
+  email: '',
+  parent_name: '',
+  parent_phone: '',
+  parent_relation: '',
+  parent_relation_other: '',
+  parent2_name: '',
+  parent2_phone: '',
+  parent2_relation: '',
+  parent2_relation_other: '',
+  notes: '',
+  interested_courses: [],
+  source: '',
+  source_other: '',
 };
+
+function normalizeDate(value?: string | null) {
+  return value ? value.slice(0, 10) : '';
+}
+
+function normalizeOptionValue(
+  value: string | null | undefined,
+  options: Array<{ value: string }>
+) {
+  const normalized = (value || '').trim();
+  if (!normalized) {
+    return { value: '', other: '' };
+  }
+
+  const matches = options.some((option) => option.value === normalized);
+  return matches
+    ? { value: normalized, other: '' }
+    : { value: 'other', other: normalized };
+}
+
+function getOptionLabel(
+  value: string | null | undefined,
+  options: Array<{ value: string; label: string }>
+) {
+  if (!value) return '—';
+  const option = options.find((item) => item.value === value);
+  return option ? option.label : value;
+}
+
+function parseInterestedCourses(value: string | null | undefined) {
+  if (!value) return [];
+
+  return value
+    .replace(/^\[|\]$/g, '')
+    .split(',')
+    .map((item) => item.replace(/^"+|"+$/g, '').trim())
+    .filter(Boolean);
+}
 
 export default function EnrollmentPage() {
   const [tab, setTab] = useState<Tab>('submissions');
@@ -60,8 +154,17 @@ export default function EnrollmentPage() {
   const [closingTokenId, setClosingTokenId] = useState<number | null>(null);
 
   // Edit state for selected submission
-  const [editData, setEditData] = useState<Partial<Submission>>({});
+  const [editData, setEditData] = useState<SubmissionEditData>(EMPTY_EDIT_DATA);
   const [editing, setEditing] = useState(false);
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [coursesOpen, setCoursesOpen] = useState(false);
+
+  const closeSubmissionModal = () => {
+    setSelectedSubmission(null);
+    setEditing(false);
+    setCoursesOpen(false);
+    setEditData(EMPTY_EDIT_DATA);
+  };
 
   const fetchSubmissions = useCallback(async () => {
     const url = statusFilter ? `/api/enrollment/submissions?status=${statusFilter}` : '/api/enrollment/submissions';
@@ -81,6 +184,25 @@ export default function EnrollmentPage() {
     Promise.all([fetchSubmissions(), fetchTokens()])
       .finally(() => setLoading(false));
   }, [fetchSubmissions, fetchTokens]);
+
+  useEffect(() => {
+    fetch('/api/public/courses')
+      .then((res) => (res.ok ? res.json() : { courses: [] }))
+      .then((data) => setCourses(Array.isArray(data.courses) ? data.courses : []))
+      .catch(() => setCourses([]));
+  }, []);
+
+  useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-enrollment-courses-dropdown="true"]')) {
+        setCoursesOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleDocumentClick);
+    return () => document.removeEventListener('click', handleDocumentClick);
+  }, []);
 
   const openQrModal = async (tokenValue: string) => {
     const enrollUrl = `${window.location.origin}/enroll/${tokenValue}`;
@@ -145,40 +267,78 @@ export default function EnrollmentPage() {
   // Save edits
   const handleSaveEdit = async () => {
     if (!selectedSubmission) return;
+
+    const payload = {
+      child_first_name: editData.child_first_name.trim(),
+      child_last_name: editData.child_last_name.trim(),
+      birth_date: editData.birth_date || null,
+      school: editData.school.trim(),
+      email: editData.email.trim(),
+      parent_name: editData.parent_name.trim(),
+      parent_phone: editData.parent_phone.trim(),
+      parent_relation: editData.parent_relation === 'other'
+        ? editData.parent_relation_other.trim()
+        : editData.parent_relation,
+      parent2_name: editData.parent2_name.trim(),
+      parent2_phone: editData.parent2_phone.trim(),
+      parent2_relation: editData.parent2_relation === 'other'
+        ? editData.parent2_relation_other.trim()
+        : editData.parent2_relation,
+      notes: editData.notes.trim(),
+      interested_courses: editData.interested_courses,
+      source: editData.source === 'other'
+        ? editData.source_other.trim()
+        : editData.source,
+    };
+
     try {
       const res = await fetch(`/api/enrollment/submissions/${selectedSubmission.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editData),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         const updated = await res.json();
         setSelectedSubmission(updated);
+        setEditData(mapSubmissionToEditData(updated));
         setEditing(false);
+        setCoursesOpen(false);
         fetchSubmissions();
       }
     } catch { /* ignore */ }
   };
 
+  const mapSubmissionToEditData = (submission: Submission): SubmissionEditData => {
+    const parentRelation = normalizeOptionValue(submission.parent_relation, RELATION_OPTIONS);
+    const parent2Relation = normalizeOptionValue(submission.parent2_relation, RELATION_OPTIONS);
+    const source = normalizeOptionValue(submission.source, SOURCE_OPTIONS);
+
+    return {
+      child_first_name: submission.child_first_name || '',
+      child_last_name: submission.child_last_name || '',
+      birth_date: normalizeDate(submission.birth_date),
+      school: submission.school || '',
+      email: submission.email || '',
+      parent_name: submission.parent_name || '',
+      parent_phone: submission.parent_phone || '',
+      parent_relation: parentRelation.value,
+      parent_relation_other: parentRelation.other,
+      parent2_name: submission.parent2_name || '',
+      parent2_phone: submission.parent2_phone || '',
+      parent2_relation: parent2Relation.value,
+      parent2_relation_other: parent2Relation.other,
+      notes: submission.notes || '',
+      interested_courses: parseInterestedCourses(submission.interested_courses),
+      source: source.value,
+      source_other: source.other,
+    };
+  };
+
   const openSubmission = (s: Submission) => {
     setSelectedSubmission(s);
-    setEditData({
-      child_first_name: s.child_first_name,
-      child_last_name: s.child_last_name,
-      birth_date: s.birth_date,
-      school: s.school,
-      email: s.email,
-      parent_name: s.parent_name,
-      parent_phone: s.parent_phone,
-      parent_relation: s.parent_relation,
-      parent2_name: s.parent2_name,
-      parent2_phone: s.parent2_phone,
-      parent2_relation: s.parent2_relation,
-      notes: s.notes,
-      interested_courses: s.interested_courses,
-      source: s.source,
-    });
+    setEditData(mapSubmissionToEditData(s));
     setEditing(false);
+    setCoursesOpen(false);
   };
 
   const handleCloseToken = async (token: EnrollmentToken) => {
@@ -232,6 +392,15 @@ export default function EnrollmentPage() {
   };
 
   const isTokenActive = (token: EnrollmentToken) => !token.used_at && new Date(token.expires_at) >= new Date();
+
+  const toggleInterestedCourse = (title: string) => {
+    setEditData((prev) => ({
+      ...prev,
+      interested_courses: prev.interested_courses.includes(title)
+        ? prev.interested_courses.filter((course) => course !== title)
+        : [...prev.interested_courses, title],
+    }));
+  };
 
   const qrLink = typeof window !== 'undefined' && qrToken
     ? `${window.location.origin}/enroll/${qrToken}`
@@ -425,7 +594,7 @@ export default function EnrollmentPage() {
               background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
               justifyContent: 'center', zIndex: 9999, padding: '1rem',
             }}
-              onClick={() => setSelectedSubmission(null)}
+              onClick={closeSubmissionModal}
             >
               <div
                 style={{
@@ -438,61 +607,151 @@ export default function EnrollmentPage() {
                   <h2 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0 }}>
                     {editing ? 'Редагування анкети' : 'Деталі анкети'}
                   </h2>
-                  <button onClick={() => setSelectedSubmission(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+                  <button onClick={closeSubmissionModal} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
                 </div>
 
                 <div style={{ display: 'grid', gap: '0.75rem' }}>
                   <DetailRow label="Прізвище" value={editing ? undefined : selectedSubmission.child_last_name}>
-                    {editing && <input className="form-input" value={editData.child_last_name || ''} onChange={e => setEditData({ ...editData, child_last_name: e.target.value })} />}
+                    {editing && <input className="form-input" value={editData.child_last_name} onChange={e => setEditData({ ...editData, child_last_name: e.target.value })} />}
                   </DetailRow>
                   <DetailRow label="Ім'я" value={editing ? undefined : selectedSubmission.child_first_name}>
-                    {editing && <input className="form-input" value={editData.child_first_name || ''} onChange={e => setEditData({ ...editData, child_first_name: e.target.value })} />}
+                    {editing && <input className="form-input" value={editData.child_first_name} onChange={e => setEditData({ ...editData, child_first_name: e.target.value })} />}
                   </DetailRow>
                   <DetailRow label="Дата народження" value={editing ? undefined : (selectedSubmission.birth_date ? formatDate(selectedSubmission.birth_date) : '—')}>
-                    {editing && <input type="date" className="form-input" value={editData.birth_date || ''} onChange={e => setEditData({ ...editData, birth_date: e.target.value })} />}
+                    {editing && <input type="date" className="form-input" value={editData.birth_date} onChange={e => setEditData({ ...editData, birth_date: e.target.value })} />}
                   </DetailRow>
                   <DetailRow label="Школа" value={editing ? undefined : (selectedSubmission.school || '—')}>
-                    {editing && <input className="form-input" value={editData.school || ''} onChange={e => setEditData({ ...editData, school: e.target.value })} />}
+                    {editing && <input className="form-input" value={editData.school} onChange={e => setEditData({ ...editData, school: e.target.value })} />}
+                  </DetailRow>
+                  <DetailRow label="Email" value={editing ? undefined : (selectedSubmission.email || '—')}>
+                    {editing && <input type="email" className="form-input" value={editData.email} onChange={e => setEditData({ ...editData, email: e.target.value })} />}
                   </DetailRow>
 
                   <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '0.5rem 0' }} />
 
                   <DetailRow label="Контактна особа" value={editing ? undefined : selectedSubmission.parent_name}>
-                    {editing && <input className="form-input" value={editData.parent_name || ''} onChange={e => setEditData({ ...editData, parent_name: e.target.value })} />}
+                    {editing && <input className="form-input" value={editData.parent_name} onChange={e => setEditData({ ...editData, parent_name: e.target.value })} />}
                   </DetailRow>
                   <DetailRow label="Телефон" value={editing ? undefined : selectedSubmission.parent_phone}>
-                    {editing && <input className="form-input" value={editData.parent_phone || ''} onChange={e => setEditData({ ...editData, parent_phone: e.target.value })} />}
+                    {editing && <input className="form-input" value={editData.parent_phone} onChange={e => setEditData({ ...editData, parent_phone: e.target.value })} />}
                   </DetailRow>
-                  <DetailRow label="Хто дитині" value={editing ? undefined : (RELATIONS[selectedSubmission.parent_relation || ''] || selectedSubmission.parent_relation || '—')}>
+                  <DetailRow label="Хто дитині" value={editing ? undefined : getOptionLabel(selectedSubmission.parent_relation, RELATION_OPTIONS)}>
                     {editing && (
-                      <select className="form-input" value={editData.parent_relation || ''} onChange={e => setEditData({ ...editData, parent_relation: e.target.value })}>
+                      <select className="form-input" value={editData.parent_relation} onChange={e => setEditData({ ...editData, parent_relation: e.target.value })}>
                         <option value="">—</option>
-                        {Object.entries(RELATIONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                        {RELATION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                       </select>
                     )}
                   </DetailRow>
+                  {editing && editData.parent_relation === 'other' && (
+                    <DetailRow label="Уточнення">
+                      <input className="form-input" value={editData.parent_relation_other} onChange={e => setEditData({ ...editData, parent_relation_other: e.target.value })} />
+                    </DetailRow>
+                  )}
 
-                  {(selectedSubmission.parent2_name || editing) && (
+                  {(selectedSubmission.parent2_name || selectedSubmission.parent2_phone || selectedSubmission.parent2_relation || editing) && (
                     <>
                       <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '0.5rem 0' }} />
                       <DetailRow label="Дод. контакт" value={editing ? undefined : (selectedSubmission.parent2_name || '—')}>
-                        {editing && <input className="form-input" value={editData.parent2_name || ''} onChange={e => setEditData({ ...editData, parent2_name: e.target.value })} />}
+                        {editing && <input className="form-input" value={editData.parent2_name} onChange={e => setEditData({ ...editData, parent2_name: e.target.value })} />}
                       </DetailRow>
                       <DetailRow label="Тел. дод. контакту" value={editing ? undefined : (selectedSubmission.parent2_phone || '—')}>
-                        {editing && <input className="form-input" value={editData.parent2_phone || ''} onChange={e => setEditData({ ...editData, parent2_phone: e.target.value })} />}
+                        {editing && <input className="form-input" value={editData.parent2_phone} onChange={e => setEditData({ ...editData, parent2_phone: e.target.value })} />}
                       </DetailRow>
+                      <DetailRow label="Хто дитині" value={editing ? undefined : getOptionLabel(selectedSubmission.parent2_relation, RELATION_OPTIONS)}>
+                        {editing && (
+                          <select className="form-input" value={editData.parent2_relation} onChange={e => setEditData({ ...editData, parent2_relation: e.target.value })}>
+                            <option value="">—</option>
+                            {RELATION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </select>
+                        )}
+                      </DetailRow>
+                      {editing && editData.parent2_relation === 'other' && (
+                        <DetailRow label="Уточнення">
+                          <input className="form-input" value={editData.parent2_relation_other} onChange={e => setEditData({ ...editData, parent2_relation_other: e.target.value })} />
+                        </DetailRow>
+                      )}
                     </>
                   )}
 
+                  {(selectedSubmission.interested_courses || editing) && (
+                    <DetailRow label="Курси, які цікавлять" value={editing ? undefined : (selectedSubmission.interested_courses || '—')}>
+                      {editing && (
+                        <div data-enrollment-courses-dropdown="true" style={{ display: 'grid', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            className="form-input"
+                            onClick={() => setCoursesOpen((prev) => !prev)}
+                            style={{
+                              textAlign: 'left',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              cursor: 'pointer',
+                              background: '#fff',
+                            }}
+                          >
+                            <span style={{ color: editData.interested_courses.length > 0 ? '#0f172a' : '#94a3b8' }}>
+                              {editData.interested_courses.length > 0
+                                ? `${editData.interested_courses.length} обрано`
+                                : 'Оберіть курси'}
+                            </span>
+                            <span style={{ color: '#64748b' }}>{coursesOpen ? '▴' : '▾'}</span>
+                          </button>
+                          {coursesOpen && (
+                            <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', maxHeight: '220px', overflowY: 'auto' }}>
+                              {courses.length > 0 ? (
+                                courses.map((course) => (
+                                  <label key={course.id} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', padding: '0.75rem 0.9rem', borderBottom: '1px solid #eef2f7', cursor: 'pointer' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={editData.interested_courses.includes(course.title)}
+                                      onChange={() => toggleInterestedCourse(course.title)}
+                                    />
+                                    <span>{course.title}</span>
+                                  </label>
+                                ))
+                              ) : (
+                                <div style={{ padding: '0.9rem', color: '#64748b' }}>Активні курси зараз не знайдено</div>
+                              )}
+                            </div>
+                          )}
+                          {editData.interested_courses.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+                              {editData.interested_courses.map((course) => (
+                                <span key={course} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.35rem 0.65rem', borderRadius: '999px', background: '#e0ecff', color: '#1d4ed8', fontSize: '0.8rem', fontWeight: 600 }}>
+                                  {course}
+                                  <button type="button" onClick={() => toggleInterestedCourse(course)} style={{ border: 'none', background: 'transparent', color: '#1d4ed8', padding: 0, cursor: 'pointer', lineHeight: 1 }}>
+                                    ×
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </DetailRow>
+                  )}
+
                   {(selectedSubmission.source || editing) && (
-                    <DetailRow label="Джерело" value={editing ? undefined : (selectedSubmission.source || '—')}>
-                      {editing && <input className="form-input" value={editData.source || ''} onChange={e => setEditData({ ...editData, source: e.target.value })} />}
+                    <DetailRow label="Джерело" value={editing ? undefined : getOptionLabel(selectedSubmission.source, SOURCE_OPTIONS)}>
+                      {editing && (
+                        <select className="form-input" value={editData.source} onChange={e => setEditData({ ...editData, source: e.target.value })}>
+                          <option value="">—</option>
+                          {SOURCE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        </select>
+                      )}
+                    </DetailRow>
+                  )}
+                  {editing && editData.source === 'other' && (
+                    <DetailRow label="Уточнення джерела">
+                      <input className="form-input" value={editData.source_other} onChange={e => setEditData({ ...editData, source_other: e.target.value })} />
                     </DetailRow>
                   )}
 
                   {(selectedSubmission.notes || editing) && (
                     <DetailRow label="Примітки" value={editing ? undefined : (selectedSubmission.notes || '—')}>
-                      {editing && <textarea className="form-input" value={editData.notes || ''} onChange={e => setEditData({ ...editData, notes: e.target.value })} />}
+                      {editing && <textarea className="form-input" value={editData.notes} onChange={e => setEditData({ ...editData, notes: e.target.value })} />}
                     </DetailRow>
                   )}
                 </div>
@@ -503,14 +762,31 @@ export default function EnrollmentPage() {
                     {editing ? (
                       <>
                         <button className="btn btn-primary" onClick={handleSaveEdit}>Зберегти</button>
-                        <button className="btn btn-outline" onClick={() => setEditing(false)}>Скасувати</button>
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => {
+                            setEditData(mapSubmissionToEditData(selectedSubmission));
+                            setEditing(false);
+                            setCoursesOpen(false);
+                          }}
+                        >
+                          Скасувати
+                        </button>
                       </>
                     ) : (
                       <>
                         <button className="btn btn-primary" onClick={() => handleApprove(selectedSubmission)} disabled={approving}>
                           {approving ? 'Збереження...' : '✓ Затвердити → створити учня'}
                         </button>
-                        <button className="btn btn-secondary" onClick={() => setEditing(true)}>Редагувати</button>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            setEditData(mapSubmissionToEditData(selectedSubmission));
+                            setEditing(true);
+                          }}
+                        >
+                          Редагувати
+                        </button>
                         <button className="btn btn-outline" style={{ color: '#ef4444' }} onClick={() => handleReject(selectedSubmission)}>Відхилити</button>
                       </>
                     )}

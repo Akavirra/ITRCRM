@@ -88,6 +88,10 @@ function normalizePhoneInput(value: string, allowEmpty = false) {
     return allowEmpty ? '' : '+380';
   }
 
+  if (allowEmpty && digits === '380') {
+    return '';
+  }
+
   if (!digits.startsWith('380')) {
     if (digits.startsWith('0')) {
       digits = `38${digits}`;
@@ -287,7 +291,7 @@ export default function EnrollPage() {
     const relationOther = getRelationOtherValue(formData, key);
     const name = getContactNameValue(formData, key);
     const phone = getContactPhoneValue(formData, key);
-    const phoneDisplayValue = phone && phone !== '+380' ? formatPhoneDisplay(phone) : '';
+    const phoneDisplayValue = phone ? formatPhoneDisplay(phone) : '+380';
     const nameLabel = key === 'parent' ? "Ім'я контакту *" : "Ім'я контакту";
     const phoneLabel = key === 'parent' ? 'Телефон *' : 'Телефон';
     const relationLabel = key === 'parent' ? 'Ким є для дитини *' : 'Ким є для дитини';
