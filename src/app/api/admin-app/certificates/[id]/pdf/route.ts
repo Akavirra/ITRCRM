@@ -192,7 +192,7 @@ export async function GET(
       font: font,
       color: rgb(r, g, b),
       characterSpacing: characterSpacing,
-    });
+    } as any);
 
     // 6. Draw Amount (Multiline with Ermilov font - now only amount)
     const amountVal = `${cert.amount}`;
