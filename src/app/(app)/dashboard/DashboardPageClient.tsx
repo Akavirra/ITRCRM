@@ -156,6 +156,28 @@ function NextLessonCountdown({ startDatetime }: { startDatetime: string }) {
   return <span className={styles.nextLessonCountdown}>{label}</span>;
 }
 
+function vibrate(pattern: number | number[] = 5) {
+  if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+    try {
+      navigator.vibrate(pattern);
+    } catch { /* ignore */ }
+  }
+}
+
+function SkeletonList() {
+  return (
+    <div className={styles.modalList} style={{ paddingBottom: '1rem' }}>
+      {[1, 2, 3].map(i => (
+        <div key={i} className={styles.skeletonCard}>
+          <div className={styles.skeletonLine} />
+          <div className={styles.skeletonLine} />
+          <div className={styles.skeletonLine} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function DashboardPageClient({ initialData }: { initialData: DashboardStatsPayload }) {
   const router = useRouter();
   const createMenuId = useId();
@@ -561,10 +583,10 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               className={styles.mobileCreateButton}
               aria-expanded={showMobileCreateMenu}
               aria-controls={createMenuId}
-              onClick={() => setShowMobileCreateMenu((current) => !current)}
+              onClick={() => { vibrate([10, 30, 10]); setShowMobileCreateMenu((current) => !current); }}
             >
-              <span className={styles.mobileCreateButtonIcon}><Plus size={16} /></span>
-              Створити
+              <span className={styles.mobileCreateButtonIcon}><Plus size={20} /></span>
+              <span className={styles.mobileCreateButtonText}>Створити</span>
               <ChevronDown
                 size={16}
                 className={`${styles.mobileCreateChevron} ${showMobileCreateMenu ? styles.mobileCreateChevronOpen : ''}`}
@@ -626,14 +648,14 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
             <button
               type="button"
               className={`${styles.segmentButton} ${statsPeriod === 'month' ? styles.segmentButtonActive : ''}`}
-              onClick={() => setStatsPeriod('month')}
+              onClick={() => { vibrate(5); setStatsPeriod('month'); }}
             >
               За місяць
             </button>
             <button
               type="button"
               className={`${styles.segmentButton} ${statsPeriod === 'allTime' ? styles.segmentButtonActive : ''}`}
-              onClick={() => setStatsPeriod('allTime')}
+              onClick={() => { vibrate(5); setStatsPeriod('allTime'); }}
             >
               За увесь час
             </button>
@@ -699,7 +721,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               return (
                 <div
                   className={`${styles.statItem} ${styles.statItemClickable}`}
-                  onClick={() => setShowDebtsModal(true)}
+                  onClick={() => { vibrate(5); setShowDebtsModal(true); }}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setShowDebtsModal(true); }}
@@ -727,7 +749,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               return (
                 <div
                   className={`${styles.statItem} ${styles.statItemClickable}`}
-                  onClick={handleOpenAttendance}
+                  onClick={() => { vibrate(5); handleOpenAttendance(); }}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenAttendance(); }}
@@ -779,21 +801,21 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   <button
                     type="button"
                     className={`${styles.miniSegmentBtn} ${studentsPeriod === 'today' ? styles.miniSegmentBtnActive : ''}`}
-                    onClick={() => setStudentsPeriod('today')}
+                    onClick={() => { vibrate(5); setStudentsPeriod('today'); }}
                   >
                     День
                   </button>
                   <button
                     type="button"
                     className={`${styles.miniSegmentBtn} ${studentsPeriod === 'month' ? styles.miniSegmentBtnActive : ''}`}
-                    onClick={() => setStudentsPeriod('month')}
+                    onClick={() => { vibrate(5); setStudentsPeriod('month'); }}
                   >
                     Місяць
                   </button>
                   <button
                     type="button"
                     className={`${styles.miniSegmentBtn} ${studentsPeriod === 'year' ? styles.miniSegmentBtnActive : ''}`}
-                    onClick={() => setStudentsPeriod('year')}
+                    onClick={() => { vibrate(5); setStudentsPeriod('year'); }}
                   >
                     Рік
                   </button>
@@ -927,14 +949,14 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 <button
                   type="button"
                   className={`${styles.segmentButton} ${activeTab === 'payments' ? styles.segmentButtonActive : ''}`}
-                  onClick={() => setActiveTab('payments')}
+                  onClick={() => { vibrate(5); setActiveTab('payments'); }}
                 >
                   Платежі
                 </button>
                 <button
                   type="button"
                   className={`${styles.segmentButton} ${activeTab === 'history' ? styles.segmentButtonActive : ''}`}
-                  onClick={() => setActiveTab('history')}
+                  onClick={() => { vibrate(5); setActiveTab('history'); }}
                 >
                   Історія
                 </button>
@@ -1124,7 +1146,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               )
             ) : (allTimeDebtsLoading || (debtMonthFilter && debtsByMonthLoading && !debtsByMonth[debtMonthFilter])) ? (
               <div className={styles.modalBody}>
-                <div className={styles.compactEmpty}>Завантаження...</div>
+                <SkeletonList />
               </div>
             ) : visibleDebtors.length === 0 ? (
               <div className={styles.modalBody}>
@@ -1282,7 +1304,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
             {/* ── All-time absences ── */}
             {attendanceView === 'allTime' && (
               allTimeAbsencesLoading ? (
-                <div className={styles.modalBody}><div className={styles.compactEmpty}>Завантаження...</div></div>
+                <div className={styles.modalBody}><SkeletonList /></div>
               ) : !allTimeAbsences || allTimeAbsences.length === 0 ? (
                 <div className={styles.modalBody}><div className={styles.compactEmpty}>Пропусків немає.</div></div>
               ) : (
@@ -1349,7 +1371,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
             {/* ── Statistics view ── */}
             {attendanceView === 'stats' && (
               attendanceStatsLoading ? (
-                <div className={styles.modalBody}><div className={styles.compactEmpty}>Завантаження...</div></div>
+                <div className={styles.modalBody}><SkeletonList /></div>
               ) : !attendanceStats ? (
                 <div className={styles.modalBody}><div className={styles.compactEmpty}>Не вдалося завантажити дані.</div></div>
               ) : attMonthFilter ? (
@@ -1549,7 +1571,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
 
             <div ref={historyBodyRef} className={styles.modalBody}>
               {historyLoading && !historyPageData ? (
-                <div className={styles.compactEmpty}>Завантаження історії...</div>
+                <SkeletonList />
               ) : historyPageData && historyPageData.items.length > 0 ? (
                 <div className={styles.modalList}>
                   {historyPageData.items.map((history, index) => (
