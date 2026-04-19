@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
 import { User, useUser } from '@/components/UserContext';
 import Portal from '@/components/Portal';
 import { t } from '@/i18n/t';
@@ -468,22 +469,32 @@ export default function CoursesPage() {
               onChange={(e) => handleSearch(e.target.value)}
               style={{ maxWidth: '300px' }}
             />
+            {user.role === 'admin' && (
+              <button 
+                className={`btn btn-primary ${styles.mobileCreateBtn}`} 
+                onClick={handleCreate}
+                title={t('modals.newCourse')}
+              >
+                <Plus size={20} />
+              </button>
+            )}
           </div>
           <div className={styles.headerActions}>
-            <div className={styles.toggleWrap}>
-              <span className={`${styles.toggleLabel} ${!showArchived ? styles.toggleLabelActive : styles.toggleLabelInactive}`}>
-                {t('status.active')}
-              </span>
+            <div className={styles.segmented} data-active={showArchived ? 'archived' : 'active'}>
               <button
                 type="button"
-                className={styles.toggleButton}
-                onClick={() => setShowArchived(!showArchived)}
+                className={`${styles.segmentButton} ${!showArchived ? styles.segmentButtonActive : ''}`}
+                onClick={() => setShowArchived(false)}
               >
-                <div className={`${styles.toggleKnob} ${showArchived ? styles.toggleKnobOn : styles.toggleKnobOff}`} />
+                {t('status.active')}
               </button>
-              <span className={`${styles.toggleLabel} ${showArchived ? styles.toggleLabelActive : styles.toggleLabelInactive}`}>
+              <button
+                type="button"
+                className={`${styles.segmentButton} ${showArchived ? styles.segmentButtonActive : ''}`}
+                onClick={() => setShowArchived(true)}
+              >
                 {t('status.archived')}
-              </span>
+              </button>
             </div>
             {user.role === 'admin' && (
               <button className={`btn btn-primary ${styles.createBtn}`} onClick={handleCreate}>
