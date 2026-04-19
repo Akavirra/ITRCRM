@@ -167,13 +167,19 @@ export default function CertificatesPage() {
     if (!dragging) return;
     
     const container = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - container.left) / container.width) * 100;
-    const y = 100 - (((e.clientY - container.top) / container.height) * 100);
+    
+    // Calculate percentages relative to the container
+    let x = ((e.clientX - container.left) / container.width) * 100;
+    let y = 100 - (((e.clientY - container.top) / container.height) * 100);
+    
+    // Constrain to 0-100
+    x = Math.max(0, Math.min(100, x));
+    y = Math.max(0, Math.min(100, y));
     
     if (dragging === 'id') {
-      setIdSettings(prev => ({ ...prev, xPercent: Math.round(x), yPercent: Math.round(y) }));
+      setIdSettings(prev => ({ ...prev, xPercent: parseFloat(x.toFixed(2)), yPercent: parseFloat(y.toFixed(2)) }));
     } else if (dragging === 'amount') {
-      setIdSettings(prev => ({ ...prev, amountXPercent: Math.round(x), amountYPercent: Math.round(y) }));
+      setIdSettings(prev => ({ ...prev, amountXPercent: parseFloat(x.toFixed(2)), amountYPercent: parseFloat(y.toFixed(2)) }));
     }
   };
 

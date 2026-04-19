@@ -179,15 +179,25 @@ export async function GET(
 
     // 5. Draw Certificate ID
     const idText = `${cert.public_id}`;
-    const fontSize = settings.fontSize || 36;
-    const characterSpacing = settings.idLetterSpacing || 1.5;
+    const baseFontSize = settings.fontSize || 36;
+    const baseCharacterSpacing = settings.idLetterSpacing || 1.5;
+    
+    // Scale factor: how much the image was scaled to fit the PDF page (or vice versa)
+    // In our case, the page size IS the image size, so scale is 1.
+    const fontSize = baseFontSize;
+    const characterSpacing = baseCharacterSpacing;
+
     const textWidth = font.widthOfTextAtSize(idText, fontSize) + (idText.length - 1) * characterSpacing;
     
-    // Convert percentages to points for ID
+    // PDF coordinates start from BOTTOM-LEFT. 
+    // Browser/CSS coordinates for the preview start from BOTTOM-LEFT (because I used bottom: % in CSS).
+    // So Y coordinate is actually consistent! 
+    // BUT: page.drawText(y) is the BASELINE of the text.
+    
     const x = (width * (settings.xPercent / 100)) - (textWidth / 2);
-    const y = height * (settings.yPercent / 100);
+    const y = (height * (settings.yPercent / 100));
 
-    // Parse ID color (hex to rgb)
+    // Parse ID color
     const hex = (settings.color || '#000000').replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16) / 255 || 0;
     const g = parseInt(hex.substring(2, 4), 16) / 255 || 0;
@@ -202,33 +212,26 @@ export async function GET(
       characterSpacing: characterSpacing,
     } as any);
 
-    // 6. Draw Amount (Multiline with Ermilov font - now only amount)
+    // 6. Draw Amount
     const amountVal = `${cert.amount}`;
     const amountFontSize = settings.amountFontSize || 48;
-    
     const amountWidth = ermilovFont.widthOfTextAtSize(amountVal, amountFontSize);
 
-    // Convert percentages to points for Amount
-    const ax = (width * (settings.amountXPercent / 100));
+    const ax = (width * (settings.amountXPercent / 100)) - (amountWidth / 2);
     const ay = height * (settings.amountYPercent / 100);
 
-    // Parse Amount color (hex to rgb)
     const aHex = (settings.amountColor || '#FFFFFF').replace('#', '');
     const ar = parseInt(aHex.substring(0, 2), 16) / 255 || 1;
     const ag = parseInt(aHex.substring(2, 4), 16) / 255 || 1;
     const ab = parseInt(aHex.substring(4, 6), 16) / 255 || 1;
-    const amountColor = rgb(ar, ag, ab);
 
-    const rotation = degrees(settings.amountRotation || 0);
-
-    // Draw "Amount"
     page.drawText(amountVal, {
-      x: ax - (amountWidth / 2),
+      x: ax,
       y: ay,
       size: amountFontSize,
       font: ermilovFont,
-      color: amountColor,
-      rotate: rotation,
+      color: rgb(ar, ag, ab),
+      rotate: degrees(settings.amountRotation || 0),
     });
 
     const pdfBytes = await pdfDoc.save();
