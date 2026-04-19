@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden, badRequest } from '@/lib/api-utils';
 import { listParticipants, createParticipant, searchAvailableStudentsForCamp } from '@/lib/camp-participants';
+import { safeAddStudentHistoryEntry } from '@/lib/student-history';
+import { get } from '@/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +80,22 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       created_by: user.id,
       days,
     });
+
+    // Log to student history if participant is from base
+    if (participant.student_id) {
+      const camp = await get<{ title: string }>(`SELECT title FROM camps WHERE id = $1`, [campId]);
+      const campTitle = camp?.title ?? `Табір #${campId}`;
+      const daysSuffix = days.length > 0 ? ` (${days.length} ${days.length === 1 ? 'день' : 'днів'})` : '';
+      await safeAddStudentHistoryEntry(
+        participant.student_id,
+        'camp_joined',
+        `Доданий до табору «${campTitle}»${daysSuffix}`,
+        user.id,
+        user.name,
+        null,
+        String(days.length),
+      );
+    }
 
     return NextResponse.json({ participant }, { status: 201 });
   } catch (error) {

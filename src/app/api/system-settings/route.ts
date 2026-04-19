@@ -12,6 +12,7 @@ const DEFAULTS: Record<string, string> = {
   lesson_price: '300',
   individual_lesson_price: '300',
   assistant_widget_enabled: '1',
+  camp_price_per_day: '500',
 };
 
 export async function GET(request: NextRequest) {
@@ -53,6 +54,7 @@ export async function PUT(request: NextRequest) {
     'lesson_price',
     'individual_lesson_price',
     'assistant_widget_enabled',
+    'camp_price_per_day',
   ];
 
   const beforeRows = await all<{ key: string; value: string }>(

@@ -6,6 +6,7 @@ import { User, useUser } from '@/components/UserContext';
 import { useLessonModals } from '@/components/LessonModalsContext';
 import { useGroupModals } from '@/components/GroupModalsContext';
 import { useCourseModals } from '@/components/CourseModalsContext';
+import { useCampModals } from '@/components/CampModalsContext';
 import { format, addWeeks, subWeeks, addMonths, subMonths, startOfWeek, endOfWeek, addDays, parseISO, startOfMonth, endOfMonth, eachWeekOfInterval, isSameMonth } from 'date-fns';
 import { uk } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Calendar, CalendarDays, Clock, User as UserIcon, Users, BookOpen, Check, X, RefreshCw, Plus } from 'lucide-react';
@@ -34,11 +35,21 @@ interface Lesson {
   isTrial?: boolean;
 }
 
+interface CampDayEntry {
+  campId: number;
+  campTitle: string;
+  season: string;
+  shiftId: number | null;
+  shiftTitle: string | null;
+  participantsCount: number;
+}
+
 interface DaySchedule {
   date: string;
   dayOfWeek: number;
   dayName: string;
   lessons: Lesson[];
+  camps?: CampDayEntry[];
 }
 
 interface ScheduleResponse {
@@ -46,6 +57,7 @@ interface ScheduleResponse {
   weekEnd: string;
   days: DaySchedule[];
   totalLessons: number;
+  totalCampDays?: number;
 }
 
 const HYDRATION_SAFE_DATE = new Date('2000-01-03T00:00:00');
@@ -73,6 +85,7 @@ export default function SchedulePage() {
   const { openLessonModal } = useLessonModals();
   const { openGroupModal } = useGroupModals();
   const { openCourseModal } = useCourseModals();
+  const { openCampModal } = useCampModals();
 
   // Generate modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -252,6 +265,21 @@ export default function SchedulePage() {
   const handleCourseClick = (e: React.MouseEvent, lesson: Lesson) => {
     e.stopPropagation();
     openCourseModal(lesson.courseId, lesson.courseTitle);
+  };
+
+  const handleCampClick = (e: React.MouseEvent, camp: CampDayEntry) => {
+    e.stopPropagation();
+    openCampModal(camp.campId, camp.campTitle);
+  };
+
+  const getCampStyle = (season: string) => {
+    switch (season) {
+      case 'winter': return { background: '#eff6ff', borderColor: '#3b82f6', color: '#1e3a8a', accentColor: '#2563eb' };
+      case 'spring': return { background: '#ecfdf5', borderColor: '#10b981', color: '#065f46', accentColor: '#059669' };
+      case 'summer': return { background: '#fff7ed', borderColor: '#f97316', color: '#9a3412', accentColor: '#ea580c' };
+      case 'autumn': return { background: '#fef3c7', borderColor: '#d97706', color: '#92400e', accentColor: '#d97706' };
+      default: return { background: '#f3f4f6', borderColor: '#9ca3af', color: '#374151', accentColor: '#6b7280' };
+    }
   };
 
   const handleGenerateAll = async () => {
@@ -649,11 +677,52 @@ export default function SchedulePage() {
                       </div>
                       <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#3b82f6', marginTop: '0.25rem' }}>
                         {day.lessons.length} {day.lessons.length === 1 ? 'заняття' : 'занять'}
+                        {(day.camps?.length ?? 0) > 0 && (
+                          <span style={{ color: '#f97316', marginLeft: '0.375rem' }}>
+                            • {day.camps!.length} табір
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     {/* Lessons */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {(day.camps || []).map((camp, idx) => {
+                        const cs = getCampStyle(camp.season);
+                        return (
+                          <div
+                            key={`camp-${camp.campId}-${camp.shiftId ?? 'any'}-${idx}`}
+                            onClick={(e) => handleCampClick(e, camp)}
+                            style={{
+                              padding: '0.5rem 0.625rem',
+                              borderRadius: '0.5rem',
+                              cursor: 'pointer',
+                              borderLeft: '3px solid',
+                              borderColor: cs.borderColor,
+                              background: cs.background,
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+                            title={`${camp.campTitle}${camp.shiftTitle ? ` — ${camp.shiftTitle}` : ''}`}
+                          >
+                            <div style={{ fontSize: '0.625rem', fontWeight: 700, background: cs.accentColor, color: 'white', borderRadius: '0.25rem', padding: '0.125rem 0.375rem', marginBottom: '0.3rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                              <CalendarDays size={8} /> Табір
+                            </div>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', lineHeight: 1.25 }}>
+                              {camp.campTitle}
+                            </div>
+                            {camp.shiftTitle && (
+                              <div style={{ fontSize: '0.6875rem', color: cs.color, marginTop: '0.125rem' }}>
+                                {camp.shiftTitle}
+                              </div>
+                            )}
+                            <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginTop: '0.125rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <Users size={9} /> {camp.participantsCount} {camp.participantsCount === 1 ? 'учасник' : 'учасників'}
+                            </div>
+                          </div>
+                        );
+                      })}
                       {day.lessons.map((lesson) => {
                         const lessonStyle = getLessonStyle(lesson.status, lesson.isMakeup, lesson.groupId);
                         return (
@@ -727,7 +796,7 @@ export default function SchedulePage() {
                         );
                       })}
 
-                      {day.lessons.length === 0 && (
+                      {day.lessons.length === 0 && (day.camps?.length ?? 0) === 0 && (
                         <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem', padding: '1rem 0' }}>
                           <Calendar size={20} style={{ opacity: 0.3, marginBottom: '0.25rem' }} />
                           <div>Немає занять</div>
@@ -779,7 +848,9 @@ export default function SchedulePage() {
                 const today = isToday(dateStr);
                 const dayNum = cursor.getDate();
 
-                const hasEvents = dayData && dayData.lessons.length > 0;
+                const hasLessons = dayData && dayData.lessons.length > 0;
+                const hasCamps = dayData && (dayData.camps?.length ?? 0) > 0;
+                const hasEvents = hasLessons || hasCamps;
 
                 cells.push(
                   <div
@@ -809,14 +880,46 @@ export default function SchedulePage() {
                         {dayNum}
                       </span>
                       {hasEvents && (
-                        <span style={{ fontSize: '0.625rem', fontWeight: 600, color: '#3b82f6' }}>
-                          {dayData.lessons.length} {dayData.lessons.length === 1 ? 'заняття' : 'занять'} 
+                        <span style={{ fontSize: '0.625rem', fontWeight: 600, color: '#3b82f6', display: 'flex', gap: '0.25rem' }}>
+                          {hasLessons && (
+                            <span>{dayData.lessons.length} зан.</span>
+                          )}
+                          {hasCamps && (
+                            <span style={{ color: '#f97316' }}>🏕 {dayData.camps!.length}</span>
+                          )}
                         </span>
                       )}
                     </div>
 
-                    {/* Compact lesson list */}
+                    {/* Compact lesson + camp list */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden', flex: 1 }}>
+                      {(dayData?.camps || []).slice(0, 2).map((camp, ci) => {
+                        const cs = getCampStyle(camp.season);
+                        return (
+                          <div
+                            key={`camp-m-${camp.campId}-${camp.shiftId ?? 'any'}-${ci}`}
+                            className="month-lesson-item"
+                            onClick={(e) => handleCampClick(e, camp)}
+                            style={{
+                              fontSize: '0.6875rem',
+                              padding: '0.125rem 0.25rem',
+                              borderRadius: '0.25rem',
+                              background: cs.background,
+                              borderLeft: `2px solid ${cs.borderColor}`,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              color: cs.color,
+                              lineHeight: '1.4',
+                              fontWeight: 600,
+                            }}
+                            title={`${camp.campTitle}${camp.shiftTitle ? ` — ${camp.shiftTitle}` : ''} (${camp.participantsCount} уч.)`}
+                          >
+                            🏕 {camp.shiftTitle || camp.campTitle}
+                          </div>
+                        );
+                      })}
                       {dayData?.lessons.slice(0, 4).map(lesson => {
                         const style = getLessonStyle(lesson.status, lesson.isMakeup, lesson.groupId);
                         return (

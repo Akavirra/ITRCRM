@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Users, Calendar, Archive, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, Users, Calendar, Archive } from 'lucide-react';
 import { useCampModals } from '../CampModalsContext';
 import CreateCampModal from '../CreateCampModal';
 
@@ -49,10 +49,6 @@ export default function CampsTab() {
   const [loading, setLoading] = useState(true);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [globalPrice, setGlobalPrice] = useState<number | null>(null);
-  const [priceInput, setPriceInput] = useState('');
-  const [savingPrice, setSavingPrice] = useState(false);
 
   const loadCamps = useCallback(async () => {
     setLoading(true);
@@ -69,22 +65,7 @@ export default function CampsTab() {
     }
   }, [includeArchived]);
 
-  const loadGlobalPrice = useCallback(async () => {
-    try {
-      const res = await fetch('/api/settings/camp-price-per-day');
-      if (res.ok) {
-        const json = await res.json();
-        const v = typeof json.value === 'number' ? json.value : parseInt(json.value || '500', 10);
-        setGlobalPrice(v);
-        setPriceInput(String(v));
-      }
-    } catch (err) {
-      console.error('Load global price error:', err);
-    }
-  }, []);
-
   useEffect(() => { loadCamps(); }, [loadCamps]);
-  useEffect(() => { loadGlobalPrice(); }, [loadGlobalPrice]);
 
   // React to changes from modals
   useEffect(() => {
@@ -95,31 +76,6 @@ export default function CampsTab() {
 
   const handleOpen = (camp: Camp) => {
     openCampModal(camp.id, camp.title);
-  };
-
-  const handleSavePrice = async () => {
-    const v = parseInt(priceInput, 10);
-    if (!Number.isFinite(v) || v < 0) {
-      alert('Невірне значення ціни');
-      return;
-    }
-    setSavingPrice(true);
-    try {
-      const res = await fetch('/api/settings/camp-price-per-day', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: v }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Не вдалося зберегти');
-        return;
-      }
-      setGlobalPrice(v);
-      setShowSettings(false);
-    } finally {
-      setSavingPrice(false);
-    }
   };
 
   const summary = useMemo(() => {
@@ -145,27 +101,6 @@ export default function CampsTab() {
               />
               Показати архівні
             </label>
-            {globalPrice != null && (
-              <button
-                onClick={() => setShowSettings(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.375rem',
-                  fontSize: '0.8125rem',
-                  padding: '0.375rem 0.625rem',
-                  backgroundColor: '#f9fafb',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '0.375rem',
-                  cursor: 'pointer',
-                  color: '#374151',
-                }}
-                title="Налаштування ціни"
-              >
-                <SettingsIcon size={13} />
-                Ціна дня: <b>{globalPrice} ₴</b>
-              </button>
-            )}
           </div>
           <button
             onClick={() => setShowCreate(true)}
@@ -364,60 +299,6 @@ export default function CampsTab() {
           openCampModal(campId, c?.title || 'Новий табір');
         }}
       />
-
-      {showSettings && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 60,
-            padding: '1rem',
-          }}
-          onClick={() => setShowSettings(false)}
-        >
-          <div
-            className="card"
-            style={{ width: '100%', maxWidth: '400px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="card-body" style={{ padding: '1.25rem' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.25rem', color: '#111827' }}>
-                Ціна одного дня табору
-              </h3>
-              <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '1rem', lineHeight: 1.5 }}>
-                Глобальна ціна, що використовується за замовчуванням для всіх таборів (можна перевизначити окремо для кожного табору).
-              </p>
-              <input
-                type="number"
-                value={priceInput}
-                onChange={(e) => setPriceInput(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem 0.625rem', fontSize: '0.9375rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', marginBottom: '1rem' }}
-              />
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="btn btn-secondary"
-                  style={{ fontSize: '0.8125rem', padding: '0.5rem 0.875rem' }}
-                >
-                  Скасувати
-                </button>
-                <button
-                  onClick={handleSavePrice}
-                  disabled={savingPrice}
-                  className="btn btn-primary"
-                  style={{ fontSize: '0.8125rem', padding: '0.5rem 0.875rem' }}
-                >
-                  {savingPrice ? 'Збереження…' : 'Зберегти'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

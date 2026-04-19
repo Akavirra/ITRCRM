@@ -181,6 +181,7 @@ const Navbar: React.FC<NavbarProps> = ({
     teacher_salary_individual: '100',
     lesson_price: '300',
     individual_lesson_price: '300',
+    camp_price_per_day: '500',
   });
   const [salarySaving, setSalarySaving] = useState(false);
   const [assistantSettings, setAssistantSettings] = useState({
@@ -371,6 +372,7 @@ const Navbar: React.FC<NavbarProps> = ({
           teacher_salary_individual: parseFloat(salarySettings.teacher_salary_individual) || 100,
           lesson_price: parseInt(salarySettings.lesson_price) || 300,
           individual_lesson_price: parseInt(salarySettings.individual_lesson_price) || 300,
+          camp_price_per_day: parseInt(salarySettings.camp_price_per_day) || 500,
         }),
       });
       setSaved(true);
@@ -648,6 +650,7 @@ const Navbar: React.FC<NavbarProps> = ({
             teacher_salary_individual: String(systemSettings.teacher_salary_individual ?? 100),
             lesson_price: String(systemSettings.lesson_price ?? 300),
             individual_lesson_price: String(systemSettings.individual_lesson_price ?? systemSettings.lesson_price ?? 300),
+            camp_price_per_day: String(systemSettings.camp_price_per_day ?? 500),
           });
           setAssistantSettings({
             assistant_widget_enabled: String(systemSettings.assistant_widget_enabled ?? '1') !== '0',
@@ -1467,6 +1470,21 @@ const Navbar: React.FC<NavbarProps> = ({
                         />
                       </div>
                       <span className="form-hint">Окрема фіксована ціна для індивідуальних занять. Не залежить від знижки учня.</span>
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label className="form-label">Ціна одного дня табору (₴)</label>
+                      <div style={{ maxWidth: '200px' }}>
+                        <input
+                          type="number"
+                          className="form-input"
+                          min={0}
+                          step={1}
+                          value={salarySettings.camp_price_per_day}
+                          onChange={e => setSalarySettings(prev => ({ ...prev, camp_price_per_day: e.target.value }))}
+                        />
+                      </div>
+                      <span className="form-hint">Глобальна ціна за один день IT-табору. До сплати для учасника = вибрані дні × ця ціна.</span>
                     </div>
 
                     <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', marginBottom: '1.25rem' }} />

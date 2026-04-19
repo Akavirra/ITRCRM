@@ -761,7 +761,7 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1,
   },
   submitBtn: {
-    background: 'linear-gradient(135deg, #2563eb 0%, #f97316 100%)',
+    background: '#2563eb',
     color: '#fff',
     border: 'none',
     borderRadius: '14px',

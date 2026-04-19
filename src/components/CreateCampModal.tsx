@@ -34,7 +34,6 @@ export default function CreateCampModal({ isOpen, onClose, onCreated }: CreateCa
   const [endDate, setEndDate] = useState('');
   const [title, setTitle] = useState('');
   const [customTitle, setCustomTitle] = useState(false);
-  const [pricePerDay, setPricePerDay] = useState('');
   const [globalPrice, setGlobalPrice] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -47,7 +46,6 @@ export default function CreateCampModal({ isOpen, onClose, onCreated }: CreateCa
     setEndDate('');
     setTitle('');
     setCustomTitle(false);
-    setPricePerDay('');
     setNotes('');
     setError(null);
     (async () => {
@@ -55,7 +53,9 @@ export default function CreateCampModal({ isOpen, onClose, onCreated }: CreateCa
         const res = await fetch('/api/settings/camp-price-per-day');
         if (res.ok) {
           const json = await res.json();
-          setGlobalPrice(typeof json.value === 'number' ? json.value : parseInt(json.value || '500', 10));
+          const raw = json.camp_price_per_day ?? json.value;
+          const parsed = typeof raw === 'number' ? raw : parseInt(String(raw ?? '500'), 10);
+          setGlobalPrice(Number.isFinite(parsed) ? parsed : 500);
         }
       } catch (err) {
         console.error('Load global price error:', err);
@@ -85,10 +85,6 @@ export default function CreateCampModal({ isOpen, onClose, onCreated }: CreateCa
         title: title.trim() || undefined,
         notes: notes.trim() || undefined,
       };
-      if (pricePerDay) {
-        const p = parseInt(pricePerDay, 10);
-        if (Number.isFinite(p) && p >= 0) body.price_per_day_snapshot = p;
-      }
       const res = await fetch('/api/camps', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -190,24 +186,11 @@ export default function CreateCampModal({ isOpen, onClose, onCreated }: CreateCa
               )}
             </div>
 
-            <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#374151', display: 'block', marginBottom: '0.25rem' }}>
-                Ціна за день
-                {globalPrice != null && (
-                  <span style={{ color: '#9ca3af', fontWeight: 400 }}> (глобальна: {globalPrice} ₴)</span>
-                )}
-              </label>
-              <input
-                type="number"
-                value={pricePerDay}
-                onChange={(e) => setPricePerDay(e.target.value)}
-                placeholder={globalPrice != null ? String(globalPrice) : 'Напр. 500'}
-                style={{ width: '100%', padding: '0.5rem 0.625rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-              />
-              <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: '0.25rem' }}>
-                Залиште порожнім, щоб використовувати глобальну ціну
+            {globalPrice != null && (
+              <div style={{ padding: '0.5rem 0.625rem', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '0.375rem', fontSize: '0.75rem', color: '#475569' }}>
+                Ціна за день: <b>{globalPrice} ₴</b> <span style={{ color: '#94a3b8' }}>(глобальне налаштування, можна змінити в «Налаштуваннях» → «Ціни та тарифи»)</span>
               </div>
-            </div>
+            )}
 
             <div>
               <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#374151', display: 'block', marginBottom: '0.25rem' }}>

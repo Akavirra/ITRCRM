@@ -83,7 +83,6 @@ export default function CampOverviewTab({
     title: camp.title,
     start_date: camp.start_date.slice(0, 10),
     end_date: camp.end_date.slice(0, 10),
-    price_per_day_snapshot: camp.price_per_day_snapshot?.toString() ?? '',
     notes: camp.notes ?? '',
   });
   const [saving, setSaving] = useState(false);
@@ -105,7 +104,6 @@ export default function CampOverviewTab({
         title: form.title,
         start_date: form.start_date,
         end_date: form.end_date,
-        price_per_day_snapshot: form.price_per_day_snapshot === '' ? null : (parseInt(form.price_per_day_snapshot, 10) as any),
         notes: form.notes || null,
       });
       setEditingCamp(false);
@@ -162,7 +160,7 @@ export default function CampOverviewTab({
                   <span>•</span>
                   <span>{formatShortDate(camp.start_date)} – {formatShortDate(camp.end_date)}</span>
                   <span>•</span>
-                  <span>{effectivePrice} ₴/день{camp.price_per_day_snapshot == null ? ` (глобальна: ${globalPrice})` : ''}</span>
+                  <span>{effectivePrice} ₴/день</span>
                 </div>
                 {camp.notes && (
                   <div style={{ fontSize: '0.8125rem', color: '#4b5563', marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}>{camp.notes}</div>
@@ -207,16 +205,9 @@ export default function CampOverviewTab({
                   style={{ width: '100%', padding: '0.375rem 0.5rem', fontSize: '0.875rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', marginTop: '0.25rem' }}
                 />
               </label>
-              <label style={{ flex: 1, minWidth: '140px', fontSize: '0.75rem', color: '#64748b' }}>
-                Ціна/день (опц.)
-                <input
-                  type="number"
-                  value={form.price_per_day_snapshot}
-                  onChange={e => setForm({ ...form, price_per_day_snapshot: e.target.value })}
-                  placeholder={`${globalPrice}`}
-                  style={{ width: '100%', padding: '0.375rem 0.5rem', fontSize: '0.875rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', marginTop: '0.25rem' }}
-                />
-              </label>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              Ціна за день: <b>{globalPrice} ₴</b> (глобальна, змінюється у «Налаштуваннях» → «Ціни та тарифи»)
             </div>
             <textarea
               value={form.notes}

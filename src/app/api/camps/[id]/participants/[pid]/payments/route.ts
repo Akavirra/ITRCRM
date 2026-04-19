@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden, badRequest } from '@/lib/api-utils';
 import { listPaymentsForParticipant, addPayment } from '@/lib/camp-payments';
+import { safeAddStudentHistoryEntry } from '@/lib/student-history';
+import { get } from '@/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +48,26 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       note: body.note ? String(body.note) : null,
       created_by: user.id,
     });
+
+    // Log to student history if participant is linked to a student
+    const parti = await get<{ student_id: number | null; camp_id: number }>(
+      `SELECT student_id, camp_id FROM camp_participants WHERE id = $1`,
+      [pid]
+    );
+    if (parti?.student_id) {
+      const camp = await get<{ title: string }>(`SELECT title FROM camps WHERE id = $1`, [parti.camp_id]);
+      const campTitle = camp?.title ?? `Табір #${parti.camp_id}`;
+      const methodLabel = method === 'cash' ? 'готівка' : 'рахунок';
+      await safeAddStudentHistoryEntry(
+        parti.student_id,
+        'camp_payment_added',
+        `Оплата ${amount} ₴ (${methodLabel}) за «${campTitle}»`,
+        user.id,
+        user.name,
+        null,
+        String(amount),
+      );
+    }
 
     return NextResponse.json({ payment }, { status: 201 });
   } catch (error) {

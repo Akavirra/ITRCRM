@@ -163,6 +163,62 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Fetch camp working days overlapping the date range (admins only for now)
+  interface CampDayRow {
+    day_date: string;
+    camp_id: number;
+    camp_title: string;
+    season: string;
+    shift_id: number;
+    shift_title: string;
+    participants_count: number;
+  }
+  let campDays: CampDayRow[] = [];
+  if (user.role === 'admin') {
+    try {
+      campDays = await all<CampDayRow>(
+        `SELECT
+           csd.day_date::text AS day_date,
+           cs.camp_id,
+           c.title AS camp_title,
+           c.season,
+           cs.id AS shift_id,
+           cs.title AS shift_title,
+           (
+             SELECT COUNT(*)::int FROM camp_participants cp
+             WHERE cp.camp_id = cs.camp_id
+               AND cp.status = 'active'
+               AND EXISTS (
+                 SELECT 1 FROM camp_participant_days cpd
+                 WHERE cpd.participant_id = cp.id AND cpd.day_date = csd.day_date
+               )
+           ) AS participants_count
+         FROM camp_shift_days csd
+         JOIN camp_shifts cs ON cs.id = csd.shift_id
+         JOIN camps c ON c.id = cs.camp_id
+         WHERE csd.day_date >= $1::date
+           AND csd.day_date <= $2::date
+           AND csd.is_working = TRUE
+           AND c.is_archived = FALSE
+         ORDER BY csd.day_date ASC, cs.start_date ASC`,
+        [startDateStr, endDateStr]
+      );
+    } catch (err) {
+      // If camp tables are not yet migrated, silently proceed
+      const msg = String((err as Error)?.message ?? err).toLowerCase();
+      if (!msg.includes('camp_shift_days') && !msg.includes('camps') && !msg.includes('does not exist')) {
+        throw err;
+      }
+      campDays = [];
+    }
+  }
+
+  const campsByDay: Record<string, CampDayRow[]> = {};
+  for (const row of campDays) {
+    if (!campsByDay[row.day_date]) campsByDay[row.day_date] = [];
+    campsByDay[row.day_date].push(row);
+  }
+
   // Build response
   const days = [];
   for (let d = 0; d < totalDays; d++) {
@@ -193,14 +249,23 @@ export async function GET(request: NextRequest) {
         isMakeup: !!lesson.is_makeup,
         isTrial: !!lesson.is_trial,
       })),
+      camps: (campsByDay[dateStr] || []).map(row => ({
+        campId: row.camp_id,
+        campTitle: row.camp_title,
+        season: row.season,
+        shiftId: row.shift_id,
+        shiftTitle: row.shift_title,
+        participantsCount: row.participants_count,
+      })),
     });
   }
-  
+
   return NextResponse.json({
     weekStart: startDateStr,
     weekEnd: endDateStr,
     days,
     totalLessons: lessons.length,
+    totalCampDays: campDays.length,
   });
 }
 

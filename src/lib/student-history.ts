@@ -18,7 +18,12 @@ export type StudentHistoryActionType =
   | 'trial_lesson_scheduled'
   | 'trial_lesson_attended'
   | 'trial_lesson_missed'
-  | 'trial_lesson_removed';
+  | 'trial_lesson_removed'
+  | 'camp_joined'
+  | 'camp_left'
+  | 'camp_payment_added'
+  | 'camp_payment_removed'
+  | 'camp_converted_to_student';
 
 export interface StudentHistoryEntry {
   id: number;

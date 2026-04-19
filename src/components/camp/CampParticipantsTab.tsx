@@ -55,6 +55,7 @@ interface Props {
   onDeleteParticipant: (id: number) => Promise<void>;
   onConvertToStudent: (id: number) => Promise<void>;
   onOpenPayments: (participant: Participant) => void;
+  onSwitchToOverview?: () => void;
 }
 
 function formatShortDate(d: string): string {
@@ -75,6 +76,7 @@ export default function CampParticipantsTab({
   onDeleteParticipant,
   onConvertToStudent,
   onOpenPayments,
+  onSwitchToOverview,
 }: Props) {
   const [addOpen, setAddOpen] = useState(false);
   const [addMode, setAddMode] = useState<'base' | 'new'>('new');
@@ -114,8 +116,13 @@ export default function CampParticipantsTab({
       setNewForm({ first_name: '', last_name: '', parent_name: '', parent_phone: '' });
       setShiftIdForAdd('');
       setSelectedDays(new Set());
+    } else {
+      // Auto-select single shift on open so days become selectable immediately
+      if (shifts.length === 1) {
+        setShiftIdForAdd(shifts[0].id);
+      }
     }
-  }, [addOpen]);
+  }, [addOpen, shifts]);
 
   // Auto-search students
   useEffect(() => {
@@ -156,7 +163,8 @@ export default function CampParticipantsTab({
   };
 
   const submitAdd = async () => {
-    if (selectedDays.size === 0) {
+    // Only warn about empty-days when a shift is available — otherwise it's expected (no shifts yet)
+    if (selectedDays.size === 0 && shifts.length > 0) {
       if (!confirm('Учасник не обрав жодного дня. Продовжити?')) return;
     }
     setSaving(true);
@@ -279,6 +287,22 @@ export default function CampParticipantsTab({
 
       {addOpen && (
         <div style={{ padding: '0.875rem', backgroundColor: '#eff6ff', borderRadius: '0.5rem', border: '1px solid #bfdbfe', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+          {shifts.length === 0 && (
+            <div style={{ padding: '0.625rem 0.75rem', backgroundColor: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '0.375rem', fontSize: '0.75rem', color: '#92400e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span>У таборі ще немає жодної зміни. Спершу створіть зміну у вкладці «Огляд», щоб обрати дні для учасника.</span>
+              {onSwitchToOverview && (
+                <button
+                  type="button"
+                  onClick={onSwitchToOverview}
+                  className="btn btn-primary"
+                  style={{ padding: '0.25rem 0.625rem', fontSize: '0.75rem' }}
+                >
+                  До «Огляд»
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Mode toggle */}
           <div style={{ display: 'flex', gap: '0.25rem' }}>
             {(['new', 'base'] as const).map(m => (

@@ -474,6 +474,7 @@ export default function CampModalsManager() {
                       onDeleteParticipant={(id) => handleDeleteParticipant(modal.id, id)}
                       onConvertToStudent={(id) => handleConvertToStudent(modal.id, id)}
                       onOpenPayments={() => handleOpenPayments(modal.id)}
+                      onSwitchToOverview={() => setActiveTab(prev => ({ ...prev, [modal.id]: 'overview' }))}
                     />
                   )}
 
