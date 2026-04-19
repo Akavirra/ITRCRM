@@ -42,6 +42,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'ITR CRM',
   },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
   formatDetection: {
     telephone: false,
   },
