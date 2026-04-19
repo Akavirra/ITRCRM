@@ -204,7 +204,8 @@ const Navbar: React.FC<NavbarProps> = ({
   const [backupProgress, setBackupProgress] = useState(0);
   const [lastBackupStatus, setLastBackupStatus] = useState<any>(null);
   const [backupSettings, setBackupSettings] = useState({
-    categories: ['students', 'payments', 'attendance', 'groups', 'courses', 'system']
+    categories: ['students', 'payments', 'attendance', 'groups', 'courses', 'system'],
+    format: 'json' as 'json' | 'excel'
   });
 
   const handleRunBackup = async () => {
@@ -214,7 +215,10 @@ const Navbar: React.FC<NavbarProps> = ({
       const res = await fetch('/api/admin-app/backup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ categories: backupSettings.categories }),
+        body: JSON.stringify({ 
+          categories: backupSettings.categories,
+          format: backupSettings.format 
+        }),
       });
       setBackupProgress(70);
       const data = await res.json();
@@ -1715,6 +1719,28 @@ const Navbar: React.FC<NavbarProps> = ({
 
                     <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        
+                        <div style={{ display: 'flex', gap: '1.5rem', paddingBottom: '0.75rem', borderBottom: '1px solid #f1f5f9' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer', fontWeight: backupSettings.format === 'json' ? 600 : 400 }}>
+                            <input 
+                              type="radio" 
+                              name="backupFormat"
+                              checked={backupSettings.format === 'json'} 
+                              onChange={() => setBackupSettings(prev => ({ ...prev, format: 'json' }))}
+                            />
+                            JSON (для відновлення)
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer', fontWeight: backupSettings.format === 'excel' ? 600 : 400 }}>
+                            <input 
+                              type="radio" 
+                              name="backupFormat"
+                              checked={backupSettings.format === 'excel'} 
+                              onChange={() => setBackupSettings(prev => ({ ...prev, format: 'excel' }))}
+                            />
+                            Excel (для перегляду)
+                          </label>
+                        </div>
+
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                           {[
                             { id: 'students', label: 'Учні та баланси' },

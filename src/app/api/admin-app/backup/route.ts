@@ -2,6 +2,7 @@ import { getAuthUser, unauthorized, badRequest } from '@/lib/api-utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/db/neon';
 import { uploadFileToDrive, getOrCreateFolder } from '@/lib/google-drive';
+import * as XLSX from 'xlsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
   if (!user) return unauthorized();
 
   try {
-    const { categories } = await request.json();
+    const { categories, format = 'json' } = await request.json();
     if (!categories || !Array.isArray(categories) || categories.length === 0) {
       return badRequest('Категорії для бекапу не вибрані');
     }
@@ -44,15 +45,33 @@ export async function POST(request: NextRequest) {
       const tables = CATEGORIES_TABLES[category];
       if (!tables) continue;
 
-      const categoryData: Record<string, any[]> = {};
-      
-      for (const table of tables) {
-        const rows = await query(`SELECT * FROM ${table}`);
-        categoryData[table] = rows;
-      }
+      let buffer: Buffer;
+      let fileName: string;
+      let mimeType: string;
 
-      const fileName = `${category}_${timestamp}.json`;
-      const buffer = Buffer.from(JSON.stringify(categoryData, null, 2), 'utf-8');
+      if (format === 'excel') {
+        const wb = XLSX.utils.book_new();
+        
+        for (const table of tables) {
+          const rows = await query(`SELECT * FROM ${table}`);
+          const ws = XLSX.utils.json_to_sheet(rows);
+          XLSX.utils.book_append_sheet(wb, ws, table.slice(0, 31)); // Excel limit for sheet names
+        }
+
+        const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        buffer = Buffer.from(excelBuffer);
+        fileName = `${category}_${timestamp}.xlsx`;
+        mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      } else {
+        const categoryData: Record<string, any[]> = {};
+        for (const table of tables) {
+          const rows = await query(`SELECT * FROM ${table}`);
+          categoryData[table] = rows;
+        }
+        buffer = Buffer.from(JSON.stringify(categoryData, null, 2), 'utf-8');
+        fileName = `${category}_${timestamp}.json`;
+        mimeType = 'application/json';
+      }
       
       // 3. Створюємо папку категорії всередині дати
       const categoryFolder = await getOrCreateFolder(dateFolder.id, category);
@@ -61,7 +80,7 @@ export async function POST(request: NextRequest) {
       const driveFile = await uploadFileToDrive(
         buffer,
         fileName,
-        'application/json',
+        mimeType,
         categoryFolder.id
       );
 
@@ -69,8 +88,7 @@ export async function POST(request: NextRequest) {
         category,
         fileName,
         driveId: driveFile.id,
-        tablesCount: tables.length,
-        rowsCount: Object.values(categoryData).reduce((acc, curr) => acc + curr.length, 0)
+        format
       });
     }
 
