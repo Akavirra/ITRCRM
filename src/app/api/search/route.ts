@@ -42,21 +42,21 @@ export async function GET(request: NextRequest) {
             id: number;
             public_id: string;
             full_name: string;
-            phone: string | null;
             parent_name: string | null;
+            parent_phone: string | null;
             photo: string | null;
             study_status: string;
           }>(
             `WITH matched_students AS (
-               SELECT id, public_id, full_name, phone, parent_name, photo
+               SELECT id, public_id, full_name, parent_name, parent_phone, photo
                FROM students
                WHERE is_active = TRUE
-                 AND (full_name ILIKE $1 OR phone ILIKE $2 OR parent_name ILIKE $3 OR parent_phone ILIKE $4)
+                 AND (full_name ILIKE $1 OR parent_name ILIKE $2 OR parent_phone ILIKE $3)
                ORDER BY
                  CASE
                    WHEN full_name ILIKE $5 THEN 0
                    WHEN parent_name ILIKE $5 THEN 1
-                   WHEN phone ILIKE $5 OR parent_phone ILIKE $5 THEN 2
+                   WHEN parent_phone ILIKE $5 THEN 2
                    ELSE 3
                  END,
                  full_name
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
                END as study_status
              FROM matched_students ms
              ORDER BY ms.full_name`,
-            [term, term, term, term, prefixTerm]
+            [term, term, term, prefixTerm]
           ),
 
           all<{
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
             public_id: s.public_id,
             avatar_url: s.photo,
             title: s.full_name,
-            subtitle: [s.phone, s.parent_name].filter(Boolean).join(' · ') || (s.study_status === 'studying' ? 'Навчається' : 'Не навчається'),
+            subtitle: [s.parent_phone, s.parent_name].filter(Boolean).join(' · ') || (s.study_status === 'studying' ? 'Навчається' : 'Не навчається'),
             type: 'student',
           });
         }

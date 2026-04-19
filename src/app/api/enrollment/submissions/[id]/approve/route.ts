@@ -32,7 +32,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
   const student = await createStudent(
     fullName,
-    undefined,
     submission.email || undefined,
     parentName,
     parentPhone,

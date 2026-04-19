@@ -42,7 +42,7 @@ export function createAssistantTools(now = new Date()): ToolSet {
       }),
       execute: async ({ search, is_active, limit }) => {
         let sql =
-          'SELECT id, full_name, phone, email, parent_name, parent_phone, birth_date, is_active, notes, discount FROM students WHERE 1=1';
+          'SELECT id, full_name, email, parent_name, parent_phone, birth_date, is_active, notes, discount FROM students WHERE 1=1';
         const sqlParams: unknown[] = [];
         let paramIdx = 1;
 
@@ -127,7 +127,7 @@ export function createAssistantTools(now = new Date()): ToolSet {
         if (group_id) {
           return all(
             `
-              SELECT s.id, s.full_name, s.phone, s.parent_name, s.parent_phone,
+              SELECT s.id, s.full_name, s.parent_name, s.parent_phone,
                      sg.join_date, sg.is_active as enrollment_active, sg.status as enrollment_status
               FROM student_groups sg
               JOIN students s ON sg.student_id = s.id

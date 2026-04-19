@@ -14,7 +14,6 @@ export interface PaymentsOverviewData {
   individual_debtors: Array<{
     id: number;
     full_name: string;
-    phone: string | null;
     parent_name: string | null;
     parent_phone: string | null;
     balance: {
@@ -68,13 +67,12 @@ export async function getPaymentsOverview(month: string): Promise<PaymentsOvervi
   const individualDebtors = await all<{
     id: number;
     full_name: string;
-    phone: string | null;
     parent_name: string | null;
     parent_phone: string | null;
     lessons_paid: number;
     lessons_used: number;
   }>(
-    `SELECT s.id, s.full_name, s.phone, s.parent_name, s.parent_phone,
+    `SELECT s.id, s.full_name, s.parent_name, s.parent_phone,
             ib.lessons_paid, ib.lessons_used
      FROM individual_balances ib
      JOIN students s ON ib.student_id = s.id
@@ -84,7 +82,6 @@ export async function getPaymentsOverview(month: string): Promise<PaymentsOvervi
     rows.map((student) => ({
       id: student.id,
       full_name: student.full_name,
-      phone: student.phone,
       parent_name: student.parent_name,
       parent_phone: student.parent_phone,
       balance: {

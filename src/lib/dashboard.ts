@@ -579,7 +579,6 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
       id: d.id,
       full_name: d.full_name,
       public_id: d.public_id,
-      phone: d.phone,
       parent_name: d.parent_name,
       parent_phone: d.parent_phone,
       group_title: d.group_title,

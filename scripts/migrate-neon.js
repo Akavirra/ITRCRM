@@ -106,7 +106,6 @@ async function migrate() {
         id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
         public_id TEXT UNIQUE,
         full_name TEXT NOT NULL,
-        phone TEXT,
         email TEXT,
         parent_name TEXT,
         parent_phone TEXT,

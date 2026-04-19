@@ -38,7 +38,6 @@ interface GroupDetails {
     id: number;
     public_id: string;
     full_name: string;
-    phone: string | null;
     parent_name: string | null;
     parent_phone: string | null;
     join_date: string;
@@ -51,7 +50,6 @@ interface Student {
   id: number;
   public_id: string;
   full_name: string;
-  phone: string | null;
   email: string | null;
   parent_name: string | null;
   notes: string | null;
@@ -132,6 +130,10 @@ function formatPhoneNumber(value: string): string {
   const phoneDigits = digits.slice(-9);
   
   return phoneDigits;
+}
+
+function getPrimaryContactPhone(student: Pick<Student, 'parent_phone'>): string | null {
+  return student.parent_phone || null;
 }
 
 // Calculate age from birth date
@@ -969,26 +971,26 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                             </span>
                           )}
                           
-                          {student.phone && age !== null && <span style={{ color: '#cbd5e1', fontSize: '0.6875rem' }}>•</span>}
+                          {getPrimaryContactPhone(student) && age !== null && <span style={{ color: '#cbd5e1', fontSize: '0.6875rem' }}>•</span>}
                           
-                          {student.phone && (
+                          {getPrimaryContactPhone(student) && (
                             <span
                               className="copy-phone-btn"
-                              onClick={(e) => { e.stopPropagation(); copyPhone(student.phone, 'main'); }}
+                              onClick={(e) => { e.stopPropagation(); copyPhone(getPrimaryContactPhone(student), 'main'); }}
                               style={{ 
-                                fontSize: '0.75rem', color: copiedField === `main-${student.phone}` ? '#10b981' : '#64748b',
+                                fontSize: '0.75rem', color: copiedField === `main-${getPrimaryContactPhone(student)}` ? '#10b981' : '#64748b',
                                 display: 'flex', alignItems: 'center', gap: '0.1875rem', cursor: 'pointer', transition: 'color 0.15s',
                                 fontWeight: 500, fontVariantNumeric: 'tabular-nums'
                               }}
-                              onMouseEnter={(e) => { if (copiedField !== `main-${student.phone}`) e.currentTarget.style.color = '#4f46e5'; }}
-                              onMouseLeave={(e) => { if (copiedField !== `main-${student.phone}`) e.currentTarget.style.color = '#64748b'; }}
+                              onMouseEnter={(e) => { if (copiedField !== `main-${getPrimaryContactPhone(student)}`) e.currentTarget.style.color = '#4f46e5'; }}
+                              onMouseLeave={(e) => { if (copiedField !== `main-${getPrimaryContactPhone(student)}`) e.currentTarget.style.color = '#64748b'; }}
                             >
-                              {copiedField === `main-${student.phone}` ? (
+                              {copiedField === `main-${getPrimaryContactPhone(student)}` ? (
                                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                               ) : (
                                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                               )}
-                              {student.phone}
+                              {getPrimaryContactPhone(student)}
                             </span>
                           )}
                         </div>
@@ -1377,15 +1379,15 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                         </a>
                         
                         {/* Contact Info */}
-                        {(student.phone || student.email) && (
+                        {(getPrimaryContactPhone(student) || student.email) && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                            {student.phone && (
+                            {getPrimaryContactPhone(student) && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
                                 <span
-                                  onClick={() => copyPhone(student.phone, 'main')}
+                                  onClick={() => copyPhone(getPrimaryContactPhone(student), 'main')}
                                   style={{
                                     fontSize: '0.8125rem',
-                                    color: copiedField === `main-${student.phone}` ? '#10b981' : '#475569',
+                                    color: copiedField === `main-${getPrimaryContactPhone(student)}` ? '#10b981' : '#475569',
                                     cursor: 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
@@ -1394,11 +1396,11 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                                     fontWeight: 500,
                                     fontVariantNumeric: 'tabular-nums',
                                   }}
-                                  onMouseEnter={(e) => { if (copiedField !== `main-${student.phone}`) e.currentTarget.style.color = '#6366f1'; }}
-                                  onMouseLeave={(e) => { if (copiedField !== `main-${student.phone}`) e.currentTarget.style.color = '#475569'; }}
+                                  onMouseEnter={(e) => { if (copiedField !== `main-${getPrimaryContactPhone(student)}`) e.currentTarget.style.color = '#6366f1'; }}
+                                  onMouseLeave={(e) => { if (copiedField !== `main-${getPrimaryContactPhone(student)}`) e.currentTarget.style.color = '#475569'; }}
                                   title="Клікніть щоб скопіювати"
                                 >
-                                  {copiedField === `main-${student.phone}` ? (
+                                  {copiedField === `main-${getPrimaryContactPhone(student)}` ? (
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                       <polyline points="20 6 9 17 4 12" />
                                     </svg>
@@ -1407,7 +1409,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                                     </svg>
                                   )}
-                                  {student.phone}
+                                  {getPrimaryContactPhone(student)}
                                 </span>
                                 {/* Parent info */}
                                 {(student.parent_name || student.parent_relation) && (
@@ -1456,7 +1458,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                               </span>
                             )}
                             {/* Show parent info on separate line only if no phone */}
-                            {!student.phone && (student.parent_name || student.parent_relation) && (
+                            {!getPrimaryContactPhone(student) && (student.parent_name || student.parent_relation) && (
                               <span style={{ fontSize: '0.6875rem', color: '#94a3b8', paddingLeft: '1.125rem' }}>
                                 {student.parent_name && student.parent_relation
                                   ? `${student.parent_name} (${translateRelation(student.parent_relation)})`

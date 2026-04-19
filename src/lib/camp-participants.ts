@@ -60,7 +60,7 @@ export async function listParticipants(campId: number, options: { shiftId?: numb
     `SELECT
        cp.*,
        s.public_id AS student_public_id,
-       s.phone AS student_phone,
+       s.parent_phone AS student_phone,
        s.parent_phone AS student_parent_phone,
        cs.title AS shift_title,
        COALESCE((
@@ -98,7 +98,7 @@ export async function getParticipantById(id: number): Promise<CampParticipantWit
     `SELECT
        cp.*,
        s.public_id AS student_public_id,
-       s.phone AS student_phone,
+       s.parent_phone AS student_phone,
        s.parent_phone AS student_parent_phone,
        cs.title AS shift_title,
        c.price_per_day_snapshot AS camp_price_snapshot,
@@ -312,13 +312,13 @@ export async function convertParticipantToStudent(participantId: number, actorUs
 /**
  * Для автокомпліту: активні учні, НЕ додані як учасники цього табору.
  */
-export async function searchAvailableStudentsForCamp(campId: number, search: string, limit = 20): Promise<Array<{ id: number; public_id: string; full_name: string; phone: string | null; parent_phone: string | null }>> {
+export async function searchAvailableStudentsForCamp(campId: number, search: string, limit = 20): Promise<Array<{ id: number; public_id: string; full_name: string; parent_phone: string | null }>> {
   const q = `%${search.trim().toLowerCase()}%`;
-  const rows = await all<{ id: number; public_id: string; full_name: string; phone: string | null; parent_phone: string | null }>(
-    `SELECT s.id, s.public_id, s.full_name, s.phone, s.parent_phone
+  const rows = await all<{ id: number; public_id: string; full_name: string; parent_phone: string | null }>(
+    `SELECT s.id, s.public_id, s.full_name, s.parent_phone
      FROM students s
      WHERE s.is_active = TRUE
-       AND (LOWER(s.full_name) LIKE $1 OR s.phone LIKE $1 OR s.parent_phone LIKE $1)
+       AND (LOWER(s.full_name) LIKE $1 OR s.parent_phone LIKE $1)
        AND NOT EXISTS (
          SELECT 1 FROM camp_participants cp
          WHERE cp.camp_id = $2 AND cp.student_id = s.id AND cp.status = 'active'

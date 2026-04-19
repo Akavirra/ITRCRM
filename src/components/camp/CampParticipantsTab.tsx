@@ -38,7 +38,6 @@ interface SearchStudent {
   id: number;
   public_id: string;
   full_name: string;
-  phone: string | null;
   parent_phone: string | null;
 }
 
@@ -354,7 +353,7 @@ export default function CampParticipantsTab({
                       style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.375rem 0.5rem', fontSize: '0.75rem', border: 'none', borderBottom: '1px solid #f1f5f9', backgroundColor: 'white', cursor: 'pointer' }}
                     >
                       <span style={{ fontWeight: 500 }}>{s.full_name}</span>
-                      {s.phone && <span style={{ marginLeft: '0.5rem', color: '#64748b' }}>{s.phone}</span>}
+                      {s.parent_phone && <span style={{ marginLeft: '0.5rem', color: '#64748b' }}>{s.parent_phone}</span>}
                     </button>
                   ))}
                 </div>

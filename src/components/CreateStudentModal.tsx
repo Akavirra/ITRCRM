@@ -7,7 +7,6 @@ import StudentAvatarCropModal from '@/components/StudentAvatarCropModal';
 export type StudentRecord = {
   id: number;
   full_name: string;
-  phone: string | null;
   email: string | null;
   parent_name: string | null;
   notes: string | null;
@@ -31,7 +30,6 @@ type FormState = {
   email: string;
   school: string;
   discount: string;
-  phone: string;
   parent_name: string;
   parent_relation: string;
   parent_relation_other: string;
@@ -50,7 +48,6 @@ type FormState = {
 type AutocompleteStudent = {
   id: number;
   full_name: string;
-  phone: string | null;
   parent_name: string | null;
 };
 
@@ -68,7 +65,6 @@ const EMPTY_FORM: FormState = {
   email: '',
   school: '',
   discount: '',
-  phone: '',
   parent_name: '',
   parent_relation: '',
   parent_relation_other: '',
@@ -136,6 +132,7 @@ function normalizeOptionValue(
 
 function mapStudentToForm(student: StudentRecord): FormState {
   const nameParts = student.full_name.trim().split(/\s+/);
+  const primaryPhone = student.parent_phone || null;
   const primaryRelation = normalizeOptionValue(student.parent_relation, RELATION_OPTIONS);
   const secondaryRelation = normalizeOptionValue(student.parent2_relation, RELATION_OPTIONS);
   const source = normalizeOptionValue(student.source, SOURCE_OPTIONS);
@@ -147,11 +144,10 @@ function mapStudentToForm(student: StudentRecord): FormState {
     email: student.email || '',
     school: student.school || '',
     discount: student.discount != null ? String(student.discount) : '',
-    phone: extractPhoneDigits(student.phone),
     parent_name: student.parent_name || '',
     parent_relation: primaryRelation.value,
     parent_relation_other: primaryRelation.other,
-    parent_phone: extractPhoneDigits(student.parent_phone),
+    parent_phone: extractPhoneDigits(primaryPhone),
     parent2_name: student.parent2_name || '',
     parent2_phone: extractPhoneDigits(student.parent2_phone),
     parent2_relation: secondaryRelation.value,
@@ -174,7 +170,6 @@ export type CreateStudentPrefill = Partial<
   Pick<
     StudentRecord,
     | 'full_name'
-    | 'phone'
     | 'email'
     | 'parent_name'
     | 'parent_phone'
@@ -199,6 +194,7 @@ function mapPrefillToForm(prefill: CreateStudentPrefill): FormState {
   const secondaryRelation = normalizeOptionValue(prefill.parent2_relation ?? null, RELATION_OPTIONS);
   const source = normalizeOptionValue(prefill.source ?? null, SOURCE_OPTIONS);
 
+  const primaryPhone = prefill.parent_phone || null;
   return {
     ...EMPTY_FORM,
     first_name: nameParts[0] || '',
@@ -207,11 +203,10 @@ function mapPrefillToForm(prefill: CreateStudentPrefill): FormState {
     email: prefill.email || '',
     school: prefill.school || '',
     discount: prefill.discount != null ? String(prefill.discount) : '',
-    phone: extractPhoneDigits(prefill.phone),
     parent_name: prefill.parent_name || '',
     parent_relation: primaryRelation.value,
     parent_relation_other: primaryRelation.other,
-    parent_phone: extractPhoneDigits(prefill.parent_phone),
+    parent_phone: extractPhoneDigits(primaryPhone),
     parent2_name: prefill.parent2_name || '',
     parent2_phone: extractPhoneDigits(prefill.parent2_phone),
     parent2_relation: secondaryRelation.value,
@@ -359,7 +354,7 @@ export default function CreateStudentModal({
     const next: Record<string, string> = {};
     if (!form.first_name.trim()) next.first_name = t('validation.required');
     if (!form.last_name.trim()) next.last_name = t('validation.required');
-    if (form.phone.length !== 9) next.phone = t('validation.required');
+    if (form.parent_phone.length !== 9) next.parent_phone = t('validation.required');
     if (!form.parent_name.trim()) next.parent_name = t('validation.required');
     if (!form.parent_relation) next.parent_relation = t('validation.required');
     if (form.parent_relation === 'other' && !form.parent_relation_other.trim()) next.parent_relation_other = t('validation.required');
@@ -387,7 +382,6 @@ export default function CreateStudentModal({
           uniqueFirstNames.set(firstName.toLowerCase(), {
             id: student.id,
             full_name: firstName,
-            phone: null,
             parent_name: null,
           });
         }
@@ -417,7 +411,6 @@ export default function CreateStudentModal({
           uniqueLastNames.set(lastName, {
             id: student.id,
             full_name: lastName,
-            phone: null,
             parent_name: null,
           });
         }
@@ -566,7 +559,6 @@ export default function CreateStudentModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           full_name: `${form.first_name.trim()} ${form.last_name.trim()}`.trim(),
-          phone: `+380${form.phone}`,
           email: form.email || null,
           parent_name: form.parent_name,
           parent_phone: form.parent_phone ? `+380${form.parent_phone}` : null,
@@ -576,7 +568,7 @@ export default function CreateStudentModal({
           discount: form.discount || null,
           parent_relation: form.parent_relation === 'other' ? form.parent_relation_other.trim() : form.parent_relation,
           parent2_name: form.parent2_name || null,
-          parent2_phone: isEditing ? studentToEdit?.parent2_phone || null : null,
+          parent2_phone: form.parent2_phone ? `+380${form.parent2_phone}` : null,
           parent2_relation: form.parent2_relation === 'other' ? form.parent2_relation_other.trim() : (form.parent2_relation || null),
           interested_courses: form.interested_courses.join(', '),
           source: form.source === 'other' ? form.source_other.trim() : (form.source || ''),
@@ -861,11 +853,11 @@ export default function CreateStudentModal({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Номер телефону *</label>
-                    <div style={{ display: 'flex', alignItems: 'center', border: errors.phone ? '1px solid #ef4444' : '1px solid #d1d5db', borderRadius: '0.375rem', backgroundColor: '#fff', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', border: errors.parent_phone ? '1px solid #ef4444' : '1px solid #d1d5db', borderRadius: '0.375rem', backgroundColor: '#fff', overflow: 'hidden' }}>
                       <span style={{ padding: '0.625rem 0.75rem', backgroundColor: '#f3f4f6', color: '#374151', fontWeight: 500, fontSize: '0.875rem', borderRight: '1px solid #d1d5db' }}>+380</span>
-                      <input className="form-input" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: formatPhoneNumber(e.target.value) }))} maxLength={9} style={{ flex: 1, border: 'none', outline: 'none', padding: '0.625rem 0.75rem' }} />
+                      <input className="form-input" value={form.parent_phone} onChange={(e) => setForm((prev) => ({ ...prev, parent_phone: formatPhoneNumber(e.target.value) }))} maxLength={9} style={{ flex: 1, border: 'none', outline: 'none', padding: '0.625rem 0.75rem' }} />
                     </div>
-                    {errors.phone && <span className="form-error">{errors.phone}</span>}
+                    {errors.parent_phone && <span className="form-error">{errors.parent_phone}</span>}
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">{"Ім'я контактної особи *"}</label>
@@ -904,7 +896,7 @@ export default function CreateStudentModal({
                     <label className="form-label">Номер телефону</label>
                     <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #d1d5db', borderRadius: '0.375rem', backgroundColor: '#fff', overflow: 'hidden' }}>
                       <span style={{ padding: '0.625rem 0.75rem', backgroundColor: '#f3f4f6', color: '#374151', fontWeight: 500, fontSize: '0.875rem', borderRight: '1px solid #d1d5db' }}>+380</span>
-                      <input className="form-input" value={form.parent_phone} onChange={(e) => setForm((prev) => ({ ...prev, parent_phone: formatPhoneNumber(e.target.value) }))} maxLength={9} style={{ flex: 1, border: 'none', outline: 'none', padding: '0.625rem 0.75rem' }} />
+                      <input className="form-input" value={form.parent2_phone} onChange={(e) => setForm((prev) => ({ ...prev, parent2_phone: formatPhoneNumber(e.target.value) }))} maxLength={9} style={{ flex: 1, border: 'none', outline: 'none', padding: '0.625rem 0.75rem' }} />
                     </div>
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>

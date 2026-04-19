@@ -456,7 +456,6 @@ export async function getStudentsInGroup(groupId: number, includeInactive = fals
   id: number;
   public_id: string;
   full_name: string;
-  phone: string | null;
   parent_name: string | null;
   parent_phone: string | null;
   join_date: string;
@@ -469,7 +468,6 @@ export async function getStudentsInGroup(groupId: number, includeInactive = fals
     id: number;
     public_id: string;
     full_name: string;
-    phone: string | null;
     parent_name: string | null;
     parent_phone: string | null;
     join_date: string;
@@ -478,7 +476,7 @@ export async function getStudentsInGroup(groupId: number, includeInactive = fals
     photo: string | null;
     sg_status: string;
   }>(
-    `SELECT s.id, s.public_id, s.full_name, s.phone, s.parent_name, s.parent_phone, sg.join_date, sg.leave_date, sg.id as student_group_id, s.photo, sg.status as sg_status
+    `SELECT s.id, s.public_id, s.full_name, s.parent_name, s.parent_phone, sg.join_date, sg.leave_date, sg.id as student_group_id, s.photo, sg.status as sg_status
      FROM students s
      JOIN student_groups sg ON s.id = sg.student_id
      WHERE sg.group_id = $1${includeInactive ? '' : ' AND sg.is_active = TRUE'}
@@ -514,7 +512,6 @@ export async function getStudentsInGroupWithGraduated(groupId: number): Promise<
   id: number;
   public_id: string;
   full_name: string;
-  phone: string | null;
   parent_name: string | null;
   parent_phone: string | null;
   join_date: string;
@@ -527,7 +524,6 @@ export async function getStudentsInGroupWithGraduated(groupId: number): Promise<
     id: number;
     public_id: string;
     full_name: string;
-    phone: string | null;
     parent_name: string | null;
     parent_phone: string | null;
     join_date: string;
@@ -536,7 +532,7 @@ export async function getStudentsInGroupWithGraduated(groupId: number): Promise<
     photo: string | null;
     sg_status: string;
   }>(
-    `SELECT s.id, s.public_id, s.full_name, s.phone, s.parent_name, s.parent_phone, sg.join_date, sg.leave_date, sg.id as student_group_id, s.photo, sg.status as sg_status
+    `SELECT s.id, s.public_id, s.full_name, s.parent_name, s.parent_phone, sg.join_date, sg.leave_date, sg.id as student_group_id, s.photo, sg.status as sg_status
      FROM students s
      JOIN student_groups sg ON s.id = sg.student_id
      WHERE sg.group_id = $1 AND sg.status IN ('active', 'graduated')

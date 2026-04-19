@@ -92,7 +92,6 @@ export async function PUT(
     const body = await request.json();
     const { 
       full_name, 
-      phone, 
       email,
       parent_name, 
       parent_phone, 
@@ -129,7 +128,6 @@ export async function PUT(
     await updateStudent(
       studentId,
       finalFullName,
-      phone !== undefined ? phone?.trim() : existingStudent.phone,
       email !== undefined ? email?.trim() : existingStudent.email,
       parent_name !== undefined ? parent_name?.trim() : existingStudent.parent_name,
       parent_phone !== undefined ? parent_phone?.trim() : existingStudent.parent_phone,
@@ -155,7 +153,6 @@ export async function PUT(
     // Log field-by-field changes
     const trackedFields: Array<{ field: string; oldVal: string | null; newVal: string | null }> = [
       { field: 'full_name', oldVal: existingStudent.full_name ?? null, newVal: finalFullName ?? null },
-      { field: 'phone', oldVal: existingStudent.phone ?? null, newVal: phone !== undefined ? (phone?.trim() ?? null) : (existingStudent.phone ?? null) },
       { field: 'email', oldVal: existingStudent.email ?? null, newVal: email !== undefined ? (email?.trim() ?? null) : (existingStudent.email ?? null) },
       { field: 'parent_name', oldVal: existingStudent.parent_name ?? null, newVal: parent_name !== undefined ? (parent_name?.trim() ?? null) : (existingStudent.parent_name ?? null) },
       { field: 'parent_phone', oldVal: existingStudent.parent_phone ?? null, newVal: parent_phone !== undefined ? (parent_phone?.trim() ?? null) : (existingStudent.parent_phone ?? null) },

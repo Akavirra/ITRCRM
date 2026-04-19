@@ -79,7 +79,7 @@ export async function GET(
     `SELECT
       s.id as student_id,
       s.full_name as student_name,
-      s.phone as student_phone,
+      s.parent_phone as student_phone,
       a.status
     FROM student_groups sg
     JOIN students s ON sg.student_id = s.id
@@ -91,7 +91,7 @@ export async function GET(
     SELECT
       s.id as student_id,
       s.full_name as student_name,
-      s.phone as student_phone,
+      s.parent_phone as student_phone,
       a.status
     FROM attendance a
     JOIN students s ON a.student_id = s.id

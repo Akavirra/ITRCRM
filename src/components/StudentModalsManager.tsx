@@ -52,7 +52,6 @@ interface StudentData {
   id: number;
   public_id: string;
   full_name: string;
-  phone: string | null;
   email: string | null;
   parent_name: string | null;
   parent_phone: string | null;
@@ -80,6 +79,10 @@ interface StudentWithGroups extends StudentData {
     course_title: string;
     join_date: string;
   }>;
+}
+
+function getPrimaryContactPhone(student: Pick<StudentData, 'parent_phone'>): string | null {
+  return student.parent_phone || null;
 }
 
 function formatDate(dateStr: string | null): string {
@@ -511,7 +514,7 @@ export default function StudentModalsManager() {
                   )}
                   
                   {/* Додатковий контакт */}
-                  {(student.parent2_name || student.phone) && (
+                  {(student.parent2_name || student.parent2_phone) && (
                     <div 
                       style={{
                         display: 'flex',
@@ -642,7 +645,7 @@ export default function StudentModalsManager() {
                     </div>
                   )}
                   
-                  {!student.parent_phone && !student.phone && !student.email && !student.parent2_name && (
+                  {!getPrimaryContactPhone(student) && !student.email && !student.parent2_name && !student.parent2_phone && (
                     <span style={{ fontSize: '0.875rem', color: '#9ca3af', fontStyle: 'italic' }}>Контакти відсутні</span>
                   )}
                 </div>

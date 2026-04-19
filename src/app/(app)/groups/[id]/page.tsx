@@ -34,7 +34,6 @@ interface Student {
   id: number;
   public_id: string;
   full_name: string;
-  phone: string | null;
   parent_name: string | null;
   parent_phone: string | null;
   join_date: string;
@@ -47,7 +46,7 @@ interface Student {
 interface StudentSearch {
   id: number;
   full_name: string;
-  phone: string | null;
+  parent_phone?: string | null;
   photo: string | null;
 }
 
@@ -94,6 +93,10 @@ interface AllTimeRegister {
 interface Teacher {
   id: number;
   name: string;
+}
+
+function getPrimaryContactPhone(student: { parent_phone?: string | null }): string | null {
+  return student.parent_phone || null;
 }
 
 export default function GroupDetailsPage() {
@@ -299,9 +302,8 @@ export default function GroupDetailsPage() {
             id: found.id,
             public_id: '',
             full_name: found.full_name,
-            phone: found.phone || null,
             parent_name: null,
-            parent_phone: null,
+            parent_phone: found.parent_phone || null,
             join_date: new Date().toISOString(),
             leave_date: null,
             photo: found.photo || null,
@@ -1028,7 +1030,7 @@ export default function GroupDetailsPage() {
                             </span>
                           )}
                         </div>
-                        <p style={{ margin: '0.125rem 0 0 0', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{student.phone || 'Телефон не вказано'}</p>
+                        <p style={{ margin: '0.125rem 0 0 0', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{getPrimaryContactPhone(student) || 'Телефон не вказано'}</p>
                         {isGraduated && student.leave_date ? (
                           <p style={{ margin: '0.125rem 0 0 0', fontSize: '0.75rem', color: '#7c3aed' }}>Випущений: {formatDateKyiv(student.leave_date)}</p>
                         ) : student.join_date ? (
@@ -1506,8 +1508,8 @@ export default function GroupDetailsPage() {
                         </div>
                         <div style={{ flex: 1 }}>
                           <p style={{ margin: 0, fontWeight: '500' }}>{student.full_name}</p>
-                          {student.phone && (
-                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{student.phone}</p>
+                          {getPrimaryContactPhone(student) && (
+                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{getPrimaryContactPhone(student)}</p>
                           )}
                         </div>
                         <button

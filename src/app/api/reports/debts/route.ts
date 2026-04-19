@@ -32,14 +32,13 @@ export async function GET(request: NextRequest) {
   const totalDebt = filteredDebtors.reduce((sum, d) => sum + d.debt, 0);
   
   if (format === 'csv') {
-    const headers = ['student_id', 'student_name', 'phone', 'parent_name', 'parent_phone', 'group_title', 'lessons', 'lesson_price', 'discount_%', 'expected', 'paid_amount', 'debt'];
+    const headers = ['student_id', 'student_name', 'parent_name', 'parent_phone', 'group_title', 'lessons', 'lesson_price', 'discount_%', 'expected', 'paid_amount', 'debt'];
     const csvRows = [headers.join(',')];
 
     for (const d of filteredDebtors) {
       csvRows.push([
         d.id,
         `"${d.full_name}"`,
-        `"${d.phone || ''}"`,
         `"${d.parent_name || ''}"`,
         `"${d.parent_phone || ''}"`,
         `"${d.group_title}"`,

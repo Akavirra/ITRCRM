@@ -334,13 +334,13 @@ export default function LessonModalsManager() {
       const response = await fetch(`/api/students?limit=500`);
       if (response.ok) {
         const data = await response.json();
-        const list: Array<{ id: number; full_name: string; phone: string | null }> = Array.isArray(data)
+        const list: Array<{ id: number; full_name: string; parent_phone?: string | null }> = Array.isArray(data)
           ? data
           : data.students || [];
         const existing = new Set((attendance[lessonId] || []).map(a => a.student_id));
         const filtered = list
           .filter(s => !existing.has(s.id))
-          .map(s => ({ id: s.id, full_name: s.full_name, phone: s.phone ?? null }));
+          .map(s => ({ id: s.id, full_name: s.full_name, phone: s.parent_phone ?? null }));
         setTrialCandidates(prev => ({ ...prev, [lessonId]: filtered }));
       }
     } catch (error) {

@@ -18,7 +18,6 @@ interface Student {
   id: number;
   public_id: string;
   full_name: string;
-  phone: string | null;
   email: string | null;
   parent_name: string | null;
   parent_phone: string | null;
@@ -465,6 +464,10 @@ function formatPhone(phone: string | null): string {
   return phone;
 }
 
+function getPrimaryContactPhone(student: Pick<Student, 'parent_phone'>): string | null {
+  return student.parent_phone || null;
+}
+
 // Calculate age from birth date
 function calculateAge(birthDate: string | null): number | null {
   if (!birthDate) return null;
@@ -649,17 +652,7 @@ export default function StudentProfilePage() {
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
     
-    let phoneDigits = '';
-    if (student.phone) {
-      const digits = student.phone.replace(/\D/g, '');
-      phoneDigits = digits.slice(-9);
-    }
-    
-    let parentPhoneDigits = '';
-    if (student.parent_phone) {
-      const digits = student.parent_phone.replace(/\D/g, '');
-      parentPhoneDigits = digits.slice(-9);
-    }
+    const primaryPhone = getPrimaryContactPhone(student);
     
     setFormData({
       first_name: firstName,
@@ -670,11 +663,11 @@ export default function StudentProfilePage() {
       discount: student.discount != null ? String(student.discount) : '',
       photo: student.photo,
       photoFile: null,
-      phone: phoneDigits,
+      phone: '',
       parent_name: student.parent_name || '',
       parent_relation: student.parent_relation || '',
       parent_relation_other: '',
-      parent_phone: parentPhoneDigits,
+      parent_phone: primaryPhone ? primaryPhone.replace(/\D/g, '').slice(-9) : '',
       parent2_name: student.parent2_name || '',
       parent2_phone: student.parent2_phone ? student.parent2_phone.replace(/\D/g, '').slice(-9) : '',
       parent2_relation: student.parent2_relation || '',
@@ -702,8 +695,8 @@ export default function StudentProfilePage() {
     if (!formData.last_name.trim()) {
       newErrors.last_name = t('validation.required');
     }
-    if (!formData.phone || formData.phone.length !== 9) {
-      newErrors.phone = t('validation.required');
+    if (!formData.parent_phone || formData.parent_phone.length !== 9) {
+      newErrors.parent_phone = t('validation.required');
     }
     if (!formData.parent_name.trim()) {
       newErrors.parent_name = t('validation.required');
@@ -741,7 +734,7 @@ export default function StudentProfilePage() {
 
       const apiData = {
         full_name: fullName,
-        phone: formData.phone ? `+380${formData.phone}` : null,
+        phone: null,
         email: formData.email || null,
         parent_name: formData.parent_name,
         parent_phone: formData.parent_phone ? `+380${formData.parent_phone}` : null,
@@ -751,7 +744,7 @@ export default function StudentProfilePage() {
         discount: formData.discount,
         parent_relation: formData.parent_relation === 'other' ? formData.parent_relation_other : formData.parent_relation,
         parent2_name: formData.parent2_name,
-        parent2_phone: formData.parent2_phone || null,
+        parent2_phone: formData.parent2_phone ? `+380${formData.parent2_phone}` : null,
         parent2_relation: formData.parent2_relation === 'other' ? formData.parent2_relation_other : formData.parent2_relation,
         interested_courses: formData.interested_courses.join(', '),
         source: formData.source === 'other' ? formData.source_other : formData.source,
@@ -842,7 +835,7 @@ export default function StudentProfilePage() {
     }));
   };
 
-  const handlePhoneChange = (field: 'phone' | 'parent_phone', value: string) => {
+  const handlePhoneChange = (field: 'parent_phone' | 'parent2_phone', value: string) => {
     const formatted = formatPhoneNumber(value);
     setFormData({ ...formData, [field]: formatted });
   };
@@ -1442,8 +1435,8 @@ export default function StudentProfilePage() {
                     </span>
                     <input
                       type="tel"
-                      value={formData.phone}
-                      onChange={(e) => handlePhoneChange('phone', e.target.value)}
+                      value={formData.parent_phone}
+                      onChange={(e) => handlePhoneChange('parent_phone', e.target.value)}
                       className="form-input"
                       style={{ 
                         width: '100%',
@@ -1454,8 +1447,8 @@ export default function StudentProfilePage() {
                       maxLength={9}
                     />
                   </div>
-                  {errors.phone && (
-                    <div style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: '0.25rem' }}>{errors.phone}</div>
+                  {errors.parent_phone && (
+                    <div style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: '0.25rem' }}>{errors.parent_phone}</div>
                   )}
                 </div>
                 
@@ -1537,8 +1530,8 @@ export default function StudentProfilePage() {
                     </span>
                     <input
                       type="tel"
-                      value={formData.parent_phone}
-                      onChange={(e) => handlePhoneChange('parent_phone', e.target.value)}
+                      value={formData.parent2_phone}
+                      onChange={(e) => handlePhoneChange('parent2_phone', e.target.value)}
                       className="form-input"
                       style={{ 
                         width: '100%',
@@ -2003,7 +1996,7 @@ export default function StudentProfilePage() {
                 {/* Contacts */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                   {/* Основний контакт */}
-                  {student.phone && (
+                  {student.parent_phone && (
                     <div
                       style={{
                         display: 'flex',
@@ -2048,10 +2041,10 @@ export default function StudentProfilePage() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                         <a
-                          href={`tel:${student.phone}`}
+                          href={`tel:${student.parent_phone}`}
                           onClick={(e) => {
                             e.preventDefault();
-                            navigator.clipboard.writeText(student.phone || '');
+                            navigator.clipboard.writeText(student.parent_phone || '');
                             setCopiedField('phone-main');
                             setTimeout(() => setCopiedField(null), 2000);
                           }}
@@ -2064,14 +2057,14 @@ export default function StudentProfilePage() {
                           }}
                           title="Клікніть щоб скопіювати"
                         >
-                          {formatPhone(student.phone)}
+                          {formatPhone(student.parent_phone)}
                         </a>
                       </div>
                     </div>
                   )}
                   
                   {/* Додатковий контакт */}
-                  {student.parent_phone && (
+                  {student.parent2_phone && (
                     <div
                       style={{
                         display: 'flex',
@@ -2114,15 +2107,15 @@ export default function StudentProfilePage() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                         <a
-                          href={`tel:${student.parent_phone}`}
+                          href={`tel:${student.parent2_phone}`}
                           onClick={(e) => {
                             e.preventDefault();
-                            navigator.clipboard.writeText(student.parent_phone || '');
-                            setCopiedField('phone-parent');
+                            navigator.clipboard.writeText(student.parent2_phone || '');
+                            setCopiedField('phone-parent2');
                             setTimeout(() => setCopiedField(null), 2000);
                           }}
                           style={{
-                            color: copiedField === 'phone-parent' ? '#2563eb' : 'var(--gray-900)',
+                            color: copiedField === 'phone-parent2' ? '#2563eb' : 'var(--gray-900)',
                             textDecoration: 'none',
                             fontSize: '0.9375rem',
                             fontWeight: '600',
@@ -2130,7 +2123,7 @@ export default function StudentProfilePage() {
                           }}
                           title="Клікніть щоб скопіювати"
                         >
-                          {formatPhone(student.parent_phone)}
+                          {formatPhone(student.parent2_phone)}
                         </a>
                       </div>
                     </div>
@@ -2972,7 +2965,7 @@ export default function StudentProfilePage() {
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ margin: 0, fontSize: '0.9375rem', fontWeight: '500', color: '#111827' }}>{student.full_name}</p>
-                            <p style={{ margin: '0.125rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>{student.phone || 'Телефон не вказано'}</p>
+                            <p style={{ margin: '0.125rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>{getPrimaryContactPhone(student) || 'Телефон не вказано'}</p>
                             {student.join_date && (
                               <p style={{ margin: '0.125rem 0 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>Доданий: {formatDateKyiv(student.join_date)}</p>
                             )}

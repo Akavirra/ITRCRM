@@ -63,8 +63,8 @@ interface LessonCourseNode {
 interface StudentSearchOption {
   id: number;
   full_name: string;
-  phone: string | null;
   parent_name: string | null;
+  parent_phone?: string | null;
   photo?: string | null;
   groups?: Array<{
     id: number;
@@ -449,7 +449,7 @@ function StudentAvatarPickerModal({
                       {student.full_name}
                     </div>
                     <div style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {student.phone || student.parent_name || 'Без додаткових даних'}
+                      {student.parent_phone || student.parent_name || 'Без додаткових даних'}
                     </div>
                     {!!student.groups?.length && (
                       <div style={{ fontSize: '0.77rem', color: '#94a3b8', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -656,7 +656,7 @@ export default function MaterialsPage() {
           .map((student: any) => ({
             id: student.id,
             full_name: student.full_name,
-            phone: student.phone || null,
+            parent_phone: student.parent_phone || null,
             parent_name: student.parent_name || null,
             photo: student.photo || null,
             groups: Array.isArray(student.groups) ? student.groups : [],
@@ -699,7 +699,7 @@ export default function MaterialsPage() {
             return {
               id: student.id,
               full_name: student.full_name,
-              phone: student.phone || null,
+              parent_phone: student.parent_phone || null,
               parent_name: student.parent_name || null,
               photo: student.photo || null,
               groups: student.groups || [],
@@ -785,7 +785,7 @@ export default function MaterialsPage() {
         setAvatarSearchResults((data.students || []).map((student: any) => ({
           id: student.id,
           full_name: student.full_name,
-          phone: student.phone || null,
+          parent_phone: student.parent_phone || null,
           parent_name: student.parent_name || null,
           photo: student.photo || null,
           groups: student.groups || [],

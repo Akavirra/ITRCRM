@@ -102,7 +102,7 @@ export async function getPaymentStatusForGroupMonth(
     total_paid: number;
     payments: Payment[] | string | null;
   }>(
-    `SELECT s.id as student_id, s.full_name as student_name, s.phone as student_phone,
+    `SELECT s.id as student_id, s.full_name as student_name, s.parent_phone as student_phone,
             s.parent_name, s.parent_phone, COALESCE(s.discount::INTEGER, 0) as discount,
             COALESCE(SUM(p.amount), 0)::INTEGER as total_paid,
             COALESCE(
@@ -127,7 +127,7 @@ export async function getPaymentStatusForGroupMonth(
      JOIN student_groups sg ON s.id = sg.student_id
      LEFT JOIN payments p ON p.student_id = s.id AND p.group_id = $1 AND p.month = $2
      WHERE sg.group_id = $1 AND sg.is_active = TRUE AND s.is_active = TRUE
-     GROUP BY s.id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.discount
+     GROUP BY s.id, s.full_name, s.parent_phone, s.parent_name, s.parent_phone, s.discount
      ORDER BY s.full_name`,
     [groupId, month]
   );

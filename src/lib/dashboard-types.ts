@@ -103,7 +103,6 @@ export interface DashboardStatsPayload {
     id: number;
     full_name: string;
     public_id: string;
-    phone: string | null;
     parent_name: string | null;
     parent_phone: string | null;
     group_title: string;

@@ -126,19 +126,19 @@ async function seed() {
   
   // Create 5 students
   const students = [
-    { name: 'Oleksandr Kovalenko', phone: '+380991234567', parent: 'Ivan Kovalenko', parentPhone: '+380991234568' },
-    { name: 'Anna Shevchenko', phone: '+380992345678', parent: 'Petro Shevchenko', parentPhone: '+380992345679' },
-    { name: 'Dmytro Bondarenko', phone: '+380993456789', parent: 'Olena Bondarenko', parentPhone: '+380993456780' },
-    { name: 'Sofiia Melnyk', phone: '+380994567890', parent: 'Andrii Melnyk', parentPhone: '+380994567891' },
-    { name: 'Maksym Tkachenko', phone: '+380995678901', parent: 'Kateryna Tkachenko', parentPhone: '+380995678902' },
+    { name: 'Oleksandr Kovalenko', parent: 'Ivan Kovalenko', parentPhone: '+380991234568' },
+    { name: 'Anna Shevchenko', parent: 'Petro Shevchenko', parentPhone: '+380992345679' },
+    { name: 'Dmytro Bondarenko', parent: 'Olena Bondarenko', parentPhone: '+380993456780' },
+    { name: 'Sofiia Melnyk', parent: 'Andrii Melnyk', parentPhone: '+380994567891' },
+    { name: 'Maksym Tkachenko', parent: 'Kateryna Tkachenko', parentPhone: '+380995678902' },
   ];
   
   const studentIds = [];
   for (const student of students) {
     const result = db.prepare(`
-      INSERT INTO students (full_name, phone, parent_name, parent_phone, is_active)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(student.name, student.phone, student.parent, student.parentPhone, 1);
+      INSERT INTO students (full_name, parent_name, parent_phone, is_active)
+      VALUES (?, ?, ?, ?)
+    `).run(student.name, student.parent, student.parentPhone, 1);
     studentIds.push(result.lastInsertRowid);
     console.log('Created student:', student.name);
   }

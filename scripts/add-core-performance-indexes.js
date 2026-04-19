@@ -22,11 +22,7 @@ async function main() {
     ON students
     USING gin (parent_name gin_trgm_ops)
   `;
-  await sql`
-    CREATE INDEX IF NOT EXISTS idx_students_phone_trgm
-    ON students
-    USING gin (phone gin_trgm_ops)
-  `;
+  await sql`DROP INDEX IF EXISTS idx_students_phone_trgm`;
   await sql`
     CREATE INDEX IF NOT EXISTS idx_students_parent_phone_trgm
     ON students

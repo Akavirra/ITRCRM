@@ -33,8 +33,8 @@ interface CourseStudent {
   id: number;
   public_id: string | null;
   full_name: string;
-  phone: string | null;
   parent_name: string | null;
+  parent_phone: string | null;
   groups: Array<{
     id: number;
     title: string;
@@ -488,8 +488,8 @@ export default function CourseModalsManager() {
                               )}
                             </div>
                           </div>
-                          {student.phone && (
-                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{student.phone}</span>
+                          {student.parent_phone && (
+                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{student.parent_phone}</span>
                           )}
                         </div>
                       ))}

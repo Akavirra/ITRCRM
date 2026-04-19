@@ -184,7 +184,6 @@ export async function POST(request: NextRequest) {
     // The createStudent function always generates a unique server-side public_id
     const { 
       full_name, 
-      phone, 
       email,
       parent_name, 
       parent_phone, 
@@ -223,7 +222,6 @@ export async function POST(request: NextRequest) {
     
     const result = await createStudent(
       full_name.trim(),
-      phone?.trim(),
       email?.trim(),
       parent_name?.trim(),
       parent_phone?.trim(),

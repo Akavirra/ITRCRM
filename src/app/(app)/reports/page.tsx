@@ -268,7 +268,6 @@ export default function ReportsPage() {
                       <tr>
                         <th>{t('nav.students')}</th>
                         <th>{t('table.group')}</th>
-                        <th>{t('table.phone')}</th>
                         <th>{t('table.parentPhone')}</th>
                         <th style={{ textAlign: 'right' }}>{t('table.debt')}</th>
                       </tr>
@@ -278,7 +277,6 @@ export default function ReportsPage() {
                         <tr key={debtor.id}>
                           <td>{debtor.full_name}</td>
                           <td>{debtor.group_title}</td>
-                          <td>{debtor.phone || '---'}</td>
                           <td>{debtor.parent_phone || '---'}</td>
                           <td style={{ textAlign: 'right', fontWeight: '600', color: '#dc2626' }}>
                             {debtor.debt} UAH

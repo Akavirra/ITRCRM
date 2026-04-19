@@ -35,7 +35,7 @@ export interface AttendanceWithStudent extends AttendanceRecord {
 // Get attendance for a lesson
 export async function getAttendanceForLesson(lessonId: number): Promise<AttendanceWithStudent[]> {
   return await all<AttendanceWithStudent>(
-    `SELECT a.*, s.full_name as student_name, s.phone as student_phone
+    `SELECT a.*, s.full_name as student_name, s.parent_phone as student_phone
      FROM attendance a
      JOIN students s ON a.student_id = s.id
      WHERE a.lesson_id = $1
@@ -84,7 +84,7 @@ export async function getAttendanceForLessonWithStudents(lessonId: number): Prom
       `SELECT
          s.id as student_id,
          s.full_name as student_name,
-         s.phone as student_phone,
+         s.parent_phone as student_phone,
          a.id as attendance_id,
          a.status,
          a.comment,
@@ -100,7 +100,7 @@ export async function getAttendanceForLessonWithStudents(lessonId: number): Prom
        SELECT
          s.id as student_id,
          s.full_name as student_name,
-         s.phone as student_phone,
+         s.parent_phone as student_phone,
          a.id as attendance_id,
          a.status,
          a.comment,
@@ -133,7 +133,7 @@ export async function getAttendanceForLessonWithStudents(lessonId: number): Prom
     `SELECT
       s.id as student_id,
       s.full_name as student_name,
-      s.phone as student_phone,
+      s.parent_phone as student_phone,
       a.id as attendance_id,
       a.status,
       a.comment,

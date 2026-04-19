@@ -15,7 +15,6 @@ interface GroupOption {
 interface StudentDebt {
   id: number;
   full_name: string;
-  phone: string | null;
   parent_name: string | null;
   parent_phone: string | null;
   group_id: number;
@@ -37,7 +36,6 @@ interface IndividualBalance {
 interface IndividualDebtor {
   id: number;
   full_name: string;
-  phone: string | null;
   parent_name: string | null;
   parent_phone: string | null;
   balance: IndividualBalance;

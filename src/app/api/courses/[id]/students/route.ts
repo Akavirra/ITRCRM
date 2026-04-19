@@ -15,7 +15,6 @@ interface CourseStudent {
   id: number;
   public_id: string | null;
   full_name: string;
-  phone: string | null;
   parent_name: string | null;
   parent_phone: string | null;
   group_id: number | null;
@@ -30,7 +29,6 @@ interface IndividualStudent {
   id: number;
   public_id: string | null;
   full_name: string;
-  phone: string | null;
   parent_name: string | null;
   parent_phone: string | null;
 }
@@ -65,7 +63,6 @@ export async function GET(
       s.id,
       s.public_id,
       s.full_name,
-      s.phone,
       s.parent_name,
       s.parent_phone,
       g.id as group_id,
@@ -87,7 +84,6 @@ export async function GET(
       s.id,
       s.public_id,
       s.full_name,
-      s.phone,
       s.parent_name,
       s.parent_phone
     FROM students s
@@ -105,7 +101,6 @@ export async function GET(
     id: number;
     public_id: string | null;
     full_name: string;
-    phone: string | null;
     parent_name: string | null;
     parent_phone: string | null;
     groups: Array<{
@@ -124,7 +119,6 @@ export async function GET(
         id: row.id,
         public_id: row.public_id,
         full_name: row.full_name,
-        phone: row.phone,
         parent_name: row.parent_name,
         parent_phone: row.parent_phone,
         groups: [],
@@ -147,7 +141,6 @@ export async function GET(
         id: row.id,
         public_id: row.public_id,
         full_name: row.full_name,
-        phone: row.phone,
         parent_name: row.parent_name,
         parent_phone: row.parent_phone,
         groups: [],

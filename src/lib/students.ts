@@ -7,7 +7,6 @@ export interface Student {
   id: number;
   public_id: string;
   full_name: string;
-  phone: string | null;
   email: string | null;
   parent_name: string | null;
   parent_phone: string | null;
@@ -158,7 +157,6 @@ async function isPublicIdUnique(publicId: string): Promise<boolean> {
 // Create student
 export async function createStudent(
   fullName: string,
-  phone?: string,
   email?: string,
   parentName?: string,
   parentPhone?: string,
@@ -176,8 +174,8 @@ export async function createStudent(
 ): Promise<{ id: number; public_id: string }> {
   const publicId = await generateUniquePublicId('student', isPublicIdUnique);
   const result = await run(
-    `INSERT INTO students (public_id, full_name, phone, email, parent_name, parent_phone, notes, birth_date, photo, school, discount, parent_relation, parent2_name, parent2_phone, parent2_relation, interested_courses, source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
-    [publicId, fullName, phone || null, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount != null ? discount : null, parentRelation || null, parent2Name || null, parent2Phone || null, parent2Relation || null, interestedCourses || null, source || null]
+    `INSERT INTO students (public_id, full_name, email, parent_name, parent_phone, notes, birth_date, photo, school, discount, parent_relation, parent2_name, parent2_phone, parent2_relation, interested_courses, source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
+    [publicId, fullName, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount != null ? discount : null, parentRelation || null, parent2Name || null, parent2Phone || null, parent2Relation || null, interestedCourses || null, source || null]
   );
 
   return { id: Number(result[0]?.id || 0), public_id: publicId };
@@ -187,7 +185,6 @@ export async function createStudent(
 export async function updateStudent(
   id: number,
   fullName: string,
-  phone?: string,
   email?: string,
   parentName?: string,
   parentPhone?: string,
@@ -204,8 +201,8 @@ export async function updateStudent(
   source?: string
 ): Promise<void> {
   await run(
-    `UPDATE students SET full_name = $1, phone = $2, email = $3, parent_name = $4, parent_phone = $5, notes = $6, birth_date = $7, photo = $8, school = $9, discount = $10, parent_relation = $11, parent2_name = $12, parent2_phone = $13, parent2_relation = $14, interested_courses = $15, source = $16, updated_at = NOW() WHERE id = $17`,
-    [fullName, phone || null, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount != null ? discount : null, parentRelation || null, parent2Name || null, parent2Phone || null, parent2Relation || null, interestedCourses || null, source || null, id]
+    `UPDATE students SET full_name = $1, email = $2, parent_name = $3, parent_phone = $4, notes = $5, birth_date = $6, photo = $7, school = $8, discount = $9, parent_relation = $10, parent2_name = $11, parent2_phone = $12, parent2_relation = $13, interested_courses = $14, source = $15, updated_at = NOW() WHERE id = $16`,
+    [fullName, email || null, parentName || null, parentPhone || null, notes || null, birthDate || null, photo || null, school || null, discount != null ? discount : null, parentRelation || null, parent2Name || null, parent2Phone || null, parent2Relation || null, interestedCourses || null, source || null, id]
   );
 }
 
@@ -369,7 +366,7 @@ export async function searchStudents(query: string, includeInactive: boolean = f
              THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students s
        LEFT JOIN student_groups sg ON s.id = sg.student_id AND sg.is_active = TRUE
-       WHERE s.full_name ILIKE $1 OR s.phone ILIKE $2 OR s.parent_name ILIKE $3 OR s.parent_phone ILIKE $4
+       WHERE s.full_name ILIKE $1 OR s.parent_name ILIKE $2 OR s.parent_phone ILIKE $3
        GROUP BY s.id
        ORDER BY s.full_name ${limitClause}`
     : `SELECT s.*, COUNT(DISTINCT sg.id) as groups_count,
@@ -378,11 +375,11 @@ export async function searchStudents(query: string, includeInactive: boolean = f
              THEN 'studying' ELSE 'not_studying' END as study_status
        FROM students s
        LEFT JOIN student_groups sg ON s.id = sg.student_id AND sg.is_active = TRUE
-       WHERE s.is_active = TRUE AND (s.full_name ILIKE $1 OR s.phone ILIKE $2 OR s.parent_name ILIKE $3 OR s.parent_phone ILIKE $4)
+       WHERE s.is_active = TRUE AND (s.full_name ILIKE $1 OR s.parent_name ILIKE $2 OR s.parent_phone ILIKE $3)
        GROUP BY s.id
        ORDER BY s.full_name ${limitClause}`;
   
-  return await all<Student & { groups_count: number }>(sql, [searchTerm, searchTerm, searchTerm, searchTerm]);
+  return await all<Student & { groups_count: number }>(sql, [searchTerm, searchTerm, searchTerm]);
 }
 
 // Quick search for autocomplete - returns only the fields needed for lightweight selectors
@@ -406,13 +403,13 @@ export async function quickSearchStudents(query: string, limit: number = 10): Pr
        AND (
          full_name ILIKE $1
          OR full_name ILIKE $2
-         OR ($3 <> '' AND phone ILIKE $3)
-         OR ($4 <> '' AND phone ILIKE $4)
+         OR ($3 <> '' AND parent_phone ILIKE $3)
+         OR ($4 <> '' AND parent_phone ILIKE $4)
        )
      ORDER BY
        CASE
          WHEN full_name ILIKE $1 THEN 0
-         WHEN $3 <> '' AND phone ILIKE $3 THEN 1
+         WHEN $3 <> '' AND parent_phone ILIKE $3 THEN 1
          WHEN full_name ILIKE $2 THEN 2
          ELSE 3
        END,
@@ -505,7 +502,6 @@ export async function getStudentsWithAllTimeDebt(): Promise<StudentWithDebt[]> {
   const rows = await all<{
     id: number;
     full_name: string;
-    phone: string | null;
     parent_name: string | null;
     parent_phone: string | null;
     notes: string | null;
@@ -544,7 +540,7 @@ export async function getStudentsWithAllTimeDebt(): Promise<StudentWithDebt[]> {
        GROUP BY p.student_id, p.group_id
      )
      SELECT
-       s.id, s.public_id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
+       s.id, s.public_id, s.full_name, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
        CASE WHEN EXISTS (
               SELECT 1
               FROM student_groups sg2
@@ -605,7 +601,6 @@ export async function getStudentsWithDebt(month: string): Promise<StudentWithDeb
   const rows = await all<{
     id: number;
     full_name: string;
-    phone: string | null;
     parent_name: string | null;
     parent_phone: string | null;
     notes: string | null;
@@ -645,7 +640,7 @@ export async function getStudentsWithDebt(month: string): Promise<StudentWithDeb
        GROUP BY p.student_id, p.group_id
      )
      SELECT
-       s.id, s.public_id, s.full_name, s.phone, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
+       s.id, s.public_id, s.full_name, s.parent_name, s.parent_phone, s.notes, s.is_active, s.created_at, s.updated_at,
        CASE WHEN EXISTS (
               SELECT 1
               FROM student_groups sg2
@@ -731,9 +726,9 @@ export type StudentListStudent = Pick<
   | 'id'
   | 'public_id'
   | 'full_name'
-  | 'phone'
   | 'email'
   | 'parent_name'
+  | 'parent_phone'
   | 'notes'
   | 'birth_date'
   | 'photo'
@@ -760,9 +755,9 @@ function buildStudentsWhereClause(options: StudentsWithGroupsQuery): { whereClau
 
   if (options.search) {
     const searchTerm = `%${options.search}%`;
-    conditions.push(`(s.full_name ILIKE $${paramIndex} OR s.phone ILIKE $${paramIndex + 1} OR s.parent_name ILIKE $${paramIndex + 2} OR s.parent_phone ILIKE $${paramIndex + 3})`);
-    params.push(searchTerm, searchTerm, searchTerm, searchTerm);
-    paramIndex += 4;
+    conditions.push(`(s.full_name ILIKE $${paramIndex} OR s.parent_name ILIKE $${paramIndex + 1} OR s.parent_phone ILIKE $${paramIndex + 2})`);
+    params.push(searchTerm, searchTerm, searchTerm);
+    paramIndex += 3;
   }
 
   if (options.courseId) {
@@ -841,9 +836,9 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
          s.id,
          s.public_id,
          s.full_name,
-         s.phone,
          s.email,
          s.parent_name,
+         s.parent_phone,
          s.notes,
          s.birth_date,
          s.photo,
