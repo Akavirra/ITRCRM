@@ -161,6 +161,7 @@ export async function GET(
       xPercent: 50,
       yPercent: 12,
       color: '#000000',
+      idLetterSpacing: 1.5,
       amountFontSize: 48,
       amountXPercent: 78,
       amountYPercent: 28,
@@ -171,7 +172,8 @@ export async function GET(
     // 5. Draw Certificate ID
     const idText = `${cert.public_id}`;
     const fontSize = settings.fontSize || 36;
-    const textWidth = font.widthOfTextAtSize(idText, fontSize);
+    const characterSpacing = settings.idLetterSpacing || 1.5;
+    const textWidth = font.widthOfTextAtSize(idText, fontSize) + (idText.length - 1) * characterSpacing;
     
     // Convert percentages to points for ID
     const x = (width * (settings.xPercent / 100)) - (textWidth / 2);
@@ -189,6 +191,7 @@ export async function GET(
       size: fontSize,
       font: font,
       color: rgb(r, g, b),
+      characterSpacing: characterSpacing,
     });
 
     // 6. Draw Amount (Multiline with Ermilov font - now only amount)

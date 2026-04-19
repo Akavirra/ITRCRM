@@ -39,6 +39,7 @@ export default function CertificatesPage() {
     xPercent: 50,
     yPercent: 12,
     color: '#000000',
+    idLetterSpacing: 1.5,
     amountFontSize: 48,
     amountXPercent: 78,
     amountYPercent: 28,
@@ -393,12 +394,13 @@ export default function CertificatesPage() {
                             bottom: `${idSettings.yPercent}%`,
                             transform: 'translateX(-50%)',
                             fontSize: `${idSettings.fontSize / 4}px`,
-                            color: idSettings.color,
-                            fontWeight: 'bold',
-                            fontFamily: 'Bebas Neue Cyrillic, sans-serif',
-                            cursor: 'grab',
-                            padding: '4px',
-                            whiteSpace: 'nowrap',
+                          color: idSettings.color,
+                          fontWeight: 'bold',
+                          fontFamily: 'Bebas Neue Cyrillic, sans-serif',
+                          letterSpacing: `${idSettings.idLetterSpacing / 4}px`,
+                          cursor: 'grab',
+                          padding: '4px',
+                          whiteSpace: 'nowrap',
                             border: dragging === 'id' ? '1px dashed var(--primary-color)' : '1px transparent solid',
                             background: dragging === 'id' ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'
                           }}
@@ -482,6 +484,15 @@ export default function CertificatesPage() {
                         min="0" max="100" 
                         value={idSettings.yPercent}
                         onChange={(e) => setIdSettings({ ...idSettings, yPercent: parseInt(e.target.value) })}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '12px' }}>Відступ символів</label>
+                      <input 
+                        type="range" 
+                        min="0" max="10" step="0.5"
+                        value={idSettings.idLetterSpacing}
+                        onChange={(e) => setIdSettings({ ...idSettings, idLetterSpacing: parseFloat(e.target.value) })}
                       />
                     </div>
                   </div>

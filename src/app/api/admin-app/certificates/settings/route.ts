@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       xPercent: 50,
       yPercent: 12,
       color: '#000000',
+      idLetterSpacing: 1.5,
       // Amount settings
       amountFontSize: 48,
       amountXPercent: 78,
