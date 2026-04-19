@@ -33,6 +33,7 @@ export default function CertificatesPage() {
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState<'id' | 'amount' | null>(null);
   const [idSettings, setIdSettings] = useState({
     fontSize: 36,
     xPercent: 50,
@@ -159,6 +160,24 @@ export default function CertificatesPage() {
     } finally {
       setSavingSettings(false);
     }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!dragging) return;
+    
+    const container = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - container.left) / container.width) * 100;
+    const y = 100 - (((e.clientY - container.top) / container.height) * 100);
+    
+    if (dragging === 'id') {
+      setIdSettings(prev => ({ ...prev, xPercent: Math.round(x), yPercent: Math.round(y) }));
+    } else if (dragging === 'amount') {
+      setIdSettings(prev => ({ ...prev, amountXPercent: Math.round(x), amountYPercent: Math.round(y) }));
+    }
+  };
+
+  const handleMouseUp = () => {
+    setDragging(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -332,42 +351,68 @@ export default function CertificatesPage() {
               ) : (
                 <>
                   <div style={{ marginBottom: '20px' }}>
-                    <label className="form-label">Попередній перегляд (ID та Номінал)</label>
+                    <label className="form-label">Редактор дизайну (тягніть мишкою)</label>
                     {templateUrl ? (
-                      <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--gray-200)' }}>
-                        <img src={templateUrl} alt="Template" style={{ width: '100%', display: 'block' }} />
-                        {/* Preview ID */}
-                        <div style={{
-                          position: 'absolute',
-                          left: `${idSettings.xPercent}%`,
-                          bottom: `${idSettings.yPercent}%`,
-                          transform: 'translateX(-50%)',
-                          fontSize: `${idSettings.fontSize / 4}px`,
-                          color: idSettings.color,
-                          fontWeight: 'bold',
-                          fontFamily: 'Bebas Neue Cyrillic, sans-serif',
-                          pointerEvents: 'none',
-                          textShadow: '0 0 2px white'
-                        }}>
+                      <div 
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        style={{ 
+                          position: 'relative', 
+                          borderRadius: '8px', 
+                          overflow: 'hidden', 
+                          border: '1px solid var(--gray-200)',
+                          cursor: dragging ? 'grabbing' : 'crosshair',
+                          userSelect: 'none'
+                        }}
+                      >
+                        <img src={templateUrl} alt="Template" style={{ width: '100%', display: 'block', pointerEvents: 'none' }} />
+                        
+                        {/* Interactive ID */}
+                        <div 
+                          onMouseDown={(e) => { e.stopPropagation(); setDragging('id'); }}
+                          style={{
+                            position: 'absolute',
+                            left: `${idSettings.xPercent}%`,
+                            bottom: `${idSettings.yPercent}%`,
+                            transform: 'translateX(-50%)',
+                            fontSize: `${idSettings.fontSize / 4}px`,
+                            color: idSettings.color,
+                            fontWeight: 'bold',
+                            fontFamily: 'Bebas Neue Cyrillic, sans-serif',
+                            cursor: 'grab',
+                            textShadow: '0 0 2px white',
+                            padding: '4px',
+                            border: dragging === 'id' ? '1px dashed var(--primary-color)' : '1px transparent solid',
+                            background: dragging === 'id' ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'
+                          }}
+                        >
                           CRT-PREVIEW
                         </div>
-                        {/* Preview Amount */}
-                        <div style={{
-                          position: 'absolute',
-                          left: `${idSettings.amountXPercent}%`,
-                          bottom: `${idSettings.amountYPercent}%`,
-                          transform: `translateX(-50%) rotate(${idSettings.amountRotation}deg)`,
-                          color: idSettings.amountColor,
-                          fontWeight: 'bold',
-                          fontFamily: 'Ermilov, sans-serif',
-                          pointerEvents: 'none',
-                          textShadow: '0 0 2px rgba(0,0,0,0.5)',
-                          transformOrigin: 'center center',
-                          textAlign: 'center',
-                          lineHeight: '0.8'
-                        }}>
-                          <div style={{ fontSize: `${idSettings.amountFontSize / 4}px` }}>1000</div>
-                          <div style={{ fontSize: `${idSettings.amountFontSize / 4 * 0.6}px` }}>грн</div>
+
+                        {/* Interactive Amount */}
+                        <div 
+                          onMouseDown={(e) => { e.stopPropagation(); setDragging('amount'); }}
+                          style={{
+                            position: 'absolute',
+                            left: `${idSettings.amountXPercent}%`,
+                            bottom: `${idSettings.amountYPercent}%`,
+                            transform: `translateX(-50%) rotate(${idSettings.amountRotation}deg)`,
+                            color: idSettings.amountColor,
+                            fontWeight: 'bold',
+                            fontFamily: 'Ermilov, sans-serif',
+                            cursor: 'grab',
+                            textShadow: '0 0 2px rgba(0,0,0,0.5)',
+                            transformOrigin: 'center center',
+                            textAlign: 'center',
+                            lineHeight: '0.8',
+                            padding: '4px',
+                            border: dragging === 'amount' ? '1px dashed var(--primary-color)' : '1px transparent solid',
+                            background: dragging === 'amount' ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'
+                          }}
+                        >
+                          <div style={{ fontSize: `${idSettings.amountFontSize / 4}px`, pointerEvents: 'none' }}>1000</div>
+                          <div style={{ fontSize: `${idSettings.amountFontSize / 4 * 0.6}px`, pointerEvents: 'none' }}>грн</div>
                         </div>
                       </div>
                     ) : (
