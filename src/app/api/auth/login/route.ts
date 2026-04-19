@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
         email: result.user.email,
         role: result.user.role,
         photo_url: result.user.photo_url || null,
+        avatar_seed: result.user.avatar_seed || null,
         must_change_password: result.user.must_change_password ?? false,
       },
     });

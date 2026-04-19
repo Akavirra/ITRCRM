@@ -12,6 +12,7 @@ import { useLessonModals } from '@/components/LessonModalsContext';
 import StudentAttendancePanel from '@/components/StudentAttendancePanel';
 import StudentHistoryPanel from '@/components/StudentHistoryPanel';
 import StudentPaymentsPanel from '@/components/StudentPaymentsPanel';
+import StudentPinCardPanel from '@/components/StudentPinCardPanel';
 
 
 interface Student {
@@ -2765,6 +2766,9 @@ export default function StudentProfilePage() {
               studentId={student.id}
               onOpenLesson={(lessonId) => openLessonModal(lessonId, `Заняття #${lessonId}`, undefined)}
             />
+
+            {/* Student Portal PIN-card Panel */}
+            <StudentPinCardPanel studentId={student.id} />
 
           </div>
         </div>

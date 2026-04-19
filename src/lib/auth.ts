@@ -15,6 +15,7 @@ export interface User {
   phone?: string | null;
   telegram_id?: string | null;
   photo_url?: string | null;
+  avatar_seed?: string | null;
   notes?: string | null;
   is_active: boolean;
   is_owner: boolean;

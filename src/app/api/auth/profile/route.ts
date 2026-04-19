@@ -30,7 +30,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, phone, photo, telegram_id } = body;
+    const { name, phone, photo, telegram_id, avatar_seed } = body;
 
     let photoUrl: string | undefined;
 
@@ -57,6 +57,7 @@ export async function PATCH(request: NextRequest) {
     if (phone !== undefined) { fields.push(`phone = $${idx++}`); values.push(phone || null); }
     if (photoUrl) { fields.push(`photo_url = $${idx++}`); values.push(photoUrl); }
     if (telegram_id !== undefined) { fields.push(`telegram_id = $${idx++}`); values.push(telegram_id?.trim() || null); }
+    if (avatar_seed !== undefined) { fields.push(`avatar_seed = $${idx++}`); values.push(avatar_seed || null); }
 
     if (fields.length === 0) {
       return NextResponse.json({ error: 'Нічого для оновлення' }, { status: 400 });
@@ -72,8 +73,8 @@ export async function PATCH(request: NextRequest) {
 
     clearServerCache(`settings:${currentUser.id}`);
 
-    const updated = await get<{ name: string; phone: string | null; photo_url: string | null; telegram_id: string | null }>(
-      `SELECT name, phone, photo_url, telegram_id FROM users WHERE id = $1`,
+    const updated = await get<{ name: string; phone: string | null; photo_url: string | null; telegram_id: string | null; avatar_seed: string | null }>(
+      `SELECT name, phone, photo_url, telegram_id, avatar_seed FROM users WHERE id = $1`,
       [currentUser.id]
     );
 

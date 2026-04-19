@@ -445,6 +445,10 @@ const Navbar: React.FC<NavbarProps> = ({
       .then(d => {
         if (!d?.user) return;
         if (d.user.photo_url) setUserPhotoUrl(d.user.photo_url);
+        if (d.user.avatar_seed) {
+          setDicebearSeed(d.user.avatar_seed);
+          localStorage.setItem('itrobot-avatar-seed', d.user.avatar_seed);
+        }
         if (d.user.is_owner) setCurrentUserIsOwner(true);
       })
       .catch(() => {});
@@ -457,6 +461,10 @@ const Navbar: React.FC<NavbarProps> = ({
       .then(d => {
         if (!d?.user) return;
         if (d.user.photo_url) setUserPhotoUrl(d.user.photo_url);
+        if (d.user.avatar_seed) {
+          setDicebearSeed(d.user.avatar_seed);
+          localStorage.setItem('itrobot-avatar-seed', d.user.avatar_seed);
+        }
         if (d.user.is_owner) setCurrentUserIsOwner(true);
         setSettings(prev => ({
           ...prev,
@@ -500,6 +508,7 @@ const Navbar: React.FC<NavbarProps> = ({
           phone: settings.phone || undefined,
           telegram_id: settings.telegram_id ?? undefined,
           photo: profilePhotoBase64 || undefined,
+          avatar_seed: pendingDicebearSeed || undefined,
         }),
       });
       const d = await res.json();

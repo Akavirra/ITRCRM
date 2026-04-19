@@ -7,6 +7,7 @@ import styles from './login.module.css';
 
 interface UserPreview {
   photo_url: string | null;
+  avatar_seed: string | null;
 }
 
 type Step = 'email' | 'password' | 'forceReset' | 'welcome';
@@ -71,6 +72,9 @@ export default function LoginPage() {
       if (!res.ok) { setError(data.error || t('auth.loginFailed')); setLoading(false); return; }
       setCurrentPassword(password);
       setLoggedInName(data.user?.name || '');
+      if (data.user?.avatar_seed) {
+        localStorage.setItem('itrobot-avatar-seed', data.user.avatar_seed);
+      }
       if (data.user?.must_change_password) {
         setStep('forceReset');
         setLoading(false);
@@ -158,7 +162,8 @@ export default function LoginPage() {
     };
   }, [router]);
 
-  const avatarSrc = userPreview?.photo_url || getDicebearUrl(avatarSeed || email);
+  const effectiveSeed = userPreview?.avatar_seed || avatarSeed || email;
+  const avatarSrc = userPreview?.photo_url || getDicebearUrl(effectiveSeed);
   const firstName = loggedInName?.split(' ')[0] || '';
 
   if (checkingSession) {

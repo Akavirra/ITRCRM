@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ user: null });
     }
 
-    const user = await get<{ photo_url: string | null }>(
-      `SELECT photo_url FROM users WHERE email = $1 AND role = 'admin' AND is_active = true`,
+    const user = await get<{ photo_url: string | null; avatar_seed: string | null }>(
+      `SELECT photo_url, avatar_seed FROM users WHERE email = $1 AND role = 'admin' AND is_active = true`,
       [email.trim().toLowerCase()]
     );
 
@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       user: {
         photo_url: user.photo_url || null,
+        avatar_seed: user.avatar_seed || null,
       },
     });
   } catch {
