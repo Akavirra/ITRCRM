@@ -25,6 +25,72 @@
   gap: 1rem;
 }
 
+.mobileSegmented {
+  display: none;
+}
+
+.desktopToggle {
+  display: block;
+}
+
+.toggleWrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.toggleLabel {
+  font-size: 0.8125rem;
+  transition: all 0.2s;
+}
+
+.toggleLabelActive {
+  font-weight: 600;
+  color: #111827;
+}
+
+.toggleLabelInactive {
+  font-weight: 400;
+  color: #9ca3af;
+}
+
+.toggleButton {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 0 0.375rem;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+}
+
+.toggleButton:active {
+  transform: scale(0.95);
+}
+
+.toggleKnob {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.toggleKnobOff {
+  background-color: #374151;
+  transform: translateX(0);
+}
+
+.toggleKnobOn {
+  background-color: #6b7280;
+  transform: translateX(18px);
+}
+
 /* ── Segmented / Pill Toggle control ── */
 .segmented {
   display: inline-flex;
@@ -269,6 +335,14 @@
     flex-direction: column;
     gap: 0.75rem;
     align-items: stretch;
+  }
+
+  .desktopToggle {
+    display: none;
+  }
+
+  .mobileSegmented {
+    display: block;
   }
 
   .segmented {

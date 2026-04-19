@@ -480,21 +480,41 @@ export default function CoursesPage() {
             )}
           </div>
           <div className={styles.headerActions}>
-            <div className={styles.segmented} data-active={showArchived ? 'archived' : 'active'}>
-              <button
-                type="button"
-                className={`${styles.segmentButton} ${!showArchived ? styles.segmentButtonActive : ''}`}
-                onClick={() => setShowArchived(false)}
-              >
-                {t('status.active')}
-              </button>
-              <button
-                type="button"
-                className={`${styles.segmentButton} ${showArchived ? styles.segmentButtonActive : ''}`}
-                onClick={() => setShowArchived(true)}
-              >
-                {t('status.archived')}
-              </button>
+            <div className={styles.desktopToggle}>
+              <div className={styles.toggleWrap}>
+                <span className={`${styles.toggleLabel} ${!showArchived ? styles.toggleLabelActive : styles.toggleLabelInactive}`}>
+                  {t('status.active')}
+                </span>
+                <button
+                  type="button"
+                  className={styles.toggleButton}
+                  onClick={() => setShowArchived(!showArchived)}
+                >
+                  <div className={`${styles.toggleKnob} ${showArchived ? styles.toggleKnobOn : styles.toggleKnobOff}`} />
+                </button>
+                <span className={`${styles.toggleLabel} ${showArchived ? styles.toggleLabelActive : styles.toggleLabelInactive}`}>
+                  {t('status.archived')}
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.mobileSegmented}>
+              <div className={styles.segmented} data-active={showArchived ? 'archived' : 'active'}>
+                <button
+                  type="button"
+                  className={`${styles.segmentButton} ${!showArchived ? styles.segmentButtonActive : ''}`}
+                  onClick={() => setShowArchived(false)}
+                >
+                  {t('status.active')}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.segmentButton} ${showArchived ? styles.segmentButtonActive : ''}`}
+                  onClick={() => setShowArchived(true)}
+                >
+                  {t('status.archived')}
+                </button>
+              </div>
             </div>
             {user.role === 'admin' && (
               <button className={`btn btn-primary ${styles.createBtn}`} onClick={handleCreate}>
