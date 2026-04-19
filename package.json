@@ -54,6 +54,9 @@
     "db:add-parent2-phone": "node scripts/add-parent2-phone.js",
     "db:remove-student-phone": "node scripts/remove-student-phone.js",
     "db:add-camps": "node scripts/add-camps.js",
+    "db:add-student-portal": "node scripts/add-student-portal-tables.js",
+    "db:setup-student-role": "node scripts/setup-student-role-grants.js",
+    "db:test-student-isolation": "node scripts/test-student-isolation.js",
     "db:schema:dump": "node scripts/dump-schema.js",
     "test": "jest"
   },
