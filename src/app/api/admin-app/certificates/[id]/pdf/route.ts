@@ -10,8 +10,9 @@ import path from 'path';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Bebas Neue Cyrillic font URL
+// Font URLs
 const FONT_URL = 'https://cdn.jsdelivr.net/gh/DmitryUshakov/bebas-neue-cyrillic@master/BebasNeueCyrillic.ttf';
+const ERMILOV_FONT_URL = 'https://cdn.jsdelivr.net/gh/itroboticsmanager-rgb/ITRCRM@main/public/fonts/Ermilov-Bold.otf'; // Assuming it's in your repo or use a public one
 const FALLBACK_FONT_URL = 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.woff2';
 
 async function fetchFont(url: string): Promise<Uint8Array> {
@@ -42,7 +43,7 @@ export async function GET(
     const pdfDoc = await PDFDocument.create();
     pdfDoc.registerFontkit(fontkit);
 
-    // 2. Load Font (Bebas Neue Cyrillic with fallback to Roboto)
+    // 2. Load Fonts
     let fontBytes;
     try {
       fontBytes = await fetchFont(FONT_URL);
@@ -51,6 +52,22 @@ export async function GET(
       fontBytes = await fetchFont(FALLBACK_FONT_URL);
     }
     const font = await pdfDoc.embedFont(fontBytes, { subset: false });
+
+    let ermilovFont;
+    try {
+      // Trying to load from local first if possible, otherwise from URL
+      const localErmilovPath = path.join(process.cwd(), 'public', 'fonts', 'Ermilov-Bold.otf');
+      let ermilovBytes;
+      try {
+        ermilovBytes = await fs.readFile(localErmilovPath);
+      } catch {
+        ermilovBytes = await fetchFont(ERMILOV_FONT_URL);
+      }
+      ermilovFont = await pdfDoc.embedFont(ermilovBytes, { subset: false });
+    } catch (e) {
+      console.warn('Failed to fetch Ermilov font, using Bebas as fallback:', e);
+      ermilovFont = font;
+    }
 
     // 3. Load Template from system_settings or default
     const templateRes = await get<{ value: string }>(
@@ -174,13 +191,17 @@ export async function GET(
       color: rgb(r, g, b),
     });
 
-    // 6. Draw Amount
-    const amountText = `${cert.amount} грн`;
+    // 6. Draw Amount (Multiline with Ermilov font)
+    const amountVal = `${cert.amount}`;
+    const currencyText = `грн`;
     const amountFontSize = settings.amountFontSize || 48;
-    const amountTextWidth = font.widthOfTextAtSize(amountText, amountFontSize);
+    const currencyFontSize = amountFontSize * 0.6; // Slightly smaller for "грн"
+    
+    const amountWidth = ermilovFont.widthOfTextAtSize(amountVal, amountFontSize);
+    const currencyWidth = ermilovFont.widthOfTextAtSize(currencyText, currencyFontSize);
 
     // Convert percentages to points for Amount
-    const ax = (width * (settings.amountXPercent / 100)) - (amountTextWidth / 2);
+    const ax = (width * (settings.amountXPercent / 100));
     const ay = height * (settings.amountYPercent / 100);
 
     // Parse Amount color (hex to rgb)
@@ -188,14 +209,35 @@ export async function GET(
     const ar = parseInt(aHex.substring(0, 2), 16) / 255 || 1;
     const ag = parseInt(aHex.substring(2, 4), 16) / 255 || 1;
     const ab = parseInt(aHex.substring(4, 6), 16) / 255 || 1;
+    const amountColor = rgb(ar, ag, ab);
 
-    page.drawText(amountText, {
-      x: ax,
+    const rotation = degrees(settings.amountRotation || 0);
+
+    // Draw "Amount"
+    page.drawText(amountVal, {
+      x: ax - (amountWidth / 2),
       y: ay,
       size: amountFontSize,
-      font: font,
-      color: rgb(ar, ag, ab),
-      rotate: degrees(settings.amountRotation || 0),
+      font: ermilovFont,
+      color: amountColor,
+      rotate: rotation,
+    });
+
+    // Draw "грн" below "Amount"
+    // Calculate offset for second line based on font size and rotation
+    const lineSpacing = amountFontSize * 0.8;
+    // For rotated text, we need to adjust both x and y to keep it centered
+    const rad = (settings.amountRotation || 0) * Math.PI / 180;
+    const offsetX = Math.sin(rad) * lineSpacing;
+    const offsetY = Math.cos(rad) * lineSpacing;
+
+    page.drawText(currencyText, {
+      x: ax - (currencyWidth / 2) - offsetX,
+      y: ay - offsetY,
+      size: currencyFontSize,
+      font: ermilovFont,
+      color: amountColor,
+      rotate: rotation,
     });
 
     const pdfBytes = await pdfDoc.save();

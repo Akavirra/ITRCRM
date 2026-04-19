@@ -357,15 +357,17 @@ export default function CertificatesPage() {
                           left: `${idSettings.amountXPercent}%`,
                           bottom: `${idSettings.amountYPercent}%`,
                           transform: `translateX(-50%) rotate(${idSettings.amountRotation}deg)`,
-                          fontSize: `${idSettings.amountFontSize / 4}px`,
                           color: idSettings.amountColor,
                           fontWeight: 'bold',
-                          fontFamily: 'Bebas Neue Cyrillic, sans-serif',
+                          fontFamily: 'Ermilov, sans-serif',
                           pointerEvents: 'none',
                           textShadow: '0 0 2px rgba(0,0,0,0.5)',
-                          transformOrigin: 'center center'
+                          transformOrigin: 'center center',
+                          textAlign: 'center',
+                          lineHeight: '0.8'
                         }}>
-                          1000 грн
+                          <div style={{ fontSize: `${idSettings.amountFontSize / 4}px` }}>1000</div>
+                          <div style={{ fontSize: `${idSettings.amountFontSize / 4 * 0.6}px` }}>грн</div>
                         </div>
                       </div>
                     ) : (
