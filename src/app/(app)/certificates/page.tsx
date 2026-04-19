@@ -36,7 +36,12 @@ export default function CertificatesPage() {
     fontSize: 36,
     xPercent: 50,
     yPercent: 12,
-    color: '#000000'
+    color: '#000000',
+    amountFontSize: 48,
+    amountXPercent: 78,
+    amountYPercent: 28,
+    amountColor: '#FFFFFF',
+    amountRotation: -28
   });
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -324,9 +329,25 @@ export default function CertificatesPage() {
                        pointerEvents: 'none',
                        textShadow: '0 0 2px white'
                      }}>
-                       CRT-PREVIEW
-                     </div>
-                   </div>
+                        CRT-PREVIEW
+                      </div>
+                      {/* Preview Amount */}
+                      <div style={{
+                        position: 'absolute',
+                        left: `${idSettings.amountXPercent}%`,
+                        bottom: `${idSettings.amountYPercent}%`,
+                        transform: `translateX(-50%) rotate(${idSettings.amountRotation}deg)`,
+                        fontSize: `${idSettings.amountFontSize / 4}px`,
+                        color: idSettings.amountColor,
+                        fontWeight: 'bold',
+                        fontFamily: 'Bebas Neue Cyrillic, sans-serif',
+                        pointerEvents: 'none',
+                        textShadow: '0 0 2px rgba(0,0,0,0.5)',
+                        transformOrigin: 'center center'
+                      }}>
+                        1000 грн
+                      </div>
+                    </div>
                  ) : (
                    <div style={{ 
                      height: '150px', 
@@ -385,8 +406,63 @@ export default function CertificatesPage() {
                     <button className="btn btn-primary btn-sm" onClick={handleSaveSettings} disabled={savingSettings}>
                       {savingSettings ? '...' : 'Зберегти налаштування'}
                     </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px', padding: '16px', background: 'var(--gray-50)', borderRadius: '8px' }}>
+                 <div style={{ gridColumn: 'span 2', fontWeight: 'bold', fontSize: '13px', marginBottom: '4px' }}>Налаштування номіналу (грн)</div>
+                 <div className="form-group" style={{ marginBottom: 0 }}>
+                   <label className="form-label" style={{ fontSize: '12px' }}>Розмір (pt)</label>
+                   <input 
+                     type="number" 
+                     className="form-input" 
+                     value={idSettings.amountFontSize}
+                     onChange={(e) => setIdSettings({ ...idSettings, amountFontSize: parseInt(e.target.value) || 0 })}
+                   />
                  </div>
-               </div>
+                 <div className="form-group" style={{ marginBottom: 0 }}>
+                   <label className="form-label" style={{ fontSize: '12px' }}>Колір</label>
+                   <input 
+                     type="color" 
+                     className="form-input" 
+                     style={{ padding: '2px', height: '38px' }}
+                     value={idSettings.amountColor}
+                     onChange={(e) => setIdSettings({ ...idSettings, amountColor: e.target.value })}
+                   />
+                 </div>
+                 <div className="form-group" style={{ marginBottom: 0 }}>
+                   <label className="form-label" style={{ fontSize: '12px' }}>Зліва (%)</label>
+                   <input 
+                     type="range" 
+                     min="0" max="100" 
+                     value={idSettings.amountXPercent}
+                     onChange={(e) => setIdSettings({ ...idSettings, amountXPercent: parseInt(e.target.value) })}
+                   />
+                 </div>
+                 <div className="form-group" style={{ marginBottom: 0 }}>
+                   <label className="form-label" style={{ fontSize: '12px' }}>Знизу (%)</label>
+                   <input 
+                     type="range" 
+                     min="0" max="100" 
+                     value={idSettings.amountYPercent}
+                     onChange={(e) => setIdSettings({ ...idSettings, amountYPercent: parseInt(e.target.value) })}
+                   />
+                 </div>
+                 <div className="form-group" style={{ marginBottom: 0 }}>
+                   <label className="form-label" style={{ fontSize: '12px' }}>Поворот (°)</label>
+                   <input 
+                     type="number" 
+                     className="form-input" 
+                     value={idSettings.amountRotation}
+                     onChange={(e) => setIdSettings({ ...idSettings, amountRotation: parseInt(e.target.value) || 0 })}
+                   />
+                 </div>
+                 <div style={{ gridColumn: 'span 2', textAlign: 'right', marginTop: '8px' }}>
+                    <button className="btn btn-primary btn-sm" onClick={handleSaveSettings} disabled={savingSettings}>
+                      {savingSettings ? '...' : 'Зберегти налаштування'}
+                    </button>
+                 </div>
+                </div>
 
                <div className="form-group">
                 <label className="form-label">Завантажити новий дизайн (PNG/JPG)</label>

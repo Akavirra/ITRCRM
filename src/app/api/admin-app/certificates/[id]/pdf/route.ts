@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PDFDocument, rgb } from 'pdf-lib';
+import { PDFDocument, rgb, degrees } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { getAuthUser, unauthorized } from '@/lib/api-utils';
 import { get } from '@/db';
@@ -143,7 +143,12 @@ export async function GET(
       fontSize: 36,
       xPercent: 50,
       yPercent: 12,
-      color: '#000000'
+      color: '#000000',
+      amountFontSize: 48,
+      amountXPercent: 78,
+      amountYPercent: 28,
+      amountColor: '#FFFFFF',
+      amountRotation: -28
     };
 
     // 5. Draw Certificate ID
@@ -151,11 +156,11 @@ export async function GET(
     const fontSize = settings.fontSize || 36;
     const textWidth = font.widthOfTextAtSize(idText, fontSize);
     
-    // Convert percentages to points
-    const x = (width * (settings.xPercent / 100)) - (textWidth / 2); // Assume centering by default
+    // Convert percentages to points for ID
+    const x = (width * (settings.xPercent / 100)) - (textWidth / 2);
     const y = height * (settings.yPercent / 100);
 
-    // Parse color (hex to rgb)
+    // Parse ID color (hex to rgb)
     const hex = (settings.color || '#000000').replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16) / 255 || 0;
     const g = parseInt(hex.substring(2, 4), 16) / 255 || 0;
@@ -167,6 +172,30 @@ export async function GET(
       size: fontSize,
       font: font,
       color: rgb(r, g, b),
+    });
+
+    // 6. Draw Amount
+    const amountText = `${cert.amount} грн`;
+    const amountFontSize = settings.amountFontSize || 48;
+    const amountTextWidth = font.widthOfTextAtSize(amountText, amountFontSize);
+
+    // Convert percentages to points for Amount
+    const ax = (width * (settings.amountXPercent / 100)) - (amountTextWidth / 2);
+    const ay = height * (settings.amountYPercent / 100);
+
+    // Parse Amount color (hex to rgb)
+    const aHex = (settings.amountColor || '#FFFFFF').replace('#', '');
+    const ar = parseInt(aHex.substring(0, 2), 16) / 255 || 1;
+    const ag = parseInt(aHex.substring(2, 4), 16) / 255 || 1;
+    const ab = parseInt(aHex.substring(4, 6), 16) / 255 || 1;
+
+    page.drawText(amountText, {
+      x: ax,
+      y: ay,
+      size: amountFontSize,
+      font: font,
+      color: rgb(ar, ag, ab),
+      rotate: degrees(settings.amountRotation || 0),
     });
 
     const pdfBytes = await pdfDoc.save();

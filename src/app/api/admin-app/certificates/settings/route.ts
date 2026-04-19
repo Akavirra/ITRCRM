@@ -13,10 +13,17 @@ export async function GET(request: NextRequest) {
       "SELECT value FROM system_settings WHERE key = 'certificate_id_settings'"
     );
     const settings = res?.value ? JSON.parse(res.value) : {
+      // ID settings
       fontSize: 36,
       xPercent: 50,
       yPercent: 12,
-      color: '#000000'
+      color: '#000000',
+      // Amount settings
+      amountFontSize: 48,
+      amountXPercent: 78,
+      amountYPercent: 28,
+      amountColor: '#FFFFFF',
+      amountRotation: -28
     };
     return NextResponse.json(settings);
   } catch (error: any) {
