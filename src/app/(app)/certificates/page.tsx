@@ -397,14 +397,13 @@ export default function CertificatesPage() {
                             fontWeight: 'bold',
                             fontFamily: 'Bebas Neue Cyrillic, sans-serif',
                             cursor: 'grab',
-                            textShadow: '0 0 2px white',
                             padding: '4px',
                             whiteSpace: 'nowrap',
                             border: dragging === 'id' ? '1px dashed var(--primary-color)' : '1px transparent solid',
                             background: dragging === 'id' ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'
                           }}
                         >
-                          CRT-PREVIEW
+                          ID:85331
                         </div>
 
                         {/* Interactive Amount */}
@@ -419,7 +418,6 @@ export default function CertificatesPage() {
                             fontWeight: 'bold',
                             fontFamily: 'Ermilov, sans-serif',
                             cursor: 'grab',
-                            textShadow: '0 0 2px rgba(0,0,0,0.5)',
                             transformOrigin: 'center center',
                             textAlign: 'center',
                             whiteSpace: 'nowrap',

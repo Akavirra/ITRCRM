@@ -37,10 +37,20 @@ export async function createCertificate(data: {
   notes?: string;
   created_by: number;
 }) {
-  const publicId = await generateUniquePublicId('certificate', async (id) => {
-    const existing = await getCertificateByPublicId(id);
-    return !existing;
-  });
+  // Get the last certificate public_id to increment it
+  const lastCert = await get<Certificate>(
+    "SELECT public_id FROM certificates WHERE public_id LIKE 'ID:%' ORDER BY id DESC LIMIT 1"
+  );
+  
+  let nextId = 85331; // Starting ID
+  if (lastCert) {
+    const lastIdNum = parseInt(lastCert.public_id.replace('ID:', ''), 10);
+    if (!isNaN(lastIdNum)) {
+      nextId = lastIdNum + 1;
+    }
+  }
+
+  const publicId = `ID:${nextId}`;
 
   const sql = `
     INSERT INTO certificates (public_id, amount, notes, created_by)
