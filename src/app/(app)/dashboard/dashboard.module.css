@@ -1660,6 +1660,10 @@
     box-shadow: none;
   }
 
+  .statItemClickable {
+    margin: 0;
+  }
+
   .statItem {
     display: grid;
     grid-template-rows: auto auto 1fr;
