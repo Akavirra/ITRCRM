@@ -54,7 +54,7 @@ const initialFormData: FormData = {
   school: '',
   email: '',
   parent_name: '',
-  parent_phone: '+380',
+  parent_phone: '',
   parent_relation: '',
   parent_relation_other: '',
   parent2_name: '',
@@ -287,6 +287,7 @@ export default function EnrollPage() {
     const relationOther = getRelationOtherValue(formData, key);
     const name = getContactNameValue(formData, key);
     const phone = getContactPhoneValue(formData, key);
+    const phoneDisplayValue = phone && phone !== '+380' ? formatPhoneDisplay(phone) : '';
     const nameLabel = key === 'parent' ? "Ім'я контакту *" : "Ім'я контакту";
     const phoneLabel = key === 'parent' ? 'Телефон *' : 'Телефон';
     const relationLabel = key === 'parent' ? 'Ким є для дитини *' : 'Ким є для дитини';
@@ -313,7 +314,7 @@ export default function EnrollPage() {
             <input
               type="tel"
               style={styles.input}
-              value={phone ? formatPhoneDisplay(phone) : ''}
+              value={phoneDisplayValue}
               onChange={(e) => handlePhoneChange(key, e.target.value)}
               placeholder="+380 XX XXX XX XX"
               required={required}
