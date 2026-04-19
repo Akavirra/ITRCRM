@@ -42,6 +42,8 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
   const body = await request.json();
   const errors: string[] = [];
 
+  if (!body.birth_date) errors.push("Дата народження обов'язкова");
+  if (!body.email?.trim()) errors.push("Email обов'язковий");
   if (!body.child_first_name?.trim()) errors.push("Ім'я дитини обов'язкове");
   if (!body.child_last_name?.trim()) errors.push("Прізвище дитини обов'язкове");
   if (!body.parent_name?.trim()) errors.push("Ім'я батьків обов'язкове");
@@ -60,9 +62,9 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
   const submission = await createSubmission(tokenData.id, {
     child_first_name: body.child_first_name.trim(),
     child_last_name: body.child_last_name.trim(),
-    birth_date: body.birth_date || undefined,
+    birth_date: body.birth_date,
     school: body.school?.trim() || undefined,
-    email: body.email?.trim() || undefined,
+    email: body.email.trim(),
     parent_name: body.parent_name.trim(),
     parent_phone: phone,
     parent_relation: body.parent_relation || undefined,

@@ -19,14 +19,13 @@ const SOURCE_OPTIONS = [
 ];
 
 type FormState = 'loading' | 'form' | 'submitting' | 'success' | 'error';
+type ContactKey = 'parent' | 'parent2';
 
 type CourseOption = {
   id: number;
   title: string;
   public_id: string;
 };
-
-type ContactKey = 'parent' | 'parent2';
 
 interface FormData {
   child_first_name: string;
@@ -169,14 +168,8 @@ export default function EnrollPage() {
   }, []);
 
   const selectedCoursesLabel = useMemo(() => {
-    if (formData.interested_courses.length === 0) {
-      return 'Оберіть курси, які зацікавили';
-    }
-
-    if (formData.interested_courses.length === 1) {
-      return formData.interested_courses[0];
-    }
-
+    if (formData.interested_courses.length === 0) return 'Оберіть курси, які зацікавили';
+    if (formData.interested_courses.length === 1) return formData.interested_courses[0];
     return `Обрано курсів: ${formData.interested_courses.length}`;
   }, [formData.interested_courses]);
 
@@ -211,6 +204,9 @@ export default function EnrollPage() {
     const errors: string[] = [];
     if (!formData.child_first_name.trim()) errors.push("Ім'я дитини обов'язкове");
     if (!formData.child_last_name.trim()) errors.push("Прізвище дитини обов'язкове");
+    if (!formData.birth_date) errors.push("Дата народження обов'язкова");
+    if (!formData.email.trim()) errors.push("Email обов'язковий");
+    if (formData.email.trim() && !isValidEmail(formData.email)) errors.push('Вкажіть коректний email');
     if (!formData.parent_name.trim()) errors.push("Ім'я основного контакту обов'язкове");
 
     const primaryPhoneDigits = formData.parent_phone.replace(/\D/g, '');
@@ -219,10 +215,6 @@ export default function EnrollPage() {
     if (!formData.parent_relation) errors.push('Оберіть, ким є основний контакт для дитини');
     if (formData.parent_relation === 'other' && !formData.parent_relation_other.trim()) {
       errors.push('Вкажіть, ким є основний контакт для дитини');
-    }
-
-    if (formData.email.trim() && !isValidEmail(formData.email)) {
-      errors.push('Вкажіть коректний email');
     }
 
     const hasSecondContactData = Boolean(
@@ -290,12 +282,7 @@ export default function EnrollPage() {
     }
   };
 
-  const renderContactSection = (
-    key: ContactKey,
-    title: string,
-    description: string,
-    required = false
-  ) => {
+  const renderContactSection = (key: ContactKey, title: string, required = false) => {
     const relation = getRelationValue(formData, key);
     const relationOther = getRelationOtherValue(formData, key);
     const name = getContactNameValue(formData, key);
@@ -308,7 +295,6 @@ export default function EnrollPage() {
     return (
       <fieldset style={styles.fieldset}>
         <legend style={styles.legend}>{title}</legend>
-        <p style={styles.sectionHint}>{description}</p>
 
         <div style={styles.contactGrid}>
           <div style={styles.field}>
@@ -459,12 +445,13 @@ export default function EnrollPage() {
 
             <div style={styles.row}>
               <div style={styles.field}>
-                <label style={styles.label}>Дата народження</label>
+                <label style={styles.label}>Дата народження *</label>
                 <input
                   type="date"
                   style={styles.input}
                   value={formData.birth_date}
                   onChange={(e) => handleChange('birth_date', e.target.value)}
+                  required
                 />
               </div>
               <div style={styles.field}>
@@ -479,33 +466,24 @@ export default function EnrollPage() {
             </div>
           </fieldset>
 
-          {renderContactSection(
-            'parent',
-            'Основний контакт',
-            'Цей контакт використаємо для основного зв’язку щодо занять, розкладу та організаційних питань.',
-            true
-          )}
-
           <fieldset style={styles.fieldset}>
             <legend style={styles.legend}>Email</legend>
-            <p style={styles.sectionHint}>Якщо зручно, залиште email для листування та нагадувань.</p>
             <div style={styles.field}>
-              <label style={styles.label}>Email</label>
+              <label style={styles.label}>Email *</label>
               <input
                 type="email"
                 style={styles.input}
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 placeholder="name@example.com"
+                required
               />
             </div>
           </fieldset>
 
-          {renderContactSection(
-            'parent2',
-            'Додатковий контакт',
-            'Можна залишити ще один контакт, щоб ми могли швидко зв’язатися з родиною за потреби.'
-          )}
+          {renderContactSection('parent', 'Основний контакт', true)}
+
+          {renderContactSection('parent2', 'Додатковий контакт')}
 
           <fieldset style={styles.fieldset}>
             <legend style={styles.legend}>Курси, які зацікавили</legend>
