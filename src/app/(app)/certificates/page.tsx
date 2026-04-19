@@ -303,13 +303,29 @@ export default function CertificatesPage() {
                 <>
                   <div className="form-group">
                     <label className="form-label">Номінал (грн) *</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: parseInt(e.target.value) || 0 })}
-                      min="1"
-                    />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <select 
+                        className="form-input"
+                        style={{ width: '120px' }}
+                        value={formData.amount}
+                        onChange={(e) => setFormData({ ...formData, amount: parseInt(e.target.value) || 0 })}
+                      >
+                        <option value={500}>500</option>
+                        <option value={1000}>1000</option>
+                        <option value={2000}>2000</option>
+                        <option value={0}>Свій...</option>
+                      </select>
+                      {![500, 1000, 2000].includes(formData.amount) && (
+                        <input
+                          type="number"
+                          className="form-input"
+                          placeholder="Введіть суму"
+                          value={formData.amount === 0 ? '' : formData.amount}
+                          onChange={(e) => setFormData({ ...formData, amount: parseInt(e.target.value) || 0 })}
+                          min="1"
+                        />
+                      )}
+                    </div>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Кількість для генерації *</label>
@@ -383,6 +399,7 @@ export default function CertificatesPage() {
                             cursor: 'grab',
                             textShadow: '0 0 2px white',
                             padding: '4px',
+                            whiteSpace: 'nowrap',
                             border: dragging === 'id' ? '1px dashed var(--primary-color)' : '1px transparent solid',
                             background: dragging === 'id' ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'
                           }}
@@ -405,14 +422,13 @@ export default function CertificatesPage() {
                             textShadow: '0 0 2px rgba(0,0,0,0.5)',
                             transformOrigin: 'center center',
                             textAlign: 'center',
-                            lineHeight: '0.8',
+                            whiteSpace: 'nowrap',
                             padding: '4px',
                             border: dragging === 'amount' ? '1px dashed var(--primary-color)' : '1px transparent solid',
                             background: dragging === 'amount' ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'
                           }}
                         >
-                          <div style={{ fontSize: `${idSettings.amountFontSize / 4}px`, pointerEvents: 'none' }}>1000</div>
-                          <div style={{ fontSize: `${idSettings.amountFontSize / 4 * 0.6}px`, pointerEvents: 'none' }}>грн</div>
+                          <div style={{ fontSize: `${idSettings.amountFontSize / 4}px`, pointerEvents: 'none' }}>{formData.amount}</div>
                         </div>
                       </div>
                     ) : (

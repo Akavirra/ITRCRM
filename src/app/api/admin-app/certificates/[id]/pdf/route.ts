@@ -191,14 +191,11 @@ export async function GET(
       color: rgb(r, g, b),
     });
 
-    // 6. Draw Amount (Multiline with Ermilov font)
+    // 6. Draw Amount (Multiline with Ermilov font - now only amount)
     const amountVal = `${cert.amount}`;
-    const currencyText = `грн`;
     const amountFontSize = settings.amountFontSize || 48;
-    const currencyFontSize = amountFontSize * 0.6; // Slightly smaller for "грн"
     
     const amountWidth = ermilovFont.widthOfTextAtSize(amountVal, amountFontSize);
-    const currencyWidth = ermilovFont.widthOfTextAtSize(currencyText, currencyFontSize);
 
     // Convert percentages to points for Amount
     const ax = (width * (settings.amountXPercent / 100));
@@ -218,23 +215,6 @@ export async function GET(
       x: ax - (amountWidth / 2),
       y: ay,
       size: amountFontSize,
-      font: ermilovFont,
-      color: amountColor,
-      rotate: rotation,
-    });
-
-    // Draw "грн" below "Amount"
-    // Calculate offset for second line based on font size and rotation
-    const lineSpacing = amountFontSize * 0.8;
-    // For rotated text, we need to adjust both x and y to keep it centered
-    const rad = (settings.amountRotation || 0) * Math.PI / 180;
-    const offsetX = Math.sin(rad) * lineSpacing;
-    const offsetY = Math.cos(rad) * lineSpacing;
-
-    page.drawText(currencyText, {
-      x: ax - (currencyWidth / 2) - offsetX,
-      y: ay - offsetY,
-      size: currencyFontSize,
       font: ermilovFont,
       color: amountColor,
       rotate: rotation,
