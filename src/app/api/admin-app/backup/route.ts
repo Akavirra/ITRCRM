@@ -16,6 +16,27 @@ const CATEGORIES_TABLES: Record<string, string[]> = {
   system: ['users', 'system_settings', 'user_settings']
 };
 
+const EXCEL_CELL_LIMIT = 32760; // Excel limit is 32767, we use slightly less for safety
+
+function prepareRowsForExcel(rows: any[]) {
+  return rows.map(row => {
+    const newRow = { ...row };
+    for (const key in newRow) {
+      if (typeof newRow[key] === 'string' && newRow[key].length > EXCEL_CELL_LIMIT) {
+        newRow[key] = newRow[key].substring(0, EXCEL_CELL_LIMIT) + '... [TRUNCATED]';
+      } else if (typeof newRow[key] === 'object' && newRow[key] !== null) {
+        const str = JSON.stringify(newRow[key]);
+        if (str.length > EXCEL_CELL_LIMIT) {
+          newRow[key] = str.substring(0, EXCEL_CELL_LIMIT) + '... [TRUNCATED]';
+        } else {
+          newRow[key] = str;
+        }
+      }
+    }
+    return newRow;
+  });
+}
+
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return unauthorized();
@@ -54,7 +75,8 @@ export async function POST(request: NextRequest) {
         
         for (const table of tables) {
           const rows = await query(`SELECT * FROM ${table}`);
-          const ws = XLSX.utils.json_to_sheet(rows);
+          const preparedRows = prepareRowsForExcel(rows);
+          const ws = XLSX.utils.json_to_sheet(preparedRows);
           XLSX.utils.book_append_sheet(wb, ws, table.slice(0, 31)); // Excel limit for sheet names
         }
 
