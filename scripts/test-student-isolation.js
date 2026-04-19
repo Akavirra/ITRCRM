@@ -74,7 +74,9 @@ async function run() {
     process.exit(1);
   }
 
-  const sql = neon(process.env.DATABASE_URL_STUDENT);
+  // Обхід Neon pgbouncer cache (іноді тримає stale role OID після пересоздання)
+  const url = process.env.DATABASE_URL_STUDENT.replace('-pooler.', '.');
+  const sql = neon(url);
   console.log('🔐 Тестуємо ізоляцію ролі crm_student...\n');
 
   console.log('📖 Дозволені запити (мають виконуватись):');

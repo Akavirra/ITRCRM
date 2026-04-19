@@ -117,6 +117,23 @@ async function run() {
     }
     console.log(`✅ Роль "${ROLE}" знайдена`);
 
+    // ⚠️ Крок 0: ЗНЯТИ успадкування neon_superuser + зняти привілеї BYPASSRLS/CREATEROLE.
+    // Neon за замовчуванням додає НОВІ ролі у групу neon_superuser — це обходить ВСІ
+    // наші GRANT-и (роль де-факто стає суперюзером). Без цього кроку ізоляції немає.
+    // Безпечно повторювати: REVOKE якщо не членом — просто попередження.
+    console.log('\n🛡️  Знімаємо успадкування neon_superuser...');
+    // Neon не дозволяє звичайному admin-role робити REVOKE neon_superuser або
+    // ALTER ROLE ... NOBYPASSRLS (це системні привілеї). Але NOINHERIT працює —
+    // роль залишається членом neon_superuser, але НЕ отримує її привілеї автоматично.
+    // Для доступу треба явний `SET ROLE neon_superuser`, чого код порталу ніколи не робить.
+    try {
+      await sql.query(`ALTER ROLE ${ROLE} NOINHERIT`);
+      console.log('   ✅ NOINHERIT (привілеї neon_superuser більше не успадковуються)');
+    } catch (e) {
+      console.log('   ⚠️  NOINHERIT не вдалося:', e.message);
+      console.log('      → треба виконати в Neon SQL Editor вручну.');
+    }
+
     // Крок 1: revoke всіх публічних і раніше виданих дозволів
     console.log('\n🧹 Очищуємо попередні дозволи...');
     await sql.query(`REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ${ROLE}`);
