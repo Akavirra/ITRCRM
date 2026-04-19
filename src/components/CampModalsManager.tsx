@@ -6,6 +6,7 @@ import { useCampModals } from './CampModalsContext';
 import CampOverviewTab from './camp/CampOverviewTab';
 import CampParticipantsTab from './camp/CampParticipantsTab';
 import CampPaymentsTab from './camp/CampPaymentsTab';
+import CreateStudentModal, { CreateStudentPrefill } from './CreateStudentModal';
 
 interface CampShiftDay {
   id: number;
@@ -71,12 +72,19 @@ interface CampBundle {
 
 type TabKey = 'overview' | 'participants' | 'payments';
 
+interface PendingConvert {
+  campId: number;
+  participantId: number;
+  prefill: CreateStudentPrefill;
+}
+
 export default function CampModalsManager() {
   const { openModals, updateModalState, closeCampModal, openCampModal } = useCampModals();
   const [data, setData] = useState<Record<number, CampBundle>>({});
   const [loading, setLoading] = useState<Record<number, boolean>>({});
   const [activeTab, setActiveTab] = useState<Record<number, TabKey>>({});
   const [isHydrated, setIsHydrated] = useState(false);
+  const [pendingConvert, setPendingConvert] = useState<PendingConvert | null>(null);
 
   useEffect(() => {
     setIsHydrated(true);
@@ -313,19 +321,47 @@ export default function CampModalsManager() {
     await reloadParticipants(campId);
   };
 
-  const handleConvertToStudent = async (campId: number, id: number) => {
-    if (!confirm('Додати цього учасника в базу учнів?')) return;
-    const res = await fetch(`/api/camps/${campId}/participants/${id}/convert-to-student`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      alert(err.error || 'Не вдалося додати в базу');
+  const handleRequestConvertToStudent = (campId: number, participant: Participant) => {
+    // Build a prefill from participant data — admin then confirms/augments in the standard student-create modal.
+    const fullName = [participant.last_name, participant.first_name].filter(Boolean).join(' ').trim();
+    const prefill: CreateStudentPrefill = {
+      full_name: fullName,
+      parent_name: participant.parent_name ?? undefined,
+      parent_phone: participant.parent_phone ?? undefined,
+      notes: participant.notes ?? undefined,
+    };
+    setPendingConvert({ campId, participantId: participant.id, prefill });
+  };
+
+  const handleConvertModalClose = () => {
+    setPendingConvert(null);
+  };
+
+  const handleConvertModalCreated = async (createdStudentId?: number) => {
+    if (!pendingConvert) return;
+    const { campId, participantId } = pendingConvert;
+    setPendingConvert(null);
+    if (!createdStudentId) {
+      // No ID returned — still reload to reflect any collateral changes.
+      await reloadParticipants(campId);
       return;
     }
-    await reloadParticipants(campId);
+    // Link the participant to the freshly created student so future flows recognise them as in-base.
+    try {
+      const res = await fetch(`/api/camps/${campId}/participants/${participantId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: createdStudentId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Учня створено, але не вдалося прив\u02BCязати до учасника');
+      }
+    } catch (err) {
+      console.error('Link participant to new student error:', err);
+    } finally {
+      await reloadParticipants(campId);
+    }
   };
 
   const handleOpenPayments = (campId: number) => {
@@ -472,7 +508,7 @@ export default function CampModalsManager() {
                       onUpdateParticipant={(id, patch) => handleUpdateParticipant(modal.id, id, patch)}
                       onSetDays={(id, days) => handleSetDays(modal.id, id, days)}
                       onDeleteParticipant={(id) => handleDeleteParticipant(modal.id, id)}
-                      onConvertToStudent={(id) => handleConvertToStudent(modal.id, id)}
+                      onConvertToStudent={(participant) => handleRequestConvertToStudent(modal.id, participant)}
                       onOpenPayments={() => handleOpenPayments(modal.id)}
                       onSwitchToOverview={() => setActiveTab(prev => ({ ...prev, [modal.id]: 'overview' }))}
                     />
@@ -509,6 +545,14 @@ export default function CampModalsManager() {
           </DraggableModal>
         );
       })}
+
+      {/* Prefilled student-creation modal for converting a participant into a base student */}
+      <CreateStudentModal
+        isOpen={pendingConvert !== null}
+        onClose={handleConvertModalClose}
+        onCreated={handleConvertModalCreated}
+        prefill={pendingConvert?.prefill ?? null}
+      />
     </>
   );
 }

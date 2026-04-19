@@ -136,7 +136,6 @@ function normalizeOptionValue(
 
 function mapStudentToForm(student: StudentRecord): FormState {
   const nameParts = student.full_name.trim().split(/\s+/);
-  const additionalPhone = student.parent_phone || student.parent2_phone || null;
   const primaryRelation = normalizeOptionValue(student.parent_relation, RELATION_OPTIONS);
   const secondaryRelation = normalizeOptionValue(student.parent2_relation, RELATION_OPTIONS);
   const source = normalizeOptionValue(student.source, SOURCE_OPTIONS);
@@ -152,7 +151,7 @@ function mapStudentToForm(student: StudentRecord): FormState {
     parent_name: student.parent_name || '',
     parent_relation: primaryRelation.value,
     parent_relation_other: primaryRelation.other,
-    parent_phone: extractPhoneDigits(additionalPhone),
+    parent_phone: extractPhoneDigits(student.parent_phone),
     parent2_name: student.parent2_name || '',
     parent2_phone: extractPhoneDigits(student.parent2_phone),
     parent2_relation: secondaryRelation.value,
@@ -171,16 +170,78 @@ function mapStudentToForm(student: StudentRecord): FormState {
   };
 }
 
+export type CreateStudentPrefill = Partial<
+  Pick<
+    StudentRecord,
+    | 'full_name'
+    | 'phone'
+    | 'email'
+    | 'parent_name'
+    | 'parent_phone'
+    | 'parent2_name'
+    | 'parent2_phone'
+    | 'parent_relation'
+    | 'parent2_relation'
+    | 'notes'
+    | 'birth_date'
+    | 'school'
+    | 'discount'
+    | 'photo'
+    | 'interested_courses'
+    | 'source'
+  >
+>;
+
+function mapPrefillToForm(prefill: CreateStudentPrefill): FormState {
+  const fullName = (prefill.full_name || '').trim();
+  const nameParts = fullName ? fullName.split(/\s+/) : [];
+  const primaryRelation = normalizeOptionValue(prefill.parent_relation ?? null, RELATION_OPTIONS);
+  const secondaryRelation = normalizeOptionValue(prefill.parent2_relation ?? null, RELATION_OPTIONS);
+  const source = normalizeOptionValue(prefill.source ?? null, SOURCE_OPTIONS);
+
+  return {
+    ...EMPTY_FORM,
+    first_name: nameParts[0] || '',
+    last_name: nameParts.slice(1).join(' '),
+    birth_date: normalizeDate(prefill.birth_date ?? null),
+    email: prefill.email || '',
+    school: prefill.school || '',
+    discount: prefill.discount != null ? String(prefill.discount) : '',
+    phone: extractPhoneDigits(prefill.phone),
+    parent_name: prefill.parent_name || '',
+    parent_relation: primaryRelation.value,
+    parent_relation_other: primaryRelation.other,
+    parent_phone: extractPhoneDigits(prefill.parent_phone),
+    parent2_name: prefill.parent2_name || '',
+    parent2_phone: extractPhoneDigits(prefill.parent2_phone),
+    parent2_relation: secondaryRelation.value,
+    parent2_relation_other: secondaryRelation.other,
+    notes: prefill.notes || '',
+    interested_courses: prefill.interested_courses
+      ? String(prefill.interested_courses)
+          .replace(/^\[|\]$/g, '')
+          .split(',')
+          .map((item) => item.replace(/^"+|"+$/g, '').trim())
+          .filter(Boolean)
+      : [],
+    source: source.value,
+    source_other: source.other,
+    photo: prefill.photo || null,
+  };
+}
+
 export default function CreateStudentModal({
   isOpen,
   onClose,
   onCreated,
   studentToEdit,
+  prefill,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onCreated?: () => void;
+  onCreated?: (createdStudentId?: number) => void;
   studentToEdit?: StudentRecord | null;
+  prefill?: CreateStudentPrefill | null;
 }) {
   const firstNameRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -204,7 +265,13 @@ export default function CreateStudentModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    setForm(studentToEdit ? mapStudentToForm(studentToEdit) : EMPTY_FORM);
+    if (studentToEdit) {
+      setForm(mapStudentToForm(studentToEdit));
+    } else if (prefill) {
+      setForm(mapPrefillToForm(prefill));
+    } else {
+      setForm(EMPTY_FORM);
+    }
     setStudentFormStep('profile');
     setErrors({});
     setNameSuggestions([]);
@@ -242,7 +309,7 @@ export default function CreateStudentModal({
     };
 
     void loadOptions();
-  }, [isOpen, studentToEdit]);
+  }, [isOpen, studentToEdit, prefill]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -523,8 +590,16 @@ export default function CreateStudentModal({
         return;
       }
 
+      let createdId: number | undefined;
+      try {
+        const resJson = await res.clone().json();
+        if (typeof resJson?.id === 'number') createdId = resJson.id;
+      } catch {
+        // PUT responses may be empty or non-JSON — that's fine, we only surface IDs for creation.
+      }
+
       close();
-      onCreated?.();
+      onCreated?.(isEditing ? undefined : createdId);
     } catch (error) {
       console.error('Failed to save student:', error);
       alert('Помилка мережі. Спробуйте ще раз.');
@@ -985,4 +1060,3 @@ export default function CreateStudentModal({
     </div>
   );
 }
-

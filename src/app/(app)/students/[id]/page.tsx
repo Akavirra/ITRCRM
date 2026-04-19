@@ -676,7 +676,7 @@ export default function StudentProfilePage() {
       parent_relation_other: '',
       parent_phone: parentPhoneDigits,
       parent2_name: student.parent2_name || '',
-      parent2_phone: student.parent2_phone || '',
+      parent2_phone: student.parent2_phone ? student.parent2_phone.replace(/\D/g, '').slice(-9) : '',
       parent2_relation: student.parent2_relation || '',
       parent2_relation_other: '',
       notes: student.notes || '',

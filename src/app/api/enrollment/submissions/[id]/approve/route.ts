@@ -6,6 +6,12 @@ import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
 
 export const dynamic = 'force-dynamic';
 
+function normalizeOptionalString(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim();
+  return normalized || undefined;
+}
+
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const user = await getAuthUser(request);
   if (!user) return unauthorized();
@@ -18,22 +24,26 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   }
 
   const body = await request.json().catch(() => ({}));
-  const fullName = body.full_name || `${submission.child_last_name} ${submission.child_first_name}`;
+  const fullName = normalizeOptionalString(body.full_name) || `${submission.child_last_name} ${submission.child_first_name}`;
+  const parentName = normalizeOptionalString(body.parent_name) || submission.parent_name || undefined;
+  const parentPhone = normalizeOptionalString(body.parent_phone) || submission.parent_phone || undefined;
+  const parent2Name = normalizeOptionalString(body.parent2_name) || submission.parent2_name || undefined;
+  const parent2Phone = normalizeOptionalString(body.parent2_phone) || submission.parent2_phone || undefined;
 
   const student = await createStudent(
     fullName,
     undefined,
     submission.email || undefined,
-    body.parent_name || submission.parent_name,
-    body.parent_phone || submission.parent_phone,
+    parentName,
+    parentPhone,
     submission.notes || undefined,
     submission.birth_date || undefined,
     undefined,
     submission.school || undefined,
     undefined,
     submission.parent_relation || undefined,
-    submission.parent2_name || undefined,
-    submission.parent2_phone || undefined,
+    parent2Name,
+    parent2Phone,
     submission.parent2_relation || undefined,
     submission.interested_courses || undefined,
     submission.source || undefined

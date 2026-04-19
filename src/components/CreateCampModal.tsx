@@ -25,8 +25,11 @@ function seasonFromMonth(month: number): keyof typeof SEASONS {
 
 function autoTitleFor(dateStr: string): string {
   if (!dateStr) return '';
+  const year = parseInt(dateStr.slice(0, 4), 10);
   const month = parseInt(dateStr.slice(5, 7), 10);
-  return SEASONS[seasonFromMonth(month)] || '';
+  const base = SEASONS[seasonFromMonth(month)] || '';
+  if (!base) return '';
+  return Number.isFinite(year) ? `${base} ${year}` : base;
 }
 
 export default function CreateCampModal({ isOpen, onClose, onCreated }: CreateCampModalProps) {

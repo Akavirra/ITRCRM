@@ -57,8 +57,32 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       }
     }
 
+    // Capture prior student_id so we can log when a participant transitions from "not in base" to linked.
+    const before = await get<{ student_id: number | null; camp_id: number }>(
+      `SELECT student_id, camp_id FROM camp_participants WHERE id = $1`,
+      [pid]
+    );
+
     const participant = await updateParticipant(pid, patch);
     if (!participant) return notFound('Учасника не знайдено');
+
+    if (
+      patch.student_id !== undefined &&
+      typeof patch.student_id === 'number' &&
+      before &&
+      before.student_id === null
+    ) {
+      const camp = await get<{ title: string }>(`SELECT title FROM camps WHERE id = $1`, [before.camp_id]);
+      const campTitle = camp?.title ?? `Табір #${before.camp_id}`;
+      await safeAddStudentHistoryEntry(
+        patch.student_id,
+        'camp_converted_to_student',
+        `Створений учень із учасника табору «${campTitle}»`,
+        user.id,
+        user.name,
+      );
+    }
+
     return NextResponse.json({ participant });
   } catch (error) {
     console.error('Update participant error:', error);

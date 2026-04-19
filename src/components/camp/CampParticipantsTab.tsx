@@ -53,7 +53,7 @@ interface Props {
   onUpdateParticipant: (id: number, patch: Partial<Pick<Participant, 'first_name' | 'last_name' | 'parent_name' | 'parent_phone' | 'notes' | 'shift_id' | 'status'>>) => Promise<void>;
   onSetDays: (id: number, days: string[]) => Promise<void>;
   onDeleteParticipant: (id: number) => Promise<void>;
-  onConvertToStudent: (id: number) => Promise<void>;
+  onConvertToStudent: (participant: Participant) => void;
   onOpenPayments: (participant: Participant) => void;
   onSwitchToOverview?: () => void;
 }
@@ -79,7 +79,7 @@ export default function CampParticipantsTab({
   onSwitchToOverview,
 }: Props) {
   const [addOpen, setAddOpen] = useState(false);
-  const [addMode, setAddMode] = useState<'base' | 'new'>('new');
+  const [addMode, setAddMode] = useState<'base' | 'new'>('base');
 
   // Search state (base)
   const [searchQuery, setSearchQuery] = useState('');
@@ -159,7 +159,9 @@ export default function CampParticipantsTab({
 
   const selectAllShiftDays = (shift: CampShift | undefined, setter: React.Dispatch<React.SetStateAction<Set<string>>>) => {
     if (!shift) return;
-    setter(new Set(shift.days.filter(d => d.is_working).map(d => d.day_date)));
+    // Select ALL days of the shift regardless of working/non-working flag.
+    // Non-working days remain visually marked red in the grid and can be deselected individually if needed.
+    setter(new Set(shift.days.map(d => d.day_date)));
   };
 
   const submitAdd = async () => {
@@ -517,7 +519,7 @@ export default function CampParticipantsTab({
                       Оплати
                     </button>
                     {!p.student_id && (
-                      <button onClick={() => onConvertToStudent(p.id)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', borderRadius: '0.25rem', cursor: 'pointer' }}>
+                      <button onClick={() => onConvertToStudent(p)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', borderRadius: '0.25rem', cursor: 'pointer' }}>
                         <UserPlus size={11} style={{ verticalAlign: '-2px' }} /> В базу
                       </button>
                     )}
