@@ -57,6 +57,8 @@
     "db:add-student-portal": "node scripts/add-student-portal-tables.js",
     "db:setup-student-role": "node scripts/setup-student-role-grants.js",
     "db:test-student-isolation": "node scripts/test-student-isolation.js",
+    "check:student-isolation": "node scripts/check-student-isolation.js",
+    "smoke:student-auth": "node scripts/smoke-test-student-auth.js",
     "db:schema:dump": "node scripts/dump-schema.js",
     "db:backup:data": "node scripts/backup-crm-data.js",
     "test": "jest"
