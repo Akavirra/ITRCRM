@@ -26,6 +26,7 @@ export default function CertificatesPage() {
   const [certificates, setCertificates] = useState<CertificateData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'create' | 'design'>('create');
   const [formData, setFormData] = useState({ amount: 1000, notes: '', count: 1 });
   const [saving, setSaving] = useState(false);
   const [showDesignModal, setShowDesignModal] = useState(false);
@@ -76,6 +77,7 @@ export default function CertificatesPage() {
 
   const handleCreate = () => {
     setFormData({ amount: 1000, notes: '', count: 1 });
+    setActiveTab('create');
     setShowModal(true);
   };
 
@@ -182,16 +184,10 @@ export default function CertificatesPage() {
       <div className="card">
         <div className="card-header">
           <h3 className="card-title">{t('nav.certificates')}</h3>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-secondary" onClick={() => setShowDesignModal(true)}>
-              <ImageIcon size={18} style={{ marginRight: '8px' }} />
-              Дизайн
-            </button>
-            <button className="btn btn-primary" onClick={handleCreate}>
-              <Plus size={18} style={{ marginRight: '8px' }} />
-              {t('modals.newCertificate')}
-            </button>
-          </div>
+          <button className="btn btn-primary" onClick={handleCreate}>
+            <Plus size={18} style={{ marginRight: '8px' }} />
+            {t('actions.add')}
+          </button>
         </div>
 
         <div className="table-container">
@@ -242,258 +238,275 @@ export default function CertificatesPage() {
         </div>
       </div>
 
-      {/* Create Modal */}
+      {/* Unified Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: activeTab === 'design' ? '600px' : '400px' }}>
             <div className="modal-header">
-              <h3 className="modal-title">{t('modals.newCertificate')}</h3>
+              <h3 className="modal-title">{t('nav.certificates')}</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}><XCircle size={20} /></button>
             </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label className="form-label">Номінал (грн) *</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: parseInt(e.target.value) || 0 })}
-                  min="1"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Кількість для генерації *</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={formData.count}
-                  onChange={(e) => setFormData({ ...formData, count: parseInt(e.target.value) || 1 })}
-                  min="1"
-                  max="50"
-                />
-                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  Можна згенерувати до 50 сертифікатів за один раз.
-                </p>
-              </div>
-              <div className="form-group">
-                <label className="form-label">{t('common.note')}</label>
-                <textarea
-                  className="form-input"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Додаткова інформація..."
-                  rows={3}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
-                {t('actions.cancel')}
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleSave}
-                disabled={saving || formData.amount <= 0 || formData.count <= 0}
+            
+            {/* Tabs */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--gray-200)', marginBottom: '20px' }}>
+              <button 
+                onClick={() => setActiveTab('create')}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  background: 'none',
+                  borderBottom: activeTab === 'create' ? '2px solid var(--primary-color)' : 'none',
+                  color: activeTab === 'create' ? 'var(--primary-color)' : 'var(--gray-500)',
+                  fontWeight: activeTab === 'create' ? '600' : '400',
+                  cursor: 'pointer'
+                }}
               >
-                {saving ? t('common.saving') : t('actions.create')}
+                Генерація
+              </button>
+              <button 
+                onClick={() => setActiveTab('design')}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  background: 'none',
+                  borderBottom: activeTab === 'design' ? '2px solid var(--primary-color)' : 'none',
+                  color: activeTab === 'design' ? 'var(--primary-color)' : 'var(--gray-500)',
+                  fontWeight: activeTab === 'design' ? '600' : '400',
+                  cursor: 'pointer'
+                }}
+              >
+                Дизайн та налаштування
               </button>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Design Modal */}
-      {showDesignModal && (
-        <div className="modal-overlay" onClick={() => setShowDesignModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <h3 className="modal-title">Налаштування дизайну</h3>
-              <button className="modal-close" onClick={() => setShowDesignModal(false)}><XCircle size={20} /></button>
-            </div>
-            <div className="modal-body">
-               <div style={{ marginBottom: '20px' }}>
-                 <label className="form-label">Поточний шаблон та вигляд ID</label>
-                 {templateUrl ? (
-                   <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--gray-200)' }}>
-                     <img src={templateUrl} alt="Template" style={{ width: '100%', display: 'block' }} />
-                     {/* Preview ID */}
-                     <div style={{
-                       position: 'absolute',
-                       left: `${idSettings.xPercent}%`,
-                       bottom: `${idSettings.yPercent}%`,
-                       transform: 'translateX(-50%)',
-                       fontSize: `${idSettings.fontSize / 4}px`, // Scaled for preview
-                       color: idSettings.color,
-                       fontWeight: 'bold',
-                       fontFamily: 'Bebas Neue Cyrillic, sans-serif',
-                       pointerEvents: 'none',
-                       textShadow: '0 0 2px white'
-                     }}>
-                        CRT-PREVIEW
-                      </div>
-                      {/* Preview Amount */}
-                      <div style={{
-                        position: 'absolute',
-                        left: `${idSettings.amountXPercent}%`,
-                        bottom: `${idSettings.amountYPercent}%`,
-                        transform: `translateX(-50%) rotate(${idSettings.amountRotation}deg)`,
-                        fontSize: `${idSettings.amountFontSize / 4}px`,
-                        color: idSettings.amountColor,
-                        fontWeight: 'bold',
-                        fontFamily: 'Bebas Neue Cyrillic, sans-serif',
-                        pointerEvents: 'none',
-                        textShadow: '0 0 2px rgba(0,0,0,0.5)',
-                        transformOrigin: 'center center'
-                      }}>
-                        1000 грн
-                      </div>
-                    </div>
-                 ) : (
-                   <div style={{ 
-                     height: '150px', 
-                     background: 'var(--gray-50)', 
-                     display: 'flex', 
-                     alignItems: 'center', 
-                     justifyContent: 'center',
-                     border: '2px dashed var(--gray-300)',
-                     borderRadius: '8px',
-                     color: 'var(--gray-500)'
-                   }}>
-                     Шаблон не завантажено
-                   </div>
-                 )}
-               </div>
-
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px', padding: '16px', background: 'var(--gray-50)', borderRadius: '8px' }}>
-                 <div className="form-group" style={{ marginBottom: 0 }}>
-                   <label className="form-label" style={{ fontSize: '12px' }}>Розмір шрифту (pt)</label>
-                   <input 
-                     type="number" 
-                     className="form-input" 
-                     value={idSettings.fontSize}
-                     onChange={(e) => setIdSettings({ ...idSettings, fontSize: parseInt(e.target.value) || 0 })}
-                   />
-                 </div>
-                 <div className="form-group" style={{ marginBottom: 0 }}>
-                   <label className="form-label" style={{ fontSize: '12px' }}>Колір ID</label>
-                   <input 
-                     type="color" 
-                     className="form-input" 
-                     style={{ padding: '2px', height: '38px' }}
-                     value={idSettings.color}
-                     onChange={(e) => setIdSettings({ ...idSettings, color: e.target.value })}
-                   />
-                 </div>
-                 <div className="form-group" style={{ marginBottom: 0 }}>
-                   <label className="form-label" style={{ fontSize: '12px' }}>Зліва (%)</label>
-                   <input 
-                     type="range" 
-                     min="0" max="100" 
-                     value={idSettings.xPercent}
-                     onChange={(e) => setIdSettings({ ...idSettings, xPercent: parseInt(e.target.value) })}
-                   />
-                 </div>
-                 <div className="form-group" style={{ marginBottom: 0 }}>
-                   <label className="form-label" style={{ fontSize: '12px' }}>Знизу (%)</label>
-                   <input 
-                     type="range" 
-                     min="0" max="100" 
-                     value={idSettings.yPercent}
-                     onChange={(e) => setIdSettings({ ...idSettings, yPercent: parseInt(e.target.value) })}
-                   />
-                 </div>
-                 <div style={{ gridColumn: 'span 2', textAlign: 'right' }}>
-                    <button className="btn btn-primary btn-sm" onClick={handleSaveSettings} disabled={savingSettings}>
-                      {savingSettings ? '...' : 'Зберегти налаштування'}
+            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+              {activeTab === 'create' ? (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">Номінал (грн) *</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={formData.amount}
+                      onChange={(e) => setFormData({ ...formData, amount: parseInt(e.target.value) || 0 })}
+                      min="1"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Кількість для генерації *</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={formData.count}
+                      onChange={(e) => setFormData({ ...formData, count: parseInt(e.target.value) || 1 })}
+                      min="1"
+                      max="50"
+                    />
+                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                      Можна згенерувати до 50 сертифікатів за один раз.
+                    </p>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('common.note')}</label>
+                    <textarea
+                      className="form-input"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Додаткова інформація..."
+                      rows={3}
+                    />
+                  </div>
+                  <div className="modal-footer" style={{ padding: '20px 0 0 0', borderTop: 'none' }}>
+                    <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                      {t('actions.cancel')}
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={handleSave}
+                      disabled={saving || formData.amount <= 0 || formData.count <= 0}
+                    >
+                      {saving ? t('common.saving') : t('actions.create')}
                     </button>
                   </div>
-                </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '20px' }}>
+                    <label className="form-label">Попередній перегляд (ID та Номінал)</label>
+                    {templateUrl ? (
+                      <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--gray-200)' }}>
+                        <img src={templateUrl} alt="Template" style={{ width: '100%', display: 'block' }} />
+                        {/* Preview ID */}
+                        <div style={{
+                          position: 'absolute',
+                          left: `${idSettings.xPercent}%`,
+                          bottom: `${idSettings.yPercent}%`,
+                          transform: 'translateX(-50%)',
+                          fontSize: `${idSettings.fontSize / 4}px`,
+                          color: idSettings.color,
+                          fontWeight: 'bold',
+                          fontFamily: 'Bebas Neue Cyrillic, sans-serif',
+                          pointerEvents: 'none',
+                          textShadow: '0 0 2px white'
+                        }}>
+                          CRT-PREVIEW
+                        </div>
+                        {/* Preview Amount */}
+                        <div style={{
+                          position: 'absolute',
+                          left: `${idSettings.amountXPercent}%`,
+                          bottom: `${idSettings.amountYPercent}%`,
+                          transform: `translateX(-50%) rotate(${idSettings.amountRotation}deg)`,
+                          fontSize: `${idSettings.amountFontSize / 4}px`,
+                          color: idSettings.amountColor,
+                          fontWeight: 'bold',
+                          fontFamily: 'Bebas Neue Cyrillic, sans-serif',
+                          pointerEvents: 'none',
+                          textShadow: '0 0 2px rgba(0,0,0,0.5)',
+                          transformOrigin: 'center center'
+                        }}>
+                          1000 грн
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ 
+                        height: '150px', 
+                        background: 'var(--gray-50)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        border: '2px dashed var(--gray-300)',
+                        borderRadius: '8px',
+                        color: 'var(--gray-500)'
+                      }}>
+                        Шаблон не завантажено
+                      </div>
+                    )}
+                  </div>
+  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px', padding: '16px', background: 'var(--gray-50)', borderRadius: '8px' }}>
+                    <div style={{ gridColumn: 'span 2', fontWeight: 'bold', fontSize: '13px', marginBottom: '4px' }}>Налаштування ID (CRT-...)</div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '12px' }}>Розмір шрифту (pt)</label>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        value={idSettings.fontSize}
+                        onChange={(e) => setIdSettings({ ...idSettings, fontSize: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '12px' }}>Колір ID</label>
+                      <input 
+                        type="color" 
+                        className="form-input" 
+                        style={{ padding: '2px', height: '38px' }}
+                        value={idSettings.color}
+                        onChange={(e) => setIdSettings({ ...idSettings, color: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '12px' }}>Зліва (%)</label>
+                      <input 
+                        type="range" 
+                        min="0" max="100" 
+                        value={idSettings.xPercent}
+                        onChange={(e) => setIdSettings({ ...idSettings, xPercent: parseInt(e.target.value) })}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '12px' }}>Знизу (%)</label>
+                      <input 
+                        type="range" 
+                        min="0" max="100" 
+                        value={idSettings.yPercent}
+                        onChange={(e) => setIdSettings({ ...idSettings, yPercent: parseInt(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px', padding: '16px', background: 'var(--gray-50)', borderRadius: '8px' }}>
+                    <div style={{ gridColumn: 'span 2', fontWeight: 'bold', fontSize: '13px', marginBottom: '4px' }}>Налаштування номіналу (грн)</div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '12px' }}>Розмір (pt)</label>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        value={idSettings.amountFontSize}
+                        onChange={(e) => setIdSettings({ ...idSettings, amountFontSize: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '12px' }}>Колір</label>
+                      <input 
+                        type="color" 
+                        className="form-input" 
+                        style={{ padding: '2px', height: '38px' }}
+                        value={idSettings.amountColor}
+                        onChange={(e) => setIdSettings({ ...idSettings, amountColor: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '12px' }}>Зліва (%)</label>
+                      <input 
+                        type="range" 
+                        min="0" max="100" 
+                        value={idSettings.amountXPercent}
+                        onChange={(e) => setIdSettings({ ...idSettings, amountXPercent: parseInt(e.target.value) })}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '12px' }}>Знизу (%)</label>
+                      <input 
+                        type="range" 
+                        min="0" max="100" 
+                        value={idSettings.amountYPercent}
+                        onChange={(e) => setIdSettings({ ...idSettings, amountYPercent: parseInt(e.target.value) })}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '12px' }}>Поворот (°)</label>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        value={idSettings.amountRotation}
+                        onChange={(e) => setIdSettings({ ...idSettings, amountRotation: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="form-group" style={{ padding: '16px', border: '1px solid var(--gray-200)', borderRadius: '8px' }}>
+                    <label className="form-label">Оновити дизайн (PNG/JPG)</label>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input 
+                        type="file" 
+                        accept="image/png,image/jpeg" 
+                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                        style={{ fontSize: '14px' }}
+                      />
+                      {selectedFile && (
+                        <button 
+                          className="btn btn-secondary btn-sm" 
+                          onClick={handleUploadTemplate}
+                          disabled={uploading}
+                        >
+                          <Upload size={16} style={{ marginRight: '8px' }} />
+                          {uploading ? '...' : 'Завантажити'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px', padding: '16px', background: 'var(--gray-50)', borderRadius: '8px' }}>
-                 <div style={{ gridColumn: 'span 2', fontWeight: 'bold', fontSize: '13px', marginBottom: '4px' }}>Налаштування номіналу (грн)</div>
-                 <div className="form-group" style={{ marginBottom: 0 }}>
-                   <label className="form-label" style={{ fontSize: '12px' }}>Розмір (pt)</label>
-                   <input 
-                     type="number" 
-                     className="form-input" 
-                     value={idSettings.amountFontSize}
-                     onChange={(e) => setIdSettings({ ...idSettings, amountFontSize: parseInt(e.target.value) || 0 })}
-                   />
-                 </div>
-                 <div className="form-group" style={{ marginBottom: 0 }}>
-                   <label className="form-label" style={{ fontSize: '12px' }}>Колір</label>
-                   <input 
-                     type="color" 
-                     className="form-input" 
-                     style={{ padding: '2px', height: '38px' }}
-                     value={idSettings.amountColor}
-                     onChange={(e) => setIdSettings({ ...idSettings, amountColor: e.target.value })}
-                   />
-                 </div>
-                 <div className="form-group" style={{ marginBottom: 0 }}>
-                   <label className="form-label" style={{ fontSize: '12px' }}>Зліва (%)</label>
-                   <input 
-                     type="range" 
-                     min="0" max="100" 
-                     value={idSettings.amountXPercent}
-                     onChange={(e) => setIdSettings({ ...idSettings, amountXPercent: parseInt(e.target.value) })}
-                   />
-                 </div>
-                 <div className="form-group" style={{ marginBottom: 0 }}>
-                   <label className="form-label" style={{ fontSize: '12px' }}>Знизу (%)</label>
-                   <input 
-                     type="range" 
-                     min="0" max="100" 
-                     value={idSettings.amountYPercent}
-                     onChange={(e) => setIdSettings({ ...idSettings, amountYPercent: parseInt(e.target.value) })}
-                   />
-                 </div>
-                 <div className="form-group" style={{ marginBottom: 0 }}>
-                   <label className="form-label" style={{ fontSize: '12px' }}>Поворот (°)</label>
-                   <input 
-                     type="number" 
-                     className="form-input" 
-                     value={idSettings.amountRotation}
-                     onChange={(e) => setIdSettings({ ...idSettings, amountRotation: parseInt(e.target.value) || 0 })}
-                   />
-                 </div>
-                 <div style={{ gridColumn: 'span 2', textAlign: 'right', marginTop: '8px' }}>
-                    <button className="btn btn-primary btn-sm" onClick={handleSaveSettings} disabled={savingSettings}>
-                      {savingSettings ? '...' : 'Зберегти налаштування'}
+                  <div className="modal-footer" style={{ padding: '20px 0 0 0', borderTop: 'none', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                    <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                      {t('actions.close')}
                     </button>
-                 </div>
-                </div>
-
-               <div className="form-group">
-                <label className="form-label">Завантажити новий дизайн (PNG/JPG)</label>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input 
-                    type="file" 
-                    accept="image/png,image/jpeg" 
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    style={{ fontSize: '14px' }}
-                  />
-                  {selectedFile && (
-                    <button 
-                      className="btn btn-primary" 
-                      onClick={handleUploadTemplate}
-                      disabled={uploading}
-                    >
-                      <Upload size={16} style={{ marginRight: '8px' }} />
-                      {uploading ? '...' : 'Оновити'}
+                    <button className="btn btn-primary" onClick={handleSaveSettings} disabled={savingSettings}>
+                      {savingSettings ? '...' : 'Зберегти налаштування вигляду'}
                     </button>
-                  )}
-                </div>
-                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
-                  Рекомендується PNG з прозорістю або високої якості JPG. 
-                  Розмір ID буде підлаштовано автоматично.
-                </p>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowDesignModal(false)}>
-                Закрити
-              </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
