@@ -58,6 +58,7 @@
     "db:setup-student-role": "node scripts/setup-student-role-grants.js",
     "db:test-student-isolation": "node scripts/test-student-isolation.js",
     "db:schema:dump": "node scripts/dump-schema.js",
+    "db:backup:data": "node scripts/backup-crm-data.js",
     "test": "jest"
   },
   "dependencies": {

@@ -199,6 +199,58 @@ const Navbar: React.FC<NavbarProps> = ({
   const [resetPasswordResult, setResetPasswordResult] = useState<{ name: string; password: string; copied: boolean } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // ── Backup state ───────────────────────────────────────────────────────────
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backupProgress, setBackupProgress] = useState(0);
+  const [lastBackupStatus, setLastBackupStatus] = useState<any>(null);
+  const [backupSettings, setBackupSettings] = useState({
+    categories: ['students', 'payments', 'attendance', 'groups', 'courses', 'system']
+  });
+
+  const handleRunBackup = async () => {
+    setBackupLoading(true);
+    setBackupProgress(10);
+    try {
+      const res = await fetch('/api/admin-app/backup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categories: backupSettings.categories }),
+      });
+      setBackupProgress(70);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Помилка бекапу');
+      
+      setBackupProgress(100);
+      setLastBackupStatus(data.results);
+      setSaved(true);
+      setTimeout(() => { setSaved(false); setBackupProgress(0); }, 2000);
+    } catch (err: any) {
+      alert(err.message);
+      setBackupProgress(0);
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleRestore = async (fileId: string) => {
+    if (!confirm('УВАГА! Це ПОВНІСТЮ перезапише дані у вибраних таблицях. Продовжити?')) return;
+    setBackupLoading(true);
+    try {
+      const res = await fetch('/api/admin-app/backup/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Помилка відновлення');
+      alert('Дані успішно відновлено!');
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1659,11 +1711,65 @@ const Navbar: React.FC<NavbarProps> = ({
                       marginBottom: '1rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
-                    }}>Дані</h3>
+                    }}>Резервне копіювання (Google Drive)</h3>
 
-                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                      <button className="btn btn-secondary">Експорт даних</button>
-                      <button className="btn btn-secondary">Резервна копія</button>
+                    <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          {[
+                            { id: 'students', label: 'Учні та баланси' },
+                            { id: 'payments', label: 'Оплати та ціни' },
+                            { id: 'attendance', label: 'Відвідуваність' },
+                            { id: 'groups', label: 'Групи та розклад' },
+                            { id: 'courses', label: 'Курси та програми' },
+                            { id: 'system', label: 'Системні налаштування' },
+                          ].map(cat => (
+                            <label key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={backupSettings.categories.includes(cat.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setBackupSettings(prev => ({ ...prev, categories: [...prev.categories, cat.id] }));
+                                  } else {
+                                    setBackupSettings(prev => ({ ...prev, categories: prev.categories.filter(c => c !== cat.id) }));
+                                  }
+                                }}
+                              />
+                              {cat.label}
+                            </label>
+                          ))}
+                        </div>
+
+                        {backupProgress > 0 && (
+                          <div style={{ width: '100%', height: '8px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ 
+                              width: `${backupProgress}%`, 
+                              height: '100%', 
+                              backgroundColor: '#2563eb', 
+                              transition: 'width 0.3s ease' 
+                            }} />
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                          <button 
+                            className="btn btn-primary" 
+                            onClick={handleRunBackup}
+                            disabled={backupLoading || backupSettings.categories.length === 0}
+                          >
+                            <Save size={14} />
+                            {backupLoading ? 'Створення...' : 'Запустити бекап зараз'}
+                          </button>
+                        </div>
+
+                        {lastBackupStatus && (
+                          <div style={{ fontSize: '0.8125rem', color: '#64748b', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <strong>Останній бекап:</strong> {new Date().toLocaleString('uk-UA')}<br/>
+                            Успішно завантажено {lastBackupStatus.length} категорій в Google Drive.
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
