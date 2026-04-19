@@ -171,7 +171,7 @@ export async function GET(
 
     const pdfBytes = await pdfDoc.save();
     
-    return new Response(pdfBytes, {
+    return new Response(Buffer.from(pdfBytes), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="certificate-${cert.public_id}.pdf"`,
