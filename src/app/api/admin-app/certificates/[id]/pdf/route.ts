@@ -10,10 +10,11 @@ import path from 'path';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Font URLs (Raw files for direct embedding)
+// Font URLs (Reliable sources)
 const FONT_URL = 'https://raw.githubusercontent.com/DmitryUshakov/bebas-neue-cyrillic/master/BebasNeueCyrillic.ttf';
 const ERMILOV_FONT_URL = 'https://raw.githubusercontent.com/itroboticsmanager-rgb/ITRCRM/main/public/fonts/Ermilov-Bold.otf';
-const FALLBACK_FONT_URL = 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.ttf'; // Use TTF for fallback
+// Standard Google Fonts Roboto TTF (direct link to the file)
+const FALLBACK_FONT_URL = 'https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Regular.ttf';
 
 async function fetchFont(url: string): Promise<Uint8Array> {
   const res = await fetch(url);
@@ -43,15 +44,23 @@ export async function GET(
     const pdfDoc = await PDFDocument.create();
     pdfDoc.registerFontkit(fontkit);
 
-    // 2. Load Fonts
-    let fontBytes;
+    // 2. Load Fonts (with individual error handling for stability)
+    let font;
     try {
-      fontBytes = await fetchFont(FONT_URL);
-    } catch (e) {
-      console.warn('Failed to fetch Bebas Neue Cyrillic font, using fallback:', e);
-      fontBytes = await fetchFont(FALLBACK_FONT_URL);
+      let fontBytes;
+      try {
+        fontBytes = await fetchFont(FONT_URL);
+      } catch (e) {
+        console.warn('Failed to fetch Bebas Neue Cyrillic font, using fallback:', e);
+        fontBytes = await fetchFont(FALLBACK_FONT_URL);
+      }
+      font = await pdfDoc.embedFont(fontBytes);
+    } catch (fontError) {
+      console.error('Critical font loading error (Bebas/Roboto):', fontError);
+      // Last resort fallback to standard Helvetica (no cyrillic support but prevents 500 error)
+      const { StandardFonts } = require('pdf-lib');
+      font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     }
-    const font = await pdfDoc.embedFont(fontBytes);
 
     let ermilovFont;
     try {
@@ -64,7 +73,7 @@ export async function GET(
       }
       ermilovFont = await pdfDoc.embedFont(ermilovBytes);
     } catch (e) {
-      console.warn('Failed to fetch Ermilov font, using Bebas as fallback:', e);
+      console.warn('Failed to fetch Ermilov font, using main font as fallback:', e);
       ermilovFont = font;
     }
 
