@@ -1867,6 +1867,10 @@
     gap: 0.6rem;
   }
 
+  .panelHeaderActions > .segmented {
+    margin-left: auto;
+  }
+
   .textLink,
   .textButton {
     font-size: 0.82rem;
