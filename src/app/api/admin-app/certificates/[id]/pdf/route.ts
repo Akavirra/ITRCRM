@@ -10,10 +10,10 @@ import path from 'path';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Font URLs
-const FONT_URL = 'https://cdn.jsdelivr.net/gh/DmitryUshakov/bebas-neue-cyrillic@master/BebasNeueCyrillic.ttf';
-const ERMILOV_FONT_URL = 'https://cdn.jsdelivr.net/gh/itroboticsmanager-rgb/ITRCRM@main/public/fonts/Ermilov-Bold.otf'; // Assuming it's in your repo or use a public one
-const FALLBACK_FONT_URL = 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.woff2';
+// Font URLs (Raw files for direct embedding)
+const FONT_URL = 'https://raw.githubusercontent.com/DmitryUshakov/bebas-neue-cyrillic/master/BebasNeueCyrillic.ttf';
+const ERMILOV_FONT_URL = 'https://raw.githubusercontent.com/itroboticsmanager-rgb/ITRCRM/main/public/fonts/Ermilov-Bold.otf';
+const FALLBACK_FONT_URL = 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.ttf'; // Use TTF for fallback
 
 async function fetchFont(url: string): Promise<Uint8Array> {
   const res = await fetch(url);
@@ -51,11 +51,10 @@ export async function GET(
       console.warn('Failed to fetch Bebas Neue Cyrillic font, using fallback:', e);
       fontBytes = await fetchFont(FALLBACK_FONT_URL);
     }
-    const font = await pdfDoc.embedFont(fontBytes, { subset: false });
+    const font = await pdfDoc.embedFont(fontBytes);
 
     let ermilovFont;
     try {
-      // Trying to load from local first if possible, otherwise from URL
       const localErmilovPath = path.join(process.cwd(), 'public', 'fonts', 'Ermilov-Bold.otf');
       let ermilovBytes;
       try {
@@ -63,7 +62,7 @@ export async function GET(
       } catch {
         ermilovBytes = await fetchFont(ERMILOV_FONT_URL);
       }
-      ermilovFont = await pdfDoc.embedFont(ermilovBytes, { subset: false });
+      ermilovFont = await pdfDoc.embedFont(ermilovBytes);
     } catch (e) {
       console.warn('Failed to fetch Ermilov font, using Bebas as fallback:', e);
       ermilovFont = font;
