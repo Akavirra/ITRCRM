@@ -52,6 +52,7 @@ export default function CertificatesPage() {
   const canCreate = !saving && formData.amount > 0 && formData.count > 0;
   const modalMaxWidth = activeTab === 'design' ? '960px' : '560px';
   const totalAmount = Math.max(formData.amount, 0) * Math.max(formData.count, 0);
+  const selectedTemplateName = selectedFile?.name || 'Файл не вибрано';
 
   useEffect(() => {
     const fetchCertificates = async () => {
@@ -527,111 +528,227 @@ export default function CertificatesPage() {
                 </div>
               ) : (
                 <div style={{ display: 'grid', gap: '24px' }}>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gap: '16px',
-                      padding: '24px',
-                      background: 'var(--gray-50)',
-                      border: '1px solid var(--gray-200)',
-                      borderRadius: '12px'
-                    }}
-                  >
-                    <div style={{ display: 'grid', gap: '8px' }}>
-                      <span style={{ fontSize: '16px', lineHeight: '24px', fontWeight: 600, color: 'var(--gray-900)' }}>
-                        Редактор дизайну
-                      </span>
-                      <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-600)' }}>
-                        Перетягніть `ID` або суму прямо на макеті, а точні значення поправте нижче.
-                      </span>
-                    </div>
-                    {templateUrl ? (
-                      <div
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
-                        style={{
-                          position: 'relative',
-                          borderRadius: '12px',
-                          overflow: 'hidden',
-                          border: '1px solid var(--gray-200)',
-                          cursor: dragging ? 'grabbing' : 'crosshair',
-                          userSelect: 'none',
-                          containerType: 'inline-size'
-                        }}
-                      >
-                        <img
-                          src={templateUrl}
-                          alt="Template"
-                          onLoad={(e) => setImageDimensions({ width: e.currentTarget.naturalWidth || 842, height: e.currentTarget.naturalHeight || 595 })}
-                          style={{ width: '100%', display: 'block', pointerEvents: 'none' }}
-                        />
-
-                        {/* Interactive ID */}
-                        <div
-                          onMouseDown={(e) => { e.stopPropagation(); setDragging('id'); }}
-                          style={{
-                            position: 'absolute',
-                            left: `${idSettings.xPercent}%`,
-                            bottom: `${idSettings.yPercent}%`,
-                            transform: 'translateX(-50%)',
-                            fontSize: `${(idSettings.fontSize / imageDimensions.width) * 100}cqi`,
-                            color: idSettings.color,
-                            fontWeight: 400,
-                            fontFamily: 'var(--font-certificate-id), sans-serif',
-                            letterSpacing: `${(idSettings.idLetterSpacing / imageDimensions.width) * 100}cqi`,
-                            cursor: 'grab',
-                            padding: '0.5cqi',
-                            whiteSpace: 'nowrap',
-                            border: dragging === 'id' ? '1px dashed var(--primary)' : '1px solid transparent',
-                            background: dragging === 'id' ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
-                            lineHeight: 1
-                          }}
-                        >
-                          ID:85331
-                        </div>
-
-                        {/* Interactive Amount */}
-                        <div
-                          onMouseDown={(e) => { e.stopPropagation(); setDragging('amount'); }}
-                          style={{
-                            position: 'absolute',
-                            left: `${idSettings.amountXPercent}%`,
-                            bottom: `${idSettings.amountYPercent}%`,
-                            transform: `translateX(-50%) rotate(${idSettings.amountRotation}deg)`,
-                            color: idSettings.amountColor,
-                            fontWeight: 400,
-                            fontFamily: 'var(--font-certificate-amount), sans-serif',
-                            cursor: 'grab',
-                            transformOrigin: 'center center',
-                            textAlign: 'center',
-                            whiteSpace: 'nowrap',
-                            padding: '0.5cqi',
-                            border: dragging === 'amount' ? '1px dashed var(--primary)' : '1px solid transparent',
-                            background: dragging === 'amount' ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
-                            lineHeight: 1
-                          }}
-                        >
-                          <div style={{ fontSize: `${(idSettings.amountFontSize / imageDimensions.width) * 100}cqi`, pointerEvents: 'none' }}>{formData.amount}</div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{
-                        height: '160px',
-                        background: 'var(--gray-50)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '2px dashed var(--gray-300)',
-                        borderRadius: '12px',
-                        color: 'var(--gray-500)'
-                      }}>
-                        Шаблон не завантажено
-                      </div>
-                    )}
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    <span style={{ fontSize: '16px', lineHeight: '24px', fontWeight: 600, color: 'var(--gray-900)' }}>
+                      Редактор дизайну
+                    </span>
+                    <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-600)' }}>
+                      Макет залишається перед очима, а всі налаштування зібрані праворуч. Можна тягнути елементи на прев’ю або точно підкручувати значення в панелі.
+                    </span>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(320px, 0.9fr)', gap: '20px', alignItems: 'start' }}>
+                    <div
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        display: 'grid',
+                        gap: '12px',
+                        padding: '20px',
+                        background: 'var(--gray-50)',
+                        border: '1px solid var(--gray-200)',
+                        borderRadius: '12px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '14px', lineHeight: '20px', fontWeight: 600, color: 'var(--gray-900)' }}>
+                          Прев’ю сертифіката
+                        </span>
+                        <span style={{ fontSize: '12px', lineHeight: '16px', color: 'var(--gray-500)' }}>
+                          Тягніть елементи мишкою
+                        </span>
+                      </div>
+                      {templateUrl ? (
+                        <div
+                          onMouseMove={handleMouseMove}
+                          onMouseUp={handleMouseUp}
+                          onMouseLeave={handleMouseUp}
+                          style={{
+                            position: 'relative',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            border: '1px solid var(--gray-200)',
+                            cursor: dragging ? 'grabbing' : 'crosshair',
+                            userSelect: 'none',
+                            containerType: 'inline-size',
+                            background: '#ffffff'
+                          }}
+                        >
+                          <img
+                            src={templateUrl}
+                            alt="Template"
+                            onLoad={(e) => setImageDimensions({ width: e.currentTarget.naturalWidth || 842, height: e.currentTarget.naturalHeight || 595 })}
+                            style={{ width: '100%', display: 'block', pointerEvents: 'none' }}
+                          />
+
+                          <div
+                            onMouseDown={(e) => { e.stopPropagation(); setDragging('id'); }}
+                            style={{
+                              position: 'absolute',
+                              left: `${idSettings.xPercent}%`,
+                              bottom: `${idSettings.yPercent}%`,
+                              transform: 'translateX(-50%)',
+                              fontSize: `${(idSettings.fontSize / imageDimensions.width) * 100}cqi`,
+                              color: idSettings.color,
+                              fontWeight: 400,
+                              fontFamily: 'var(--font-certificate-id), sans-serif',
+                              letterSpacing: `${(idSettings.idLetterSpacing / imageDimensions.width) * 100}cqi`,
+                              cursor: 'grab',
+                              padding: '0.5cqi',
+                              whiteSpace: 'nowrap',
+                              border: dragging === 'id' ? '1px dashed var(--primary)' : '1px solid transparent',
+                              background: dragging === 'id' ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+                              lineHeight: 1
+                            }}
+                          >
+                            ID:85331
+                          </div>
+
+                          <div
+                            onMouseDown={(e) => { e.stopPropagation(); setDragging('amount'); }}
+                            style={{
+                              position: 'absolute',
+                              left: `${idSettings.amountXPercent}%`,
+                              bottom: `${idSettings.amountYPercent}%`,
+                              transform: `translateX(-50%) rotate(${idSettings.amountRotation}deg)`,
+                              color: idSettings.amountColor,
+                              fontWeight: 400,
+                              fontFamily: 'var(--font-certificate-amount), sans-serif',
+                              cursor: 'grab',
+                              transformOrigin: 'center center',
+                              textAlign: 'center',
+                              whiteSpace: 'nowrap',
+                              padding: '0.5cqi',
+                              border: dragging === 'amount' ? '1px dashed var(--primary)' : '1px solid transparent',
+                              background: dragging === 'amount' ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+                              lineHeight: 1
+                            }}
+                          >
+                            <div style={{ fontSize: `${(idSettings.amountFontSize / imageDimensions.width) * 100}cqi`, pointerEvents: 'none' }}>{formData.amount}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{
+                          height: '220px',
+                          background: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '2px dashed var(--gray-300)',
+                          borderRadius: '12px',
+                          color: 'var(--gray-500)'
+                        }}>
+                          Шаблон не завантажено
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'grid', gap: '16px' }}>
+                      <div
+                        style={{
+                          display: 'grid',
+                          gap: '16px',
+                          padding: '20px',
+                          background: '#ffffff',
+                          border: '1px solid var(--gray-200)',
+                          borderRadius: '12px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                          <ImageIcon size={18} style={{ color: 'var(--gray-600)', flexShrink: 0, marginTop: '1px' }} />
+                          <div style={{ display: 'grid', gap: '4px' }}>
+                            <span style={{ fontSize: '16px', lineHeight: '24px', fontWeight: 600, color: 'var(--gray-900)' }}>
+                              Шаблон сертифіката
+                            </span>
+                            <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-600)' }}>
+                              Оновіть фон через одну спокійну дію, без системних елементів інтерфейсу.
+                            </span>
+                          </div>
+                        </div>
+
+                        <input
+                          id="certificate-template-upload"
+                          type="file"
+                          accept="image/png,image/jpeg"
+                          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                          style={{ display: 'none' }}
+                        />
+
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '12px',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '16px',
+                            background: 'var(--gray-50)',
+                            border: '1px solid var(--gray-200)',
+                            borderRadius: '12px'
+                          }}
+                        >
+                          <div style={{ display: 'grid', gap: '4px', minWidth: 0, flex: '1 1 220px' }}>
+                            <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-500)' }}>
+                              Обраний файл
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '14px',
+                                lineHeight: '20px',
+                                fontWeight: 500,
+                                color: selectedFile ? 'var(--gray-900)' : 'var(--gray-600)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              {selectedTemplateName}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <label
+                              htmlFor="certificate-template-upload"
+                              style={{
+                                height: '36px',
+                                padding: '0 16px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--gray-300)',
+                                background: '#ffffff',
+                                color: 'var(--gray-800)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                transition: 'background-color 160ms ease-out, border-color 160ms ease-out, transform 120ms ease-out'
+                              }}
+                            >
+                              Обрати файл
+                            </label>
+
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={handleUploadTemplate}
+                              disabled={!selectedFile || uploading}
+                              style={{ minWidth: '132px' }}
+                            >
+                              <Upload size={16} />
+                              {uploading ? 'Завантаження…' : 'Оновити'}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', color: 'var(--gray-500)' }}>
+                          <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
+                          <span style={{ fontSize: '13px', lineHeight: '18px' }}>
+                            Підтримуються формати PNG та JPG.
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                     <div
                       style={{
                         display: 'grid',
@@ -763,53 +880,7 @@ export default function CertificatesPage() {
                         />
                       </div>
                     </div>
-                  </div>
-
-                  <div
-                    style={{
-                      display: 'grid',
-                      gap: '16px',
-                      padding: '20px',
-                      background: '#ffffff',
-                      border: '1px solid var(--gray-200)',
-                      borderRadius: '12px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                      <ImageIcon size={18} style={{ color: 'var(--gray-600)', flexShrink: 0, marginTop: '1px' }} />
-                      <div style={{ display: 'grid', gap: '4px' }}>
-                        <span style={{ fontSize: '16px', lineHeight: '24px', fontWeight: 600, color: 'var(--gray-900)' }}>
-                          Шаблон сертифіката
-                        </span>
-                        <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-600)' }}>
-                          Завантажте новий PNG або JPG, якщо хочете оновити фон сертифіката.
-                        </span>
                       </div>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg"
-                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                        style={{ fontSize: '14px', color: 'var(--gray-700)' }}
-                      />
-                      {selectedFile ? (
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={handleUploadTemplate}
-                          disabled={uploading}
-                        >
-                          <Upload size={16} />
-                          {uploading ? 'Завантаження…' : 'Оновити шаблон'}
-                        </button>
-                      ) : (
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', color: 'var(--gray-500)' }}>
-                          <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
-                          <span style={{ fontSize: '13px', lineHeight: '18px' }}>
-                            Підтримуються формати PNG та JPG.
-                          </span>
-                        </div>
-                      )}
                     </div>
                   </div>
 
