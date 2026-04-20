@@ -100,10 +100,10 @@ export default function GraduationCertificatesPage() {
         setCertificates(Array.isArray(certData) ? certData : []);
 
         const studentData = await studentRes.json();
-        setStudents(Array.isArray(studentData) ? studentData.map((s: any) => ({ id: s.id, full_name: s.full_name, gender: s.gender })) : []);
+        setStudents(Array.isArray(studentData.students) ? studentData.students.map((s: any) => ({ id: s.id, full_name: s.full_name, gender: s.gender })) : []);
 
         const courseData = await courseRes.json();
-        setCourses(Array.isArray(courseData) ? courseData.map((c: any) => ({ id: c.id, title: c.title })) : []);
+        setCourses(Array.isArray(courseData.courses) ? courseData.courses.map((c: any) => ({ id: c.id, title: c.title })) : []);
 
         const templateData = await templateRes.json();
         if (templateData.url) setTemplateUrl(templateData.url);
@@ -354,19 +354,34 @@ export default function GraduationCertificatesPage() {
               </button>
             </div>
 
-            <div className="modal-tabs">
-              <button
-                className={`modal-tab ${activeTab === 'create' ? 'active' : ''}`}
-                onClick={() => setActiveTab('create')}
-              >
-                Генерація
-              </button>
-              <button
-                className={`modal-tab ${activeTab === 'design' ? 'active' : ''}`}
-                onClick={() => setActiveTab('design')}
-              >
-                Дизайн
-              </button>
+            <div style={{ display: 'flex', gap: '8px', padding: '12px 20px 0', borderBottom: '1px solid var(--gray-200)' }}>
+              {[
+                { id: 'create', label: 'Генерація' },
+                { id: 'design', label: 'Дизайн' },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as 'create' | 'design')}
+                    style={{
+                      height: '36px',
+                      padding: '0 16px',
+                      borderRadius: '8px 8px 0 0',
+                      border: 'none',
+                      borderBottom: isActive ? '2px solid var(--gray-900)' : '2px solid transparent',
+                      background: isActive ? '#ffffff' : 'transparent',
+                      color: isActive ? 'var(--gray-900)' : 'var(--gray-600)',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'color 180ms ease-out, border-color 180ms ease-out',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="modal-body" style={{ padding: '20px' }}>
