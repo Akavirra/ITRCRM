@@ -365,16 +365,16 @@ export default function GraduationCertificatesPage() {
           <div
             className="modal"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: modalMaxWidth, width: '95%' }}
+            style={{ maxWidth: modalMaxWidth, width: '100%', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: '1px solid var(--gray-200)', boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)' }}
           >
-            <div className="modal-header">
+            <div className="modal-header" style={{ flexShrink: 0 }}>
               <h3 className="modal-title">Новий сертифікат про закінчення</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}>
                 ×
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', padding: '12px 20px 0', borderBottom: '1px solid var(--gray-200)' }}>
+            <div style={{ display: 'flex', gap: '8px', padding: '12px 20px 0', borderBottom: '1px solid var(--gray-200)', flexShrink: 0 }}>
               {[
                 { id: 'create', label: 'Генерація' },
                 { id: 'design', label: 'Дизайн' },
@@ -404,7 +404,7 @@ export default function GraduationCertificatesPage() {
               })}
             </div>
 
-            <div className="modal-body" style={{ padding: '20px' }}>
+            <div className="modal-body" style={{ overflowY: 'auto', flex: '1 1 auto', padding: '20px' }}>
               {activeTab === 'create' ? (
                 <div style={{ display: 'grid', gap: '16px' }}>
                   <div className="form-group">
@@ -677,7 +677,7 @@ export default function GraduationCertificatesPage() {
               )}
             </div>
 
-            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', flexShrink: 0 }}>
               <button className="btn btn-secondary" onClick={() => setShowModal(false)} style={{ minWidth: '112px' }}>
                 {t('actions.close')}
               </button>
