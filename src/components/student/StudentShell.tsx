@@ -23,25 +23,39 @@ const NAV = [
 
 export default function StudentShell({ student, children }: StudentHeaderProps) {
   const pathname = usePathname() || '';
-  // Користувач бачить /dashboard, але middleware вже rewrite'нуло на /s/dashboard
   const normalize = (p: string) => p.replace(/^\/s(\/|$)/, '/');
   const currentPath = normalize(pathname);
 
   return (
-    <>
+    <div className="student-app-wrapper">
       <header className="student-header">
-        <div>
+        <div className="student-header-logo">
           <h1>ITRobotics</h1>
           <div className="student-code">{student.code}</div>
         </div>
-        <div style={{ fontSize: 13, textAlign: 'right' }}>
+        
+        {/* Desktop Navigation */}
+        <nav className="student-desktop-nav" aria-label="Навігація для комп'ютера">
+          {NAV.map((item) => {
+            const active = currentPath === item.href || currentPath.startsWith(item.href + '/');
+            return (
+              <Link key={item.href} href={item.href} className={active ? 'active' : ''}>
+                <span className="student-nav-icon" aria-hidden="true">{item.icon}</span>
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="student-header-profile">
           <div style={{ fontWeight: 500 }}>{student.full_name}</div>
         </div>
       </header>
 
-      <div className="student-container">{children}</div>
+      <main className="student-container">{children}</main>
 
-      <nav className="student-nav" aria-label="Основна навігація">
+      {/* Mobile Navigation (Bottom) */}
+      <nav className="student-mobile-nav" aria-label="Основна навігація">
         {NAV.map((item) => {
           const active = currentPath === item.href || currentPath.startsWith(item.href + '/');
           return (
@@ -52,6 +66,6 @@ export default function StudentShell({ student, children }: StudentHeaderProps) 
           );
         })}
       </nav>
-    </>
+    </div>
   );
 }

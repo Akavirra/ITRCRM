@@ -95,7 +95,9 @@ export default async function StudentSchedulePage() {
             }}>
               {key === todayKey ? 'Сьогодні — ' : ''}{group.label}
             </div>
-            {group.items.map((l) => <LessonRow key={l.id} lesson={l} />)}
+            <div className="student-dashboard-grid">
+              {group.items.map((l) => <LessonRow key={l.id} lesson={l} />)}
+            </div>
           </section>
         ))
       )}

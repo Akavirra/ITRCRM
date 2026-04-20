@@ -104,13 +104,15 @@ export default async function StudentDashboardPage() {
 
       <div className="student-section-header">На цей тиждень</div>
 
-      {lessons.length === 0 ? (
-        <div className="student-empty">
-          Порожньо. Коли з'явиться наступне заняття — ми покажемо його тут.
-        </div>
-      ) : (
-        lessons.map((l) => <LessonRow key={l.id} lesson={l} />)
-      )}
+      <div className="student-dashboard-grid">
+        {lessons.length === 0 ? (
+          <div className="student-empty" style={{ gridColumn: '1 / -1' }}>
+            Порожньо. Коли з'явиться наступне заняття — ми покажемо його тут.
+          </div>
+        ) : (
+          lessons.map((l) => <LessonRow key={l.id} lesson={l} />)
+        )}
+      </div>
 
       <div style={{ marginTop: 20, textAlign: 'center' }}>
         <Link href="/schedule" className="student-secondary-btn">
