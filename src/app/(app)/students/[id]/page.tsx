@@ -27,6 +27,7 @@ interface Student {
   photo: string | null;
   school: string | null;
   discount: number | null;
+  gender: 'male' | 'female' | null;
   parent_relation: string | null;
   parent2_name: string | null;
   parent2_phone: string | null;
@@ -56,6 +57,7 @@ interface StudentFormData {
   email: string;
   school: string;
   discount: string;
+  gender: '' | 'male' | 'female';
   photo: string | null;
   photoFile: File | null;
   phone: string;
@@ -539,6 +541,7 @@ export default function StudentProfilePage() {
     email: '',
     school: '',
     discount: '',
+    gender: '',
     photo: null,
     photoFile: null,
     phone: '',
@@ -662,6 +665,7 @@ export default function StudentProfilePage() {
       email: student.email || '',
       school: student.school || '',
       discount: student.discount != null ? String(student.discount) : '',
+      gender: student.gender || '',
       photo: student.photo,
       photoFile: null,
       phone: '',
@@ -743,6 +747,7 @@ export default function StudentProfilePage() {
         birth_date: formData.birth_date,
         school: formData.school,
         discount: formData.discount,
+        gender: formData.gender || null,
         parent_relation: formData.parent_relation === 'other' ? formData.parent_relation_other : formData.parent_relation,
         parent2_name: formData.parent2_name,
         parent2_phone: formData.parent2_phone ? `+380${formData.parent2_phone}` : null,
@@ -1347,6 +1352,21 @@ export default function StudentProfilePage() {
                   />
                 </div>
                 
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
+                    Стать
+                  </label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as '' | 'male' | 'female' })}
+                    className="form-select"
+                    style={{ width: '100%' }}
+                  >
+                    <option value="">Не вказано</option>
+                    <option value="female">Жіноча</option>
+                    <option value="male">Чоловіча</option>
+                  </select>
+                </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '500', color: 'var(--gray-700)', marginBottom: '0.375rem' }}>
                     Email

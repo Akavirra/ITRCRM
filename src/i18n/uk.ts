@@ -18,6 +18,8 @@ export const uk = {
     settings: 'Налаштування',
     camps: 'Табори',
     certificates: 'Сертифікати',
+    certificatesGift: 'Подарункові',
+    certificatesGraduation: 'Про закінчення',
   },
 
   // Search

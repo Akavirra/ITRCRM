@@ -76,7 +76,8 @@ CREATE TABLE enrollment_submissions (
   reviewed_at timestamp with time zone,
   student_id integer,
   created_at timestamp with time zone DEFAULT now(),
-  parent2_phone text
+  parent2_phone text,
+  gender text CHECK (gender IN ('male', 'female'))
 );
 
 -- Constraints for enrollment_submissions
@@ -679,6 +680,23 @@ CREATE INDEX idx_students_phone_trgm ON public.students USING gin (phone gin_trg
 CREATE UNIQUE INDEX idx_students_public_id ON public.students USING btree (public_id);
 CREATE UNIQUE INDEX students_pkey ON public.students USING btree (id);
 CREATE UNIQUE INDEX students_public_id_key ON public.students USING btree (public_id);
+
+-- Table: completion_certificates
+CREATE TABLE completion_certificates (
+  id SERIAL PRIMARY KEY,
+  student_id integer NOT NULL,
+  course_id integer,
+  group_id integer,
+  issue_date date NOT NULL,
+  gender text NOT NULL CHECK (gender IN ('male', 'female')),
+  template_url text,
+  created_by integer,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now()
+);
+
+CREATE INDEX idx_completion_certificates_student_id ON public.completion_certificates USING btree (student_id);
+CREATE INDEX idx_completion_certificates_course_id ON public.completion_certificates USING btree (course_id);
 
 -- Table: system_settings
 CREATE TABLE system_settings (

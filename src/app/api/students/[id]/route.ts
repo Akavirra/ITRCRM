@@ -105,7 +105,8 @@ export async function PUT(
       parent2_relation,
       interested_courses,
       source,
-      photo
+      photo,
+      gender
     } = body;
     
     // Use existing full_name if not provided (for partial updates like notes only)
@@ -141,7 +142,8 @@ export async function PUT(
       parent2_phone !== undefined ? parent2_phone?.trim() : existingStudent.parent2_phone,
       parent2_relation !== undefined ? parent2_relation?.trim() : existingStudent.parent2_relation,
       interested_courses !== undefined ? interested_courses : existingStudent.interested_courses,
-      source !== undefined ? source?.trim() : existingStudent.source
+      source !== undefined ? source?.trim() : existingStudent.source,
+      gender !== undefined ? (gender || null) : existingStudent.gender
     );
 
     // Normalize dates to YYYY-MM-DD for comparison (DB returns full timestamp, form sends ISO string)
@@ -165,6 +167,7 @@ export async function PUT(
       { field: 'parent2_name', oldVal: existingStudent.parent2_name ?? null, newVal: parent2_name !== undefined ? (parent2_name?.trim() ?? null) : (existingStudent.parent2_name ?? null) },
       { field: 'parent2_relation', oldVal: existingStudent.parent2_relation ?? null, newVal: parent2_relation !== undefined ? (parent2_relation?.trim() ?? null) : (existingStudent.parent2_relation ?? null) },
       { field: 'interested_courses', oldVal: existingStudent.interested_courses ?? null, newVal: interested_courses !== undefined ? (interested_courses != null ? String(interested_courses) : null) : (existingStudent.interested_courses ?? null) },
+      { field: 'gender', oldVal: existingStudent.gender ?? null, newVal: gender !== undefined ? (gender || null) : (existingStudent.gender ?? null) },
     ];
 
     const changedFields = trackedFields.filter(

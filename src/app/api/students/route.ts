@@ -197,7 +197,8 @@ export async function POST(request: NextRequest) {
       parent2_relation,
       interested_courses,
       source,
-      photo
+      photo,
+      gender
     } = body;
     
     if (!full_name || full_name.trim().length === 0) {
@@ -235,7 +236,8 @@ export async function POST(request: NextRequest) {
       parent2_phone?.trim(),
       parent2_relation?.trim(),
       interestedCoursesValue,
-      source?.trim()
+      source?.trim(),
+      gender || undefined
     );
     
     await safeAddStudentHistoryEntry(

@@ -252,6 +252,35 @@ export default function CertificatesPage() {
 
   return (
     <>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--gray-200)', paddingBottom: '0.5rem' }}>
+        <button
+          className="btn btn-sm"
+          style={{
+            fontWeight: 600,
+            color: '#111827',
+            borderBottom: '2px solid #111827',
+            borderRadius: 0,
+            background: 'transparent',
+            padding: '0.5rem 0.75rem',
+          }}
+        >
+          Подарункові
+        </button>
+        <button
+          className="btn btn-sm"
+          onClick={() => router.push('/certificates/graduation')}
+          style={{
+            fontWeight: 400,
+            color: '#6b7280',
+            borderBottom: '2px solid transparent',
+            borderRadius: 0,
+            background: 'transparent',
+            padding: '0.5rem 0.75rem',
+          }}
+        >
+          Про закінчення
+        </button>
+      </div>
       <div className="card">
         <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
           <h3 className="card-title">{t('nav.certificates')}</h3>

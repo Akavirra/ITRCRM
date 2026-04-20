@@ -21,6 +21,7 @@ export type StudentRecord = {
   parent2_relation?: string | null;
   interested_courses?: string | null;
   source?: string | null;
+  gender?: 'male' | 'female' | null;
 };
 
 type FormState = {
@@ -30,6 +31,7 @@ type FormState = {
   email: string;
   school: string;
   discount: string;
+  gender: '' | 'male' | 'female';
   parent_name: string;
   parent_relation: string;
   parent_relation_other: string;
@@ -65,6 +67,7 @@ const EMPTY_FORM: FormState = {
   email: '',
   school: '',
   discount: '',
+  gender: '',
   parent_name: '',
   parent_relation: '',
   parent_relation_other: '',
@@ -97,6 +100,23 @@ const SOURCE_OPTIONS = [
 
 function formatPhoneNumber(value: string) {
   return value.replace(/\D/g, '').slice(-9);
+}
+
+function detectGender(name: string): '' | 'male' | 'female' {
+  const firstName = name.trim().split(/\s+/)[0].toLowerCase();
+  if (!firstName) return '';
+  // Common exceptions
+  const ambiguous = ['саша', 'женя', 'женя', 'валі', 'валя'];
+  if (ambiguous.includes(firstName)) return '';
+  // Female names usually end with 'а' or 'я' in Ukrainian
+  const lastChar = firstName.slice(-1);
+  if (lastChar === 'а' || lastChar === 'я') {
+    // Some male names also end with 'я' (e.g., Ілля, Миколая is rare)
+    const maleEndingWithYa = ['ілля', 'нікіта', 'мікола', 'кузя', 'савва', 'таїсія'];
+    if (maleEndingWithYa.includes(firstName)) return 'male';
+    return 'female';
+  }
+  return 'male';
 }
 
 function extractPhoneDigits(value?: string | null) {
@@ -144,6 +164,7 @@ function mapStudentToForm(student: StudentRecord): FormState {
     email: student.email || '',
     school: student.school || '',
     discount: student.discount != null ? String(student.discount) : '',
+    gender: student.gender || '',
     parent_name: student.parent_name || '',
     parent_relation: primaryRelation.value,
     parent_relation_other: primaryRelation.other,
@@ -203,6 +224,7 @@ function mapPrefillToForm(prefill: CreateStudentPrefill): FormState {
     email: prefill.email || '',
     school: prefill.school || '',
     discount: prefill.discount != null ? String(prefill.discount) : '',
+    gender: detectGender(nameParts[0] || ''),
     parent_name: prefill.parent_name || '',
     parent_relation: primaryRelation.value,
     parent_relation_other: primaryRelation.other,
@@ -433,7 +455,8 @@ export default function CreateStudentModal({
   };
 
   const handleFirstNameChange = async (value: string) => {
-    setForm((prev) => ({ ...prev, first_name: value }));
+    const detected = detectGender(value);
+    setForm((prev) => ({ ...prev, first_name: value, gender: detected || prev.gender }));
     await searchStudentNames(value);
     setShowSuggestions(value.trim().length >= 3);
   };
@@ -566,6 +589,7 @@ export default function CreateStudentModal({
           birth_date: form.birth_date || null,
           school: form.school || null,
           discount: form.discount || null,
+          gender: form.gender || null,
           parent_relation: form.parent_relation === 'other' ? form.parent_relation_other.trim() : form.parent_relation,
           parent2_name: form.parent2_name || null,
           parent2_phone: form.parent2_phone ? `+380${form.parent2_phone}` : null,
@@ -769,6 +793,18 @@ export default function CreateStudentModal({
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label">{t('forms.birthDate')}</label>
                       <input type="date" className="form-input" value={form.birth_date} onChange={(e) => setForm((prev) => ({ ...prev, birth_date: e.target.value }))} />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Стать</label>
+                      <select
+                        className="form-select"
+                        value={form.gender}
+                        onChange={(e) => setForm((prev) => ({ ...prev, gender: e.target.value as '' | 'male' | 'female' }))}
+                      >
+                        <option value="">Не вказано</option>
+                        <option value="female">Жіноча</option>
+                        <option value="male">Чоловіча</option>
+                      </select>
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label">Email</label>
