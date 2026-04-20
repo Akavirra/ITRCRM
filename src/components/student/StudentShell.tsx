@@ -18,6 +18,7 @@ interface StudentHeaderProps {
 const NAV = [
   { href: '/dashboard', label: 'Головна', icon: '🏠' },
   { href: '/schedule', label: 'Розклад', icon: '📅' },
+  { href: '/attendance', label: 'Історія', icon: '⏳' },
   { href: '/profile', label: 'Профіль', icon: '👤' },
 ];
 

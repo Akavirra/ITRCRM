@@ -43,6 +43,7 @@ const STUDENT_ALLOWED_PATHS = [
   '/login',
   '/dashboard',
   '/schedule',
+  '/attendance',
   '/profile',
   '/api/student/',
   // Next.js internals + static

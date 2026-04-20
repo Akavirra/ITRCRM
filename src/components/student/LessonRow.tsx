@@ -71,7 +71,7 @@ function attendanceBadge(status: string | null) {
     present: { cls: 'student-badge--present', label: 'Був' },
     absent: { cls: 'student-badge--absent', label: 'Пропуск' },
     late: { cls: 'student-badge--late', label: 'Запізнився' },
-    excused: { cls: 'student-badge--late', label: 'Поважна причина' },
+    excused: { cls: 'student-badge--excused', label: 'Поважна причина' },
   };
   const found = map[status];
   if (!found) return null;
