@@ -22,6 +22,37 @@ async function fetchFont(url: string): Promise<Uint8Array> {
   return new Uint8Array(await res.arrayBuffer());
 }
 
+function getHexColor(hexColor: string | undefined, fallback: [number, number, number]) {
+  const hex = (hexColor || '').replace('#', '');
+  if (hex.length !== 6) {
+    return rgb(fallback[0], fallback[1], fallback[2]);
+  }
+
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  if ([r, g, b].some((value) => Number.isNaN(value))) {
+    return rgb(fallback[0], fallback[1], fallback[2]);
+  }
+
+  return rgb(r / 255, g / 255, b / 255);
+}
+
+function getTextHeight(font: any, size: number) {
+  try {
+    return font.heightAtSize(size, { descender: true });
+  } catch {
+    return font.heightAtSize(size);
+  }
+}
+
+function getBottomAlignedBaseline(font: any, size: number, bottomAnchorY: number) {
+  const textHeight = getTextHeight(font, size);
+  const descenderAllowance = textHeight * 0.14;
+  return bottomAnchorY + descenderAllowance;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -186,8 +217,8 @@ export async function GET(
 
     // 5. Draw Certificate ID
     const idText = `${cert.public_id}`;
-    const baseFontSize = settings.fontSize || 36;
-    const baseCharacterSpacing = settings.idLetterSpacing || 1.5;
+    const baseFontSize = settings.fontSize ?? 36;
+    const baseCharacterSpacing = settings.idLetterSpacing ?? 1.5;
     
     // Scale factor: how much the image was scaled to fit the PDF page (or vice versa)
     // In our case, the page size IS the image size, so scale is 1.
@@ -200,38 +231,32 @@ export async function GET(
     // Browser/CSS coordinates for the preview start from BOTTOM-LEFT (because I used bottom: % in CSS).
     // So Y coordinate is actually consistent! 
     // BUT: page.drawText(y) is the BASELINE of the text.
-    // In CSS, line-height: 1 places the bottom of the bounding box at Y%, and the baseline is roughly 10% above that.
-    // So to match CSS visually, we must shift the baseline DOWN slightly.
     const x = (width * (settings.xPercent / 100)) - (textWidth / 2);
-    const y = (height * (settings.yPercent / 100)) - (fontSize * 0.1);
-
-    // Parse ID color
-    const hex = (settings.color || '#000000').replace('#', '');
-    const r = parseInt(hex.substring(0, 2), 16) / 255 || 0;
-    const g = parseInt(hex.substring(2, 4), 16) / 255 || 0;
-    const b = parseInt(hex.substring(4, 6), 16) / 255 || 0;
+    const idBottomAnchorY = height * (settings.yPercent / 100);
+    const y = getBottomAlignedBaseline(font, fontSize, idBottomAnchorY);
 
     page.drawText(idText, {
       x,
       y,
       size: fontSize,
       font: font,
-      color: rgb(r, g, b),
+      color: getHexColor(settings.color, [0, 0, 0]),
       characterSpacing: characterSpacing,
     } as any);
 
     // 6. Draw Amount
     const amountVal = `${cert.amount}`;
-    const amountFontSize = settings.amountFontSize || 48;
+    const amountFontSize = settings.amountFontSize ?? 48;
     const amountWidth = ermilovFont.widthOfTextAtSize(amountVal, amountFontSize);
+    const amountHeight = getTextHeight(ermilovFont, amountFontSize);
 
-    const cssRotation = settings.amountRotation || 0;
-    const H = amountFontSize;
+    const cssRotation = settings.amountRotation ?? 0;
+    const H = amountHeight;
     const W = amountWidth;
     
-    // Adjust cy downwards slightly to match the CSS visual centering
     const cx = (width * (settings.amountXPercent / 100));
-    const cy = (height * (settings.amountYPercent / 100)) + (H / 2) - (H * 0.1);
+    const amountBottomAnchorY = height * (settings.amountYPercent / 100);
+    const cy = getBottomAlignedBaseline(ermilovFont, amountFontSize, amountBottomAnchorY) + (H / 2);
 
     const phi = -cssRotation * (Math.PI / 180);
     const relX = -W / 2;
@@ -243,17 +268,12 @@ export async function GET(
     const ax = cx + rotRelX;
     const ay = cy + rotRelY;
 
-    const aHex = (settings.amountColor || '#FFFFFF').replace('#', '');
-    const ar = parseInt(aHex.substring(0, 2), 16) / 255 || 1;
-    const ag = parseInt(aHex.substring(2, 4), 16) / 255 || 1;
-    const ab = parseInt(aHex.substring(4, 6), 16) / 255 || 1;
-
     page.drawText(amountVal, {
       x: ax,
       y: ay,
       size: amountFontSize,
       font: ermilovFont,
-      color: rgb(ar, ag, ab),
+      color: getHexColor(settings.amountColor, [1, 1, 1]),
       rotate: degrees(-cssRotation),
     });
 
