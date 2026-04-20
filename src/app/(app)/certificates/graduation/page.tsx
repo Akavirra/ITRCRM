@@ -79,6 +79,8 @@ export default function GraduationCertificatesPage() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [dragging, setDragging] = useState<number | null>(null);
+  const [imageDimensions, setImageDimensions] = useState({ width: 842, height: 595 });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -238,7 +240,25 @@ export default function GraduationCertificatesPage() {
   };
 
   const canCreate = !saving && formData.student_id && formData.issue_date && formData.gender;
-  const modalMaxWidth = activeTab === 'design' ? '1000px' : '600px';
+  const modalMaxWidth = activeTab === 'design' ? '1200px' : '600px';
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (dragging === null) return;
+    const container = e.currentTarget.getBoundingClientRect();
+    let x = ((e.clientX - container.left) / container.width) * 100;
+    let y = 100 - (((e.clientY - container.top) / container.height) * 100);
+    x = Math.max(0, Math.min(100, x));
+    y = Math.max(0, Math.min(100, y));
+    setBlocks(prev => {
+      const next = [...prev];
+      next[dragging] = { ...next[dragging], xPercent: parseFloat(x.toFixed(2)), yPercent: parseFloat(y.toFixed(2)) };
+      return next;
+    });
+  };
+
+  const handleMouseUp = () => {
+    setDragging(null);
+  };
 
   if (loading) return <PageLoading />;
   if (!user || user.role !== 'admin') return null;
@@ -439,15 +459,91 @@ export default function GraduationCertificatesPage() {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gap: '20px' }}>
-                  {/* Template Upload */}
-                  <div style={{ display: 'grid', gap: '12px', padding: '16px', background: '#f9fafb', borderRadius: '8px' }}>
-                    <div style={{ fontWeight: 600 }}>Шаблон сертифіката</div>
-                    {templateUrl && (
-                      <div style={{ position: 'relative', width: '100%', maxHeight: '300px', overflow: 'hidden', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                        <img src={templateUrl} alt="Template" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(480px, 1.45fr) minmax(360px, 1fr)', gap: '24px', alignItems: 'start' }}>
+                  {/* Preview */}
+                  <div
+                    style={{
+                      position: 'sticky',
+                      top: '16px',
+                      display: 'grid',
+                      gap: '12px',
+                      padding: '20px',
+                      background: 'var(--gray-50)',
+                      border: '1px solid var(--gray-200)',
+                      borderRadius: '12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <ImageIcon size={18} style={{ color: 'var(--gray-600)' }} />
+                      <span style={{ fontWeight: 600, fontSize: '14px' }}>Шаблон сертифіката</span>
+                    </div>
+
+                    {templateUrl ? (
+                      <div
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        style={{
+                          position: 'relative',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          border: '1px solid var(--gray-200)',
+                          cursor: dragging !== null ? 'grabbing' : 'crosshair',
+                          userSelect: 'none',
+                          containerType: 'inline-size',
+                          background: '#ffffff'
+                        }}
+                      >
+                        <img
+                          src={templateUrl}
+                          alt="Template"
+                          onLoad={(e) => setImageDimensions({ width: e.currentTarget.naturalWidth || 842, height: e.currentTarget.naturalHeight || 595 })}
+                          style={{ width: '100%', display: 'block', pointerEvents: 'none' }}
+                        />
+                        {blocks.map((block, idx) => (
+                          <div
+                            key={block.key}
+                            onMouseDown={(e) => { e.stopPropagation(); setDragging(idx); }}
+                            style={{
+                              position: 'absolute',
+                              left: `${block.xPercent}%`,
+                              bottom: `${block.yPercent}%`,
+                              transform: `translateX(-50%)`,
+                              fontSize: `${(block.size / imageDimensions.width) * 100}cqi`,
+                              color: block.color,
+                              fontFamily: block.font === 'script' ? "'Bad Script', cursive" : "'Roboto', sans-serif",
+                              fontWeight: 400,
+                              cursor: 'grab',
+                              padding: '0.5cqi',
+                              whiteSpace: 'nowrap',
+                              border: dragging === idx ? '1px dashed var(--primary)' : '1px solid transparent',
+                              background: dragging === idx ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+                              lineHeight: 1,
+                              textAlign: block.align,
+                            }}
+                          >
+                            {block.key === 'student_name' && "Єва Григор'єва"}
+                            {block.key === 'verb' && 'успішно завершила навчання'}
+                            {block.key === 'course_name' && "«Комп'ютерна графіка та дизайн»"}
+                            {block.key === 'issue_date' && 'Дата видачі: 12.06.2025'}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{
+                        height: '220px',
+                        background: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '2px dashed var(--gray-300)',
+                        borderRadius: '12px',
+                        color: 'var(--gray-500)'
+                      }}>
+                        Шаблон не завантажено
                       </div>
                     )}
+
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                         <Upload size={16} />
@@ -460,112 +556,119 @@ export default function GraduationCertificatesPage() {
                         />
                       </label>
                       {selectedFile && (
-                        <button
-                          className="btn btn-primary"
-                          onClick={handleUploadTemplate}
-                          disabled={uploading}
-                        >
+                        <button className="btn btn-primary" onClick={handleUploadTemplate} disabled={uploading}>
                           {uploading ? 'Завантаження…' : 'Завантажити'}
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {/* Block Settings */}
-                  <div style={{ display: 'grid', gap: '12px' }}>
-                    <div style={{ fontWeight: 600 }}>Позиції текстових блоків</div>
+                  {/* Controls */}
+                  <div style={{ display: 'grid', gap: '16px' }}>
                     {blocks.map((block, idx) => (
-                      <div key={block.key} style={{ display: 'grid', gap: '8px', padding: '12px', background: '#ffffff', border: '1px solid var(--gray-200)', borderRadius: '8px' }}>
-                        <div style={{ fontWeight: 600, fontSize: '14px' }}>{BLOCK_LABELS[block.key] || block.key}</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '12px' }}>Розмір шрифту</label>
-                            <input
-                              type="number"
-                              className="form-input"
-                              value={block.size}
-                              onChange={(e) => {
-                                const newBlocks = [...blocks];
-                                newBlocks[idx].size = parseInt(e.target.value) || 0;
-                                setBlocks(newBlocks);
-                              }}
-                            />
-                          </div>
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '12px' }}>Колір</label>
-                            <input
-                              type="color"
-                              className="form-input"
-                              style={{ padding: '4px', height: '40px' }}
-                              value={block.color}
-                              onChange={(e) => {
-                                const newBlocks = [...blocks];
-                                newBlocks[idx].color = e.target.value;
-                                setBlocks(newBlocks);
-                              }}
-                            />
-                          </div>
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '12px' }}>X (%)</label>
-                            <input
-                              type="number"
-                              className="form-input"
-                              min={0}
-                              max={100}
-                              value={block.xPercent}
-                              onChange={(e) => {
-                                const newBlocks = [...blocks];
-                                newBlocks[idx].xPercent = parseFloat(e.target.value) || 0;
-                                setBlocks(newBlocks);
-                              }}
-                            />
-                          </div>
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '12px' }}>Y (%)</label>
-                            <input
-                              type="number"
-                              className="form-input"
-                              min={0}
-                              max={100}
-                              value={block.yPercent}
-                              onChange={(e) => {
-                                const newBlocks = [...blocks];
-                                newBlocks[idx].yPercent = parseFloat(e.target.value) || 0;
-                                setBlocks(newBlocks);
-                              }}
-                            />
-                          </div>
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '12px' }}>Шрифт</label>
-                            <select
-                              className="form-select"
-                              value={block.font}
-                              onChange={(e) => {
-                                const newBlocks = [...blocks];
-                                newBlocks[idx].font = e.target.value as 'script' | 'roboto';
-                                setBlocks(newBlocks);
-                              }}
-                            >
-                              <option value="script">Каліграфічний</option>
-                              <option value="roboto">Звичайний</option>
-                            </select>
-                          </div>
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '12px' }}>Вирівнювання</label>
-                            <select
-                              className="form-select"
-                              value={block.align}
-                              onChange={(e) => {
-                                const newBlocks = [...blocks];
-                                newBlocks[idx].align = e.target.value as 'left' | 'center' | 'right';
-                                setBlocks(newBlocks);
-                              }}
-                            >
-                              <option value="left">Ліворуч</option>
-                              <option value="center">По центру</option>
-                              <option value="right">Праворуч</option>
-                            </select>
-                          </div>
+                      <div
+                        key={block.key}
+                        style={{
+                          display: 'grid',
+                          gap: '16px',
+                          padding: '20px',
+                          background: '#ffffff',
+                          border: '1px solid var(--gray-200)',
+                          borderRadius: '12px'
+                        }}
+                      >
+                        <div style={{ display: 'grid', gap: '4px' }}>
+                          <span style={{ fontSize: '16px', lineHeight: '24px', fontWeight: 600, color: 'var(--gray-900)' }}>
+                            {BLOCK_LABELS[block.key] || block.key}
+                          </span>
+                          <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-600)' }}>
+                            Перетягніть блок на шаблоні або скористайтеся повзунками.
+                          </span>
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Розмір шрифту</label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={block.size}
+                            onChange={(e) => {
+                              const newBlocks = [...blocks];
+                              newBlocks[idx].size = parseInt(e.target.value) || 0;
+                              setBlocks(newBlocks);
+                            }}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Колір</label>
+                          <input
+                            type="color"
+                            className="form-input"
+                            style={{ padding: '4px', height: '40px' }}
+                            value={block.color}
+                            onChange={(e) => {
+                              const newBlocks = [...blocks];
+                              newBlocks[idx].color = e.target.value;
+                              setBlocks(newBlocks);
+                            }}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Позиція зліва: {block.xPercent}%</label>
+                          <input
+                            type="range"
+                            min="0" max="100"
+                            value={block.xPercent}
+                            onChange={(e) => {
+                              const newBlocks = [...blocks];
+                              newBlocks[idx].xPercent = parseInt(e.target.value);
+                              setBlocks(newBlocks);
+                            }}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Позиція знизу: {block.yPercent}%</label>
+                          <input
+                            type="range"
+                            min="0" max="100"
+                            value={block.yPercent}
+                            onChange={(e) => {
+                              const newBlocks = [...blocks];
+                              newBlocks[idx].yPercent = parseInt(e.target.value);
+                              setBlocks(newBlocks);
+                            }}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Шрифт</label>
+                          <select
+                            className="form-select"
+                            value={block.font}
+                            onChange={(e) => {
+                              const newBlocks = [...blocks];
+                              newBlocks[idx].font = e.target.value as 'script' | 'roboto';
+                              setBlocks(newBlocks);
+                            }}
+                          >
+                            <option value="script">Каліграфічний</option>
+                            <option value="roboto">Звичайний</option>
+                          </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Вирівнювання</label>
+                          <select
+                            className="form-select"
+                            value={block.align}
+                            onChange={(e) => {
+                              const newBlocks = [...blocks];
+                              newBlocks[idx].align = e.target.value as 'left' | 'center' | 'right';
+                              setBlocks(newBlocks);
+                            }}
+                          >
+                            <option value="left">Ліворуч</option>
+                            <option value="center">По центру</option>
+                            <option value="right">Праворуч</option>
+                          </select>
                         </div>
                       </div>
                     ))}
