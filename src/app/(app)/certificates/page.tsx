@@ -50,7 +50,7 @@ export default function CertificatesPage() {
   const presetAmounts = [500, 1000, 2000];
   const isCustomAmount = !presetAmounts.includes(formData.amount);
   const canCreate = !saving && formData.amount > 0 && formData.count > 0;
-  const modalMaxWidth = activeTab === 'design' ? '960px' : '560px';
+  const modalMaxWidth = activeTab === 'design' ? '1200px' : '600px';
   const totalAmount = Math.max(formData.amount, 0) * Math.max(formData.count, 0);
   const selectedTemplateName = selectedFile?.name || 'Файл не вибрано';
 
@@ -276,9 +276,18 @@ export default function CertificatesPage() {
           <div
             className="modal"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: modalMaxWidth, border: '1px solid var(--gray-200)', boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)' }}
+            style={{
+              maxWidth: modalMaxWidth,
+              width: '100%',
+              maxHeight: '92vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              border: '1px solid var(--gray-200)',
+              boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)'
+            }}
           >
-            <div className="modal-header" style={{ padding: '24px 24px 16px 24px', alignItems: 'flex-start' }}>
+            <div className="modal-header" style={{ padding: '24px 24px 16px 24px', alignItems: 'flex-start', flexShrink: 0 }}>
               <div style={{ display: 'grid', gap: '8px' }}>
                 <h3 className="modal-title" style={{ margin: 0 }}>{t('nav.certificates')}</h3>
                 <p style={{ margin: 0, fontSize: '14px', lineHeight: '20px', color: 'var(--gray-600)' }}>
@@ -305,7 +314,7 @@ export default function CertificatesPage() {
               </button>
             </div>
 
-            <div style={{ padding: '0 24px 16px 24px' }}>
+            <div style={{ padding: '0 24px 16px 24px', flexShrink: 0 }}>
               <div
                 style={{
                   display: 'inline-flex',
@@ -345,7 +354,7 @@ export default function CertificatesPage() {
               </div>
             </div>
 
-            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto', padding: '0 24px 24px 24px' }}>
+            <div className="modal-body" style={{ overflowY: 'auto', padding: '0 24px 24px 24px', flex: '1 1 auto' }}>
               {activeTab === 'create' ? (
                 <div style={{ display: 'grid', gap: '24px' }}>
                   <div
@@ -537,11 +546,11 @@ export default function CertificatesPage() {
                     </span>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(320px, 0.9fr)', gap: '20px', alignItems: 'start' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(480px, 1.45fr) minmax(360px, 1fr)', gap: '24px', alignItems: 'start' }}>
                     <div
                       style={{
                         position: 'sticky',
-                        top: 0,
+                        top: '16px',
                         display: 'grid',
                         gap: '12px',
                         padding: '20px',
@@ -748,7 +757,7 @@ export default function CertificatesPage() {
                         </div>
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
                     <div
                       style={{
                         display: 'grid',
