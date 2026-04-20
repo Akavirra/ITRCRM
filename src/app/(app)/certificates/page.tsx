@@ -7,7 +7,6 @@ import { formatDateKyiv } from '@/lib/date-utils';
 import PageLoading from '@/components/PageLoading';
 import { useUser } from '@/components/UserContext';
 import { Download, Plus, CheckCircle, XCircle, AlertCircle, Image as ImageIcon, Upload, Printer, Trash2 } from 'lucide-react';
-import styles from './certificates.module.css';
 
 interface CertificateData {
   id: number;
@@ -259,48 +258,64 @@ export default function CertificatesPage() {
           </button>
         </div>
 
-        <div>
+        <div className="table-container">
           {certificates.length > 0 ? (
-            <div className={styles.grid}>
-              {certificates.map((cert) => (
-                <div key={cert.id} className={styles.card}>
-                  <div className={styles.cardHeader}>
-                    <span className={styles.cardId}>{cert.public_id}</span>
-                    {getStatusBadge(cert)}
-                  </div>
-                  <div className={styles.cardAmount}>{cert.amount} грн</div>
-                  <div className={styles.cardMeta}>
-                    <span>{formatDateKyiv(cert.issued_at)}</span>
-                    <span>•</span>
-                    <span>{cert.creator_name || '—'}</span>
-                  </div>
-                  {cert.notes && <div className={styles.cardNote}>{cert.notes}</div>}
-                  <div className={styles.cardActions}>
-                    <button
-                      className={cert.printed_at ? styles.actionBtnSuccess : styles.actionBtn}
-                      onClick={() => handlePrintToggle(cert.id, !!cert.printed_at)}
-                      title={cert.printed_at ? 'Надруковано' : 'Позначити як надруковано'}
-                    >
-                      <Printer size={16} />
-                    </button>
-                    <button
-                      className={styles.actionBtn}
-                      onClick={() => handleDownload(cert.id, cert.public_id)}
-                      title="Завантажити PDF"
-                    >
-                      <Download size={16} />
-                    </button>
-                    <button
-                      className={styles.actionBtnDanger}
-                      onClick={() => handleDelete(cert.id)}
-                      title="Видалити"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t('table.id')}</th>
+                  <th>Номінал</th>
+                  <th>{t('common.status')}</th>
+                  <th>Дата видачі</th>
+                  <th>Ким видано</th>
+                  <th style={{ textAlign: 'right' }}>{t('common.actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {certificates.map((cert) => (
+                  <tr key={cert.id}>
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: '#6b7280' }}>{cert.public_id}</td>
+                    <td style={{ fontWeight: '600' }}>{cert.amount} грн</td>
+                    <td>{getStatusBadge(cert)}</td>
+                    <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{formatDateKyiv(cert.issued_at)}</td>
+                    <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{cert.creator_name || '—'}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', gap: '6px' }}>
+                        <button
+                          className="btn btn-sm"
+                          onClick={() => handlePrintToggle(cert.id, !!cert.printed_at)}
+                          title={cert.printed_at ? 'Надруковано' : 'Позначити як надруковано'}
+                          style={{
+                            padding: '6px 10px',
+                            background: cert.printed_at ? '#dcfce7' : 'transparent',
+                            color: cert.printed_at ? '#16a34a' : 'var(--gray-500)',
+                            border: cert.printed_at ? '1px solid #16a34a' : '1px solid var(--gray-300)'
+                          }}
+                        >
+                          <Printer size={16} />
+                        </button>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleDownload(cert.id, cert.public_id)}
+                          title="Завантажити PDF"
+                          style={{ padding: '6px 10px' }}
+                        >
+                          <Download size={16} />
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleDelete(cert.id)}
+                          title="Видалити"
+                          style={{ padding: '6px 10px' }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           ) : (
             <div className="empty-state">
               <h3 className="empty-state-title">{t('emptyStates.noCertificates')}</h3>
