@@ -217,8 +217,22 @@ export async function GET(
     const amountFontSize = settings.amountFontSize || 48;
     const amountWidth = ermilovFont.widthOfTextAtSize(amountVal, amountFontSize);
 
-    const ax = (width * (settings.amountXPercent / 100)) - (amountWidth / 2);
-    const ay = height * (settings.amountYPercent / 100);
+    const cssRotation = settings.amountRotation || 0;
+    const H = amountFontSize;
+    const W = amountWidth;
+    
+    const cx = (width * (settings.amountXPercent / 100));
+    const cy = (height * (settings.amountYPercent / 100)) + (H / 2);
+
+    const phi = -cssRotation * (Math.PI / 180);
+    const relX = -W / 2;
+    const relY = -H / 2;
+    
+    const rotRelX = relX * Math.cos(phi) - relY * Math.sin(phi);
+    const rotRelY = relX * Math.sin(phi) + relY * Math.cos(phi);
+
+    const ax = cx + rotRelX;
+    const ay = cy + rotRelY;
 
     const aHex = (settings.amountColor || '#FFFFFF').replace('#', '');
     const ar = parseInt(aHex.substring(0, 2), 16) / 255 || 1;
@@ -231,7 +245,7 @@ export async function GET(
       size: amountFontSize,
       font: ermilovFont,
       color: rgb(ar, ag, ab),
-      rotate: degrees(settings.amountRotation || 0),
+      rotate: degrees(-cssRotation),
     });
 
     const pdfBytes = await pdfDoc.save();

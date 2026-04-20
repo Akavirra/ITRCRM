@@ -47,6 +47,7 @@ export default function CertificatesPage() {
     amountRotation: -28
   });
   const [savingSettings, setSavingSettings] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState({ width: 842, height: 595 });
 
   useEffect(() => {
     const fetchCertificates = async () => {
@@ -386,10 +387,16 @@ export default function CertificatesPage() {
                           overflow: 'hidden', 
                           border: '1px solid var(--gray-200)',
                           cursor: dragging ? 'grabbing' : 'crosshair',
-                          userSelect: 'none'
+                          userSelect: 'none',
+                          containerType: 'inline-size'
                         }}
                       >
-                        <img src={templateUrl} alt="Template" style={{ width: '100%', display: 'block', pointerEvents: 'none' }} />
+                        <img 
+                          src={templateUrl} 
+                          alt="Template" 
+                          onLoad={(e) => setImageDimensions({ width: e.currentTarget.naturalWidth || 842, height: e.currentTarget.naturalHeight || 595 })}
+                          style={{ width: '100%', display: 'block', pointerEvents: 'none' }} 
+                        />
                         
                         {/* Interactive ID */}
                         <div 
@@ -399,16 +406,17 @@ export default function CertificatesPage() {
                             left: `${idSettings.xPercent}%`,
                             bottom: `${idSettings.yPercent}%`,
                             transform: 'translateX(-50%)',
-                            fontSize: `${idSettings.fontSize / 4}px`,
-                          color: idSettings.color,
-                          fontWeight: 'bold',
-                          fontFamily: 'Bebas Neue Cyrillic, sans-serif',
-                          letterSpacing: `${idSettings.idLetterSpacing / 4}px`,
-                          cursor: 'grab',
-                          padding: '4px',
-                          whiteSpace: 'nowrap',
+                            fontSize: `${(idSettings.fontSize / imageDimensions.width) * 100}cqi`,
+                            color: idSettings.color,
+                            fontWeight: 'bold',
+                            fontFamily: 'Bebas Neue Cyrillic, sans-serif',
+                            letterSpacing: `${(idSettings.idLetterSpacing / imageDimensions.width) * 100}cqi`,
+                            cursor: 'grab',
+                            padding: '0.5cqi',
+                            whiteSpace: 'nowrap',
                             border: dragging === 'id' ? '1px dashed var(--primary-color)' : '1px transparent solid',
-                            background: dragging === 'id' ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'
+                            background: dragging === 'id' ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent',
+                            lineHeight: 1
                           }}
                         >
                           ID:85331
@@ -429,12 +437,13 @@ export default function CertificatesPage() {
                             transformOrigin: 'center center',
                             textAlign: 'center',
                             whiteSpace: 'nowrap',
-                            padding: '4px',
+                            padding: '0.5cqi',
                             border: dragging === 'amount' ? '1px dashed var(--primary-color)' : '1px transparent solid',
-                            background: dragging === 'amount' ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'
+                            background: dragging === 'amount' ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent',
+                            lineHeight: 1
                           }}
                         >
-                          <div style={{ fontSize: `${idSettings.amountFontSize / 4}px`, pointerEvents: 'none' }}>{formData.amount}</div>
+                          <div style={{ fontSize: `${(idSettings.amountFontSize / imageDimensions.width) * 100}cqi`, pointerEvents: 'none' }}>{formData.amount}</div>
                         </div>
                       </div>
                     ) : (
