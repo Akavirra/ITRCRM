@@ -1,5 +1,4 @@
 import { run, get, all } from '@/db';
-import { generateUniquePublicId } from './public-id';
 
 export type CertificateStatus = 'active' | 'used' | 'expired' | 'canceled';
 
@@ -10,6 +9,7 @@ export interface Certificate {
   status: CertificateStatus;
   issued_at: string;
   used_at: string | null;
+  printed_at: string | null;
   notes: string | null;
   created_by: number | null;
   created_at: string;
@@ -32,16 +32,11 @@ export async function getCertificateByPublicId(publicId: string) {
   );
 }
 
-export async function createCertificate(data: {
-  amount: number;
-  notes?: string;
-  created_by: number;
-}) {
-  // Get the last certificate public_id to increment it
+export async function getNextPublicId(): Promise<string> {
   const lastCert = await get<Certificate>(
     "SELECT public_id FROM certificates WHERE public_id LIKE 'ID:%' ORDER BY id DESC LIMIT 1"
   );
-  
+
   let nextId = 85331; // Starting ID
   if (lastCert) {
     const lastIdNum = parseInt(lastCert.public_id.replace('ID:', ''), 10);
@@ -50,7 +45,15 @@ export async function createCertificate(data: {
     }
   }
 
-  const publicId = `ID:${nextId}`;
+  return `ID:${nextId}`;
+}
+
+export async function createCertificate(data: {
+  amount: number;
+  notes?: string;
+  created_by: number;
+}) {
+  const publicId = await getNextPublicId();
 
   const sql = `
     INSERT INTO certificates (public_id, amount, notes, created_by)

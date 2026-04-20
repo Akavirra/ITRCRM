@@ -1,6 +1,6 @@
 import { getAuthUser, unauthorized, badRequest } from '@/lib/api-utils';
 import { NextRequest, NextResponse } from 'next/server';
-import { getCertificates, createCertificate, deleteCertificate, updateCertificateStatus } from '@/lib/certificates';
+import { getCertificates, createCertificate } from '@/lib/certificates';
 
 export const dynamic = 'force-dynamic';
 

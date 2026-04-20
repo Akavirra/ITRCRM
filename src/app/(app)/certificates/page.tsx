@@ -6,7 +6,7 @@ import { t } from '@/i18n/t';
 import { formatDateKyiv } from '@/lib/date-utils';
 import PageLoading from '@/components/PageLoading';
 import { useUser } from '@/components/UserContext';
-import { Download, Plus, CheckCircle, XCircle, AlertCircle, Image as ImageIcon, Upload } from 'lucide-react';
+import { Download, Plus, CheckCircle, XCircle, AlertCircle, Image as ImageIcon, Upload, Printer, Trash2 } from 'lucide-react';
 
 interface CertificateData {
   id: number;
@@ -15,6 +15,7 @@ interface CertificateData {
   status: 'active' | 'used' | 'expired' | 'canceled';
   issued_at: string;
   used_at: string | null;
+  printed_at: string | null;
   notes: string | null;
   creator_name: string | null;
   created_at: string;
@@ -47,6 +48,9 @@ export default function CertificatesPage() {
   });
   const [savingSettings, setSavingSettings] = useState(false);
   const [imageDimensions, setImageDimensions] = useState({ width: 842, height: 595 });
+  const [nextPublicId, setNextPublicId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const presetAmounts = [500, 1000, 2000];
   const isCustomAmount = !presetAmounts.includes(formData.amount);
   const canCreate = !saving && formData.amount > 0 && formData.count > 0;
@@ -73,6 +77,10 @@ export default function CertificatesPage() {
         const settingsRes = await fetch('/api/admin-app/certificates/settings');
         const settingsData = await settingsRes.json();
         if (settingsData && !settingsData.error) setIdSettings(settingsData);
+
+        const nextRes = await fetch('/api/admin-app/certificates/next-id');
+        const nextData = await nextRes.json();
+        if (nextData && nextData.nextId) setNextPublicId(nextData.nextId);
       } catch (error) {
         console.error('Failed to fetch certificates:', error);
       } finally {
@@ -169,6 +177,41 @@ export default function CertificatesPage() {
     }
   };
 
+  const handlePrintToggle = async (id: number, isPrinted: boolean) => {
+    try {
+      const res = await fetch(`/api/admin-app/certificates/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: isPrinted ? 'unprint' : 'print' })
+      });
+      if (!res.ok) throw new Error('Failed');
+      setCertificates(prev => prev.map(c => c.id === id ? { ...c, printed_at: isPrinted ? null : new Date().toISOString() } : c));
+    } catch (e) {
+      console.error(e);
+      alert('Помилка оновлення статусу друку');
+    }
+  };
+
+  const handleDelete = (id: number) => {
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/admin-app/certificates/${deleteConfirmId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed');
+      setCertificates(prev => prev.filter(c => c.id !== deleteConfirmId));
+      setDeleteConfirmId(null);
+    } catch (e) {
+      console.error(e);
+      alert('Помилка видалення');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!dragging) return;
 
@@ -230,6 +273,7 @@ export default function CertificatesPage() {
                   <th>{t('table.id')}</th>
                   <th>Номінал</th>
                   <th>{t('common.status')}</th>
+                  <th>Друк</th>
                   <th>Дата видачі</th>
                   <th>Ким видано</th>
                   <th style={{ textAlign: 'right' }}>{t('common.actions')}</th>
@@ -241,17 +285,42 @@ export default function CertificatesPage() {
                     <td style={{ fontFamily: 'monospace', fontWeight: '500' }}>{cert.public_id}</td>
                     <td style={{ fontWeight: '600' }}>{cert.amount} грн</td>
                     <td>{getStatusBadge(cert.status)}</td>
+                    <td>
+                      <button
+                        className="btn btn-sm"
+                        onClick={() => handlePrintToggle(cert.id, !!cert.printed_at)}
+                        title={cert.printed_at ? 'Надруковано' : 'Позначити як надруковано'}
+                        style={{
+                          padding: '6px 10px',
+                          background: cert.printed_at ? 'var(--success-light, #dcfce7)' : 'transparent',
+                          color: cert.printed_at ? 'var(--success, #16a34a)' : 'var(--gray-500)',
+                          border: cert.printed_at ? '1px solid var(--success, #16a34a)' : '1px solid var(--gray-300)'
+                        }}
+                      >
+                        <Printer size={16} />
+                      </button>
+                    </td>
                     <td style={{ color: '#6b7280' }}>{formatDateKyiv(cert.issued_at)}</td>
                     <td style={{ color: '#6b7280' }}>{cert.creator_name || '—'}</td>
                     <td style={{ textAlign: 'right' }}>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => handleDownload(cert.id, cert.public_id)}
-                        title="Завантажити PDF"
-                        style={{ padding: '6px 10px' }}
-                      >
-                        <Download size={16} />
-                      </button>
+                      <div style={{ display: 'inline-flex', gap: '6px' }}>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleDownload(cert.id, cert.public_id)}
+                          title="Завантажити PDF"
+                          style={{ padding: '6px 10px' }}
+                        >
+                          <Download size={16} />
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleDelete(cert.id)}
+                          title="Видалити"
+                          style={{ padding: '6px 10px' }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -269,6 +338,42 @@ export default function CertificatesPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Confirm Modal */}
+      {deleteConfirmId !== null && (
+        <div className="modal-overlay" onClick={() => setDeleteConfirmId(null)}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '400px', width: '100%' }}
+          >
+            <div className="modal-header">
+              <h3 className="modal-title">Видалення сертифіката</h3>
+              <button className="modal-close" onClick={() => setDeleteConfirmId(null)} aria-label="Закрити">
+                <XCircle size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: 0, color: 'var(--gray-700)', fontSize: '14px', lineHeight: '20px' }}>
+                Ви впевнені, що хочете безповоротно видалити цей сертифікат? Дію не можна скасувати.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setDeleteConfirmId(null)}>
+                Скасувати
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={confirmDelete}
+                disabled={deleteLoading}
+                style={{ minWidth: '120px' }}
+              >
+                {deleteLoading ? 'Видалення…' : 'Видалити'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Unified Modal */}
       {showModal && (
@@ -289,7 +394,7 @@ export default function CertificatesPage() {
           >
             <div className="modal-header" style={{ padding: '24px 24px 16px 24px', alignItems: 'flex-start', flexShrink: 0 }}>
               <div style={{ display: 'grid', gap: '8px' }}>
-                <h3 className="modal-title" style={{ margin: 0 }}>{t('nav.certificates')}</h3>
+                <h3 className="modal-title" style={{ margin: 0 }}>Сертифікат на навчання</h3>
                 <p style={{ margin: 0, fontSize: '14px', lineHeight: '20px', color: 'var(--gray-600)' }}>
                   {activeTab === 'create'
                     ? 'Швидко створюйте сертифікати з готовими номіналами або власною сумою.'
@@ -542,7 +647,7 @@ export default function CertificatesPage() {
                       Редактор дизайну
                     </span>
                     <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-600)' }}>
-                      Макет залишається перед очима, а всі налаштування зібрані праворуч. Можна тягнути елементи на прев’ю або точно підкручувати значення в панелі.
+                      Перетягуйте елементи на прев’ю або налаштовуйте точно в панелі справа.
                     </span>
                   </div>
 
@@ -610,7 +715,7 @@ export default function CertificatesPage() {
                               lineHeight: 1
                             }}
                           >
-                            ID:85331
+                            {nextPublicId || 'ID:85331'}
                           </div>
 
                           <div
