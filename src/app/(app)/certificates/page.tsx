@@ -51,6 +51,7 @@ export default function CertificatesPage() {
   const [nextPublicId, setNextPublicId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const presetAmounts = [500, 1000, 2000];
   const isCustomAmount = !presetAmounts.includes(formData.amount);
   const canCreate = !saving && formData.amount > 0 && formData.count > 0;
@@ -247,19 +248,59 @@ export default function CertificatesPage() {
   if (loading) return <PageLoading />;
   if (!user || user.role !== 'admin') return null;
 
+  const filteredCertificates = certificates.filter(c => showArchived ? !!c.printed_at : !c.printed_at);
+
   return (
     <>
       <div className="card">
-        <div className="card-header">
+        <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
           <h3 className="card-title">{t('nav.certificates')}</h3>
-          <button className="btn btn-primary" onClick={handleCreate}>
-            <Plus size={18} style={{ marginRight: '8px' }} />
-            {t('actions.add')}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+              <span style={{ fontSize: '0.8125rem', fontWeight: !showArchived ? '600' : '400', color: !showArchived ? '#111827' : '#9ca3af', transition: 'all 0.2s' }}>
+                Активні
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowArchived(!showArchived)}
+                style={{
+                  position: 'relative',
+                  width: '36px',
+                  height: '20px',
+                  backgroundColor: '#e5e7eb',
+                  borderRadius: '4px',
+                  border: '1px solid #d1d5db',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  margin: '0 0.375rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '2px',
+                }}
+              >
+                <div style={{
+                  width: '14px',
+                  height: '14px',
+                  backgroundColor: showArchived ? '#6b7280' : '#374151',
+                  borderRadius: '3px',
+                  transition: 'all 0.2s',
+                  transform: showArchived ? 'translateX(16px)' : 'translateX(0)',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                }} />
+              </button>
+              <span style={{ fontSize: '0.8125rem', fontWeight: showArchived ? '600' : '400', color: showArchived ? '#111827' : '#9ca3af', transition: 'all 0.2s' }}>
+                Архів
+              </span>
+            </div>
+            <button className="btn btn-primary" onClick={handleCreate}>
+              <Plus size={18} style={{ marginRight: '8px' }} />
+              {t('actions.add')}
+            </button>
+          </div>
         </div>
 
         <div className="table-container">
-          {certificates.length > 0 ? (
+          {filteredCertificates.length > 0 ? (
             <table className="table">
               <thead>
                 <tr>
@@ -272,7 +313,7 @@ export default function CertificatesPage() {
                 </tr>
               </thead>
               <tbody>
-                {certificates.map((cert) => (
+                {filteredCertificates.map((cert) => (
                   <tr key={cert.id}>
                     <td style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: '#6b7280' }}>{cert.public_id}</td>
                     <td style={{ fontWeight: '600' }}>{cert.amount} грн</td>
@@ -318,12 +359,14 @@ export default function CertificatesPage() {
             </table>
           ) : (
             <div className="empty-state">
-              <h3 className="empty-state-title">{t('emptyStates.noCertificates')}</h3>
-              <p className="empty-state-description">{t('emptyStates.noCertificatesHint')}</p>
-              <button className="btn btn-primary" onClick={handleCreate} style={{ marginTop: '16px' }}>
-                <Plus size={18} style={{ marginRight: '8px' }} />
-                {t('modals.newCertificate')}
-              </button>
+              <h3 className="empty-state-title">{showArchived ? 'Архів порожній' : t('emptyStates.noCertificates')}</h3>
+              <p className="empty-state-description">{showArchived ? 'Надруковані сертифікати з\'являться тут.' : t('emptyStates.noCertificatesHint')}</p>
+              {!showArchived && (
+                <button className="btn btn-primary" onClick={handleCreate} style={{ marginTop: '16px' }}>
+                  <Plus size={18} style={{ marginRight: '8px' }} />
+                  {t('modals.newCertificate')}
+                </button>
+              )}
             </div>
           )}
         </div>
