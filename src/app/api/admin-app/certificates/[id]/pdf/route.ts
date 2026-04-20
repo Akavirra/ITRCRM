@@ -48,11 +48,16 @@ export async function GET(
     let font;
     try {
       let fontBytes;
+      const localBebasPath = path.join(process.cwd(), 'public', 'fonts', 'BebasNeueCyrillic.ttf');
       try {
-        fontBytes = await fetchFont(FONT_URL);
-      } catch (e) {
-        console.warn('Failed to fetch Bebas Neue Cyrillic font, using fallback:', e);
-        fontBytes = await fetchFont(FALLBACK_FONT_URL);
+        fontBytes = await fs.readFile(localBebasPath);
+      } catch {
+        try {
+          fontBytes = await fetchFont(FONT_URL);
+        } catch (e) {
+          console.warn('Failed to fetch Bebas Neue Cyrillic font, using fallback:', e);
+          fontBytes = await fetchFont(FALLBACK_FONT_URL);
+        }
       }
       font = await pdfDoc.embedFont(fontBytes);
     } catch (fontError) {
