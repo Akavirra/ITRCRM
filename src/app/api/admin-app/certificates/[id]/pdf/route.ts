@@ -50,7 +50,8 @@ export async function GET(
       let fontBytes;
       const localBebasPath = path.join(process.cwd(), 'public', 'fonts', 'BebasNeueCyrillic.ttf');
       try {
-        fontBytes = await fs.readFile(localBebasPath);
+        const buf = await fs.readFile(localBebasPath);
+        fontBytes = new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
       } catch {
         try {
           fontBytes = await fetchFont(FONT_URL);
@@ -72,7 +73,8 @@ export async function GET(
       const localErmilovPath = path.join(process.cwd(), 'public', 'fonts', 'Ermilov-Bold.otf');
       let ermilovBytes;
       try {
-        ermilovBytes = await fs.readFile(localErmilovPath);
+        const buf = await fs.readFile(localErmilovPath);
+        ermilovBytes = new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
       } catch {
         ermilovBytes = await fetchFont(ERMILOV_FONT_URL);
       }
@@ -198,9 +200,10 @@ export async function GET(
     // Browser/CSS coordinates for the preview start from BOTTOM-LEFT (because I used bottom: % in CSS).
     // So Y coordinate is actually consistent! 
     // BUT: page.drawText(y) is the BASELINE of the text.
-    
+    // In CSS, line-height: 1 places the bottom of the bounding box at Y%, and the baseline is roughly 10% above that.
+    // So to match CSS visually, we must shift the baseline DOWN slightly.
     const x = (width * (settings.xPercent / 100)) - (textWidth / 2);
-    const y = (height * (settings.yPercent / 100));
+    const y = (height * (settings.yPercent / 100)) - (fontSize * 0.1);
 
     // Parse ID color
     const hex = (settings.color || '#000000').replace('#', '');
@@ -226,8 +229,9 @@ export async function GET(
     const H = amountFontSize;
     const W = amountWidth;
     
+    // Adjust cy downwards slightly to match the CSS visual centering
     const cx = (width * (settings.amountXPercent / 100));
-    const cy = (height * (settings.amountYPercent / 100)) + (H / 2);
+    const cy = (height * (settings.amountYPercent / 100)) + (H / 2) - (H * 0.1);
 
     const phi = -cssRotation * (Math.PI / 180);
     const relX = -W / 2;
