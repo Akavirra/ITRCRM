@@ -1,11 +1,24 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 
 const inter = Inter({
   subsets: ['latin', 'cyrillic'],
   display: 'swap',
   variable: '--font-inter',
+});
+
+const certificateIdFont = localFont({
+  src: '../../public/fonts/BebasNeueCyrillic.ttf',
+  display: 'block',
+  variable: '--font-certificate-id',
+});
+
+const certificateAmountFont = localFont({
+  src: '../../public/fonts/Ermilov-Bold.otf',
+  display: 'block',
+  variable: '--font-certificate-amount',
 });
 import { GroupModalsProvider } from '@/components/GroupModalsProvider';
 import GroupModalsWrapper from '@/components/GroupModalsWrapper';
@@ -56,7 +69,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="uk" className={inter.variable}>
+    <html
+      lang="uk"
+      className={`${inter.variable} ${certificateIdFont.variable} ${certificateAmountFont.variable}`}
+    >
       <body className={inter.className}>
         <ErrorBoundary>
           <MediaViewerProvider>
