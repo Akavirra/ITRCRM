@@ -42,6 +42,7 @@ const STUDENT_ALLOWED_PATHS = [
   '/',           // root — middleware сам редіректить на /login або /dashboard
   '/login',
   '/dashboard',
+  '/groups',
   '/schedule',
   '/attendance',
   '/profile',

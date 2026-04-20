@@ -3,6 +3,7 @@
  */
 
 import { cookies } from 'next/headers';
+import Link from 'next/link';
 import { STUDENT_COOKIE_NAME, getStudentSession, studentIdToCode } from '@/lib/student-auth';
 import { studentAll, studentGet } from '@/db/neon-student';
 import StudentLogoutButton from '@/components/student/StudentLogoutButton';
@@ -82,6 +83,11 @@ export default async function StudentProfilePage() {
               {g.end_date && ` – ${formatYmd(g.end_date)}`}
               {g.status && ` • ${g.status}`}
             </p>
+            <div style={{ marginTop: 10 }}>
+              <Link href={`/groups/${g.id}`} className="student-secondary-btn">
+                Відкрити групу
+              </Link>
+            </div>
           </div>
         ))
       )}
