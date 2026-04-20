@@ -463,8 +463,6 @@ export default function GraduationCertificatesPage() {
                   {/* Preview */}
                   <div
                     style={{
-                      position: 'sticky',
-                      top: '16px',
                       display: 'grid',
                       gap: '12px',
                       padding: '20px',
