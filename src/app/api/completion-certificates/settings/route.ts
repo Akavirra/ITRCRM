@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_SETTINGS = {
   templateUrl: null as string | null,
+  courseLabelOverrides: {} as Record<string, string>,
   blocks: [
     { key: 'student_name', weight: 'normal', style: 'normal', wrap: false, size: 42, xPercent: 50, yPercent: 45, color: '#1a237e', align: 'center' as const },
     { key: 'verb', weight: 'normal', style: 'normal', wrap: true, size: 18, xPercent: 50, yPercent: 38, color: '#1a237e', align: 'center' as const },
@@ -22,7 +23,16 @@ export async function GET(request: NextRequest) {
     const res = await get<{ value: string }>(
       "SELECT value FROM system_settings WHERE key = 'completion_certificate_settings'"
     );
-    const settings = res?.value ? JSON.parse(res.value) : DEFAULT_SETTINGS;
+    const parsedSettings = res?.value ? JSON.parse(res.value) : DEFAULT_SETTINGS;
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      ...parsedSettings,
+      blocks: Array.isArray(parsedSettings?.blocks) ? parsedSettings.blocks : DEFAULT_SETTINGS.blocks,
+      courseLabelOverrides:
+        parsedSettings?.courseLabelOverrides && typeof parsedSettings.courseLabelOverrides === 'object'
+          ? parsedSettings.courseLabelOverrides
+          : {},
+    };
     return NextResponse.json(settings);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -41,11 +51,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid settings format: blocks must be an array' }, { status: 400 });
     }
 
+    const normalizedSettings = {
+      ...DEFAULT_SETTINGS,
+      ...settings,
+      courseLabelOverrides:
+        settings.courseLabelOverrides && typeof settings.courseLabelOverrides === 'object'
+          ? Object.fromEntries(
+              Object.entries(settings.courseLabelOverrides)
+                .map(([courseId, label]) => [courseId, typeof label === 'string' ? label.trim() : ''])
+                .filter(([, label]) => Boolean(label))
+            )
+          : {},
+    };
+
     await run(
       `INSERT INTO system_settings (key, value, updated_at)
        VALUES ('completion_certificate_settings', $1, NOW())
        ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
-      [JSON.stringify(settings)]
+      [JSON.stringify(normalizedSettings)]
     );
 
     return NextResponse.json({ success: true });

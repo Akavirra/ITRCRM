@@ -48,6 +48,12 @@ interface CourseOption {
   title: string;
 }
 
+interface CompletionCertificateSettings {
+  templateUrl: string | null;
+  blocks: BlockSetting[];
+  courseLabelOverrides?: Record<string, string>;
+}
+
 interface BlockSetting {
   key: string;
   size: number;
@@ -84,16 +90,55 @@ interface EditorSnapshot {
   selectedBlock: number | null;
 }
 
-const MALE_NAME_EXCEPTIONS = new Set(['Микола', 'Ілля', 'Лука', 'Кузьма', 'Сава', 'Фома', 'Жора']);
+const MALE_NAME_EXCEPTIONS = new Set([
+  '\u041c\u0438\u043a\u043e\u043b\u0430',
+  '\u0406\u043b\u043b\u044f',
+  '\u041b\u0443\u043a\u0430',
+  '\u041a\u0443\u0437\u044c\u043c\u0430',
+  '\u0421\u0430\u0432\u0430',
+  '\u0424\u043e\u043c\u0430',
+  '\u0416\u043e\u0440\u0430',
+]);
+
+const normalizeCourseLabel = (value: string) => value.trim();
+
+const getFallbackCourseLabel = (title?: string | null) => (
+  title ? `«${title}»` : ''
+);
+
+const getResolvedCourseLabel = (
+  courseId: string,
+  fallbackTitle: string | null | undefined,
+  overrides: Record<string, string>
+) => {
+  const override = courseId ? normalizeCourseLabel(overrides[courseId] || '') : '';
+  return override || getFallbackCourseLabel(fallbackTitle);
+};
 
 const inferGenderFromName = (fullName?: string | null): 'male' | 'female' | '' => {
   const nameParts = fullName?.trim().split(/\s+/).filter(Boolean) || [];
-  const firstName = nameParts[1] || nameParts[0] || '';
-  if (!firstName) return '';
-  if (MALE_NAME_EXCEPTIONS.has(firstName)) return 'male';
-  const normalized = firstName.toLowerCase();
-  if (normalized.endsWith('а') || normalized.endsWith('я')) return 'female';
-  return 'male';
+  const candidates = Array.from(new Set([nameParts[1], nameParts[0], nameParts[nameParts.length - 1]].filter(Boolean)));
+
+  if (!candidates.length) return '';
+
+  const detectByToken = (token?: string) => {
+    if (!token) return '' as const;
+    if (MALE_NAME_EXCEPTIONS.has(token)) return 'male' as const;
+    const normalized = token.toLowerCase();
+    if (normalized.endsWith('\u0430') || normalized.endsWith('\u044f')) return 'female' as const;
+    return 'male' as const;
+  };
+
+  const explicitFemale = candidates.find((token) => {
+    const normalized = token.toLowerCase();
+    return normalized.endsWith('\u0430') || normalized.endsWith('\u044f');
+  });
+
+  if (explicitFemale) {
+    return MALE_NAME_EXCEPTIONS.has(explicitFemale) ? 'male' : 'female';
+  }
+
+  return detectByToken(candidates[0]);
 };
 
 export default function GraduationCertificatesPage() {
@@ -124,6 +169,7 @@ export default function GraduationCertificatesPage() {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [previewTexts, setPreviewTexts] = useState<Record<string, string>>({});
+  const [courseLabelOverrides, setCourseLabelOverrides] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     student_id: '',
     course_id: '',
@@ -139,6 +185,7 @@ export default function GraduationCertificatesPage() {
   const activeBlockIndex = selectedBlock ?? 0;
   const selectedStudent = students.find((student) => String(student.id) === formData.student_id) || null;
   const selectedCourse = courses.find((course) => String(course.id) === formData.course_id) || null;
+  const selectedCourseLabel = getResolvedCourseLabel(formData.course_id, selectedCourse?.title, courseLabelOverrides);
   const canCreate = !saving && formData.student_id && formData.issue_date && formData.gender;
   const toolbarScale = 1 / scale;
   const scaledWidth = imageDimensions.width * scale;
@@ -151,7 +198,10 @@ export default function GraduationCertificatesPage() {
 
   const createSnapshot = (): EditorSnapshot => ({
     blocks: blocks.map((block) => ({ ...block })),
-    previewTexts: { ...previewTexts },
+    previewTexts: {
+      ...previewTexts,
+      __courseLabelOverrides: JSON.stringify(courseLabelOverrides),
+    },
     pan: { ...pan },
     scale,
     selectedBlock,
@@ -159,7 +209,17 @@ export default function GraduationCertificatesPage() {
 
   const applySnapshot = (snapshot: EditorSnapshot) => {
     setBlocks(snapshot.blocks.map((block) => ({ ...block })));
-    setPreviewTexts({ ...snapshot.previewTexts });
+    const nextPreviewTexts = { ...snapshot.previewTexts };
+    const serializedCourseOverrides = nextPreviewTexts.__courseLabelOverrides;
+    delete nextPreviewTexts.__courseLabelOverrides;
+    setPreviewTexts(nextPreviewTexts);
+    if (serializedCourseOverrides) {
+      try {
+        setCourseLabelOverrides(JSON.parse(serializedCourseOverrides));
+      } catch {
+        setCourseLabelOverrides({});
+      }
+    }
     setPan({ ...snapshot.pan });
     setScale(snapshot.scale);
     setSelectedBlock(snapshot.selectedBlock);
@@ -244,9 +304,10 @@ export default function GraduationCertificatesPage() {
           setTemplateUrl(templateData.url);
         }
 
-        const settingsData = await settingsRes.json();
+        const settingsData = await settingsRes.json() as CompletionCertificateSettings & { error?: string };
         if (settingsData && !settingsData.error && Array.isArray(settingsData.blocks)) {
           setBlocks(settingsData.blocks);
+          setCourseLabelOverrides(settingsData.courseLabelOverrides || {});
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);
@@ -280,6 +341,13 @@ export default function GraduationCertificatesPage() {
 
     return () => window.removeEventListener('resize', fitPreview);
   }, [imageDimensions, templateUrl, showModal]);
+
+  useEffect(() => {
+    if (!formData.student_id || !selectedStudent) return;
+    const nextGender = selectedStudent.gender || inferGenderFromName(selectedStudent.full_name);
+    if (!nextGender) return;
+    setFormData((prev) => (prev.gender === nextGender ? prev : { ...prev, gender: nextGender }));
+  }, [formData.student_id, selectedStudent?.gender, selectedStudent?.full_name]);
 
   useEffect(() => {
     if (!resizing) return;
@@ -379,7 +447,7 @@ export default function GraduationCertificatesPage() {
   };
 
   const getPreviewText = (key: string) => {
-    if (previewTexts[key] !== undefined) {
+    if (key !== 'course_name' && previewTexts[key] !== undefined) {
       return previewTexts[key];
     }
 
@@ -394,7 +462,7 @@ export default function GraduationCertificatesPage() {
           : 'успішно завершила навчання\nз курсу';
       case 'course_name':
         if (!selectedCourse) return '';
-        return selectedCourse?.title ? `«${selectedCourse.title}»` : "«Комп'ютерна графіка та дизайн»";
+        return selectedCourseLabel;
       case 'issue_date': {
         const date = new Date(formData.issue_date);
         if (Number.isNaN(date.getTime())) return formData.issue_date;
@@ -490,6 +558,7 @@ export default function GraduationCertificatesPage() {
       gender: '',
     });
     setPreviewTexts({});
+    setCourseLabelOverrides((prev) => ({ ...prev }));
     setSelectedBlock(null);
     setSelectedFile(null);
     setShowModal(true);
@@ -565,7 +634,7 @@ export default function GraduationCertificatesPage() {
       const response = await fetch('/api/completion-certificates/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateUrl, blocks }),
+        body: JSON.stringify({ templateUrl, blocks, courseLabelOverrides }),
       });
 
       if (!response.ok) {
@@ -616,6 +685,21 @@ export default function GraduationCertificatesPage() {
       student_id: studentId,
       gender: studentId ? nextGender : '',
     }));
+  };
+
+  const updateSelectedCourseLabel = (value: string) => {
+    if (!formData.course_id) return;
+    const normalizedValue = normalizeCourseLabel(value);
+    pushHistory();
+    setCourseLabelOverrides((prev) => {
+      const next = { ...prev };
+      if (normalizedValue) {
+        next[formData.course_id] = normalizedValue;
+      } else {
+        delete next[formData.course_id];
+      }
+      return next;
+    });
   };
 
   if (loading) return <PageLoading />;
@@ -1003,6 +1087,19 @@ export default function GraduationCertificatesPage() {
                           </select>
                         </div>
 
+                        {selectedCourse && (
+                          <div className={s.compactGroup}>
+                            <label className={s.compactLabel}>Підпис курсу на сертифікаті</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={selectedCourseLabel}
+                              onChange={(event) => updateSelectedCourseLabel(event.target.value)}
+                              placeholder={getFallbackCourseLabel(selectedCourse.title)}
+                            />
+                          </div>
+                        )}
+
                         <div className={s.compactRow}>
                           <div className={s.compactGroup}>
                             <label className={s.compactLabel}>Дата <span className={s.compactRequired}>*</span></label>
@@ -1069,8 +1166,14 @@ export default function GraduationCertificatesPage() {
                             <textarea
                               className="form-input"
                               rows={activeBlock.key === 'verb' ? 3 : 2}
-                              value={previewTexts[activeBlock.key] ?? getPreviewText(activeBlock.key)}
+                              value={activeBlock.key === 'course_name'
+                                ? getPreviewText(activeBlock.key)
+                                : (previewTexts[activeBlock.key] ?? getPreviewText(activeBlock.key))}
                               onChange={(event) => {
+                                if (activeBlock.key === 'course_name') {
+                                  updateSelectedCourseLabel(event.target.value);
+                                  return;
+                                }
                                 pushHistory();
                                 setPreviewTexts((prev) => ({
                                   ...prev,

@@ -216,6 +216,7 @@ export async function GET(
     const settings = settingsRes?.value
       ? JSON.parse(settingsRes.value)
       : {
+          courseLabelOverrides: {},
           blocks: [
             { key: 'student_name', font: 'script', size: 42, xPercent: 50, yPercent: 45, color: '#1a237e', align: 'center' },
             { key: 'verb', font: 'roboto', size: 18, xPercent: 50, yPercent: 38, color: '#1a237e', align: 'center' },
@@ -225,6 +226,14 @@ export async function GET(
         };
 
     const blocks = settings.blocks || [];
+    const courseLabelOverrides =
+      settings.courseLabelOverrides && typeof settings.courseLabelOverrides === 'object'
+        ? settings.courseLabelOverrides
+        : {};
+    const resolvedCourseLabel =
+      cert.course_id && courseLabelOverrides[String(cert.course_id)]
+        ? String(courseLabelOverrides[String(cert.course_id)]).trim()
+        : cert.course_title ? `«${cert.course_title}»` : '';
 
     // 5. Build text values
     const textValues: Record<string, string> = {
@@ -233,7 +242,7 @@ export async function GET(
         cert.gender === 'female'
           ? 'успішно завершила навчання\nз курсу'
           : 'успішно завершив навчання\nз курсу',
-      course_name: cert.course_title ? `«${cert.course_title}»` : '',
+      course_name: resolvedCourseLabel,
       issue_date: formatDate(cert.issue_date),
     };
 
