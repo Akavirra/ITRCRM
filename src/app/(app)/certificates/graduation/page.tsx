@@ -84,9 +84,12 @@ export default function GraduationCertificatesPage() {
   const [resizing, setResizing] = useState<{ index: number; startSize: number; startY: number } | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<number | null>(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 842, height: 595 });
-  const [previewScale, setPreviewScale] = useState(1);
-  const [previewHeight, setPreviewHeight] = useState<number | undefined>(undefined);
+  const [scale, setScale] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const previewRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -269,23 +272,48 @@ export default function GraduationCertificatesPage() {
   }, [resizing]);
 
   useEffect(() => {
-    const updateScale = () => {
-      if (!previewRef.current) return;
-      const containerWidth = previewRef.current.clientWidth;
-      if (!containerWidth || !imageDimensions.height) return;
-      const displayHeight = containerWidth * (imageDimensions.height / imageDimensions.width);
-      const maxHeight = window.innerHeight * 0.5;
-      const scale = Math.min(1, maxHeight / displayHeight);
-      setPreviewScale(scale);
-      setPreviewHeight(displayHeight * scale);
+    const fit = () => {
+      if (!viewportRef.current || !previewRef.current) return;
+      const vw = viewportRef.current.clientWidth;
+      const vh = viewportRef.current.clientHeight;
+      if (!vw || !vh || !imageDimensions.height) return;
+      const contentHeight = vw * (imageDimensions.height / imageDimensions.width);
+      const s = Math.min(1, vh / contentHeight);
+      setScale(s);
+      setPan({ x: 0, y: 0 });
     };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [imageDimensions, templateUrl]);
 
-    updateScale();
-    window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
-  }, [imageDimensions]);
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setScale(prev => {
+        const next = Math.max(0.1, Math.min(5, prev + delta));
+        return Math.round(next * 10) / 10;
+      });
+    } else {
+      const speed = 1.5;
+      setPan(prev => ({ x: prev.x - e.deltaX * speed, y: prev.y - e.deltaY * speed }));
+    }
+  };
+
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 1) {
+      e.preventDefault();
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    }
+  };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+      return;
+    }
     if (!dragging) return;
     const container = e.currentTarget.getBoundingClientRect();
     let x = ((e.clientX - container.left - dragging.offsetX) / container.width) * 100;
@@ -301,6 +329,7 @@ export default function GraduationCertificatesPage() {
 
   const handleMouseUp = () => {
     setDragging(null);
+    setIsPanning(false);
   };
 
   if (loading) return <PageLoading />;
@@ -523,34 +552,47 @@ export default function GraduationCertificatesPage() {
                   </div>
 
                   {templateUrl ? (
-                    <div
-                      style={{
-                        position: 'relative',
-                        borderRadius: '12px',
-                        overflow: 'hidden',
-                        border: '1px solid var(--gray-200)',
-                        background: '#ffffff',
-                        height: previewHeight,
-                      }}
-                    >
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--gray-500)' }}>{Math.round(scale * 100)}%</span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button className="btn btn-sm btn-secondary" onClick={() => setScale(s => Math.max(0.1, Math.round((s - 0.1) * 10) / 10))}>−</button>
+                          <button className="btn btn-sm btn-secondary" onClick={() => { setScale(1); setPan({ x: 0, y: 0 }); }} title="Скинути">⟲</button>
+                          <button className="btn btn-sm btn-secondary" onClick={() => setScale(s => Math.min(5, Math.round((s + 0.1) * 10) / 10))}>+</button>
+                        </div>
+                      </div>
                       <div
-                        ref={previewRef}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
-                        onClick={() => setSelectedBlock(null)}
+                        ref={viewportRef}
+                        onWheel={handleWheel}
                         style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          transform: `scale(${previewScale})`,
-                          transformOrigin: 'top center',
-                          cursor: dragging !== null ? 'grabbing' : 'crosshair',
-                          userSelect: 'none',
-                          containerType: 'inline-size',
+                          position: 'relative',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          border: '1px solid var(--gray-200)',
+                          background: '#f8fafc',
+                          height: '55vh',
+                          cursor: isPanning ? 'grabbing' : 'default',
                         }}
                       >
+                        <div
+                          ref={previewRef}
+                          onMouseMove={handleMouseMove}
+                          onMouseUp={handleMouseUp}
+                          onMouseLeave={handleMouseUp}
+                          onClick={(e) => { if (e.target === e.currentTarget) setSelectedBlock(null); }}
+                          onMouseDown={handleCanvasMouseDown}
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            width: '100%',
+                            transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${scale})`,
+                            transformOrigin: 'center center',
+                            cursor: dragging !== null ? 'grabbing' : isPanning ? 'grabbing' : 'crosshair',
+                            userSelect: 'none',
+                            containerType: 'inline-size',
+                          }}
+                        >
                         <img
                           src={templateUrl}
                           alt="Template"
@@ -614,7 +656,8 @@ export default function GraduationCertificatesPage() {
                                   position: 'absolute',
                                   bottom: '100%',
                                   left: '50%',
-                                  transform: 'translateX(-50%)',
+                                  transform: `translateX(-50%) scale(${Math.min(2.5, 1 / scale)})`,
+                                  transformOrigin: 'bottom center',
                                   marginBottom: '6px',
                                   display: 'flex',
                                   gap: '4px',
@@ -717,6 +760,8 @@ export default function GraduationCertificatesPage() {
                                     cursor: 'nwse-resize',
                                     zIndex: 20,
                                     boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                                    transform: `scale(${Math.min(2.5, 1 / scale)})`,
+                                    transformOrigin: 'center',
                                   }}
                                 />
                                 <div
@@ -733,6 +778,8 @@ export default function GraduationCertificatesPage() {
                                     cursor: 'nesw-resize',
                                     zIndex: 20,
                                     boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                                    transform: `scale(${Math.min(2.5, 1 / scale)})`,
+                                    transformOrigin: 'center',
                                   }}
                                 />
                                 <div
@@ -749,6 +796,8 @@ export default function GraduationCertificatesPage() {
                                     cursor: 'nesw-resize',
                                     zIndex: 20,
                                     boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                                    transform: `scale(${Math.min(2.5, 1 / scale)})`,
+                                    transformOrigin: 'center',
                                   }}
                                 />
                                 <div
@@ -765,6 +814,8 @@ export default function GraduationCertificatesPage() {
                                     cursor: 'nwse-resize',
                                     zIndex: 20,
                                     boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                                    transform: `scale(${Math.min(2.5, 1 / scale)})`,
+                                    transformOrigin: 'center',
                                   }}
                                 />
                               </>
@@ -779,6 +830,7 @@ export default function GraduationCertificatesPage() {
                       })}
                     </div>
                     </div>
+                  </>
                   ) : (
                     <div style={{
                       height: '220px',
