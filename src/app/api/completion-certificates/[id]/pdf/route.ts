@@ -10,13 +10,11 @@ import path from 'path';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const BAD_SCRIPT_FONT_URL = 'https://github.com/google/fonts/raw/main/ofl/badscript/BadScript-Regular.ttf';
-const ROBOTO_FONT_URL = 'https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Regular.ttf';
+const FONT_DIR = path.join(process.cwd(), 'public', 'fonts');
 
-async function fetchFont(url: string): Promise<Uint8Array> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch font from ${url}`);
-  return new Uint8Array(await res.arrayBuffer());
+async function loadFontLocal(filename: string): Promise<Uint8Array> {
+  const buf = await fs.readFile(path.join(FONT_DIR, filename));
+  return new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
 }
 
 function getHexColor(hexColor: string | undefined, fallback: [number, number, number]) {
@@ -75,42 +73,42 @@ export async function GET(
     pdfDoc.registerFontkit(fontkit);
 
     // 2. Load Fonts
-    let scriptFont;
+    const fonts: Record<string, any> = {};
     try {
-      const localScriptPath = path.join(process.cwd(), 'public', 'fonts', 'BadScript-Regular.ttf');
-      let scriptBytes;
-      try {
-        const buf = await fs.readFile(localScriptPath);
-        scriptBytes = new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
-      } catch {
-        scriptBytes = await fetchFont(BAD_SCRIPT_FONT_URL);
-      }
-      scriptFont = await pdfDoc.embedFont(scriptBytes);
+      fonts.cassandra = await pdfDoc.embedFont(await loadFontLocal('Cassandra.ttf'));
     } catch (e) {
-      console.warn('Failed to load Bad Script font, using fallback:', e);
+      console.warn('Failed to load Cassandra font:', e);
       const { StandardFonts } = require('pdf-lib');
-      scriptFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      fonts.cassandra = await pdfDoc.embedFont(StandardFonts.Helvetica);
     }
-
-    let robotoFont;
     try {
-      const localRobotoPath = path.join(process.cwd(), 'public', 'fonts', 'Roboto-Regular.ttf');
-      let robotoBytes;
-      try {
-        const buf = await fs.readFile(localRobotoPath);
-        robotoBytes = new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
-      } catch {
-        robotoBytes = await fetchFont(ROBOTO_FONT_URL);
-      }
-      robotoFont = await pdfDoc.embedFont(robotoBytes);
+      fonts.montserratRegular = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Regular.ttf'));
     } catch (e) {
-      console.warn('Failed to load Roboto font, using fallback:', e);
-      robotoFont = scriptFont;
+      console.warn('Failed to load Montserrat-Regular:', e);
+      fonts.montserratRegular = fonts.cassandra;
+    }
+    try {
+      fonts.montserratBold = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Bold.ttf'));
+    } catch (e) {
+      console.warn('Failed to load Montserrat-Bold:', e);
+      fonts.montserratBold = fonts.montserratRegular;
+    }
+    try {
+      fonts.montserratItalic = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Italic.ttf'));
+    } catch (e) {
+      console.warn('Failed to load Montserrat-Italic:', e);
+      fonts.montserratItalic = fonts.montserratRegular;
     }
 
-    const fontMap: Record<string, any> = {
-      script: scriptFont,
-      roboto: robotoFont,
+    const resolveFont = (key: string, weight?: string, style?: string) => {
+      if (key === 'student_name') {
+        return fonts.cassandra;
+      }
+      const isBold = weight === 'bold' || weight === '700';
+      const isItalic = style === 'italic' || style === 'oblique';
+      if (isBold) return fonts.montserratBold;
+      if (isItalic) return fonts.montserratItalic;
+      return fonts.montserratRegular;
     };
 
     // 3. Load Template
@@ -170,7 +168,7 @@ export async function GET(
       page.drawImage(bgImage, { x: 0, y: 0, width, height });
     } else {
       page.drawRectangle({ x: 0, y: 0, width, height, borderColor: rgb(0, 0, 0), borderWidth: 2 });
-      page.drawText('СЕРТИФІКАТ ПРО ЗАКІНЧЕННЯ', { x: width / 2 - 150, y: height / 2 + 50, size: 30, font: robotoFont, color: rgb(0, 0, 0) });
+      page.drawText('СЕРТИФІКАТ ПРО ЗАКІНЧЕННЯ', { x: width / 2 - 150, y: height / 2 + 50, size: 30, font: fonts.montserratBold, color: rgb(0, 0, 0) });
     }
 
     // 4. Load Settings
@@ -203,7 +201,7 @@ export async function GET(
       const text = textValues[block.key] || '';
       if (!text) continue;
 
-      const font = fontMap[block.font] || robotoFont;
+      const font = resolveFont(block.key, block.weight, block.style);
       const size = block.size ?? 14;
       const color = getHexColor(block.color, [0, 0, 0]);
       const align = block.align || 'left';

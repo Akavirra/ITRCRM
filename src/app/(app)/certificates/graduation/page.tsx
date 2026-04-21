@@ -6,7 +6,7 @@ import { t } from '@/i18n/t';
 import { formatDateKyiv } from '@/lib/date-utils';
 import PageLoading from '@/components/PageLoading';
 import { useUser } from '@/components/UserContext';
-import { Download, Plus, Trash2, Image as ImageIcon, Upload } from 'lucide-react';
+import { Download, Plus, Trash2, Upload, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 
 interface CompletionCertificateData {
   id: number;
@@ -34,19 +34,20 @@ interface CourseOption {
 
 interface BlockSetting {
   key: string;
-  font: 'script' | 'roboto';
   size: number;
   xPercent: number;
   yPercent: number;
   color: string;
   align: 'left' | 'center' | 'right';
+  weight: 'normal' | 'bold';
+  style: 'normal' | 'italic';
 }
 
 const DEFAULT_BLOCKS: BlockSetting[] = [
-  { key: 'student_name', font: 'script', size: 42, xPercent: 50, yPercent: 45, color: '#1a237e', align: 'center' },
-  { key: 'verb', font: 'roboto', size: 18, xPercent: 50, yPercent: 38, color: '#1a237e', align: 'center' },
-  { key: 'course_name', font: 'roboto', size: 20, xPercent: 50, yPercent: 28, color: '#1565c0', align: 'center' },
-  { key: 'issue_date', font: 'roboto', size: 14, xPercent: 80, yPercent: 8, color: '#1a237e', align: 'left' },
+  { key: 'student_name', size: 42, xPercent: 50, yPercent: 45, color: '#1a237e', align: 'center', weight: 'normal', style: 'normal' },
+  { key: 'verb', size: 18, xPercent: 50, yPercent: 38, color: '#1a237e', align: 'center', weight: 'normal', style: 'normal' },
+  { key: 'course_name', size: 20, xPercent: 50, yPercent: 28, color: '#1565c0', align: 'center', weight: 'normal', style: 'normal' },
+  { key: 'issue_date', size: 14, xPercent: 80, yPercent: 8, color: '#1a237e', align: 'left', weight: 'normal', style: 'normal' },
 ];
 
 const BLOCK_LABELS: Record<string, string> = {
@@ -80,6 +81,8 @@ export default function GraduationCertificatesPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [dragging, setDragging] = useState<number | null>(null);
+  const [resizing, setResizing] = useState<{ index: number; startSize: number; startY: number } | null>(null);
+  const [selectedBlock, setSelectedBlock] = useState<number | null>(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 842, height: 595 });
 
   useEffect(() => {
@@ -241,6 +244,26 @@ export default function GraduationCertificatesPage() {
 
   const canCreate = !saving && formData.student_id && formData.issue_date && formData.gender;
   const modalMaxWidth = activeTab === 'design' ? '1200px' : '600px';
+
+  useEffect(() => {
+    if (!resizing) return;
+    const handleMove = (e: MouseEvent) => {
+      const delta = resizing.startY - e.clientY;
+      const newSize = Math.max(8, resizing.startSize + delta * 0.3);
+      setBlocks(prev => {
+        const next = [...prev];
+        next[resizing.index] = { ...next[resizing.index], size: Math.round(newSize) };
+        return next;
+      });
+    };
+    const handleUp = () => setResizing(null);
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+    };
+  }, [resizing]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (dragging === null) return;
@@ -459,217 +482,279 @@ export default function GraduationCertificatesPage() {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(480px, 1.45fr) minmax(360px, 1fr)', gap: '24px', alignItems: 'start' }}>
-                  {/* Preview */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gap: '12px',
-                      padding: '20px',
-                      background: 'var(--gray-50)',
-                      border: '1px solid var(--gray-200)',
-                      borderRadius: '12px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <ImageIcon size={18} style={{ color: 'var(--gray-600)' }} />
-                      <span style={{ fontWeight: 600, fontSize: '14px' }}>Шаблон сертифіката</span>
-                    </div>
+                <div style={{ display: 'grid', gap: '20px' }}>
+                  {/* Template Upload */}
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <Upload size={16} />
+                      {selectedFile ? selectedFile.name : 'Обрати файл'}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg"
+                        style={{ display: 'none' }}
+                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                    {selectedFile && (
+                      <button className="btn btn-primary" onClick={handleUploadTemplate} disabled={uploading}>
+                        {uploading ? 'Завантаження…' : 'Завантажити'}
+                      </button>
+                    )}
+                  </div>
 
-                    {templateUrl ? (
-                      <div
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
-                        style={{
-                          position: 'relative',
-                          borderRadius: '12px',
-                          overflow: 'hidden',
-                          border: '1px solid var(--gray-200)',
-                          cursor: dragging !== null ? 'grabbing' : 'crosshair',
-                          userSelect: 'none',
-                          containerType: 'inline-size',
-                          background: '#ffffff'
-                        }}
-                      >
-                        <img
-                          src={templateUrl}
-                          alt="Template"
-                          onLoad={(e) => setImageDimensions({ width: e.currentTarget.naturalWidth || 842, height: e.currentTarget.naturalHeight || 595 })}
-                          style={{ width: '100%', display: 'block', pointerEvents: 'none' }}
-                        />
-                        {blocks.map((block, idx) => (
+                  {templateUrl ? (
+                    <div
+                      onMouseMove={handleMouseMove}
+                      onMouseUp={handleMouseUp}
+                      onMouseLeave={handleMouseUp}
+                      onClick={() => setSelectedBlock(null)}
+                      style={{
+                        position: 'relative',
+                        borderRadius: '12px',
+                        overflow: 'auto',
+                        border: '1px solid var(--gray-200)',
+                        cursor: dragging !== null ? 'grabbing' : 'crosshair',
+                        userSelect: 'none',
+                        background: '#ffffff',
+                        maxHeight: '70vh',
+                        containerType: 'inline-size',
+                      }}
+                    >
+                      <img
+                        src={templateUrl}
+                        alt="Template"
+                        onLoad={(e) => setImageDimensions({ width: e.currentTarget.naturalWidth || 842, height: e.currentTarget.naturalHeight || 595 })}
+                        style={{ width: '100%', display: 'block', pointerEvents: 'none' }}
+                      />
+                      {blocks.map((block, idx) => {
+                        const isSelected = selectedBlock === idx;
+                        const isName = block.key === 'student_name';
+                        return (
                           <div
                             key={block.key}
-                            onMouseDown={(e) => { e.stopPropagation(); setDragging(idx); }}
+                            onClick={(e) => { e.stopPropagation(); setSelectedBlock(idx); }}
+                            onMouseDown={(e) => { if (!isSelected) return; e.stopPropagation(); setDragging(idx); }}
                             style={{
                               position: 'absolute',
                               left: `${block.xPercent}%`,
                               bottom: `${block.yPercent}%`,
                               transform: `translateX(-50%)`,
-                              fontSize: `${(block.size / imageDimensions.width) * 100}cqi`,
+                              fontSize: `${(block.size / imageDimensions.width) * 100}cqw`,
                               color: block.color,
-                              fontFamily: block.font === 'script' ? "'Bad Script', cursive" : "'Roboto', sans-serif",
-                              fontWeight: 400,
-                              cursor: 'grab',
-                              padding: '0.5cqi',
+                              fontFamily: isName ? "'Cassandra', cursive" : "'Montserrat', sans-serif",
+                              fontWeight: block.weight === 'bold' ? 700 : 400,
+                              fontStyle: block.style === 'italic' ? 'italic' : 'normal',
+                              cursor: isSelected ? 'grab' : 'pointer',
+                              padding: '0.5cqw',
                               whiteSpace: 'nowrap',
-                              border: dragging === idx ? '1px dashed var(--primary)' : '1px solid transparent',
-                              background: dragging === idx ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+                              border: isSelected ? '1px dashed var(--primary)' : '1px solid transparent',
+                              background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
                               lineHeight: 1,
                               textAlign: block.align,
+                              zIndex: isSelected ? 10 : 1,
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected) {
+                                (e.currentTarget as HTMLDivElement).style.border = '1px dashed rgba(37, 99, 235, 0.4)';
+                                (e.currentTarget as HTMLDivElement).style.background = 'rgba(59, 130, 246, 0.04)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSelected) {
+                                (e.currentTarget as HTMLDivElement).style.border = '1px solid transparent';
+                                (e.currentTarget as HTMLDivElement).style.background = 'transparent';
+                              }
                             }}
                           >
+                            {/* Toolbar */}
+                            {isSelected && (
+                              <div
+                                onMouseDown={(e) => e.stopPropagation()}
+                                style={{
+                                  position: 'absolute',
+                                  bottom: '100%',
+                                  left: '50%',
+                                  transform: 'translateX(-50%)',
+                                  marginBottom: '6px',
+                                  display: 'flex',
+                                  gap: '4px',
+                                  padding: '4px',
+                                  background: '#ffffff',
+                                  borderRadius: '8px',
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                  border: '1px solid var(--gray-200)',
+                                  zIndex: 20,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                <input
+                                  type="color"
+                                  value={block.color}
+                                  onChange={(e) => {
+                                    const newBlocks = [...blocks];
+                                    newBlocks[idx].color = e.target.value;
+                                    setBlocks(newBlocks);
+                                  }}
+                                  style={{ width: '28px', height: '28px', padding: 0, border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                />
+                                {([
+                                  { a: 'left' as const, icon: AlignLeft },
+                                  { a: 'center' as const, icon: AlignCenter },
+                                  { a: 'right' as const, icon: AlignRight },
+                                ]).map(({ a, icon: Icon }) => (
+                                  <button
+                                    key={a}
+                                    onClick={() => {
+                                      const newBlocks = [...blocks];
+                                      newBlocks[idx].align = a;
+                                      setBlocks(newBlocks);
+                                    }}
+                                    title={a === 'left' ? 'По лівому краю' : a === 'center' ? 'По центру' : 'По правому краю'}
+                                    style={{
+                                      width: '28px',
+                                      height: '28px',
+                                      borderRadius: '4px',
+                                      border: 'none',
+                                      background: block.align === a ? 'var(--gray-900)' : 'transparent',
+                                      color: block.align === a ? '#fff' : 'var(--gray-600)',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}
+                                  >
+                                    <Icon size={14} />
+                                  </button>
+                                ))}
+                                {([
+                                  { label: 'N', w: 'normal', s: 'normal', title: 'Звичайний' },
+                                  { label: 'B', w: 'bold', s: 'normal', title: 'Жирний' },
+                                  { label: 'I', w: 'normal', s: 'italic', title: 'Курсив' },
+                                  { label: 'BI', w: 'bold', s: 'italic', title: 'Жирний курсив' },
+                                ] as const).map((ws) => (
+                                  <button
+                                    key={ws.label}
+                                    onClick={() => {
+                                      const newBlocks = [...blocks];
+                                      newBlocks[idx].weight = ws.w;
+                                      newBlocks[idx].style = ws.s;
+                                      setBlocks(newBlocks);
+                                    }}
+                                    title={ws.title}
+                                    style={{
+                                      width: '28px',
+                                      height: '28px',
+                                      borderRadius: '4px',
+                                      border: 'none',
+                                      background: block.weight === ws.w && block.style === ws.s ? 'var(--gray-900)' : 'transparent',
+                                      color: block.weight === ws.w && block.style === ws.s ? '#fff' : 'var(--gray-600)',
+                                      fontSize: '12px',
+                                      cursor: 'pointer',
+                                      fontWeight: ws.w === 'bold' ? 700 : 400,
+                                      fontStyle: ws.s === 'italic' ? 'italic' : 'normal',
+                                    }}
+                                  >
+                                    {ws.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Resize handles */}
+                            {isSelected && (
+                              <>
+                                <div
+                                  onMouseDown={(e) => { e.stopPropagation(); setResizing({ index: idx, startSize: block.size, startY: e.clientY }); }}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '-8px',
+                                    left: '-8px',
+                                    width: '16px',
+                                    height: '16px',
+                                    background: '#2563eb',
+                                    border: '2px solid #fff',
+                                    borderRadius: '50%',
+                                    cursor: 'nwse-resize',
+                                    zIndex: 20,
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                                  }}
+                                />
+                                <div
+                                  onMouseDown={(e) => { e.stopPropagation(); setResizing({ index: idx, startSize: block.size, startY: e.clientY }); }}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '-8px',
+                                    right: '-8px',
+                                    width: '16px',
+                                    height: '16px',
+                                    background: '#2563eb',
+                                    border: '2px solid #fff',
+                                    borderRadius: '50%',
+                                    cursor: 'nesw-resize',
+                                    zIndex: 20,
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                                  }}
+                                />
+                                <div
+                                  onMouseDown={(e) => { e.stopPropagation(); setResizing({ index: idx, startSize: block.size, startY: e.clientY }); }}
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: '-8px',
+                                    left: '-8px',
+                                    width: '16px',
+                                    height: '16px',
+                                    background: '#2563eb',
+                                    border: '2px solid #fff',
+                                    borderRadius: '50%',
+                                    cursor: 'nesw-resize',
+                                    zIndex: 20,
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                                  }}
+                                />
+                                <div
+                                  onMouseDown={(e) => { e.stopPropagation(); setResizing({ index: idx, startSize: block.size, startY: e.clientY }); }}
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: '-8px',
+                                    right: '-8px',
+                                    width: '16px',
+                                    height: '16px',
+                                    background: '#2563eb',
+                                    border: '2px solid #fff',
+                                    borderRadius: '50%',
+                                    cursor: 'nwse-resize',
+                                    zIndex: 20,
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                                  }}
+                                />
+                              </>
+                            )}
+
                             {block.key === 'student_name' && "Єва Григор'єва"}
                             {block.key === 'verb' && 'успішно завершила навчання'}
                             {block.key === 'course_name' && "«Комп'ютерна графіка та дизайн»"}
                             {block.key === 'issue_date' && 'Дата видачі: 12.06.2025'}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{
-                        height: '220px',
-                        background: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '2px dashed var(--gray-300)',
-                        borderRadius: '12px',
-                        color: 'var(--gray-500)'
-                      }}>
-                        Шаблон не завантажено
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                        <Upload size={16} />
-                        {selectedFile ? selectedFile.name : 'Обрати файл'}
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg"
-                          style={{ display: 'none' }}
-                          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                        />
-                      </label>
-                      {selectedFile && (
-                        <button className="btn btn-primary" onClick={handleUploadTemplate} disabled={uploading}>
-                          {uploading ? 'Завантаження…' : 'Завантажити'}
-                        </button>
-                      )}
+                        );
+                      })}
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{
+                      height: '220px',
+                      background: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px dashed var(--gray-300)',
+                      borderRadius: '12px',
+                      color: 'var(--gray-500)'
+                    }}>
+                      Шаблон не завантажено
+                    </div>
+                  )}
 
-                  {/* Controls */}
-                  <div style={{ display: 'grid', gap: '16px' }}>
-                    {blocks.map((block, idx) => (
-                      <div
-                        key={block.key}
-                        style={{
-                          display: 'grid',
-                          gap: '16px',
-                          padding: '20px',
-                          background: '#ffffff',
-                          border: '1px solid var(--gray-200)',
-                          borderRadius: '12px'
-                        }}
-                      >
-                        <div style={{ display: 'grid', gap: '4px' }}>
-                          <span style={{ fontSize: '16px', lineHeight: '24px', fontWeight: 600, color: 'var(--gray-900)' }}>
-                            {BLOCK_LABELS[block.key] || block.key}
-                          </span>
-                          <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-600)' }}>
-                            Перетягніть блок на шаблоні або скористайтеся повзунками.
-                          </span>
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Розмір шрифту</label>
-                          <input
-                            type="number"
-                            className="form-input"
-                            value={block.size}
-                            onChange={(e) => {
-                              const newBlocks = [...blocks];
-                              newBlocks[idx].size = parseInt(e.target.value) || 0;
-                              setBlocks(newBlocks);
-                            }}
-                          />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Колір</label>
-                          <input
-                            type="color"
-                            className="form-input"
-                            style={{ padding: '4px', height: '40px' }}
-                            value={block.color}
-                            onChange={(e) => {
-                              const newBlocks = [...blocks];
-                              newBlocks[idx].color = e.target.value;
-                              setBlocks(newBlocks);
-                            }}
-                          />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Позиція зліва: {block.xPercent}%</label>
-                          <input
-                            type="range"
-                            min="0" max="100"
-                            value={block.xPercent}
-                            onChange={(e) => {
-                              const newBlocks = [...blocks];
-                              newBlocks[idx].xPercent = parseInt(e.target.value);
-                              setBlocks(newBlocks);
-                            }}
-                          />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Позиція знизу: {block.yPercent}%</label>
-                          <input
-                            type="range"
-                            min="0" max="100"
-                            value={block.yPercent}
-                            onChange={(e) => {
-                              const newBlocks = [...blocks];
-                              newBlocks[idx].yPercent = parseInt(e.target.value);
-                              setBlocks(newBlocks);
-                            }}
-                          />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Шрифт</label>
-                          <select
-                            className="form-select"
-                            value={block.font}
-                            onChange={(e) => {
-                              const newBlocks = [...blocks];
-                              newBlocks[idx].font = e.target.value as 'script' | 'roboto';
-                              setBlocks(newBlocks);
-                            }}
-                          >
-                            <option value="script">Каліграфічний</option>
-                            <option value="roboto">Звичайний</option>
-                          </select>
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Вирівнювання</label>
-                          <select
-                            className="form-select"
-                            value={block.align}
-                            onChange={(e) => {
-                              const newBlocks = [...blocks];
-                              newBlocks[idx].align = e.target.value as 'left' | 'center' | 'right';
-                              setBlocks(newBlocks);
-                            }}
-                          >
-                            <option value="left">Ліворуч</option>
-                            <option value="center">По центру</option>
-                            <option value="right">Праворуч</option>
-                          </select>
-                        </div>
-                      </div>
-                    ))}
+                  <div style={{ fontSize: '13px', color: 'var(--gray-500)', textAlign: 'center' }}>
+                    Натисніть на текстовий блок, щоб відкрити налаштування. Перетягніть блок для зміни позиції, потягніть за круглі кнопки в кутах для зміни розміру.
                   </div>
                 </div>
               )}
