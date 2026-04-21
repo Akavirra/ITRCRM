@@ -204,7 +204,7 @@ export default function GraduationCertificatesPage() {
     if (!resizing) return;
 
     const handleResizeMove = (event: MouseEvent) => {
-      const delta = resizing.startY - event.clientY;
+      const delta = event.clientY - resizing.startY;
       const nextSize = Math.max(10, Math.min(160, resizing.startSize + delta * 0.28));
       updateBlock(resizing.index, { size: Math.round(nextSize) });
     };
@@ -663,8 +663,8 @@ export default function GraduationCertificatesPage() {
                                 fontWeight: block.weight === 'bold' ? 700 : 400,
                                 fontStyle: block.style === 'italic' ? 'italic' : 'normal',
                                 textAlign: block.align,
-                                whiteSpace: block.wrap || text.includes('\n') ? 'pre-wrap' : 'nowrap',
-                                maxWidth: block.wrap ? '360px' : 'none',
+                                whiteSpace: 'pre',
+                                maxWidth: 'none',
                               }}
                             >
                               {isSelected && (
@@ -725,13 +725,6 @@ export default function GraduationCertificatesPage() {
                                     title="Збільшити розмір"
                                   >
                                     +
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => updateBlock(index, { wrap: !block.wrap })}
-                                    className={`${s.blockToolbarToggle} ${block.wrap ? s.blockToolbarBtnActive : ''}`}
-                                  >
-                                    wrap
                                   </button>
                                 </div>
                               )}
@@ -963,14 +956,6 @@ export default function GraduationCertificatesPage() {
                             />
                           </div>
 
-                          <label className={s.checkboxRow}>
-                            <input
-                              type="checkbox"
-                              checked={activeBlock.wrap}
-                              onChange={(event) => updateBlock(selectedBlock, { wrap: event.target.checked })}
-                            />
-                            <span>Дозволити перенесення рядків</span>
-                          </label>
                         </div>
                       </div>
                     )}
