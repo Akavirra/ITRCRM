@@ -48,6 +48,13 @@ interface CourseOption {
   title: string;
 }
 
+interface GroupOption {
+  id: number;
+  title: string;
+  course_id: number;
+  course_title: string;
+}
+
 interface CompletionCertificateSettings {
   templateUrl: string | null;
   blocks: BlockSetting[];
@@ -81,6 +88,7 @@ const BLOCK_LABELS: Record<string, string> = {
 };
 
 type AccordionKey = 'data' | 'blocks' | 'template';
+type SelectionMode = 'single' | 'group';
 
 interface EditorSnapshot {
   blocks: BlockSetting[];
@@ -138,6 +146,10 @@ export default function GraduationCertificatesPage() {
   const [certificates, setCertificates] = useState<CompletionCertificateData[]>([]);
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [groups, setGroups] = useState<GroupOption[]>([]);
+  const [loadingGroupStudents, setLoadingGroupStudents] = useState(false);
+  const [selectionMode, setSelectionMode] = useState<SelectionMode>('single');
+  const [selectedGroupStudentIds, setSelectedGroupStudentIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -163,6 +175,7 @@ export default function GraduationCertificatesPage() {
   const [formData, setFormData] = useState({
     student_id: '',
     course_id: '',
+    group_id: '',
     issue_date: new Date().toISOString().slice(0, 10),
     gender: '' as 'male' | 'female' | '',
   });
@@ -179,8 +192,14 @@ export default function GraduationCertificatesPage() {
   const activeBlockIndex = selectedBlock ?? 0;
   const selectedStudent = students.find((student) => String(student.id) === formData.student_id) || null;
   const selectedCourse = courses.find((course) => String(course.id) === formData.course_id) || null;
+  const filteredGroups = formData.course_id
+    ? groups.filter((group) => String(group.course_id) === formData.course_id)
+    : groups;
+  const selectedGroup = groups.find((group) => String(group.id) === formData.group_id) || null;
   const selectedCourseLabel = getFallbackCourseLabel(selectedCourse?.title);
-  const canCreate = !saving && formData.student_id && formData.issue_date && formData.gender;
+  const canCreate = selectionMode === 'group'
+    ? !saving && !!formData.group_id && !!formData.issue_date && selectedGroupStudentIds.length > 0
+    : !saving && !!formData.student_id && !!formData.issue_date && !!formData.gender;
   const toolbarScale = 1 / scale;
   const scaledWidth = imageDimensions.width * scale;
   const scaledHeight = imageDimensions.height * scale;
@@ -256,10 +275,10 @@ export default function GraduationCertificatesPage() {
           return;
         }
 
-        const [certRes, studentRes, courseRes, templateRes, settingsRes] = await Promise.all([
+        const [certRes, courseRes, groupRes, templateRes, settingsRes] = await Promise.all([
           fetch('/api/completion-certificates'),
-          fetch('/api/students'),
           fetch('/api/courses'),
+          fetch('/api/groups?basic=true'),
           fetch('/api/completion-certificates/template'),
           fetch('/api/completion-certificates/settings'),
         ]);
@@ -267,16 +286,7 @@ export default function GraduationCertificatesPage() {
         const certData = await certRes.json();
         setCertificates(Array.isArray(certData) ? certData : []);
 
-        const studentData = await studentRes.json();
-        setStudents(
-          Array.isArray(studentData.students)
-            ? studentData.students.map((student: any) => ({
-                id: student.id,
-                full_name: student.full_name,
-                gender: student.gender,
-              }))
-            : []
-        );
+        setStudents([]);
 
         const courseData = await courseRes.json();
         setCourses(
@@ -284,6 +294,18 @@ export default function GraduationCertificatesPage() {
             ? courseData.courses.map((course: any) => ({
                 id: course.id,
                 title: course.title,
+              }))
+            : []
+        );
+
+        const groupData = await groupRes.json();
+        setGroups(
+          Array.isArray(groupData.groups)
+            ? groupData.groups.map((group: any) => ({
+                id: group.id,
+                title: group.title,
+                course_id: group.course_id,
+                course_title: group.course_title,
               }))
             : []
         );
@@ -330,6 +352,65 @@ export default function GraduationCertificatesPage() {
 
     return () => window.removeEventListener('resize', fitPreview);
   }, [imageDimensions, templateUrl, showModal]);
+
+  useEffect(() => {
+    if (!formData.group_id) {
+      setStudents([]);
+      setSelectedGroupStudentIds([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchGroupStudents = async () => {
+      setLoadingGroupStudents(true);
+      try {
+        const response = await fetch(`/api/groups/${formData.group_id}/students?basic=true`);
+        const data = await response.json();
+        if (cancelled) return;
+
+        const nextStudents: StudentOption[] = Array.isArray(data.students)
+          ? data.students.map((student: any) => ({
+              id: student.id,
+              full_name: student.full_name,
+              gender: student.gender ?? null,
+            }))
+          : [];
+
+        setStudents(nextStudents);
+
+        if (selectionMode === 'group') {
+          const allIds = nextStudents.map((student) => String(student.id));
+          setSelectedGroupStudentIds(allIds);
+          setFormData((prev) => ({ ...prev, student_id: allIds[0] || '' }));
+        } else {
+          setSelectedGroupStudentIds([]);
+          setFormData((prev) => {
+            if (!prev.student_id) return prev;
+            return nextStudents.some((student) => String(student.id) === prev.student_id)
+              ? prev
+              : { ...prev, student_id: '', gender: '' };
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch group students:', error);
+        if (!cancelled) {
+          setStudents([]);
+          setSelectedGroupStudentIds([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingGroupStudents(false);
+        }
+      }
+    };
+
+    fetchGroupStudents();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [formData.group_id, selectionMode]);
 
   useEffect(() => {
     if (!formData.student_id || !selectedStudent) return;
@@ -549,17 +630,72 @@ export default function GraduationCertificatesPage() {
     setIsPanning(false);
   };
 
+  const handleSelectionModeChange = (mode: SelectionMode) => {
+    setSelectionMode(mode);
+    if (mode === 'group') {
+      const allIds = students.map((student) => String(student.id));
+      setSelectedGroupStudentIds(allIds);
+      setFormData((prev) => ({ ...prev, student_id: allIds[0] || '' }));
+      return;
+    }
+
+    setSelectedGroupStudentIds([]);
+    setFormData((prev) => ({ ...prev, student_id: '', gender: '' }));
+  };
+
+  const handleCourseChange = (courseId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      course_id: courseId,
+      group_id: '',
+      student_id: '',
+      gender: '',
+    }));
+    setStudents([]);
+    setSelectedGroupStudentIds([]);
+  };
+
+  const handleGroupChange = (groupId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      group_id: groupId,
+      student_id: '',
+      gender: '',
+    }));
+    setStudents([]);
+    setSelectedGroupStudentIds([]);
+  };
+
+  const toggleGroupStudent = (studentId: string) => {
+    setSelectedGroupStudentIds((prev) => {
+      const nextIds = prev.includes(studentId)
+        ? prev.filter((id) => id !== studentId)
+        : [...prev, studentId];
+
+      setFormData((current) => ({
+        ...current,
+        student_id: nextIds[0] || '',
+      }));
+
+      return nextIds;
+    });
+  };
+
   const handleCreate = () => {
     historyRef.current = [];
     setFormData({
       student_id: '',
       course_id: '',
+      group_id: '',
       issue_date: new Date().toISOString().slice(0, 10),
       gender: '',
     });
     setPreviewTexts({});
     setSelectedBlock(null);
     setSelectedFile(null);
+    setSelectionMode('single');
+    setStudents([]);
+    setSelectedGroupStudentIds([]);
     setShowModal(true);
   };
 
@@ -568,10 +704,19 @@ export default function GraduationCertificatesPage() {
 
     setSaving(true);
     try {
+      const payload = selectionMode === 'group'
+        ? {
+            course_id: formData.course_id,
+            group_id: formData.group_id,
+            issue_date: formData.issue_date,
+            student_ids: selectedGroupStudentIds,
+          }
+        : formData;
+
       const response = await fetch('/api/completion-certificates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -580,10 +725,15 @@ export default function GraduationCertificatesPage() {
         return;
       }
 
-      const newCertificate = await response.json();
-      setCertificates((prev) => [newCertificate, ...prev]);
+      const result = await response.json();
+      const createdCertificates = Array.isArray(result.created) ? result.created : [result];
+      setCertificates((prev) => [...createdCertificates, ...prev]);
       setShowModal(false);
-      window.open(`/api/completion-certificates/${newCertificate.id}/pdf`, '_blank');
+      if (createdCertificates.length === 1 && createdCertificates[0]?.id) {
+        window.open(`/api/completion-certificates/${createdCertificates[0].id}/pdf`, '_blank');
+      } else if (createdCertificates.length > 1) {
+        alert(`Створено ${createdCertificates.length} сертифікатів`);
+      }
     } catch (error) {
       console.error('Failed to save certificate:', error);
       alert('Не вдалося згенерувати сертифікат');
@@ -1042,19 +1192,39 @@ export default function GraduationCertificatesPage() {
                     {openAccordion === 'data' && (
                       <div className={s.accordionBody}>
                         <div className={s.summaryCard}>
-                          <span className={s.summaryLabel}>Поточний сертифікат</span>
-                          <strong className={s.summaryValue}>{selectedStudent?.full_name || 'Оберіть учня'}</strong>
-                          <span className={s.summaryMeta}>{selectedCourse?.title || 'Курс ще не обрано'}</span>
+                          <span className={s.summaryLabel}>
+                            {selectionMode === 'group' ? 'Групове створення' : 'Поточний сертифікат'}
+                          </span>
+                          <strong className={s.summaryValue}>
+                            {selectionMode === 'group'
+                              ? (selectedGroup ? `${selectedGroup.title} · ${selectedGroupStudentIds.length} уч.` : 'Оберіть групу')
+                              : (selectedStudent?.full_name || 'Оберіть учня')}
+                          </strong>
+                          <span className={s.summaryMeta}>
+                            {selectionMode === 'group'
+                              ? `${selectedGroupStudentIds.length} із ${students.length} активних учнів буде створено`
+                              : (selectedCourse?.title || 'Курс ще не обрано')}
+                          </span>
                         </div>
 
                         <div className={s.compactGroup}>
-                          <label className={s.compactLabel}>Учень <span className={s.compactRequired}>*</span></label>
-                          <select className="form-select" value={formData.student_id} onChange={(event) => onStudentChange(event.target.value)}>
-                            <option value="">Оберіть учня</option>
-                            {students.map((student) => (
-                              <option key={student.id} value={student.id}>{student.full_name}</option>
-                            ))}
-                          </select>
+                          <label className={s.compactLabel}>Режим створення</label>
+                          <div className={s.segmentedControl}>
+                            <button
+                              type="button"
+                              className={`${s.segmentedOption} ${selectionMode === 'single' ? s.segmentedOptionActive : ''}`}
+                              onClick={() => handleSelectionModeChange('single')}
+                            >
+                              Один учень
+                            </button>
+                            <button
+                              type="button"
+                              className={`${s.segmentedOption} ${selectionMode === 'group' ? s.segmentedOptionActive : ''}`}
+                              onClick={() => handleSelectionModeChange('group')}
+                            >
+                              Уся група
+                            </button>
+                          </div>
                         </div>
 
                         <div className={s.compactGroup}>
@@ -1062,7 +1232,7 @@ export default function GraduationCertificatesPage() {
                           <select
                             className="form-select"
                             value={formData.course_id}
-                            onChange={(event) => setFormData((prev) => ({ ...prev, course_id: event.target.value }))}
+                            onChange={(event) => handleCourseChange(event.target.value)}
                           >
                             <option value="">Оберіть курс</option>
                             {courses.map((course) => (
@@ -1070,6 +1240,74 @@ export default function GraduationCertificatesPage() {
                             ))}
                           </select>
                         </div>
+
+                        <div className={s.compactGroup}>
+                          <label className={s.compactLabel}>Група <span className={s.compactRequired}>*</span></label>
+                          <select
+                            className="form-select"
+                            value={formData.group_id}
+                            onChange={(event) => handleGroupChange(event.target.value)}
+                            disabled={!formData.course_id}
+                          >
+                            <option value="">Оберіть групу</option>
+                            {filteredGroups.map((group) => (
+                              <option key={group.id} value={group.id}>{group.title}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {selectionMode === 'single' ? (
+                          <div className={s.compactGroup}>
+                            <label className={s.compactLabel}>Учень <span className={s.compactRequired}>*</span></label>
+                            <select
+                              className="form-select"
+                              value={formData.student_id}
+                              onChange={(event) => onStudentChange(event.target.value)}
+                              disabled={!formData.group_id || loadingGroupStudents}
+                            >
+                              <option value="">{loadingGroupStudents ? 'Завантаження учнів…' : 'Оберіть учня'}</option>
+                              {students.map((student) => (
+                                <option key={student.id} value={student.id}>{student.full_name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : (
+                          <div className={s.groupSelectionCard}>
+                            <div className={s.groupSelectionHeader}>
+                              <span>{selectedGroup ? selectedGroup.title : 'Оберіть групу'}</span>
+                              <button
+                                type="button"
+                                className={s.selectionLink}
+                                onClick={() => {
+                                  const allIds = students.map((student) => String(student.id));
+                                  setSelectedGroupStudentIds(allIds);
+                                  setFormData((prev) => ({ ...prev, student_id: allIds[0] || '' }));
+                                }}
+                                disabled={!students.length}
+                              >
+                                Вибрати всіх
+                              </button>
+                            </div>
+                            <div className={s.groupStudentList}>
+                              {loadingGroupStudents ? (
+                                <span className={s.groupSelectionHint}>Завантаження активних учнів…</span>
+                              ) : students.length ? (
+                                students.map((student) => (
+                                  <label key={student.id} className={s.groupStudentItem}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedGroupStudentIds.includes(String(student.id))}
+                                      onChange={() => toggleGroupStudent(String(student.id))}
+                                    />
+                                    <span>{student.full_name}</span>
+                                  </label>
+                                ))
+                              ) : (
+                                <span className={s.groupSelectionHint}>У вибраній групі немає активних учнів</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
                         <div className={s.compactRow}>
                           <div className={s.compactGroup}>
@@ -1082,11 +1320,14 @@ export default function GraduationCertificatesPage() {
                             />
                           </div>
                           <div className={s.compactGroup}>
-                            <label className={s.compactLabel}>Стать <span className={s.compactRequired}>*</span></label>
+                            <label className={s.compactLabel}>
+                              {selectionMode === 'group' ? 'Стать у прев’ю' : 'Стать'} <span className={s.compactRequired}>*</span>
+                            </label>
                             <select
                               className="form-select"
                               value={formData.gender}
                               onChange={(event) => setFormData((prev) => ({ ...prev, gender: event.target.value as 'male' | 'female' }))}
+                              disabled={selectionMode === 'group' && !formData.student_id}
                             >
                               <option value="">Оберіть</option>
                               <option value="female">Жіноча</option>

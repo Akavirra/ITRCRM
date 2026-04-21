@@ -492,13 +492,15 @@ export async function getStudentsInGroupBasic(
   id: number;
   public_id: string;
   full_name: string;
+  gender: 'male' | 'female' | null;
 }>> {
   return await all<{
     id: number;
     public_id: string;
     full_name: string;
+    gender: 'male' | 'female' | null;
   }>(
-    `SELECT s.id, s.public_id, s.full_name
+    `SELECT s.id, s.public_id, s.full_name, s.gender
      FROM students s
      JOIN student_groups sg ON s.id = sg.student_id
      WHERE sg.group_id = $1${includeInactive ? '' : ' AND sg.is_active = TRUE'}
