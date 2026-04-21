@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   ChevronDown,
   Download,
-  Move,
   Plus,
   RotateCcw,
   SlidersHorizontal,
@@ -118,7 +117,7 @@ export default function GraduationCertificatesPage() {
   const selectedStudent = students.find((student) => String(student.id) === formData.student_id) || null;
   const selectedCourse = courses.find((course) => String(course.id) === formData.course_id) || null;
   const canCreate = !saving && formData.student_id && formData.issue_date && formData.gender;
-  const toolbarScale = Math.min(1.3, Math.max(0.82, 1 / scale));
+  const toolbarScale = 1 / scale;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -570,14 +569,10 @@ export default function GraduationCertificatesPage() {
                     <span className={s.headerDivider}>•</span>
                     <span className={s.headerStudent}>{selectedStudent?.full_name || 'Оберіть учня'}</span>
                   </div>
-                  <p className={s.modalSubtitle}>Canvas-first редактор: спершу вміст, потім макет, далі готовий PDF.</p>
                 </div>
               </div>
 
               <div className={s.headerActions}>
-                <button className="btn btn-secondary btn-sm" onClick={handleSaveSettings} disabled={savingSettings}>
-                  {savingSettings ? 'Збереження…' : 'Зберегти'}
-                </button>
                 <button type="button" className={s.modalClose} onClick={() => setShowModal(false)} aria-label="Закрити">
                   <X size={16} />
                 </button>
@@ -589,7 +584,6 @@ export default function GraduationCertificatesPage() {
                 <div className={s.canvasTopbar}>
                   <div className={s.canvasMeta}>
                     <span className={s.canvasLabel}>Полотно сертифіката</span>
-                    <span className={s.canvasHint}>Перетягування, resize і швидкі стилі доступні прямо на макеті.</span>
                   </div>
 
                   <div className={s.canvasToolbar}>
@@ -669,7 +663,7 @@ export default function GraduationCertificatesPage() {
                                 fontWeight: block.weight === 'bold' ? 700 : 400,
                                 fontStyle: block.style === 'italic' ? 'italic' : 'normal',
                                 textAlign: block.align,
-                                whiteSpace: block.wrap ? 'pre-wrap' : 'nowrap',
+                                whiteSpace: block.wrap || text.includes('\n') ? 'pre-wrap' : 'nowrap',
                                 maxWidth: block.wrap ? '360px' : 'none',
                               }}
                             >
@@ -708,6 +702,29 @@ export default function GraduationCertificatesPage() {
                                     className={`${s.blockToolbarBtn} ${block.style === 'italic' ? s.blockToolbarBtnActive : ''}`}
                                   >
                                     I
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateBlock(index, { size: Math.max(10, block.size - 2) })}
+                                    className={s.blockToolbarBtn}
+                                    title="Зменшити розмір"
+                                  >
+                                    -
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={s.blockToolbarSize}
+                                    title={`Поточний розмір: ${block.size}px`}
+                                  >
+                                    {block.size}px
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateBlock(index, { size: Math.min(160, block.size + 2) })}
+                                    className={s.blockToolbarBtn}
+                                    title="Збільшити розмір"
+                                  >
+                                    +
                                   </button>
                                   <button
                                     type="button"
@@ -755,13 +772,6 @@ export default function GraduationCertificatesPage() {
                   </div>
                 )}
 
-                <div className={s.canvasBottomHint}>
-                  <span className={s.canvasBottomItem}>
-                    <Move size={15} />
-                    Перетягування працює прямо на полотні.
-                  </span>
-                  <span className={s.canvasBottomItem}>Resize робиться кутовими хендлами, а стилі відкриваються над активним елементом.</span>
-                </div>
               </section>
 
               <aside className={s.sidebar}>
@@ -1005,7 +1015,6 @@ export default function GraduationCertificatesPage() {
             </div>
 
             <div className={s.modalFooter}>
-              <div className={s.footerNote}>Збереження вигляду не створює документ. PDF генерується окремою кнопкою.</div>
               <div className={s.footerActions}>
                 <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
                   {t('actions.close')}
