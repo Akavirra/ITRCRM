@@ -232,6 +232,11 @@
   transform: scale(0.97);
 }
 
+.toolbarBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .toolbarScale {
   min-width: 46px;
   text-align: center;
@@ -301,6 +306,30 @@
   font-size: 13px;
   line-height: 18px;
   max-width: 440px;
+}
+
+.panControls {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.panSliderRow {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.panSliderLabel {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.panSlider {
+  width: 100%;
 }
 
 .sidebar {

@@ -11,8 +11,8 @@ import {
   Download,
   Plus,
   RotateCcw,
-  SlidersHorizontal,
   Trash2,
+  Undo2,
   Upload,
   X,
   ZoomIn,
@@ -76,6 +76,14 @@ const BLOCK_LABELS: Record<string, string> = {
 
 type AccordionKey = 'data' | 'blocks' | 'template';
 
+interface EditorSnapshot {
+  blocks: BlockSetting[];
+  previewTexts: Record<string, string>;
+  pan: { x: number; y: number };
+  scale: number;
+  selectedBlock: number;
+}
+
 export default function GraduationCertificatesPage() {
   const router = useRouter();
   const { user } = useUser();
@@ -95,9 +103,10 @@ export default function GraduationCertificatesPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [dragging, setDragging] = useState<{ index: number; offsetX: number; offsetY: number } | null>(null);
   const [openAccordion, setOpenAccordion] = useState<AccordionKey>('data');
-  const [resizing, setResizing] = useState<{ index: number; startSize: number; startY: number } | null>(null);
+  const [resizing, setResizing] = useState<{ index: number; startSize: number; startY: number; directionY: 1 | -1 } | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<number>(0);
   const [imageDimensions, setImageDimensions] = useState({ width: 842, height: 595 });
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -112,12 +121,52 @@ export default function GraduationCertificatesPage() {
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<EditorSnapshot[]>([]);
 
   const activeBlock = blocks[selectedBlock];
   const selectedStudent = students.find((student) => String(student.id) === formData.student_id) || null;
   const selectedCourse = courses.find((course) => String(course.id) === formData.course_id) || null;
   const canCreate = !saving && formData.student_id && formData.issue_date && formData.gender;
   const toolbarScale = 1 / scale;
+  const scaledWidth = imageDimensions.width * scale;
+  const scaledHeight = imageDimensions.height * scale;
+  const panBounds = {
+    x: Math.max(0, Math.round((scaledWidth - viewportSize.width) / 2)),
+    y: Math.max(0, Math.round((scaledHeight - viewportSize.height) / 2)),
+  };
+  const canUndo = historyRef.current.length > 0;
+
+  const createSnapshot = (): EditorSnapshot => ({
+    blocks: blocks.map((block) => ({ ...block })),
+    previewTexts: { ...previewTexts },
+    pan: { ...pan },
+    scale,
+    selectedBlock,
+  });
+
+  const applySnapshot = (snapshot: EditorSnapshot) => {
+    setBlocks(snapshot.blocks.map((block) => ({ ...block })));
+    setPreviewTexts({ ...snapshot.previewTexts });
+    setPan({ ...snapshot.pan });
+    setScale(snapshot.scale);
+    setSelectedBlock(snapshot.selectedBlock);
+  };
+
+  const pushHistory = (snapshot = createSnapshot()) => {
+    const lastSnapshot = historyRef.current[historyRef.current.length - 1];
+    const serializedSnapshot = JSON.stringify(snapshot);
+    if (lastSnapshot && JSON.stringify(lastSnapshot) === serializedSnapshot) return;
+    historyRef.current.push(snapshot);
+    if (historyRef.current.length > 100) {
+      historyRef.current.shift();
+    }
+  };
+
+  const undoLastChange = () => {
+    const previous = historyRef.current.pop();
+    if (!previous) return;
+    applySnapshot(previous);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -185,6 +234,7 @@ export default function GraduationCertificatesPage() {
       const viewportWidth = viewportRef.current.clientWidth - 40;
       const viewportHeight = viewportRef.current.clientHeight - 40;
       if (!viewportWidth || !viewportHeight) return;
+      setViewportSize({ width: viewportWidth, height: viewportHeight });
 
       const widthScale = viewportWidth / imageDimensions.width;
       const heightScale = viewportHeight / imageDimensions.height;
@@ -204,9 +254,9 @@ export default function GraduationCertificatesPage() {
     if (!resizing) return;
 
     const handleResizeMove = (event: MouseEvent) => {
-      const delta = event.clientY - resizing.startY;
+      const delta = (event.clientY - resizing.startY) * resizing.directionY;
       const nextSize = Math.max(10, Math.min(160, resizing.startSize + delta * 0.28));
-      updateBlock(resizing.index, { size: Math.round(nextSize) });
+      updateBlock(resizing.index, { size: Math.round(nextSize) }, false);
     };
 
     const handleResizeEnd = () => {
@@ -228,14 +278,31 @@ export default function GraduationCertificatesPage() {
 
     const handleWheel = (event: WheelEvent) => {
       event.preventDefault();
-      adjustScale(event.deltaY > 0 ? -0.08 : 0.08);
+      adjustScale(event.deltaY > 0 ? -0.08 : 0.08, false);
     };
 
     element.addEventListener('wheel', handleWheel, { passive: false });
     return () => element.removeEventListener('wheel', handleWheel);
   }, [showModal]);
 
-  const updateBlock = (index: number, patch: Partial<BlockSetting>) => {
+  useEffect(() => {
+    if (!showModal) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        undoLastChange();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showModal, blocks, previewTexts, pan, scale, selectedBlock]);
+
+  const updateBlock = (index: number, patch: Partial<BlockSetting>, shouldRecordHistory = true) => {
+    if (shouldRecordHistory) {
+      pushHistory();
+    }
     setBlocks((prev) => prev.map((block, currentIndex) => (
       currentIndex === index ? { ...block, ...patch } : block
     )));
@@ -272,7 +339,10 @@ export default function GraduationCertificatesPage() {
     key === 'student_name' ? "'Cassandra', cursive" : "'Montserrat', sans-serif"
   );
 
-  const adjustScale = (delta: number) => {
+  const adjustScale = (delta: number, shouldRecordHistory = true) => {
+    if (shouldRecordHistory) {
+      pushHistory();
+    }
     setScale((prev) => {
       const next = Math.max(0.4, Math.min(2.4, prev + delta));
       return Math.round(next * 100) / 100;
@@ -280,6 +350,7 @@ export default function GraduationCertificatesPage() {
   };
 
   const resetViewport = () => {
+    pushHistory();
     setPan({ x: 0, y: 0 });
     if (!viewportRef.current) {
       setScale(1);
@@ -295,6 +366,7 @@ export default function GraduationCertificatesPage() {
   const handleCanvasMouseDown = (event: React.MouseEvent) => {
     if (event.button === 1 || (event.button === 0 && event.target === event.currentTarget)) {
       event.preventDefault();
+      pushHistory();
       setIsPanning(true);
       setPanStart({ x: event.clientX - pan.x, y: event.clientY - pan.y });
     }
@@ -318,7 +390,7 @@ export default function GraduationCertificatesPage() {
     updateBlock(dragging.index, {
       xPercent: parseFloat(x.toFixed(2)),
       yPercent: parseFloat(y.toFixed(2)),
-    });
+    }, false);
   };
 
   const handleMouseUp = () => {
@@ -327,6 +399,7 @@ export default function GraduationCertificatesPage() {
   };
 
   const handleCreate = () => {
+    historyRef.current = [];
     setFormData({
       student_id: '',
       course_id: '',
@@ -587,6 +660,9 @@ export default function GraduationCertificatesPage() {
                   </div>
 
                   <div className={s.canvasToolbar}>
+                    <button type="button" className={s.toolbarBtn} onClick={undoLastChange} title="Крок назад (Ctrl+Z)" disabled={!canUndo}>
+                      <Undo2 size={15} />
+                    </button>
                     <button type="button" className={s.toolbarBtn} onClick={() => adjustScale(-0.08)} title="Зменшити">
                       <ZoomOut size={15} />
                     </button>
@@ -601,6 +677,7 @@ export default function GraduationCertificatesPage() {
                 </div>
 
                 {templateUrl ? (
+                  <>
                   <div ref={viewportRef} className={s.canvasViewport}>
                     <div
                       className={s.canvasFrame}
@@ -646,6 +723,7 @@ export default function GraduationCertificatesPage() {
                               onMouseDown={(event) => {
                                 if (!isSelected) return;
                                 event.stopPropagation();
+                                pushHistory();
                                 const rect = event.currentTarget.getBoundingClientRect();
                                 setDragging({
                                   index,
@@ -732,20 +810,21 @@ export default function GraduationCertificatesPage() {
                               {isSelected && (
                                 <>
                                   {[
-                                    { top: '-7px', left: '-7px', cursor: 'nwse-resize' },
-                                    { top: '-7px', right: '-7px', cursor: 'nesw-resize' },
-                                    { bottom: '-7px', left: '-7px', cursor: 'nesw-resize' },
-                                    { bottom: '-7px', right: '-7px', cursor: 'nwse-resize' },
-                                  ].map((handle, handleIndex) => (
+                                    { top: '-7px', left: '-7px', cursor: 'nwse-resize', directionY: -1 as const },
+                                    { top: '-7px', right: '-7px', cursor: 'nesw-resize', directionY: -1 as const },
+                                    { bottom: '-7px', left: '-7px', cursor: 'nesw-resize', directionY: 1 as const },
+                                    { bottom: '-7px', right: '-7px', cursor: 'nwse-resize', directionY: 1 as const },
+                                  ].map(({ directionY, ...handleStyle }, handleIndex) => (
                                     <button
                                       key={handleIndex}
                                       type="button"
                                       className={s.resizeHandle}
                                       onMouseDown={(event) => {
                                         event.stopPropagation();
-                                        setResizing({ index, startSize: block.size, startY: event.clientY });
+                                        pushHistory();
+                                        setResizing({ index, startSize: block.size, startY: event.clientY, directionY });
                                       }}
-                                      style={handle}
+                                      style={handleStyle}
                                     />
                                   ))}
                                 </>
@@ -758,6 +837,37 @@ export default function GraduationCertificatesPage() {
                       </div>
                     </div>
                   </div>
+                  {(panBounds.x > 0 || panBounds.y > 0) && (
+                    <div className={s.panControls}>
+                      {panBounds.x > 0 && (
+                        <label className={s.panSliderRow}>
+                          <span className={s.panSliderLabel}>Горизонталь</span>
+                          <input
+                            type="range"
+                            min={-panBounds.x}
+                            max={panBounds.x}
+                            value={Math.round(pan.x)}
+                            onChange={(event) => setPan((prev) => ({ ...prev, x: parseInt(event.target.value, 10) }))}
+                            className={s.panSlider}
+                          />
+                        </label>
+                      )}
+                      {panBounds.y > 0 && (
+                        <label className={s.panSliderRow}>
+                          <span className={s.panSliderLabel}>Вертикаль</span>
+                          <input
+                            type="range"
+                            min={-panBounds.y}
+                            max={panBounds.y}
+                            value={Math.round(pan.y)}
+                            onChange={(event) => setPan((prev) => ({ ...prev, y: parseInt(event.target.value, 10) }))}
+                            className={s.panSlider}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  )}
+                  </>
                 ) : (
                   <div className={s.canvasEmpty}>
                     <span className={s.canvasEmptyTitle}>Спочатку завантажте шаблон сертифіката</span>
@@ -873,10 +983,13 @@ export default function GraduationCertificatesPage() {
                               className="form-input"
                               rows={activeBlock.key === 'verb' ? 3 : 2}
                               value={previewTexts[activeBlock.key] ?? getPreviewText(activeBlock.key)}
-                              onChange={(event) => setPreviewTexts((prev) => ({
-                                ...prev,
-                                [activeBlock.key]: event.target.value,
-                              }))}
+                              onChange={(event) => {
+                                pushHistory();
+                                setPreviewTexts((prev) => ({
+                                  ...prev,
+                                  [activeBlock.key]: event.target.value,
+                                }));
+                              }}
                             />
                           </div>
 
