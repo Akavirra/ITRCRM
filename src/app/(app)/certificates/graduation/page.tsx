@@ -834,39 +834,39 @@ export default function GraduationCertificatesPage() {
                             </div>
                           );
                         })}
+                        {(panBounds.x > 0 || panBounds.y > 0) && (
+                          <div className={s.panOverlay}>
+                            {panBounds.y > 0 && (
+                              <div className={`${s.panRail} ${s.panRailVertical}`}>
+                                <input
+                                  type="range"
+                                  min={-panBounds.y}
+                                  max={panBounds.y}
+                                  value={Math.round(pan.y)}
+                                  onChange={(event) => setPan((prev) => ({ ...prev, y: parseInt(event.target.value, 10) }))}
+                                  className={`${s.panSlider} ${s.panSliderVertical}`}
+                                  aria-label="Прокрутка по вертикалі"
+                                />
+                              </div>
+                            )}
+                            {panBounds.x > 0 && (
+                              <div className={`${s.panRail} ${s.panRailHorizontal}`}>
+                                <input
+                                  type="range"
+                                  min={-panBounds.x}
+                                  max={panBounds.x}
+                                  value={Math.round(pan.x)}
+                                  onChange={(event) => setPan((prev) => ({ ...prev, x: parseInt(event.target.value, 10) }))}
+                                  className={`${s.panSlider} ${s.panSliderHorizontal}`}
+                                  aria-label="Прокрутка по горизонталі"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                  {(panBounds.x > 0 || panBounds.y > 0) && (
-                    <div className={s.panControls}>
-                      {panBounds.x > 0 && (
-                        <label className={s.panSliderRow}>
-                          <span className={s.panSliderLabel}>Горизонталь</span>
-                          <input
-                            type="range"
-                            min={-panBounds.x}
-                            max={panBounds.x}
-                            value={Math.round(pan.x)}
-                            onChange={(event) => setPan((prev) => ({ ...prev, x: parseInt(event.target.value, 10) }))}
-                            className={s.panSlider}
-                          />
-                        </label>
-                      )}
-                      {panBounds.y > 0 && (
-                        <label className={s.panSliderRow}>
-                          <span className={s.panSliderLabel}>Вертикаль</span>
-                          <input
-                            type="range"
-                            min={-panBounds.y}
-                            max={panBounds.y}
-                            value={Math.round(pan.y)}
-                            onChange={(event) => setPan((prev) => ({ ...prev, y: parseInt(event.target.value, 10) }))}
-                            className={s.panSlider}
-                          />
-                        </label>
-                      )}
-                    </div>
-                  )}
                   </>
                 ) : (
                   <div className={s.canvasEmpty}>

@@ -308,28 +308,58 @@
   max-width: 440px;
 }
 
-.panControls {
-  display: grid;
-  gap: 8px;
-  margin-top: 12px;
+.panOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
-.panSliderRow {
-  display: grid;
-  grid-template-columns: 86px minmax(0, 1fr);
+.panRail {
+  position: absolute;
+  pointer-events: auto;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.panRailHorizontal {
+  left: 18px;
+  right: 34px;
+  bottom: 14px;
+  height: 14px;
+  display: flex;
   align-items: center;
-  gap: 10px;
+  padding: 0 6px;
 }
 
-.panSliderLabel {
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 600;
-  color: var(--text-muted);
+.panRailVertical {
+  top: 18px;
+  right: 14px;
+  bottom: 34px;
+  width: 14px;
+  display: flex;
+  justify-content: center;
+  padding: 6px 0;
 }
 
 .panSlider {
   width: 100%;
+  margin: 0;
+  accent-color: #64748b;
+  background: transparent;
+}
+
+.panSliderHorizontal {
+  height: 12px;
+}
+
+.panSliderVertical {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 12px;
+  height: 100%;
 }
 
 .sidebar {
