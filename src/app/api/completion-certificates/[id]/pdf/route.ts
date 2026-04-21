@@ -193,7 +193,7 @@ export async function GET(
       student_name: cert.student_name || '',
       verb: cert.gender === 'female' ? 'успішно завершила навчання' : 'успішно завершив навчання',
       course_name: cert.course_title ? `«${cert.course_title}»` : '',
-      issue_date: `Дата видачі: ${formatDate(cert.issue_date)}`,
+      issue_date: formatDate(cert.issue_date),
     };
 
     // 6. Draw each block

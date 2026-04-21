@@ -7,10 +7,10 @@ export const dynamic = 'force-dynamic';
 const DEFAULT_SETTINGS = {
   templateUrl: null as string | null,
   blocks: [
-    { key: 'student_name', weight: 'normal', style: 'normal', size: 42, xPercent: 50, yPercent: 45, color: '#1a237e', align: 'center' as const },
-    { key: 'verb', weight: 'normal', style: 'normal', size: 18, xPercent: 50, yPercent: 38, color: '#1a237e', align: 'center' as const },
-    { key: 'course_name', weight: 'bold', style: 'normal', size: 20, xPercent: 50, yPercent: 28, color: '#1565c0', align: 'center' as const },
-    { key: 'issue_date', weight: 'normal', style: 'normal', size: 14, xPercent: 80, yPercent: 8, color: '#1a237e', align: 'left' as const },
+    { key: 'student_name', weight: 'normal', style: 'normal', wrap: false, size: 42, xPercent: 50, yPercent: 45, color: '#1a237e', align: 'center' as const },
+    { key: 'verb', weight: 'normal', style: 'normal', wrap: true, size: 18, xPercent: 50, yPercent: 38, color: '#1a237e', align: 'center' as const },
+    { key: 'course_name', weight: 'bold', style: 'normal', wrap: true, size: 20, xPercent: 50, yPercent: 28, color: '#1565c0', align: 'center' as const },
+    { key: 'issue_date', weight: 'normal', style: 'normal', wrap: false, size: 14, xPercent: 80, yPercent: 8, color: '#1a237e', align: 'left' as const },
   ]
 };
 

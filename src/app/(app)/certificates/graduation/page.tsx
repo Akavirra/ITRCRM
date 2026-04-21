@@ -41,13 +41,14 @@ interface BlockSetting {
   align: 'left' | 'center' | 'right';
   weight: 'normal' | 'bold';
   style: 'normal' | 'italic';
+  wrap: boolean;
 }
 
 const DEFAULT_BLOCKS: BlockSetting[] = [
-  { key: 'student_name', size: 42, xPercent: 50, yPercent: 45, color: '#1a237e', align: 'center', weight: 'normal', style: 'normal' },
-  { key: 'verb', size: 18, xPercent: 50, yPercent: 38, color: '#1a237e', align: 'center', weight: 'normal', style: 'normal' },
-  { key: 'course_name', size: 20, xPercent: 50, yPercent: 28, color: '#1565c0', align: 'center', weight: 'normal', style: 'normal' },
-  { key: 'issue_date', size: 14, xPercent: 80, yPercent: 8, color: '#1a237e', align: 'left', weight: 'normal', style: 'normal' },
+  { key: 'student_name', size: 42, xPercent: 50, yPercent: 45, color: '#1a237e', align: 'center', weight: 'normal', style: 'normal', wrap: false },
+  { key: 'verb', size: 18, xPercent: 50, yPercent: 38, color: '#1a237e', align: 'center', weight: 'normal', style: 'normal', wrap: true },
+  { key: 'course_name', size: 20, xPercent: 50, yPercent: 28, color: '#1565c0', align: 'center', weight: 'normal', style: 'normal', wrap: true },
+  { key: 'issue_date', size: 14, xPercent: 80, yPercent: 8, color: '#1a237e', align: 'left', weight: 'normal', style: 'normal', wrap: false },
 ];
 
 const BLOCK_LABELS: Record<string, string> = {
@@ -87,6 +88,8 @@ export default function GraduationCertificatesPage() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [previewTexts, setPreviewTexts] = useState<Record<string, string>>({});
   const previewRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -289,26 +292,22 @@ export default function GraduationCertificatesPage() {
     if (!el) return;
     const onWheelNative = (e: WheelEvent) => {
       e.preventDefault();
-      if (e.ctrlKey || e.metaKey) {
-        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        setScale(prev => {
-          const next = Math.max(0.1, Math.min(5, prev + delta));
-          return Math.round(next * 10) / 10;
-        });
-      } else {
-        const speed = 1.5;
-        setPan(prev => ({ x: prev.x - e.deltaX * speed, y: prev.y - e.deltaY * speed }));
-      }
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setScale(prev => {
+        const next = Math.max(0.1, Math.min(5, prev + delta));
+        return Math.round(next * 10) / 10;
+      });
     };
     el.addEventListener('wheel', onWheelNative, { passive: false });
     return () => el.removeEventListener('wheel', onWheelNative);
   }, []);
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 1 || (e.button === 0 && selectedBlock === null && e.target === e.currentTarget)) {
+    if (e.button === 1 || (e.button === 0 && e.target === e.currentTarget)) {
       e.preventDefault();
       setIsPanning(true);
       setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      setSelectedBlock(null);
     }
   };
 
@@ -333,6 +332,29 @@ export default function GraduationCertificatesPage() {
   const handleMouseUp = () => {
     setDragging(null);
     setIsPanning(false);
+  };
+
+  const formatPreviewDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return dateStr;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}.${month}.${year}`;
+  };
+
+  const getPreviewText = (key: string) => {
+    if (previewTexts[key] !== undefined) return previewTexts[key];
+    const student = students.find(s => String(s.id) === formData.student_id);
+    const course = courses.find(c => String(c.id) === formData.course_id);
+    switch (key) {
+      case 'student_name': return student?.full_name || "Єва Григор'єва";
+      case 'verb': return formData.gender === 'male' ? 'успішно завершив навчання' : 'успішно завершила навчання';
+      case 'course_name': return course?.title ? `«${course.title}»` : "«Комп'ютерна графіка та дизайн»";
+      case 'issue_date': return formatPreviewDate(formData.issue_date);
+      default: return '';
+    }
   };
 
   if (loading) return <PageLoading />;
@@ -598,12 +620,16 @@ export default function GraduationCertificatesPage() {
                               fontStyle: block.style === 'italic' ? 'italic' : 'normal',
                               cursor: isSelected ? 'grab' : 'pointer',
                               padding: '0.5cqw',
-                              whiteSpace: 'normal',
+                              whiteSpace: block.wrap ? 'normal' : 'nowrap',
                               border: isSelected ? '1px dashed var(--primary)' : '1px solid transparent',
                               background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
                               lineHeight: 1,
                               textAlign: block.align,
                               zIndex: isSelected ? 10 : 1,
+                            }}
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              setEditingKey(block.key);
                             }}
                             onMouseEnter={(e) => {
                               if (!isSelected) {
@@ -710,6 +736,26 @@ export default function GraduationCertificatesPage() {
                                     {ws.label}
                                   </button>
                                 ))}
+                                <button
+                                  onClick={() => {
+                                    const newBlocks = [...blocks];
+                                    newBlocks[idx].wrap = !newBlocks[idx].wrap;
+                                    setBlocks(newBlocks);
+                                  }}
+                                  title={block.wrap ? 'Без переносу' : 'Перенос слів'}
+                                  style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '4px',
+                                    border: 'none',
+                                    background: block.wrap ? 'var(--gray-900)' : 'transparent',
+                                    color: block.wrap ? '#fff' : 'var(--gray-600)',
+                                    fontSize: '12px',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  ↵
+                                </button>
                               </div>
                             )}
 
@@ -791,16 +837,43 @@ export default function GraduationCertificatesPage() {
                               </>
                             )}
 
-                            {block.key === 'student_name' && "Єва Григор'єва"}
-                            {block.key === 'verb' && (
+                            {editingKey === block.key ? (
+                              <input
+                                type="text"
+                                value={previewTexts[block.key] !== undefined ? previewTexts[block.key] : getPreviewText(block.key)}
+                                onChange={(e) => setPreviewTexts(prev => ({ ...prev, [block.key]: e.target.value }))}
+                                onBlur={() => setEditingKey(null)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') setEditingKey(null); }}
+                                autoFocus
+                                style={{
+                                  fontSize: 'inherit',
+                                  color: 'inherit',
+                                  fontFamily: 'inherit',
+                                  fontWeight: 'inherit',
+                                  fontStyle: 'inherit',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  outline: 'none',
+                                  textAlign: block.align,
+                                  width: '100%',
+                                  minWidth: '20px',
+                                  padding: 0,
+                                  margin: 0,
+                                }}
+                              />
+                            ) : (
                               <>
-                                успішно завершила навчання
-                                <br />
-                                з курсу
+                                {block.key === 'verb' ? (
+                                  <>
+                                    {getPreviewText('verb')}
+                                    <br />
+                                    з курсу
+                                  </>
+                                ) : (
+                                  getPreviewText(block.key)
+                                )}
                               </>
                             )}
-                            {block.key === 'course_name' && "«Комп'ютерна графіка та дизайн»"}
-                            {block.key === 'issue_date' && 'Дата видачі: 12.06.2025'}
                           </div>
                         );
                       })}
