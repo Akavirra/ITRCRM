@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, badRequest } from '@/lib/api-utils';
-import { getCompletionCertificates, createCompletionCertificate } from '@/lib/completion-certificates';
+import {
+  getCompletionCertificates,
+  createCompletionCertificate,
+  getCompletionCertificateById,
+} from '@/lib/completion-certificates';
 import { get } from '@/db';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +53,13 @@ export async function POST(request: NextRequest) {
       created_by: user.id,
     });
 
-    return NextResponse.json(cert);
+    if (!cert) {
+      throw new Error('Не вдалося створити сертифікат');
+    }
+
+    const fullCert = await getCompletionCertificateById(cert.id);
+
+    return NextResponse.json(fullCert ?? cert);
   } catch (error: any) {
     console.error('Completion Certificates POST Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

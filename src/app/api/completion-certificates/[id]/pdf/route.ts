@@ -54,6 +54,44 @@ function formatDate(dateStr: string): string {
   return `${day}.${month}.${year}`;
 }
 
+function drawBlockText(page: any, text: string, options: {
+  font: any;
+  size: number;
+  color: any;
+  align: 'left' | 'center' | 'right';
+  width: number;
+  bottomAnchorY: number;
+  xPercent: number;
+}) {
+  const lines = text.split('\n').filter(Boolean);
+  if (!lines.length) return;
+
+  const lineHeight = options.size * 1.15;
+
+  lines.forEach((line, lineIndex) => {
+    const textWidth = options.font.widthOfTextAtSize(line, options.size);
+    const currentBottomY = options.bottomAnchorY + lineHeight * (lines.length - lineIndex - 1);
+    const baselineY = getBottomAlignedBaseline(options.font, options.size, currentBottomY);
+
+    let x: number;
+    if (options.align === 'center') {
+      x = (options.width * (options.xPercent / 100)) - (textWidth / 2);
+    } else if (options.align === 'right') {
+      x = (options.width * (options.xPercent / 100)) - textWidth;
+    } else {
+      x = options.width * (options.xPercent / 100);
+    }
+
+    page.drawText(line, {
+      x,
+      y: baselineY,
+      size: options.size,
+      font: options.font,
+      color: options.color,
+    });
+  });
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -191,7 +229,10 @@ export async function GET(
     // 5. Build text values
     const textValues: Record<string, string> = {
       student_name: cert.student_name || '',
-      verb: cert.gender === 'female' ? 'успішно завершила навчання' : 'успішно завершив навчання',
+      verb:
+        cert.gender === 'female'
+          ? 'успішно завершила навчання\nз курсу'
+          : 'успішно завершив навчання\nз курсу',
       course_name: cert.course_title ? `«${cert.course_title}»` : '',
       issue_date: formatDate(cert.issue_date),
     };
@@ -206,20 +247,16 @@ export async function GET(
       const color = getHexColor(block.color, [0, 0, 0]);
       const align = block.align || 'left';
 
-      const textWidth = font.widthOfTextAtSize(text, size);
       const bottomAnchorY = height * (block.yPercent / 100);
-      const baselineY = getBottomAlignedBaseline(font, size, bottomAnchorY);
-
-      let x: number;
-      if (align === 'center') {
-        x = (width * (block.xPercent / 100)) - (textWidth / 2);
-      } else if (align === 'right') {
-        x = (width * (block.xPercent / 100)) - textWidth;
-      } else {
-        x = width * (block.xPercent / 100);
-      }
-
-      page.drawText(text, { x, y: baselineY, size, font, color });
+      drawBlockText(page, text, {
+        font,
+        size,
+        color,
+        align,
+        width,
+        bottomAnchorY,
+        xPercent: block.xPercent,
+      });
     }
 
     const pdfBytes = await pdfDoc.save();
