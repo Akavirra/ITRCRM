@@ -81,8 +81,20 @@ interface EditorSnapshot {
   previewTexts: Record<string, string>;
   pan: { x: number; y: number };
   scale: number;
-  selectedBlock: number;
+  selectedBlock: number | null;
 }
+
+const MALE_NAME_EXCEPTIONS = new Set(['Микола', 'Ілля', 'Лука', 'Кузьма', 'Сава', 'Фома', 'Жора']);
+
+const inferGenderFromName = (fullName?: string | null): 'male' | 'female' | '' => {
+  const nameParts = fullName?.trim().split(/\s+/).filter(Boolean) || [];
+  const firstName = nameParts[1] || nameParts[0] || '';
+  if (!firstName) return '';
+  if (MALE_NAME_EXCEPTIONS.has(firstName)) return 'male';
+  const normalized = firstName.toLowerCase();
+  if (normalized.endsWith('а') || normalized.endsWith('я')) return 'female';
+  return 'male';
+};
 
 export default function GraduationCertificatesPage() {
   const router = useRouter();
@@ -102,9 +114,9 @@ export default function GraduationCertificatesPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [dragging, setDragging] = useState<{ index: number; offsetX: number; offsetY: number } | null>(null);
-  const [openAccordion, setOpenAccordion] = useState<AccordionKey>('data');
+  const [openAccordion, setOpenAccordion] = useState<AccordionKey | null>('data');
   const [resizing, setResizing] = useState<{ index: number; startSize: number; startY: number; directionY: 1 | -1 } | null>(null);
-  const [selectedBlock, setSelectedBlock] = useState<number>(0);
+  const [selectedBlock, setSelectedBlock] = useState<number | null>(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 842, height: 595 });
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [scale, setScale] = useState(1);
@@ -123,7 +135,8 @@ export default function GraduationCertificatesPage() {
   const previewRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<EditorSnapshot[]>([]);
 
-  const activeBlock = blocks[selectedBlock];
+  const activeBlock = blocks[selectedBlock ?? 0];
+  const activeBlockIndex = selectedBlock ?? 0;
   const selectedStudent = students.find((student) => String(student.id) === formData.student_id) || null;
   const selectedCourse = courses.find((course) => String(course.id) === formData.course_id) || null;
   const canCreate = !saving && formData.student_id && formData.issue_date && formData.gender;
@@ -166,6 +179,10 @@ export default function GraduationCertificatesPage() {
     const previous = historyRef.current.pop();
     if (!previous) return;
     applySnapshot(previous);
+  };
+
+  const toggleAccordion = (key: AccordionKey) => {
+    setOpenAccordion((prev) => (prev === key ? null : key));
   };
 
   useEffect(() => {
@@ -300,6 +317,7 @@ export default function GraduationCertificatesPage() {
   }, [showModal, blocks, previewTexts, pan, scale, selectedBlock]);
 
   const updateBlock = (index: number, patch: Partial<BlockSetting>, shouldRecordHistory = true) => {
+    if (index < 0 || index >= blocks.length) return;
     if (shouldRecordHistory) {
       pushHistory();
     }
@@ -315,12 +333,15 @@ export default function GraduationCertificatesPage() {
 
     switch (key) {
       case 'student_name':
+        if (!selectedStudent) return '';
         return selectedStudent?.full_name || "Єва Григор'єва";
       case 'verb':
+        if (!selectedStudent || !formData.gender) return '';
         return formData.gender === 'male'
           ? 'успішно завершив навчання\nз курсу'
           : 'успішно завершила навчання\nз курсу';
       case 'course_name':
+        if (!selectedCourse) return '';
         return selectedCourse?.title ? `«${selectedCourse.title}»` : "«Комп'ютерна графіка та дизайн»";
       case 'issue_date': {
         const date = new Date(formData.issue_date);
@@ -364,7 +385,17 @@ export default function GraduationCertificatesPage() {
   };
 
   const handleCanvasMouseDown = (event: React.MouseEvent) => {
-    if (event.button === 1 || (event.button === 0 && event.target === event.currentTarget)) {
+    const clickedCanvasSurface = event.target === event.currentTarget || event.target instanceof HTMLImageElement;
+
+    if (event.button === 0 && clickedCanvasSurface) {
+      event.preventDefault();
+      setSelectedBlock(null);
+      setDragging(null);
+      setResizing(null);
+      return;
+    }
+
+    if (event.button === 1 && clickedCanvasSurface) {
       event.preventDefault();
       pushHistory();
       setIsPanning(true);
@@ -407,7 +438,7 @@ export default function GraduationCertificatesPage() {
       gender: '',
     });
     setPreviewTexts({});
-    setSelectedBlock(0);
+    setSelectedBlock(null);
     setSelectedFile(null);
     setShowModal(true);
   };
@@ -527,10 +558,11 @@ export default function GraduationCertificatesPage() {
 
   const onStudentChange = (studentId: string) => {
     const student = students.find((item) => String(item.id) === studentId);
+    const nextGender = student?.gender || inferGenderFromName(student?.full_name);
     setFormData((prev) => ({
       ...prev,
       student_id: studentId,
-      gender: student?.gender || prev.gender,
+      gender: studentId ? nextGender : '',
     }));
   };
 
@@ -834,37 +866,37 @@ export default function GraduationCertificatesPage() {
                             </div>
                           );
                         })}
-                        {(panBounds.x > 0 || panBounds.y > 0) && (
-                          <div className={s.panOverlay}>
-                            {panBounds.y > 0 && (
-                              <div className={`${s.panRail} ${s.panRailVertical}`}>
-                                <input
-                                  type="range"
-                                  min={-panBounds.y}
-                                  max={panBounds.y}
-                                  value={Math.round(pan.y)}
-                                  onChange={(event) => setPan((prev) => ({ ...prev, y: parseInt(event.target.value, 10) }))}
-                                  className={`${s.panSlider} ${s.panSliderVertical}`}
-                                  aria-label="Прокрутка по вертикалі"
-                                />
-                              </div>
-                            )}
-                            {panBounds.x > 0 && (
-                              <div className={`${s.panRail} ${s.panRailHorizontal}`}>
-                                <input
-                                  type="range"
-                                  min={-panBounds.x}
-                                  max={panBounds.x}
-                                  value={Math.round(pan.x)}
-                                  onChange={(event) => setPan((prev) => ({ ...prev, x: parseInt(event.target.value, 10) }))}
-                                  className={`${s.panSlider} ${s.panSliderHorizontal}`}
-                                  aria-label="Прокрутка по горизонталі"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
+                      {(panBounds.x > 0 || panBounds.y > 0) && (
+                        <div className={s.panOverlay}>
+                          {panBounds.y > 0 && (
+                            <div className={`${s.panRail} ${s.panRailVertical}`}>
+                              <input
+                                type="range"
+                                min={-panBounds.y}
+                                max={panBounds.y}
+                                value={Math.round(pan.y)}
+                                onChange={(event) => setPan((prev) => ({ ...prev, y: parseInt(event.target.value, 10) }))}
+                                className={`${s.panSlider} ${s.panSliderVertical}`}
+                                aria-label="Прокрутка по вертикалі"
+                              />
+                            </div>
+                          )}
+                          {panBounds.x > 0 && (
+                            <div className={`${s.panRail} ${s.panRailHorizontal}`}>
+                              <input
+                                type="range"
+                                min={-panBounds.x}
+                                max={panBounds.x}
+                                value={Math.round(pan.x)}
+                                onChange={(event) => setPan((prev) => ({ ...prev, x: parseInt(event.target.value, 10) }))}
+                                className={`${s.panSlider} ${s.panSliderHorizontal}`}
+                                aria-label="Прокрутка по горизонталі"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                   </>
@@ -880,7 +912,7 @@ export default function GraduationCertificatesPage() {
               <aside className={s.sidebar}>
                 <div className={s.sidebarInner}>
                   <section className={s.accordionSection}>
-                    <button type="button" className={s.accordionHeader} onClick={() => setOpenAccordion('data')}>
+                    <button type="button" className={s.accordionHeader} onClick={() => toggleAccordion('data')}>
                       <div>
                         <div className={s.accordionTitle}>Дані</div>
                         <div className={s.accordionMeta}>Учень, курс, дата і стать</div>
@@ -947,7 +979,7 @@ export default function GraduationCertificatesPage() {
                   </section>
 
                   <section className={s.accordionSection}>
-                    <button type="button" className={s.accordionHeader} onClick={() => setOpenAccordion('blocks')}>
+                    <button type="button" className={s.accordionHeader} onClick={() => toggleAccordion('blocks')}>
                       <div>
                         <div className={s.accordionTitle}>Текстові блоки</div>
                         <div className={s.accordionMeta}>Позиція, стиль і текст активного елемента</div>
@@ -963,7 +995,10 @@ export default function GraduationCertificatesPage() {
                               <button
                                 key={block.key}
                                 type="button"
-                                onClick={() => setSelectedBlock(index)}
+                                onClick={() => {
+                                  setSelectedBlock(index);
+                                  setOpenAccordion('blocks');
+                                }}
                                 className={`${s.blockItem} ${isActive ? s.blockItemActive : ''}`}
                               >
                                 <span>
@@ -1002,7 +1037,7 @@ export default function GraduationCertificatesPage() {
                                 min="10"
                                 max="160"
                                 value={activeBlock.size}
-                                onChange={(event) => updateBlock(selectedBlock, { size: parseInt(event.target.value, 10) || 10 })}
+                                onChange={(event) => updateBlock(activeBlockIndex, { size: parseInt(event.target.value, 10) || 10 })}
                               />
                             </div>
                             <div className={s.compactGroup}>
@@ -1011,7 +1046,7 @@ export default function GraduationCertificatesPage() {
                                 type="color"
                                 className={`form-input ${s.colorInput}`}
                                 value={activeBlock.color}
-                                onChange={(event) => updateBlock(selectedBlock, { color: event.target.value })}
+                                onChange={(event) => updateBlock(activeBlockIndex, { color: event.target.value })}
                               />
                             </div>
                           </div>
@@ -1022,7 +1057,7 @@ export default function GraduationCertificatesPage() {
                               <select
                                 className="form-select"
                                 value={activeBlock.align}
-                                onChange={(event) => updateBlock(selectedBlock, { align: event.target.value as BlockSetting['align'] })}
+                                onChange={(event) => updateBlock(activeBlockIndex, { align: event.target.value as BlockSetting['align'] })}
                               >
                                 <option value="left">Ліворуч</option>
                                 <option value="center">По центру</option>
@@ -1036,7 +1071,7 @@ export default function GraduationCertificatesPage() {
                                 value={`${activeBlock.weight}:${activeBlock.style}`}
                                 onChange={(event) => {
                                   const [weight, style] = event.target.value.split(':') as [BlockSetting['weight'], BlockSetting['style']];
-                                  updateBlock(selectedBlock, { weight, style });
+                                  updateBlock(activeBlockIndex, { weight, style });
                                 }}
                               >
                                 <option value="normal:normal">Звичайне</option>
@@ -1054,7 +1089,7 @@ export default function GraduationCertificatesPage() {
                               min="0"
                               max="100"
                               value={activeBlock.xPercent}
-                              onChange={(event) => updateBlock(selectedBlock, { xPercent: parseInt(event.target.value, 10) })}
+                              onChange={(event) => updateBlock(activeBlockIndex, { xPercent: parseInt(event.target.value, 10) })}
                             />
                           </div>
 
@@ -1065,7 +1100,7 @@ export default function GraduationCertificatesPage() {
                               min="0"
                               max="100"
                               value={activeBlock.yPercent}
-                              onChange={(event) => updateBlock(selectedBlock, { yPercent: parseInt(event.target.value, 10) })}
+                              onChange={(event) => updateBlock(activeBlockIndex, { yPercent: parseInt(event.target.value, 10) })}
                             />
                           </div>
 
@@ -1075,7 +1110,7 @@ export default function GraduationCertificatesPage() {
                   </section>
 
                   <section className={s.accordionSection}>
-                    <button type="button" className={s.accordionHeader} onClick={() => setOpenAccordion('template')}>
+                    <button type="button" className={s.accordionHeader} onClick={() => toggleAccordion('template')}>
                       <div>
                         <div className={s.accordionTitle}>Шаблон</div>
                         <div className={s.accordionMeta}>PNG або JPG до 10 МБ</div>
