@@ -2,7 +2,20 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Download, Move, Plus, RotateCcw, SlidersHorizontal, Trash2, Upload, ZoomIn, ZoomOut } from 'lucide-react';
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Download,
+  Move,
+  Plus,
+  RotateCcw,
+  SlidersHorizontal,
+  Trash2,
+  Upload,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
 import PageLoading from '@/components/PageLoading';
 import { useUser } from '@/components/UserContext';
 import { t } from '@/i18n/t';
@@ -58,30 +71,25 @@ const BLOCK_LABELS: Record<string, string> = {
   issue_date: 'Дата видачі',
 };
 
-const modalCardStyle = {
+const panelStyle = {
   display: 'grid',
   gap: '16px',
   padding: '18px',
   background: '#ffffff',
-  border: '1px solid var(--gray-200)',
-  borderRadius: '16px',
-  boxShadow: '0 10px 30px rgba(15, 23, 42, 0.04)',
+  border: '1px solid rgba(148, 163, 184, 0.22)',
+  borderRadius: '18px',
+  boxShadow: '0 14px 34px rgba(15, 23, 42, 0.04)',
 } as const;
 
 export default function GraduationCertificatesPage() {
   const router = useRouter();
   const { user } = useUser();
+
   const [certificates, setCertificates] = useState<CompletionCertificateData[]>([]);
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    student_id: '',
-    course_id: '',
-    issue_date: new Date().toISOString().slice(0, 10),
-    gender: '' as 'male' | 'female' | '',
-  });
   const [saving, setSaving] = useState(false);
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -91,20 +99,29 @@ export default function GraduationCertificatesPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [dragging, setDragging] = useState<{ index: number; offsetX: number; offsetY: number } | null>(null);
-  const [selectedBlock, setSelectedBlock] = useState<number | null>(0);
+  const [resizing, setResizing] = useState<{ index: number; startSize: number; startY: number } | null>(null);
+  const [selectedBlock, setSelectedBlock] = useState<number>(0);
   const [imageDimensions, setImageDimensions] = useState({ width: 842, height: 595 });
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [previewTexts, setPreviewTexts] = useState<Record<string, string>>({});
-  const previewRef = useRef<HTMLDivElement>(null);
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const [formData, setFormData] = useState({
+    student_id: '',
+    course_id: '',
+    issue_date: new Date().toISOString().slice(0, 10),
+    gender: '' as 'male' | 'female' | '',
+  });
 
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  const activeBlock = blocks[selectedBlock];
   const selectedStudent = students.find((student) => String(student.id) === formData.student_id) || null;
   const selectedCourse = courses.find((course) => String(course.id) === formData.course_id) || null;
-  const activeBlock = selectedBlock !== null ? blocks[selectedBlock] : null;
   const canCreate = !saving && formData.student_id && formData.issue_date && formData.gender;
+  const toolbarScale = Math.min(1.3, Math.max(0.82, 1 / scale));
 
   useEffect(() => {
     const fetchData = async () => {
@@ -166,35 +183,152 @@ export default function GraduationCertificatesPage() {
   }, [router, user]);
 
   useEffect(() => {
-    const fit = () => {
-      if (!viewportRef.current || !previewRef.current) return;
-      const viewportWidth = viewportRef.current.clientWidth;
-      const viewportHeight = viewportRef.current.clientHeight;
-      if (!viewportWidth || !viewportHeight || !imageDimensions.height) return;
+    const fitPreview = () => {
+      if (!viewportRef.current || !imageDimensions.width || !imageDimensions.height) return;
 
-      const contentHeight = viewportWidth * (imageDimensions.height / imageDimensions.width);
-      const nextScale = Math.min(1, viewportHeight / contentHeight);
-      setScale(nextScale);
+      const viewportWidth = viewportRef.current.clientWidth - 40;
+      const viewportHeight = viewportRef.current.clientHeight - 40;
+      if (!viewportWidth || !viewportHeight) return;
+
+      const widthScale = viewportWidth / imageDimensions.width;
+      const heightScale = viewportHeight / imageDimensions.height;
+      const nextScale = Math.min(widthScale, heightScale, 1);
+
+      setScale(Math.max(0.45, Math.round(nextScale * 100) / 100));
       setPan({ x: 0, y: 0 });
     };
 
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
-  }, [imageDimensions, templateUrl]);
+    fitPreview();
+    window.addEventListener('resize', fitPreview);
+
+    return () => window.removeEventListener('resize', fitPreview);
+  }, [imageDimensions, templateUrl, showModal]);
+
+  useEffect(() => {
+    if (!resizing) return;
+
+    const handleResizeMove = (event: MouseEvent) => {
+      const delta = resizing.startY - event.clientY;
+      const nextSize = Math.max(10, Math.min(160, resizing.startSize + delta * 0.28));
+      updateBlock(resizing.index, { size: Math.round(nextSize) });
+    };
+
+    const handleResizeEnd = () => {
+      setResizing(null);
+    };
+
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+
+    return () => {
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+    };
+  }, [resizing]);
 
   useEffect(() => {
     const element = viewportRef.current;
     if (!element) return;
 
-    const onWheelNative = (event: WheelEvent) => {
+    const handleWheel = (event: WheelEvent) => {
       event.preventDefault();
-      adjustScale(event.deltaY > 0 ? -0.1 : 0.1);
+      adjustScale(event.deltaY > 0 ? -0.08 : 0.08);
     };
 
-    element.addEventListener('wheel', onWheelNative, { passive: false });
-    return () => element.removeEventListener('wheel', onWheelNative);
+    element.addEventListener('wheel', handleWheel, { passive: false });
+    return () => element.removeEventListener('wheel', handleWheel);
   }, [showModal]);
+
+  const updateBlock = (index: number, patch: Partial<BlockSetting>) => {
+    setBlocks((prev) => prev.map((block, currentIndex) => (
+      currentIndex === index ? { ...block, ...patch } : block
+    )));
+  };
+
+  const getPreviewText = (key: string) => {
+    if (previewTexts[key] !== undefined) {
+      return previewTexts[key];
+    }
+
+    switch (key) {
+      case 'student_name':
+        return selectedStudent?.full_name || "Єва Григор'єва";
+      case 'verb':
+        return formData.gender === 'male'
+          ? 'успішно завершив навчання\nз курсу'
+          : 'успішно завершила навчання\nз курсу';
+      case 'course_name':
+        return selectedCourse?.title ? `«${selectedCourse.title}»` : "«Комп'ютерна графіка та дизайн»";
+      case 'issue_date': {
+        const date = new Date(formData.issue_date);
+        if (Number.isNaN(date.getTime())) return formData.issue_date;
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}.${month}.${year}`;
+      }
+      default:
+        return '';
+    }
+  };
+
+  const getBlockFontFamily = (key: string) => (
+    key === 'student_name' ? "'Cassandra', cursive" : "'Montserrat', sans-serif"
+  );
+
+  const adjustScale = (delta: number) => {
+    setScale((prev) => {
+      const next = Math.max(0.4, Math.min(2.4, prev + delta));
+      return Math.round(next * 100) / 100;
+    });
+  };
+
+  const resetViewport = () => {
+    setPan({ x: 0, y: 0 });
+    if (!viewportRef.current) {
+      setScale(1);
+      return;
+    }
+    const viewportWidth = viewportRef.current.clientWidth - 40;
+    const viewportHeight = viewportRef.current.clientHeight - 40;
+    const widthScale = viewportWidth / imageDimensions.width;
+    const heightScale = viewportHeight / imageDimensions.height;
+    setScale(Math.max(0.45, Math.min(widthScale, heightScale, 1)));
+  };
+
+  const handleCanvasMouseDown = (event: React.MouseEvent) => {
+    if (event.button === 1 || (event.button === 0 && event.target === event.currentTarget)) {
+      event.preventDefault();
+      setIsPanning(true);
+      setPanStart({ x: event.clientX - pan.x, y: event.clientY - pan.y });
+    }
+  };
+
+  const handleMouseMove = (event: React.MouseEvent) => {
+    if (isPanning) {
+      setPan({ x: event.clientX - panStart.x, y: event.clientY - panStart.y });
+      return;
+    }
+
+    if (!dragging) return;
+
+    const container = event.currentTarget.getBoundingClientRect();
+    let x = ((event.clientX - container.left - dragging.offsetX) / container.width) * 100;
+    let y = 100 - (((event.clientY - container.top - dragging.offsetY) / container.height) * 100);
+
+    x = Math.max(0, Math.min(100, x));
+    y = Math.max(0, Math.min(100, y));
+
+    updateBlock(dragging.index, {
+      xPercent: parseFloat(x.toFixed(2)),
+      yPercent: parseFloat(y.toFixed(2)),
+    });
+  };
+
+  const handleMouseUp = () => {
+    setDragging(null);
+    setIsPanning(false);
+  };
 
   const handleCreate = () => {
     setFormData({
@@ -331,87 +465,6 @@ export default function GraduationCertificatesPage() {
     }));
   };
 
-  const updateBlock = (index: number, patch: Partial<BlockSetting>) => {
-    setBlocks((prev) => prev.map((block, currentIndex) => (
-      currentIndex === index ? { ...block, ...patch } : block
-    )));
-  };
-
-  const adjustScale = (delta: number) => {
-    setScale((prev) => {
-      const next = Math.max(0.4, Math.min(2.5, prev + delta));
-      return Math.round(next * 10) / 10;
-    });
-  };
-
-  const resetViewport = () => {
-    setScale(1);
-    setPan({ x: 0, y: 0 });
-  };
-
-  const handleCanvasMouseDown = (event: React.MouseEvent) => {
-    if (event.button === 1 || (event.button === 0 && event.target === event.currentTarget)) {
-      event.preventDefault();
-      setIsPanning(true);
-      setPanStart({ x: event.clientX - pan.x, y: event.clientY - pan.y });
-    }
-  };
-
-  const handleMouseMove = (event: React.MouseEvent) => {
-    if (isPanning) {
-      setPan({ x: event.clientX - panStart.x, y: event.clientY - panStart.y });
-      return;
-    }
-
-    if (!dragging) return;
-
-    const container = event.currentTarget.getBoundingClientRect();
-    let x = ((event.clientX - container.left - dragging.offsetX) / container.width) * 100;
-    let y = 100 - (((event.clientY - container.top - dragging.offsetY) / container.height) * 100);
-    x = Math.max(0, Math.min(100, x));
-    y = Math.max(0, Math.min(100, y));
-
-    updateBlock(dragging.index, {
-      xPercent: parseFloat(x.toFixed(2)),
-      yPercent: parseFloat(y.toFixed(2)),
-    });
-  };
-
-  const handleMouseUp = () => {
-    setDragging(null);
-    setIsPanning(false);
-  };
-
-  const formatPreviewDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    if (Number.isNaN(date.getTime())) return dateStr;
-
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}.${month}.${year}`;
-  };
-
-  const getPreviewText = (key: string) => {
-    if (previewTexts[key] !== undefined) return previewTexts[key];
-
-    switch (key) {
-      case 'student_name':
-        return selectedStudent?.full_name || "Єва Григор'єва";
-      case 'verb':
-        return formData.gender === 'male'
-          ? 'успішно завершив навчання\nз курсу'
-          : 'успішно завершила навчання\nз курсу';
-      case 'course_name':
-        return selectedCourse?.title ? `«${selectedCourse.title}»` : "«Комп'ютерна графіка та дизайн»";
-      case 'issue_date':
-        return formatPreviewDate(formData.issue_date);
-      default:
-        return '';
-    }
-  };
-
   if (loading) return <PageLoading />;
   if (!user || user.role !== 'admin') return null;
 
@@ -480,18 +533,10 @@ export default function GraduationCertificatesPage() {
                     <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{formatDateKyiv(certificate.issue_date)}</td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', gap: '6px' }}>
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => handleDownload(certificate.id)}
-                          title="Завантажити PDF"
-                        >
+                        <button className="btn btn-secondary btn-sm" onClick={() => handleDownload(certificate.id)} title="Завантажити PDF">
                           <Download size={16} />
                         </button>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleDelete(certificate.id)}
-                          title="Видалити"
-                        >
+                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(certificate.id)} title="Видалити">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -520,7 +565,7 @@ export default function GraduationCertificatesPage() {
             className="modal"
             onClick={(event) => event.stopPropagation()}
             style={{
-              maxWidth: '1280px',
+              maxWidth: '1320px',
               width: '100%',
               maxHeight: '94vh',
               overflow: 'hidden',
@@ -537,7 +582,7 @@ export default function GraduationCertificatesPage() {
                 flexShrink: 0,
                 padding: '24px 24px 18px',
                 borderBottom: '1px solid rgba(226, 232, 240, 0.9)',
-                background: 'rgba(255, 255, 255, 0.86)',
+                background: 'rgba(255, 255, 255, 0.88)',
                 backdropFilter: 'blur(12px)',
               }}
             >
@@ -567,35 +612,29 @@ export default function GraduationCertificatesPage() {
               style={{
                 overflow: 'auto',
                 flex: '1 1 auto',
-                padding: '24px',
+                padding: '22px',
                 display: 'grid',
-                gap: '24px',
-                gridTemplateColumns: 'minmax(320px, 380px) minmax(0, 1fr)',
+                gap: '22px',
+                gridTemplateColumns: 'minmax(320px, 360px) minmax(0, 1fr)',
               }}
             >
-              <div style={{ display: 'grid', gap: '18px', alignContent: 'start' }}>
-                <section style={modalCardStyle}>
+              <div style={{ display: 'grid', gap: '16px', alignContent: 'start' }}>
+                <section style={panelStyle}>
                   <div style={{ display: 'grid', gap: '4px' }}>
                     <span style={{ fontSize: '15px', lineHeight: '22px', fontWeight: 700, color: 'var(--gray-900)' }}>
                       Дані сертифіката
                     </span>
                     <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-500)' }}>
-                      Обов'язкові поля зібрані в одному місці, щоб не губитися між налаштуваннями шаблону.
+                      Зібрав основні поля в окремий блок, щоб вони не губилися серед редактора макета.
                     </span>
                   </div>
 
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">Учень <span style={{ color: '#ef4444' }}>*</span></label>
-                    <select
-                      className="form-select"
-                      value={formData.student_id}
-                      onChange={(event) => onStudentChange(event.target.value)}
-                    >
+                    <select className="form-select" value={formData.student_id} onChange={(event) => onStudentChange(event.target.value)}>
                       <option value="">Оберіть учня</option>
                       {students.map((student) => (
-                        <option key={student.id} value={student.id}>
-                          {student.full_name}
-                        </option>
+                        <option key={student.id} value={student.id}>{student.full_name}</option>
                       ))}
                     </select>
                   </div>
@@ -609,9 +648,7 @@ export default function GraduationCertificatesPage() {
                     >
                       <option value="">Оберіть курс</option>
                       {courses.map((course) => (
-                        <option key={course.id} value={course.id}>
-                          {course.title}
-                        </option>
+                        <option key={course.id} value={course.id}>{course.title}</option>
                       ))}
                     </select>
                   </div>
@@ -626,7 +663,6 @@ export default function GraduationCertificatesPage() {
                         onChange={(event) => setFormData((prev) => ({ ...prev, issue_date: event.target.value }))}
                       />
                     </div>
-
                     <div className="form-group" style={{ marginBottom: 0 }}>
                       <label className="form-label">Стать <span style={{ color: '#ef4444' }}>*</span></label>
                       <select
@@ -646,7 +682,7 @@ export default function GraduationCertificatesPage() {
                       display: 'grid',
                       gap: '4px',
                       padding: '14px 16px',
-                      borderRadius: '12px',
+                      borderRadius: '14px',
                       background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(14, 165, 233, 0.08))',
                       border: '1px solid rgba(37, 99, 235, 0.14)',
                     }}
@@ -660,14 +696,14 @@ export default function GraduationCertificatesPage() {
                   </div>
                 </section>
 
-                <section style={modalCardStyle}>
+                <section style={panelStyle}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
                     <div style={{ display: 'grid', gap: '4px' }}>
                       <span style={{ fontSize: '15px', lineHeight: '22px', fontWeight: 700, color: 'var(--gray-900)' }}>
                         Шаблон
                       </span>
                       <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-500)' }}>
-                        PNG або JPG. Завантажений фон одразу з'являється в прев'ю.
+                        PNG або JPG. Завантажений фон одразу з'явиться в робочому полі.
                       </span>
                     </div>
                     <span style={{ fontSize: '12px', lineHeight: '16px', color: 'var(--gray-400)' }}>
@@ -732,19 +768,14 @@ export default function GraduationCertificatesPage() {
                         Обрати файл
                       </label>
 
-                      <button
-                        className="btn btn-primary"
-                        onClick={handleUploadTemplate}
-                        disabled={!selectedFile || uploading}
-                        style={{ minWidth: '132px' }}
-                      >
+                      <button className="btn btn-primary" onClick={handleUploadTemplate} disabled={!selectedFile || uploading}>
                         {uploading ? 'Завантаження…' : 'Оновити шаблон'}
                       </button>
                     </div>
                   </div>
                 </section>
 
-                <section style={modalCardStyle}>
+                <section style={panelStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div
                       style={{
@@ -765,7 +796,7 @@ export default function GraduationCertificatesPage() {
                         Текстові блоки
                       </span>
                       <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-500)' }}>
-                        Виберіть блок і відредагуйте його параметри нижче.
+                        Основні параметри лишаються тут, але швидкі зміни тепер ідуть прямо над активним блоком.
                       </span>
                     </div>
                   </div>
@@ -794,156 +825,133 @@ export default function GraduationCertificatesPage() {
                           }}
                         >
                           <span style={{ display: 'grid', gap: '2px' }}>
-                            <span style={{ fontSize: '14px', lineHeight: '20px', fontWeight: 600 }}>
-                              {BLOCK_LABELS[block.key]}
-                            </span>
+                            <span style={{ fontSize: '14px', lineHeight: '20px', fontWeight: 600 }}>{BLOCK_LABELS[block.key]}</span>
                             <span style={{ fontSize: '12px', lineHeight: '16px', color: 'var(--gray-500)' }}>
                               {Math.round(block.xPercent)}% / {Math.round(block.yPercent)}%
                             </span>
                           </span>
-                          <span style={{ fontSize: '12px', lineHeight: '16px', color: 'var(--gray-500)' }}>
-                            {block.size}px
-                          </span>
+                          <span style={{ fontSize: '12px', lineHeight: '16px', color: 'var(--gray-500)' }}>{block.size}px</span>
                         </button>
                       );
                     })}
                   </div>
 
-                  {activeBlock && selectedBlock !== null && (
-                    <div
-                      style={{
-                        display: 'grid',
-                        gap: '14px',
-                        paddingTop: '4px',
-                        borderTop: '1px solid var(--gray-100)',
-                      }}
-                    >
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Текст у прев'ю</label>
-                        <textarea
-                          className="form-input"
-                          rows={activeBlock.key === 'verb' ? 3 : 2}
-                          value={previewTexts[activeBlock.key] ?? getPreviewText(activeBlock.key)}
-                          onChange={(event) => setPreviewTexts((prev) => ({
-                            ...prev,
-                            [activeBlock.key]: event.target.value,
-                          }))}
-                        />
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Розмір</label>
-                          <input
-                            type="number"
-                            className="form-input"
-                            min="8"
-                            max="96"
-                            value={activeBlock.size}
-                            onChange={(event) => updateBlock(selectedBlock, { size: parseInt(event.target.value, 10) || 8 })}
-                          />
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Колір</label>
-                          <input
-                            type="color"
-                            className="form-input"
-                            value={activeBlock.color}
-                            style={{ padding: '4px', height: '40px' }}
-                            onChange={(event) => updateBlock(selectedBlock, { color: event.target.value })}
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Вирівнювання</label>
-                          <select
-                            className="form-select"
-                            value={activeBlock.align}
-                            onChange={(event) => updateBlock(selectedBlock, { align: event.target.value as BlockSetting['align'] })}
-                          >
-                            <option value="left">Ліворуч</option>
-                            <option value="center">По центру</option>
-                            <option value="right">Праворуч</option>
-                          </select>
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Накреслення</label>
-                          <select
-                            className="form-select"
-                            value={`${activeBlock.weight}:${activeBlock.style}`}
-                            onChange={(event) => {
-                              const [weight, style] = event.target.value.split(':') as [BlockSetting['weight'], BlockSetting['style']];
-                              updateBlock(selectedBlock, { weight, style });
-                            }}
-                          >
-                            <option value="normal:normal">Звичайне</option>
-                            <option value="bold:normal">Жирне</option>
-                            <option value="normal:italic">Курсив</option>
-                            <option value="bold:italic">Жирний курсив</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'grid', gap: '10px' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Позиція зліва: {activeBlock.xPercent}%</label>
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={activeBlock.xPercent}
-                            onChange={(event) => updateBlock(selectedBlock, { xPercent: parseInt(event.target.value, 10) })}
-                          />
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">Позиція знизу: {activeBlock.yPercent}%</label>
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={activeBlock.yPercent}
-                            onChange={(event) => updateBlock(selectedBlock, { yPercent: parseInt(event.target.value, 10) })}
-                          />
-                        </div>
-                      </div>
-
-                      <label
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          fontSize: '14px',
-                          lineHeight: '20px',
-                          color: 'var(--gray-700)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={activeBlock.wrap}
-                          onChange={(event) => updateBlock(selectedBlock, { wrap: event.target.checked })}
-                        />
-                        Дозволити перенесення рядків
-                      </label>
+                  <div style={{ display: 'grid', gap: '14px', paddingTop: '4px', borderTop: '1px solid var(--gray-100)' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Текст у прев'ю</label>
+                      <textarea
+                        className="form-input"
+                        rows={activeBlock.key === 'verb' ? 3 : 2}
+                        value={previewTexts[activeBlock.key] ?? getPreviewText(activeBlock.key)}
+                        onChange={(event) => setPreviewTexts((prev) => ({
+                          ...prev,
+                          [activeBlock.key]: event.target.value,
+                        }))}
+                      />
                     </div>
-                  )}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Розмір</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          min="10"
+                          max="160"
+                          value={activeBlock.size}
+                          onChange={(event) => updateBlock(selectedBlock, { size: parseInt(event.target.value, 10) || 10 })}
+                        />
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Колір</label>
+                        <input
+                          type="color"
+                          className="form-input"
+                          value={activeBlock.color}
+                          style={{ padding: '4px', height: '40px' }}
+                          onChange={(event) => updateBlock(selectedBlock, { color: event.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Вирівнювання</label>
+                        <select
+                          className="form-select"
+                          value={activeBlock.align}
+                          onChange={(event) => updateBlock(selectedBlock, { align: event.target.value as BlockSetting['align'] })}
+                        >
+                          <option value="left">Ліворуч</option>
+                          <option value="center">По центру</option>
+                          <option value="right">Праворуч</option>
+                        </select>
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Накреслення</label>
+                        <select
+                          className="form-select"
+                          value={`${activeBlock.weight}:${activeBlock.style}`}
+                          onChange={(event) => {
+                            const [weight, style] = event.target.value.split(':') as [BlockSetting['weight'], BlockSetting['style']];
+                            updateBlock(selectedBlock, { weight, style });
+                          }}
+                        >
+                          <option value="normal:normal">Звичайне</option>
+                          <option value="bold:normal">Жирне</option>
+                          <option value="normal:italic">Курсив</option>
+                          <option value="bold:italic">Жирний курсив</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Позиція зліва: {activeBlock.xPercent}%</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={activeBlock.xPercent}
+                          onChange={(event) => updateBlock(selectedBlock, { xPercent: parseInt(event.target.value, 10) })}
+                        />
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Позиція знизу: {activeBlock.yPercent}%</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={activeBlock.yPercent}
+                          onChange={(event) => updateBlock(selectedBlock, { yPercent: parseInt(event.target.value, 10) })}
+                        />
+                      </div>
+                    </div>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', lineHeight: '20px', color: 'var(--gray-700)', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={activeBlock.wrap}
+                        onChange={(event) => updateBlock(selectedBlock, { wrap: event.target.checked })}
+                      />
+                      Дозволити перенесення рядків
+                    </label>
+                  </div>
                 </section>
               </div>
 
               <div style={{ display: 'grid', gap: '18px', minWidth: 0 }}>
-                <section style={{ ...modalCardStyle, padding: '18px 18px 16px' }}>
+                <section style={{ ...panelStyle, padding: '16px', gap: '14px', background: 'linear-gradient(180deg, #fdfefe 0%, #f8fbff 100%)' }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
                     <div style={{ display: 'grid', gap: '4px' }}>
                       <span style={{ fontSize: '15px', lineHeight: '22px', fontWeight: 700, color: 'var(--gray-900)' }}>
                         Прев'ю сертифіката
                       </span>
                       <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-500)' }}>
-                        Перетягніть активний блок або рухайте полотно, затиснувши порожнє місце.
+                        Активний блок редагується прямо на полотні: тягни, масштабуй і стилізуй його вгорі, як у графічному редакторі.
                       </span>
                     </div>
 
@@ -961,13 +969,13 @@ export default function GraduationCertificatesPage() {
                         Масштаб {Math.round(scale * 100)}%
                       </span>
 
-                      <button className="btn btn-secondary btn-sm" onClick={() => adjustScale(-0.1)} title="Зменшити">
+                      <button className="btn btn-secondary btn-sm" onClick={() => adjustScale(-0.08)} title="Зменшити">
                         <ZoomOut size={15} />
                       </button>
                       <button className="btn btn-secondary btn-sm" onClick={resetViewport} title="Скинути вигляд">
                         <RotateCcw size={15} />
                       </button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => adjustScale(0.1)} title="Збільшити">
+                      <button className="btn btn-secondary btn-sm" onClick={() => adjustScale(0.08)} title="Збільшити">
                         <ZoomIn size={15} />
                       </button>
                     </div>
@@ -978,11 +986,15 @@ export default function GraduationCertificatesPage() {
                       ref={viewportRef}
                       style={{
                         position: 'relative',
-                        borderRadius: '18px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px',
+                        borderRadius: '20px',
                         overflow: 'hidden',
-                        border: '1px solid rgba(148, 163, 184, 0.24)',
-                        background: 'linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%)',
-                        minHeight: '62vh',
+                        border: '1px solid rgba(148, 163, 184, 0.2)',
+                        background: 'radial-gradient(circle at top, rgba(255,255,255,0.96), rgba(236, 245, 255, 0.92))',
+                        minHeight: '70vh',
                         cursor: isPanning ? 'grabbing' : 'default',
                       }}
                     >
@@ -993,15 +1005,14 @@ export default function GraduationCertificatesPage() {
                         onMouseLeave={handleMouseUp}
                         onMouseDown={handleCanvasMouseDown}
                         style={{
-                          position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          width: '100%',
-                          transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${scale})`,
+                          position: 'relative',
+                          width: `${imageDimensions.width}px`,
+                          height: `${imageDimensions.height}px`,
+                          transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
                           transformOrigin: 'center center',
-                          cursor: dragging !== null ? 'grabbing' : isPanning ? 'grabbing' : 'default',
+                          cursor: dragging ? 'grabbing' : isPanning ? 'grabbing' : 'default',
                           userSelect: 'none',
-                          containerType: 'inline-size',
+                          willChange: 'transform',
                         }}
                       >
                         <img
@@ -1011,12 +1022,13 @@ export default function GraduationCertificatesPage() {
                             width: event.currentTarget.naturalWidth || 842,
                             height: event.currentTarget.naturalHeight || 595,
                           })}
-                          style={{ width: '100%', display: 'block', pointerEvents: 'none' }}
+                          style={{ width: '100%', height: '100%', display: 'block', pointerEvents: 'none' }}
                         />
 
                         {blocks.map((block, index) => {
                           const isSelected = selectedBlock === index;
-                          const isNameBlock = block.key === 'student_name';
+                          const text = getPreviewText(block.key);
+
                           return (
                             <div
                               key={block.key}
@@ -1039,26 +1051,159 @@ export default function GraduationCertificatesPage() {
                                 left: `${block.xPercent}%`,
                                 bottom: `${block.yPercent}%`,
                                 transform: 'translateX(-50%)',
-                                fontSize: `${(block.size / imageDimensions.width) * 100}cqw`,
                                 color: block.color,
-                                fontFamily: isNameBlock ? "'Cassandra', cursive" : "'Montserrat', sans-serif",
+                                fontSize: `${block.size}px`,
+                                fontFamily: getBlockFontFamily(block.key),
                                 fontWeight: block.weight === 'bold' ? 700 : 400,
                                 fontStyle: block.style === 'italic' ? 'italic' : 'normal',
-                                cursor: isSelected ? 'grab' : 'pointer',
-                                padding: '0.55cqw 0.8cqw',
-                                whiteSpace: block.wrap ? 'pre-wrap' : 'nowrap',
-                                maxWidth: block.wrap ? '38cqw' : 'none',
-                                border: isSelected ? '1px dashed rgba(37, 99, 235, 0.9)' : '1px solid transparent',
-                                background: isSelected ? 'rgba(255, 255, 255, 0.72)' : 'transparent',
-                                borderRadius: '0.7cqw',
                                 lineHeight: 1.12,
                                 textAlign: block.align,
-                                zIndex: isSelected ? 5 : 1,
-                                boxShadow: isSelected ? '0 10px 24px rgba(37, 99, 235, 0.14)' : 'none',
-                                transition: 'background-color 180ms ease-out, border-color 180ms ease-out, box-shadow 180ms ease-out, transform 120ms ease-out',
+                                whiteSpace: block.wrap ? 'pre-wrap' : 'nowrap',
+                                maxWidth: block.wrap ? '360px' : 'none',
+                                padding: isSelected ? '6px 10px' : '4px 6px',
+                                borderRadius: '10px',
+                                border: isSelected ? '1px dashed rgba(37, 99, 235, 0.95)' : '1px solid transparent',
+                                background: isSelected ? 'rgba(255, 255, 255, 0.82)' : 'transparent',
+                                boxShadow: isSelected ? '0 20px 48px rgba(37, 99, 235, 0.16)' : 'none',
+                                cursor: isSelected ? 'grab' : 'pointer',
+                                zIndex: isSelected ? 12 : 1,
+                                transition: 'background-color 180ms ease-out, box-shadow 180ms ease-out, border-color 180ms ease-out',
                               }}
                             >
-                              {getPreviewText(block.key)}
+                              {isSelected && (
+                                <div
+                                  onMouseDown={(event) => event.stopPropagation()}
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: 'calc(100% + 12px)',
+                                    left: '50%',
+                                    transform: `translateX(-50%) scale(${toolbarScale})`,
+                                    transformOrigin: 'bottom center',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '6px',
+                                    borderRadius: '12px',
+                                    background: 'rgba(255, 255, 255, 0.97)',
+                                    border: '1px solid rgba(148, 163, 184, 0.28)',
+                                    boxShadow: '0 18px 40px rgba(15, 23, 42, 0.18)',
+                                    backdropFilter: 'blur(14px)',
+                                    whiteSpace: 'nowrap',
+                                    zIndex: 30,
+                                  }}
+                                >
+                                  <input
+                                    type="color"
+                                    value={block.color}
+                                    onChange={(event) => updateBlock(index, { color: event.target.value })}
+                                    style={{ width: '28px', height: '28px', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                  />
+                                  {[{ value: 'left', icon: AlignLeft }, { value: 'center', icon: AlignCenter }, { value: 'right', icon: AlignRight }].map(({ value, icon: Icon }) => (
+                                    <button
+                                      key={value}
+                                      type="button"
+                                      onClick={() => updateBlock(index, { align: value as BlockSetting['align'] })}
+                                      style={{
+                                        width: '28px',
+                                        height: '28px',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        background: block.align === value ? 'var(--gray-900)' : 'transparent',
+                                        color: block.align === value ? '#fff' : 'var(--gray-600)',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <Icon size={14} />
+                                    </button>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => updateBlock(index, { weight: block.weight === 'bold' ? 'normal' : 'bold' })}
+                                    style={{
+                                      width: '28px',
+                                      height: '28px',
+                                      borderRadius: '8px',
+                                      border: 'none',
+                                      background: block.weight === 'bold' ? 'var(--gray-900)' : 'transparent',
+                                      color: block.weight === 'bold' ? '#fff' : 'var(--gray-600)',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    B
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateBlock(index, { style: block.style === 'italic' ? 'normal' : 'italic' })}
+                                    style={{
+                                      width: '28px',
+                                      height: '28px',
+                                      borderRadius: '8px',
+                                      border: 'none',
+                                      background: block.style === 'italic' ? 'var(--gray-900)' : 'transparent',
+                                      color: block.style === 'italic' ? '#fff' : 'var(--gray-600)',
+                                      fontStyle: 'italic',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    I
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateBlock(index, { wrap: !block.wrap })}
+                                    style={{
+                                      minWidth: '40px',
+                                      height: '28px',
+                                      padding: '0 8px',
+                                      borderRadius: '8px',
+                                      border: 'none',
+                                      background: block.wrap ? 'var(--gray-900)' : 'transparent',
+                                      color: block.wrap ? '#fff' : 'var(--gray-600)',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    wrap
+                                  </button>
+                                </div>
+                              )}
+
+                              {isSelected && (
+                                <>
+                                  {[
+                                    { top: '-7px', left: '-7px', cursor: 'nwse-resize' },
+                                    { top: '-7px', right: '-7px', cursor: 'nesw-resize' },
+                                    { bottom: '-7px', left: '-7px', cursor: 'nesw-resize' },
+                                    { bottom: '-7px', right: '-7px', cursor: 'nwse-resize' },
+                                  ].map((handle, handleIndex) => (
+                                    <button
+                                      key={handleIndex}
+                                      type="button"
+                                      onMouseDown={(event) => {
+                                        event.stopPropagation();
+                                        setResizing({ index, startSize: block.size, startY: event.clientY });
+                                      }}
+                                      style={{
+                                        position: 'absolute',
+                                        width: '14px',
+                                        height: '14px',
+                                        borderRadius: '4px',
+                                        border: '2px solid #ffffff',
+                                        background: '#2563eb',
+                                        boxShadow: '0 8px 18px rgba(37, 99, 235, 0.28)',
+                                        zIndex: 24,
+                                        ...handle,
+                                      }}
+                                    />
+                                  ))}
+                                </>
+                              )}
+
+                              {text}
                             </div>
                           );
                         })}
@@ -1090,26 +1235,12 @@ export default function GraduationCertificatesPage() {
                     </div>
                   )}
 
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '10px',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 14px',
-                      borderRadius: '12px',
-                      background: 'var(--gray-50)',
-                      border: '1px solid var(--gray-200)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--gray-600)', fontSize: '13px', lineHeight: '18px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', color: 'var(--gray-600)', fontSize: '13px', lineHeight: '18px' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                       <Move size={15} />
-                      Активний блок можна перетягувати просто на макеті.
-                    </div>
-                    <div style={{ color: 'var(--gray-500)', fontSize: '12px', lineHeight: '16px' }}>
-                      Поле стилів зібране зліва, щоб не перекривати сертифікат у прев'ю.
-                    </div>
+                      Перетягування працює прямо на макеті.
+                    </span>
+                    <span>Resize доступний через кутові хендли, а швидкі стилі відкриваються над активним блоком.</span>
                   </div>
                 </section>
               </div>
@@ -1151,9 +1282,7 @@ export default function GraduationCertificatesPage() {
           <div className="modal" onClick={(event) => event.stopPropagation()} style={{ maxWidth: '400px' }}>
             <div className="modal-header">
               <h3 className="modal-title">Видалити сертифікат?</h3>
-              <button className="modal-close" onClick={() => setDeleteConfirmId(null)}>
-                ×
-              </button>
+              <button className="modal-close" onClick={() => setDeleteConfirmId(null)}>×</button>
             </div>
             <div className="modal-body">
               <p>Цю дію неможливо скасувати.</p>
