@@ -181,6 +181,20 @@ export default function GraduationCertificatesPage() {
     applySnapshot(previous);
   };
 
+  const nudgeSelectedBlock = (deltaX: number, deltaY: number) => {
+    if (selectedBlock === null) return;
+    const current = blocks[selectedBlock];
+    if (!current) return;
+
+    const xStep = 100 / imageDimensions.width;
+    const yStep = 100 / imageDimensions.height;
+
+    updateBlock(selectedBlock, {
+      xPercent: Number(Math.max(0, Math.min(100, current.xPercent + deltaX * xStep)).toFixed(3)),
+      yPercent: Number(Math.max(0, Math.min(100, current.yPercent + deltaY * yStep)).toFixed(3)),
+    });
+  };
+
   const toggleAccordion = (key: AccordionKey) => {
     setOpenAccordion((prev) => (prev === key ? null : key));
   };
@@ -306,15 +320,53 @@ export default function GraduationCertificatesPage() {
     if (!showModal) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+      const target = event.target as HTMLElement | null;
+      const isTypingTarget = Boolean(
+        target && (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable
+        )
+      );
+
+      if ((event.ctrlKey || event.metaKey) && event.code === 'KeyZ') {
         event.preventDefault();
         undoLastChange();
+        return;
+      }
+
+      if (isTypingTarget || selectedBlock === null || event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        nudgeSelectedBlock(-1, 0);
+        return;
+      }
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        nudgeSelectedBlock(1, 0);
+        return;
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        nudgeSelectedBlock(0, 1);
+        return;
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        nudgeSelectedBlock(0, -1);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showModal, blocks, previewTexts, pan, scale, selectedBlock]);
+  }, [showModal, selectedBlock, blocks, imageDimensions.width, imageDimensions.height]);
 
   const updateBlock = (index: number, patch: Partial<BlockSetting>, shouldRecordHistory = true) => {
     if (index < 0 || index >= blocks.length) return;

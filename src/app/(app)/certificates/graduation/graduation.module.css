@@ -689,19 +689,35 @@
   width: 26px;
   height: 26px;
   border-radius: 6px;
-  border: none;
+  border: 1px solid rgba(148, 163, 184, 0.18);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   font-size: 12px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.94);
   color: var(--text-secondary);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 120ms ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .blockToolbarBtn:hover {
+    background: rgba(248, 250, 252, 1);
+    border-color: rgba(100, 116, 139, 0.3);
+    color: var(--text-primary);
+  }
+}
+
+.blockToolbarBtn:active {
+  transform: scale(0.97);
 }
 
 .blockToolbarBtnActive {
   background: var(--text-primary);
   color: var(--text-inverse);
+  border-color: var(--text-primary);
+  box-shadow: none;
 }
 
 .blockToolbarSize {
@@ -740,9 +756,25 @@
   width: 28px;
   height: 28px;
   padding: 0;
-  border: none;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 7px;
   background: transparent;
   cursor: pointer;
+  overflow: hidden;
+}
+
+.blockColorInput::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.blockColorInput::-webkit-color-swatch {
+  border: none;
+  border-radius: 5px;
+}
+
+.blockColorInput::-moz-color-swatch {
+  border: none;
+  border-radius: 5px;
 }
 
 .resizeHandle {
