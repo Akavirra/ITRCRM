@@ -65,7 +65,6 @@ export default function GraduationCertificatesPage() {
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'create' | 'design'>('create');
   const [formData, setFormData] = useState({
     student_id: '',
     course_id: '',
@@ -140,7 +139,6 @@ export default function GraduationCertificatesPage() {
       issue_date: new Date().toISOString().slice(0, 10),
       gender: '',
     });
-    setActiveTab('create');
     setShowModal(true);
   };
 
@@ -249,7 +247,6 @@ export default function GraduationCertificatesPage() {
   };
 
   const canCreate = !saving && formData.student_id && formData.issue_date && formData.gender;
-  const modalMaxWidth = activeTab === 'design' ? '1200px' : '600px';
 
   useEffect(() => {
     if (!resizing) return;
@@ -287,22 +284,28 @@ export default function GraduationCertificatesPage() {
     return () => window.removeEventListener('resize', fit);
   }, [imageDimensions, templateUrl]);
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    if (e.ctrlKey || e.metaKey) {
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setScale(prev => {
-        const next = Math.max(0.1, Math.min(5, prev + delta));
-        return Math.round(next * 10) / 10;
-      });
-    } else {
-      const speed = 1.5;
-      setPan(prev => ({ x: prev.x - e.deltaX * speed, y: prev.y - e.deltaY * speed }));
-    }
-  };
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onWheelNative = (e: WheelEvent) => {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) {
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        setScale(prev => {
+          const next = Math.max(0.1, Math.min(5, prev + delta));
+          return Math.round(next * 10) / 10;
+        });
+      } else {
+        const speed = 1.5;
+        setPan(prev => ({ x: prev.x - e.deltaX * speed, y: prev.y - e.deltaY * speed }));
+      }
+    };
+    el.addEventListener('wheel', onWheelNative, { passive: false });
+    return () => el.removeEventListener('wheel', onWheelNative);
+  }, []);
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 1) {
+    if (e.button === 1 || (e.button === 0 && selectedBlock === null && e.target === e.currentTarget)) {
       e.preventDefault();
       setIsPanning(true);
       setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -437,7 +440,7 @@ export default function GraduationCertificatesPage() {
           <div
             className="modal"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: modalMaxWidth, width: '100%', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: '1px solid var(--gray-200)', boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)' }}
+            style={{ maxWidth: '1100px', width: '100%', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: '1px solid var(--gray-200)', boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)' }}
           >
             <div className="modal-header" style={{ flexShrink: 0 }}>
               <h3 className="modal-title">Новий сертифікат про закінчення</h3>
@@ -446,39 +449,8 @@ export default function GraduationCertificatesPage() {
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', padding: '12px 20px 0', borderBottom: '1px solid var(--gray-200)', flexShrink: 0 }}>
-              {[
-                { id: 'create', label: 'Генерація' },
-                { id: 'design', label: 'Дизайн' },
-              ].map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as 'create' | 'design')}
-                    style={{
-                      height: '36px',
-                      padding: '0 16px',
-                      borderRadius: '8px 8px 0 0',
-                      border: 'none',
-                      borderBottom: isActive ? '2px solid var(--gray-900)' : '2px solid transparent',
-                      background: isActive ? '#ffffff' : 'transparent',
-                      color: isActive ? 'var(--gray-900)' : 'var(--gray-600)',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'color 180ms ease-out, border-color 180ms ease-out',
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="modal-body" style={{ overflowY: 'auto', flex: '1 1 auto', padding: '20px' }}>
-              {activeTab === 'create' ? (
-                <div style={{ display: 'grid', gap: '16px' }}>
+            <div className="modal-body" style={{ overflow: 'hidden', flex: '1 1 auto', padding: '20px', display: 'flex', gap: '20px' }}>
+              <div style={{ width: '260px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
                   <div className="form-group">
                     <label className="form-label">Учень <span style={{ color: '#ef4444' }}>*</span></label>
                     <select
@@ -530,8 +502,7 @@ export default function GraduationCertificatesPage() {
                     </select>
                   </div>
                 </div>
-              ) : (
-                <div style={{ display: 'grid', gap: '20px' }}>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '12px', overflow: 'hidden' }}>
                   {/* Template Upload */}
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
@@ -563,7 +534,6 @@ export default function GraduationCertificatesPage() {
                       </div>
                       <div
                         ref={viewportRef}
-                        onWheel={handleWheel}
                         style={{
                           position: 'relative',
                           borderRadius: '12px',
@@ -628,7 +598,7 @@ export default function GraduationCertificatesPage() {
                               fontStyle: block.style === 'italic' ? 'italic' : 'normal',
                               cursor: isSelected ? 'grab' : 'pointer',
                               padding: '0.5cqw',
-                              whiteSpace: 'nowrap',
+                              whiteSpace: 'normal',
                               border: isSelected ? '1px dashed var(--primary)' : '1px solid transparent',
                               background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
                               lineHeight: 1,
@@ -822,7 +792,13 @@ export default function GraduationCertificatesPage() {
                             )}
 
                             {block.key === 'student_name' && "Єва Григор'єва"}
-                            {block.key === 'verb' && 'успішно завершила навчання'}
+                            {block.key === 'verb' && (
+                              <>
+                                успішно завершила навчання
+                                <br />
+                                з курсу
+                              </>
+                            )}
                             {block.key === 'course_name' && "«Комп'ютерна графіка та дизайн»"}
                             {block.key === 'issue_date' && 'Дата видачі: 12.06.2025'}
                           </div>
@@ -850,22 +826,18 @@ export default function GraduationCertificatesPage() {
                     Натисніть на текстовий блок, щоб відкрити налаштування. Перетягніть блок для зміни позиції, потягніть за круглі кнопки в кутах для зміни розміру.
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
 
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', flexShrink: 0 }}>
               <button className="btn btn-secondary" onClick={() => setShowModal(false)} style={{ minWidth: '112px' }}>
                 {t('actions.close')}
               </button>
-              {activeTab === 'create' ? (
-                <button className="btn btn-primary" onClick={handleSave} disabled={!canCreate} style={{ minWidth: '160px' }}>
-                  {saving ? 'Зберігаємо…' : 'Згенерувати PDF'}
-                </button>
-              ) : (
-                <button className="btn btn-primary" onClick={handleSaveSettings} disabled={savingSettings} style={{ minWidth: '208px' }}>
-                  {savingSettings ? 'Зберігаємо…' : 'Зберегти вигляд сертифіката'}
-                </button>
-              )}
+              <button className="btn btn-primary" onClick={handleSaveSettings} disabled={savingSettings} style={{ minWidth: '180px' }}>
+                {savingSettings ? 'Зберігаємо…' : 'Зберегти вигляд'}
+              </button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={!canCreate} style={{ minWidth: '160px' }}>
+                {saving ? 'Зберігаємо…' : 'Згенерувати PDF'}
+              </button>
             </div>
           </div>
         </div>
