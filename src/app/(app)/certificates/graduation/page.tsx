@@ -51,7 +51,7 @@ interface CourseOption {
 interface CompletionCertificateSettings {
   templateUrl: string | null;
   blocks: BlockSetting[];
-  courseLabelOverrides?: Record<string, string>;
+  courseBlockOverrides?: Record<string, BlockSetting>;
 }
 
 interface BlockSetting {
@@ -84,6 +84,7 @@ type AccordionKey = 'data' | 'blocks' | 'template';
 
 interface EditorSnapshot {
   blocks: BlockSetting[];
+  courseBlockOverrides: Record<string, BlockSetting>;
   previewTexts: Record<string, string>;
   pan: { x: number; y: number };
   scale: number;
@@ -100,20 +101,9 @@ const MALE_NAME_EXCEPTIONS = new Set([
   '\u0416\u043e\u0440\u0430',
 ]);
 
-const normalizeCourseLabel = (value: string) => value.trim();
-
 const getFallbackCourseLabel = (title?: string | null) => (
   title ? `«${title}»` : ''
 );
-
-const getResolvedCourseLabel = (
-  courseId: string,
-  fallbackTitle: string | null | undefined,
-  overrides: Record<string, string>
-) => {
-  const override = courseId ? normalizeCourseLabel(overrides[courseId] || '') : '';
-  return override || getFallbackCourseLabel(fallbackTitle);
-};
 
 const inferGenderFromName = (fullName?: string | null): 'male' | 'female' | '' => {
   const nameParts = fullName?.trim().split(/\s+/).filter(Boolean) || [];
@@ -169,7 +159,7 @@ export default function GraduationCertificatesPage() {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [previewTexts, setPreviewTexts] = useState<Record<string, string>>({});
-  const [courseLabelOverrides, setCourseLabelOverrides] = useState<Record<string, string>>({});
+  const [courseBlockOverrides, setCourseBlockOverrides] = useState<Record<string, BlockSetting>>({});
   const [formData, setFormData] = useState({
     student_id: '',
     course_id: '',
@@ -181,11 +171,15 @@ export default function GraduationCertificatesPage() {
   const previewRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<EditorSnapshot[]>([]);
 
-  const activeBlock = blocks[selectedBlock ?? 0];
+  const renderedBlocks = blocks.map((block) => {
+    if (block.key !== 'course_name' || !formData.course_id) return block;
+    return courseBlockOverrides[formData.course_id] || block;
+  });
+  const activeBlock = renderedBlocks[selectedBlock ?? 0];
   const activeBlockIndex = selectedBlock ?? 0;
   const selectedStudent = students.find((student) => String(student.id) === formData.student_id) || null;
   const selectedCourse = courses.find((course) => String(course.id) === formData.course_id) || null;
-  const selectedCourseLabel = getResolvedCourseLabel(formData.course_id, selectedCourse?.title, courseLabelOverrides);
+  const selectedCourseLabel = getFallbackCourseLabel(selectedCourse?.title);
   const canCreate = !saving && formData.student_id && formData.issue_date && formData.gender;
   const toolbarScale = 1 / scale;
   const scaledWidth = imageDimensions.width * scale;
@@ -198,10 +192,10 @@ export default function GraduationCertificatesPage() {
 
   const createSnapshot = (): EditorSnapshot => ({
     blocks: blocks.map((block) => ({ ...block })),
-    previewTexts: {
-      ...previewTexts,
-      __courseLabelOverrides: JSON.stringify(courseLabelOverrides),
-    },
+    courseBlockOverrides: Object.fromEntries(
+      Object.entries(courseBlockOverrides).map(([courseId, block]) => [courseId, { ...block }])
+    ),
+    previewTexts: { ...previewTexts },
     pan: { ...pan },
     scale,
     selectedBlock,
@@ -209,17 +203,12 @@ export default function GraduationCertificatesPage() {
 
   const applySnapshot = (snapshot: EditorSnapshot) => {
     setBlocks(snapshot.blocks.map((block) => ({ ...block })));
-    const nextPreviewTexts = { ...snapshot.previewTexts };
-    const serializedCourseOverrides = nextPreviewTexts.__courseLabelOverrides;
-    delete nextPreviewTexts.__courseLabelOverrides;
-    setPreviewTexts(nextPreviewTexts);
-    if (serializedCourseOverrides) {
-      try {
-        setCourseLabelOverrides(JSON.parse(serializedCourseOverrides));
-      } catch {
-        setCourseLabelOverrides({});
-      }
-    }
+    setCourseBlockOverrides(
+      Object.fromEntries(
+        Object.entries(snapshot.courseBlockOverrides || {}).map(([courseId, block]) => [courseId, { ...block }])
+      )
+    );
+    setPreviewTexts({ ...snapshot.previewTexts });
     setPan({ ...snapshot.pan });
     setScale(snapshot.scale);
     setSelectedBlock(snapshot.selectedBlock);
@@ -243,7 +232,7 @@ export default function GraduationCertificatesPage() {
 
   const nudgeSelectedBlock = (deltaX: number, deltaY: number) => {
     if (selectedBlock === null) return;
-    const current = blocks[selectedBlock];
+    const current = renderedBlocks[selectedBlock];
     if (!current) return;
 
     const xStep = 100 / imageDimensions.width;
@@ -307,7 +296,7 @@ export default function GraduationCertificatesPage() {
         const settingsData = await settingsRes.json() as CompletionCertificateSettings & { error?: string };
         if (settingsData && !settingsData.error && Array.isArray(settingsData.blocks)) {
           setBlocks(settingsData.blocks);
-          setCourseLabelOverrides(settingsData.courseLabelOverrides || {});
+          setCourseBlockOverrides(settingsData.courseBlockOverrides || {});
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);
@@ -434,13 +423,24 @@ export default function GraduationCertificatesPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showModal, selectedBlock, blocks, imageDimensions.width, imageDimensions.height]);
+  }, [showModal, selectedBlock, renderedBlocks, imageDimensions.width, imageDimensions.height]);
 
   const updateBlock = (index: number, patch: Partial<BlockSetting>, shouldRecordHistory = true) => {
-    if (index < 0 || index >= blocks.length) return;
+    if (index < 0 || index >= renderedBlocks.length) return;
     if (shouldRecordHistory) {
       pushHistory();
     }
+    const targetBlock = renderedBlocks[index];
+    if (!targetBlock) return;
+
+    if (targetBlock.key === 'course_name' && formData.course_id) {
+      setCourseBlockOverrides((prev) => ({
+        ...prev,
+        [formData.course_id]: { ...targetBlock, ...patch },
+      }));
+      return;
+    }
+
     setBlocks((prev) => prev.map((block, currentIndex) => (
       currentIndex === index ? { ...block, ...patch } : block
     )));
@@ -558,7 +558,6 @@ export default function GraduationCertificatesPage() {
       gender: '',
     });
     setPreviewTexts({});
-    setCourseLabelOverrides((prev) => ({ ...prev }));
     setSelectedBlock(null);
     setSelectedFile(null);
     setShowModal(true);
@@ -634,7 +633,7 @@ export default function GraduationCertificatesPage() {
       const response = await fetch('/api/completion-certificates/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateUrl, blocks, courseLabelOverrides }),
+        body: JSON.stringify({ templateUrl, blocks, courseBlockOverrides }),
       });
 
       if (!response.ok) {
@@ -685,21 +684,6 @@ export default function GraduationCertificatesPage() {
       student_id: studentId,
       gender: studentId ? nextGender : '',
     }));
-  };
-
-  const updateSelectedCourseLabel = (value: string) => {
-    if (!formData.course_id) return;
-    const normalizedValue = normalizeCourseLabel(value);
-    pushHistory();
-    setCourseLabelOverrides((prev) => {
-      const next = { ...prev };
-      if (normalizedValue) {
-        next[formData.course_id] = normalizedValue;
-      } else {
-        delete next[formData.course_id];
-      }
-      return next;
-    });
   };
 
   if (loading) return <PageLoading />;
@@ -875,7 +859,7 @@ export default function GraduationCertificatesPage() {
                           })}
                         />
 
-                        {blocks.map((block, index) => {
+                        {renderedBlocks.map((block, index) => {
                           const isSelected = selectedBlock === index;
                           const text = getPreviewText(block.key);
 
@@ -1087,19 +1071,6 @@ export default function GraduationCertificatesPage() {
                           </select>
                         </div>
 
-                        {selectedCourse && (
-                          <div className={s.compactGroup}>
-                            <label className={s.compactLabel}>Підпис курсу на сертифікаті</label>
-                            <input
-                              type="text"
-                              className="form-input"
-                              value={selectedCourseLabel}
-                              onChange={(event) => updateSelectedCourseLabel(event.target.value)}
-                              placeholder={getFallbackCourseLabel(selectedCourse.title)}
-                            />
-                          </div>
-                        )}
-
                         <div className={s.compactRow}>
                           <div className={s.compactGroup}>
                             <label className={s.compactLabel}>Дата <span className={s.compactRequired}>*</span></label>
@@ -1138,7 +1109,7 @@ export default function GraduationCertificatesPage() {
                     {openAccordion === 'blocks' && (
                       <div className={s.accordionBody}>
                         <div className={s.blockList}>
-                          {blocks.map((block, index) => {
+                          {renderedBlocks.map((block, index) => {
                             const isActive = selectedBlock === index;
                             return (
                               <button
@@ -1169,11 +1140,8 @@ export default function GraduationCertificatesPage() {
                               value={activeBlock.key === 'course_name'
                                 ? getPreviewText(activeBlock.key)
                                 : (previewTexts[activeBlock.key] ?? getPreviewText(activeBlock.key))}
+                              disabled={activeBlock.key === 'course_name'}
                               onChange={(event) => {
-                                if (activeBlock.key === 'course_name') {
-                                  updateSelectedCourseLabel(event.target.value);
-                                  return;
-                                }
                                 pushHistory();
                                 setPreviewTexts((prev) => ({
                                   ...prev,

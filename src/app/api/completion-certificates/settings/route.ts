@@ -6,7 +6,17 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_SETTINGS = {
   templateUrl: null as string | null,
-  courseLabelOverrides: {} as Record<string, string>,
+  courseBlockOverrides: {} as Record<string, {
+    key: string;
+    weight: 'normal' | 'bold';
+    style: 'normal' | 'italic';
+    wrap: boolean;
+    size: number;
+    xPercent: number;
+    yPercent: number;
+    color: string;
+    align: 'left' | 'center' | 'right';
+  }>,
   blocks: [
     { key: 'student_name', weight: 'normal', style: 'normal', wrap: false, size: 42, xPercent: 50, yPercent: 45, color: '#1a237e', align: 'center' as const },
     { key: 'verb', weight: 'normal', style: 'normal', wrap: true, size: 18, xPercent: 50, yPercent: 38, color: '#1a237e', align: 'center' as const },
@@ -28,9 +38,9 @@ export async function GET(request: NextRequest) {
       ...DEFAULT_SETTINGS,
       ...parsedSettings,
       blocks: Array.isArray(parsedSettings?.blocks) ? parsedSettings.blocks : DEFAULT_SETTINGS.blocks,
-      courseLabelOverrides:
-        parsedSettings?.courseLabelOverrides && typeof parsedSettings.courseLabelOverrides === 'object'
-          ? parsedSettings.courseLabelOverrides
+      courseBlockOverrides:
+        parsedSettings?.courseBlockOverrides && typeof parsedSettings.courseBlockOverrides === 'object'
+          ? parsedSettings.courseBlockOverrides
           : {},
     };
     return NextResponse.json(settings);
@@ -54,12 +64,11 @@ export async function POST(request: NextRequest) {
     const normalizedSettings = {
       ...DEFAULT_SETTINGS,
       ...settings,
-      courseLabelOverrides:
-        settings.courseLabelOverrides && typeof settings.courseLabelOverrides === 'object'
+      courseBlockOverrides:
+        settings.courseBlockOverrides && typeof settings.courseBlockOverrides === 'object'
           ? Object.fromEntries(
-              Object.entries(settings.courseLabelOverrides)
-                .map(([courseId, label]) => [courseId, typeof label === 'string' ? label.trim() : ''])
-                .filter(([, label]) => Boolean(label))
+              Object.entries(settings.courseBlockOverrides)
+                .filter(([, block]) => block && typeof block === 'object')
             )
           : {},
     };

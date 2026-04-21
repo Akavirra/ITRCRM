@@ -216,7 +216,7 @@ export async function GET(
     const settings = settingsRes?.value
       ? JSON.parse(settingsRes.value)
       : {
-          courseLabelOverrides: {},
+          courseBlockOverrides: {},
           blocks: [
             { key: 'student_name', font: 'script', size: 42, xPercent: 50, yPercent: 45, color: '#1a237e', align: 'center' },
             { key: 'verb', font: 'roboto', size: 18, xPercent: 50, yPercent: 38, color: '#1a237e', align: 'center' },
@@ -225,15 +225,15 @@ export async function GET(
           ]
         };
 
-    const blocks = settings.blocks || [];
-    const courseLabelOverrides =
-      settings.courseLabelOverrides && typeof settings.courseLabelOverrides === 'object'
-        ? settings.courseLabelOverrides
+    const courseBlockOverrides =
+      settings.courseBlockOverrides && typeof settings.courseBlockOverrides === 'object'
+        ? settings.courseBlockOverrides
         : {};
-    const resolvedCourseLabel =
-      cert.course_id && courseLabelOverrides[String(cert.course_id)]
-        ? String(courseLabelOverrides[String(cert.course_id)]).trim()
-        : cert.course_title ? `«${cert.course_title}»` : '';
+    const blocks = (settings.blocks || []).map((block: any) => {
+      if (block.key !== 'course_name' || !cert.course_id) return block;
+      return courseBlockOverrides[String(cert.course_id)] || block;
+    });
+    const resolvedCourseLabel = cert.course_title ? `«${cert.course_title}»` : '';
 
     // 5. Build text values
     const textValues: Record<string, string> = {
