@@ -6,13 +6,13 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  ChevronDown,
   Download,
-  Move,
   Plus,
   RotateCcw,
-  SlidersHorizontal,
   Trash2,
   Upload,
+  X,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -20,6 +20,7 @@ import PageLoading from '@/components/PageLoading';
 import { useUser } from '@/components/UserContext';
 import { t } from '@/i18n/t';
 import { formatDateKyiv } from '@/lib/date-utils';
+import s from './graduation.module.css';
 
 interface CompletionCertificateData {
   id: number;
@@ -71,15 +72,7 @@ const BLOCK_LABELS: Record<string, string> = {
   issue_date: 'Дата видачі',
 };
 
-const panelStyle = {
-  display: 'grid',
-  gap: '16px',
-  padding: '18px',
-  background: '#ffffff',
-  border: '1px solid rgba(148, 163, 184, 0.22)',
-  borderRadius: '18px',
-  boxShadow: '0 14px 34px rgba(15, 23, 42, 0.04)',
-} as const;
+type AccordionKey = 'data' | 'blocks' | 'template';
 
 export default function GraduationCertificatesPage() {
   const router = useRouter();
@@ -99,6 +92,7 @@ export default function GraduationCertificatesPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [dragging, setDragging] = useState<{ index: number; offsetX: number; offsetY: number } | null>(null);
+  const [openAccordion, setOpenAccordion] = useState<AccordionKey>('data');
   const [resizing, setResizing] = useState<{ index: number; startSize: number; startY: number } | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<number>(0);
   const [imageDimensions, setImageDimensions] = useState({ width: 842, height: 595 });
@@ -560,15 +554,6 @@ export default function GraduationCertificatesPage() {
       </div>
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div
-            className="modal"
-            onClick={(event) => event.stopPropagation()}
-            style={{
-              maxWidth: '1320px',
-              width: '100%',
-              maxHeight: '94vh',
-              overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
               border: '1px solid rgba(148, 163, 184, 0.28)',
