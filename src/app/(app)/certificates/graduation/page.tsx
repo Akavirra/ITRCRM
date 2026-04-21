@@ -838,31 +838,26 @@ export default function GraduationCertificatesPage() {
                             )}
 
                             {editingKey === block.key ? (
-                              <input
-                                type="text"
-                                value={previewTexts[block.key] !== undefined ? previewTexts[block.key] : getPreviewText(block.key)}
-                                onChange={(e) => setPreviewTexts(prev => ({ ...prev, [block.key]: e.target.value }))}
-                                onBlur={() => setEditingKey(null)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') setEditingKey(null); }}
-                                autoFocus
-                                style={{
-                                  fontSize: 'inherit',
-                                  color: 'inherit',
-                                  fontFamily: 'inherit',
-                                  fontWeight: 'inherit',
-                                  fontStyle: 'inherit',
-                                  background: 'transparent',
-                                  border: 'none',
-                                  outline: 'none',
-                                  textAlign: block.align,
-                                  width: '100%',
-                                  minWidth: '20px',
-                                  padding: 0,
-                                  margin: 0,
+                              <span
+                                ref={(el) => { if (el) { el.focus(); } }}
+                                contentEditable
+                                suppressContentEditableWarning
+                                onBlur={(e) => {
+                                  setPreviewTexts(prev => ({ ...prev, [block.key]: e.currentTarget.innerText }));
+                                  setEditingKey(null);
                                 }}
-                              />
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    (e.currentTarget as HTMLSpanElement).blur();
+                                  }
+                                }}
+                                style={{ outline: 'none', cursor: 'text', display: 'inline-block', minWidth: '20px' }}
+                              >
+                                {block.key === 'verb' ? getPreviewText('verb') : getPreviewText(block.key)}
+                              </span>
                             ) : (
-                              <>
+                              <span onDoubleClick={(e) => { e.stopPropagation(); setEditingKey(block.key); }} style={{ cursor: 'pointer' }}>
                                 {block.key === 'verb' ? (
                                   <>
                                     {getPreviewText('verb')}
@@ -872,7 +867,7 @@ export default function GraduationCertificatesPage() {
                                 ) : (
                                   getPreviewText(block.key)
                                 )}
-                              </>
+                              </span>
                             )}
                           </div>
                         );
