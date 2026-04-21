@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { t } from '@/i18n/t';
 import { formatDateKyiv } from '@/lib/date-utils';
@@ -80,10 +80,13 @@ export default function GraduationCertificatesPage() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [dragging, setDragging] = useState<number | null>(null);
+  const [dragging, setDragging] = useState<{ index: number; offsetX: number; offsetY: number } | null>(null);
   const [resizing, setResizing] = useState<{ index: number; startSize: number; startY: number } | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<number | null>(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 842, height: 595 });
+  const [previewScale, setPreviewScale] = useState(1);
+  const [previewHeight, setPreviewHeight] = useState<number | undefined>(undefined);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -265,16 +268,33 @@ export default function GraduationCertificatesPage() {
     };
   }, [resizing]);
 
+  useEffect(() => {
+    const updateScale = () => {
+      if (!previewRef.current) return;
+      const containerWidth = previewRef.current.clientWidth;
+      if (!containerWidth || !imageDimensions.height) return;
+      const displayHeight = containerWidth * (imageDimensions.height / imageDimensions.width);
+      const maxHeight = window.innerHeight * 0.5;
+      const scale = Math.min(1, maxHeight / displayHeight);
+      setPreviewScale(scale);
+      setPreviewHeight(displayHeight * scale);
+    };
+
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, [imageDimensions]);
+
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (dragging === null) return;
+    if (!dragging) return;
     const container = e.currentTarget.getBoundingClientRect();
-    let x = ((e.clientX - container.left) / container.width) * 100;
-    let y = 100 - (((e.clientY - container.top) / container.height) * 100);
+    let x = ((e.clientX - container.left - dragging.offsetX) / container.width) * 100;
+    let y = 100 - (((e.clientY - container.top - dragging.offsetY) / container.height) * 100);
     x = Math.max(0, Math.min(100, x));
     y = Math.max(0, Math.min(100, y));
     setBlocks(prev => {
       const next = [...prev];
-      next[dragging] = { ...next[dragging], xPercent: parseFloat(x.toFixed(2)), yPercent: parseFloat(y.toFixed(2)) };
+      next[dragging.index] = { ...next[dragging.index], xPercent: parseFloat(x.toFixed(2)), yPercent: parseFloat(y.toFixed(2)) };
       return next;
     });
   };
@@ -504,28 +524,39 @@ export default function GraduationCertificatesPage() {
 
                   {templateUrl ? (
                     <div
-                      onMouseMove={handleMouseMove}
-                      onMouseUp={handleMouseUp}
-                      onMouseLeave={handleMouseUp}
-                      onClick={() => setSelectedBlock(null)}
                       style={{
                         position: 'relative',
                         borderRadius: '12px',
-                        overflow: 'auto',
+                        overflow: 'hidden',
                         border: '1px solid var(--gray-200)',
-                        cursor: dragging !== null ? 'grabbing' : 'crosshair',
-                        userSelect: 'none',
                         background: '#ffffff',
-                        maxHeight: '70vh',
-                        containerType: 'inline-size',
+                        height: previewHeight,
                       }}
                     >
-                      <img
-                        src={templateUrl}
-                        alt="Template"
-                        onLoad={(e) => setImageDimensions({ width: e.currentTarget.naturalWidth || 842, height: e.currentTarget.naturalHeight || 595 })}
-                        style={{ width: '100%', display: 'block', pointerEvents: 'none' }}
-                      />
+                      <div
+                        ref={previewRef}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        onClick={() => setSelectedBlock(null)}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          transform: `scale(${previewScale})`,
+                          transformOrigin: 'top center',
+                          cursor: dragging !== null ? 'grabbing' : 'crosshair',
+                          userSelect: 'none',
+                          containerType: 'inline-size',
+                        }}
+                      >
+                        <img
+                          src={templateUrl}
+                          alt="Template"
+                          onLoad={(e) => setImageDimensions({ width: e.currentTarget.naturalWidth || 842, height: e.currentTarget.naturalHeight || 595 })}
+                          style={{ width: '100%', display: 'block', pointerEvents: 'none' }}
+                        />
                       {blocks.map((block, idx) => {
                         const isSelected = selectedBlock === idx;
                         const isName = block.key === 'student_name';
@@ -533,7 +564,16 @@ export default function GraduationCertificatesPage() {
                           <div
                             key={block.key}
                             onClick={(e) => { e.stopPropagation(); setSelectedBlock(idx); }}
-                            onMouseDown={(e) => { if (!isSelected) return; e.stopPropagation(); setDragging(idx); }}
+                            onMouseDown={(e) => {
+                              if (!isSelected) return;
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setDragging({
+                                index: idx,
+                                offsetX: e.clientX - (rect.left + rect.width / 2),
+                                offsetY: e.clientY - (rect.top + rect.height / 2),
+                              });
+                            }}
                             style={{
                               position: 'absolute',
                               left: `${block.xPercent}%`,
@@ -737,6 +777,7 @@ export default function GraduationCertificatesPage() {
                           </div>
                         );
                       })}
+                    </div>
                     </div>
                   ) : (
                     <div style={{
