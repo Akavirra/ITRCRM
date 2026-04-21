@@ -300,7 +300,7 @@ export default function GraduationCertificatesPage() {
     };
     el.addEventListener('wheel', onWheelNative, { passive: false });
     return () => el.removeEventListener('wheel', onWheelNative);
-  }, []);
+  }, [showModal, templateUrl]);
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
     if (e.button === 1 || (e.button === 0 && e.target === e.currentTarget)) {
