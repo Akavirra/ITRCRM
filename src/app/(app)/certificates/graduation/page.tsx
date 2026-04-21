@@ -6,10 +6,13 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  ArrowLeft,
   ChevronDown,
   Download,
+  Move,
   Plus,
   RotateCcw,
+  SlidersHorizontal,
   Trash2,
   Upload,
   X,
@@ -554,460 +557,83 @@ export default function GraduationCertificatesPage() {
       </div>
 
       {showModal && (
-              display: 'flex',
-              flexDirection: 'column',
-              border: '1px solid rgba(148, 163, 184, 0.28)',
-              boxShadow: '0 32px 80px rgba(15, 23, 42, 0.18)',
-              background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-            }}
-          >
-            <div
-              className="modal-header"
-              style={{
-                flexShrink: 0,
-                padding: '24px 24px 18px',
-                borderBottom: '1px solid rgba(226, 232, 240, 0.9)',
-                background: 'rgba(255, 255, 255, 0.88)',
-                backdropFilter: 'blur(12px)',
-              }}
-            >
-              <div style={{ display: 'grid', gap: '6px' }}>
-                <h3 className="modal-title" style={{ margin: 0 }}>Новий сертифікат про закінчення</h3>
-                <p style={{ margin: 0, color: 'var(--gray-600)', fontSize: '14px', lineHeight: '20px' }}>
-                  Спочатку заповніть дані учня, потім відкоригуйте макет і одразу згенеруйте фінальний PDF.
-                </p>
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className={s.modalShell} onClick={(event) => event.stopPropagation()}>
+            <div className={s.modalHeader}>
+              <div className={s.modalHeaderMain}>
+                <button type="button" className={s.headerBack} onClick={() => setShowModal(false)} aria-label="Назад">
+                  <ArrowLeft size={16} />
+                </button>
+                <div className={s.headerTitleStack}>
+                  <div className={s.headerTitleRow}>
+                    <h3 className={s.modalTitle}>Сертифікат</h3>
+                    <span className={s.headerDivider}>•</span>
+                    <span className={s.headerStudent}>{selectedStudent?.full_name || 'Оберіть учня'}</span>
+                  </div>
+                  <p className={s.modalSubtitle}>Canvas-first редактор: спершу вміст, потім макет, далі готовий PDF.</p>
+                </div>
               </div>
-              <button
-                className="modal-close"
-                onClick={() => setShowModal(false)}
-                aria-label="Закрити"
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '10px',
-                  transition: 'background-color 160ms ease-out, transform 120ms ease-out',
-                }}
-              >
-                ×
-              </button>
+
+              <div className={s.headerActions}>
+                <button className="btn btn-secondary btn-sm" onClick={handleSaveSettings} disabled={savingSettings}>
+                  {savingSettings ? 'Збереження…' : 'Зберегти'}
+                </button>
+                <button type="button" className={s.modalClose} onClick={() => setShowModal(false)} aria-label="Закрити">
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
-            <div
-              className="modal-body"
-              style={{
-                overflow: 'auto',
-                flex: '1 1 auto',
-                padding: '22px',
-                display: 'grid',
-                gap: '22px',
-                gridTemplateColumns: 'minmax(320px, 360px) minmax(0, 1fr)',
-              }}
-            >
-              <div style={{ display: 'grid', gap: '16px', alignContent: 'start' }}>
-                <section style={panelStyle}>
-                  <div style={{ display: 'grid', gap: '4px' }}>
-                    <span style={{ fontSize: '15px', lineHeight: '22px', fontWeight: 700, color: 'var(--gray-900)' }}>
-                      Дані сертифіката
-                    </span>
-                    <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-500)' }}>
-                      Зібрав основні поля в окремий блок, щоб вони не губилися серед редактора макета.
-                    </span>
+            <div className={s.modalBody}>
+              <section className={s.canvasArea}>
+                <div className={s.canvasTopbar}>
+                  <div className={s.canvasMeta}>
+                    <span className={s.canvasLabel}>Полотно сертифіката</span>
+                    <span className={s.canvasHint}>Перетягування, resize і швидкі стилі доступні прямо на макеті.</span>
                   </div>
 
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Учень <span style={{ color: '#ef4444' }}>*</span></label>
-                    <select className="form-select" value={formData.student_id} onChange={(event) => onStudentChange(event.target.value)}>
-                      <option value="">Оберіть учня</option>
-                      {students.map((student) => (
-                        <option key={student.id} value={student.id}>{student.full_name}</option>
-                      ))}
-                    </select>
+                  <div className={s.canvasToolbar}>
+                    <button type="button" className={s.toolbarBtn} onClick={() => adjustScale(-0.08)} title="Зменшити">
+                      <ZoomOut size={15} />
+                    </button>
+                    <span className={s.toolbarScale}>{Math.round(scale * 100)}%</span>
+                    <button type="button" className={s.toolbarBtn} onClick={resetViewport} title="Скинути вигляд">
+                      <RotateCcw size={15} />
+                    </button>
+                    <button type="button" className={s.toolbarBtn} onClick={() => adjustScale(0.08)} title="Збільшити">
+                      <ZoomIn size={15} />
+                    </button>
                   </div>
+                </div>
 
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Курс</label>
-                    <select
-                      className="form-select"
-                      value={formData.course_id}
-                      onChange={(event) => setFormData((prev) => ({ ...prev, course_id: event.target.value }))}
-                    >
-                      <option value="">Оберіть курс</option>
-                      {courses.map((course) => (
-                        <option key={course.id} value={course.id}>{course.title}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Дата видачі <span style={{ color: '#ef4444' }}>*</span></label>
-                      <input
-                        type="date"
-                        className="form-input"
-                        value={formData.issue_date}
-                        onChange={(event) => setFormData((prev) => ({ ...prev, issue_date: event.target.value }))}
-                      />
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Стать <span style={{ color: '#ef4444' }}>*</span></label>
-                      <select
-                        className="form-select"
-                        value={formData.gender}
-                        onChange={(event) => setFormData((prev) => ({ ...prev, gender: event.target.value as 'male' | 'female' }))}
-                      >
-                        <option value="">Оберіть стать</option>
-                        <option value="female">Жіноча</option>
-                        <option value="male">Чоловіча</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      display: 'grid',
-                      gap: '4px',
-                      padding: '14px 16px',
-                      borderRadius: '14px',
-                      background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(14, 165, 233, 0.08))',
-                      border: '1px solid rgba(37, 99, 235, 0.14)',
-                    }}
-                  >
-                    <span style={{ fontSize: '12px', lineHeight: '16px', color: 'var(--gray-500)' }}>
-                      Попередній зміст
-                    </span>
-                    <span style={{ fontSize: '14px', lineHeight: '20px', fontWeight: 600, color: 'var(--gray-900)' }}>
-                      {selectedStudent?.full_name || 'Оберіть учня'}{selectedCourse ? ` • ${selectedCourse.title}` : ''}
-                    </span>
-                  </div>
-                </section>
-
-                <section style={panelStyle}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'grid', gap: '4px' }}>
-                      <span style={{ fontSize: '15px', lineHeight: '22px', fontWeight: 700, color: 'var(--gray-900)' }}>
-                        Шаблон
-                      </span>
-                      <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-500)' }}>
-                        PNG або JPG. Завантажений фон одразу з'явиться в робочому полі.
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '12px', lineHeight: '16px', color: 'var(--gray-400)' }}>
-                      до 10 МБ
-                    </span>
-                  </div>
-
-                  <input
-                    id="completion-certificate-template"
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    style={{ display: 'none' }}
-                    onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
-                  />
-
-                  <div
-                    style={{
-                      display: 'grid',
-                      gap: '12px',
-                      padding: '14px',
-                      borderRadius: '14px',
-                      background: 'var(--gray-50)',
-                      border: '1px solid var(--gray-200)',
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: '12px', lineHeight: '16px', color: 'var(--gray-500)', marginBottom: '4px' }}>
-                        Поточний файл
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '14px',
-                          lineHeight: '20px',
-                          color: selectedFile ? 'var(--gray-900)' : 'var(--gray-600)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {selectedFile?.name || (templateUrl ? 'Шаблон завантажено' : 'Файл ще не вибрано')}
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                      <label
-                        htmlFor="completion-certificate-template"
-                        style={{
-                          height: '38px',
-                          padding: '0 14px',
-                          borderRadius: '10px',
-                          border: '1px solid var(--gray-300)',
-                          background: '#ffffff',
-                          color: 'var(--gray-800)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          cursor: 'pointer',
-                          transition: 'background-color 160ms ease-out, border-color 160ms ease-out, transform 120ms ease-out',
-                        }}
-                      >
-                        <Upload size={16} />
-                        Обрати файл
-                      </label>
-
-                      <button className="btn btn-primary" onClick={handleUploadTemplate} disabled={!selectedFile || uploading}>
-                        {uploading ? 'Завантаження…' : 'Оновити шаблон'}
-                      </button>
-                    </div>
-                  </div>
-                </section>
-
-                <section style={panelStyle}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {templateUrl ? (
+                  <div ref={viewportRef} className={s.canvasViewport}>
                     <div
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '10px',
-                        background: 'rgba(15, 23, 42, 0.06)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'var(--gray-700)',
-                      }}
-                    >
-                      <SlidersHorizontal size={16} />
-                    </div>
-                    <div style={{ display: 'grid', gap: '2px' }}>
-                      <span style={{ fontSize: '15px', lineHeight: '22px', fontWeight: 700, color: 'var(--gray-900)' }}>
-                        Текстові блоки
-                      </span>
-                      <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-500)' }}>
-                        Основні параметри лишаються тут, але швидкі зміни тепер ідуть прямо над активним блоком.
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gap: '8px' }}>
-                    {blocks.map((block, index) => {
-                      const isActive = selectedBlock === index;
-                      return (
-                        <button
-                          key={block.key}
-                          type="button"
-                          onClick={() => setSelectedBlock(index)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '12px',
-                            padding: '12px 14px',
-                            borderRadius: '12px',
-                            border: isActive ? '1px solid rgba(37, 99, 235, 0.24)' : '1px solid var(--gray-200)',
-                            background: isActive ? 'rgba(37, 99, 235, 0.08)' : '#ffffff',
-                            color: 'var(--gray-800)',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            transition: 'background-color 180ms ease-out, border-color 180ms ease-out, transform 120ms ease-out',
-                          }}
-                        >
-                          <span style={{ display: 'grid', gap: '2px' }}>
-                            <span style={{ fontSize: '14px', lineHeight: '20px', fontWeight: 600 }}>{BLOCK_LABELS[block.key]}</span>
-                            <span style={{ fontSize: '12px', lineHeight: '16px', color: 'var(--gray-500)' }}>
-                              {Math.round(block.xPercent)}% / {Math.round(block.yPercent)}%
-                            </span>
-                          </span>
-                          <span style={{ fontSize: '12px', lineHeight: '16px', color: 'var(--gray-500)' }}>{block.size}px</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div style={{ display: 'grid', gap: '14px', paddingTop: '4px', borderTop: '1px solid var(--gray-100)' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Текст у прев'ю</label>
-                      <textarea
-                        className="form-input"
-                        rows={activeBlock.key === 'verb' ? 3 : 2}
-                        value={previewTexts[activeBlock.key] ?? getPreviewText(activeBlock.key)}
-                        onChange={(event) => setPreviewTexts((prev) => ({
-                          ...prev,
-                          [activeBlock.key]: event.target.value,
-                        }))}
-                      />
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Розмір</label>
-                        <input
-                          type="number"
-                          className="form-input"
-                          min="10"
-                          max="160"
-                          value={activeBlock.size}
-                          onChange={(event) => updateBlock(selectedBlock, { size: parseInt(event.target.value, 10) || 10 })}
-                        />
-                      </div>
-
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Колір</label>
-                        <input
-                          type="color"
-                          className="form-input"
-                          value={activeBlock.color}
-                          style={{ padding: '4px', height: '40px' }}
-                          onChange={(event) => updateBlock(selectedBlock, { color: event.target.value })}
-                        />
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Вирівнювання</label>
-                        <select
-                          className="form-select"
-                          value={activeBlock.align}
-                          onChange={(event) => updateBlock(selectedBlock, { align: event.target.value as BlockSetting['align'] })}
-                        >
-                          <option value="left">Ліворуч</option>
-                          <option value="center">По центру</option>
-                          <option value="right">Праворуч</option>
-                        </select>
-                      </div>
-
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Накреслення</label>
-                        <select
-                          className="form-select"
-                          value={`${activeBlock.weight}:${activeBlock.style}`}
-                          onChange={(event) => {
-                            const [weight, style] = event.target.value.split(':') as [BlockSetting['weight'], BlockSetting['style']];
-                            updateBlock(selectedBlock, { weight, style });
-                          }}
-                        >
-                          <option value="normal:normal">Звичайне</option>
-                          <option value="bold:normal">Жирне</option>
-                          <option value="normal:italic">Курсив</option>
-                          <option value="bold:italic">Жирний курсив</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gap: '10px' }}>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Позиція зліва: {activeBlock.xPercent}%</label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={activeBlock.xPercent}
-                          onChange={(event) => updateBlock(selectedBlock, { xPercent: parseInt(event.target.value, 10) })}
-                        />
-                      </div>
-
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Позиція знизу: {activeBlock.yPercent}%</label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={activeBlock.yPercent}
-                          onChange={(event) => updateBlock(selectedBlock, { yPercent: parseInt(event.target.value, 10) })}
-                        />
-                      </div>
-                    </div>
-
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', lineHeight: '20px', color: 'var(--gray-700)', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={activeBlock.wrap}
-                        onChange={(event) => updateBlock(selectedBlock, { wrap: event.target.checked })}
-                      />
-                      Дозволити перенесення рядків
-                    </label>
-                  </div>
-                </section>
-              </div>
-
-              <div style={{ display: 'grid', gap: '18px', minWidth: 0 }}>
-                <section style={{ ...panelStyle, padding: '16px', gap: '14px', background: 'linear-gradient(180deg, #fdfefe 0%, #f8fbff 100%)' }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
-                    <div style={{ display: 'grid', gap: '4px' }}>
-                      <span style={{ fontSize: '15px', lineHeight: '22px', fontWeight: 700, color: 'var(--gray-900)' }}>
-                        Прев'ю сертифіката
-                      </span>
-                      <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-500)' }}>
-                        Активний блок редагується прямо на полотні: тягни, масштабуй і стилізуй його вгорі, як у графічному редакторі.
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                      <span
-                        style={{
-                          padding: '6px 10px',
-                          borderRadius: '999px',
-                          background: 'var(--gray-100)',
-                          fontSize: '12px',
-                          lineHeight: '16px',
-                          color: 'var(--gray-600)',
-                        }}
-                      >
-                        Масштаб {Math.round(scale * 100)}%
-                      </span>
-
-                      <button className="btn btn-secondary btn-sm" onClick={() => adjustScale(-0.08)} title="Зменшити">
-                        <ZoomOut size={15} />
-                      </button>
-                      <button className="btn btn-secondary btn-sm" onClick={resetViewport} title="Скинути вигляд">
-                        <RotateCcw size={15} />
-                      </button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => adjustScale(0.08)} title="Збільшити">
-                        <ZoomIn size={15} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {templateUrl ? (
-                    <div
-                      ref={viewportRef}
-                      style={{
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '20px',
-                        borderRadius: '20px',
-                        overflow: 'hidden',
-                        border: '1px solid rgba(148, 163, 184, 0.2)',
-                        background: 'radial-gradient(circle at top, rgba(255,255,255,0.96), rgba(236, 245, 255, 0.92))',
-                        minHeight: '70vh',
-                        cursor: isPanning ? 'grabbing' : 'default',
-                      }}
+                      className={s.canvasFrame}
+                      style={{ cursor: isPanning ? 'grabbing' : 'default' }}
                     >
                       <div
                         ref={previewRef}
+                        className={s.canvasContent}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
                         onMouseLeave={handleMouseUp}
                         onMouseDown={handleCanvasMouseDown}
                         style={{
-                          position: 'relative',
                           width: `${imageDimensions.width}px`,
                           height: `${imageDimensions.height}px`,
                           transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
                           transformOrigin: 'center center',
                           cursor: dragging ? 'grabbing' : isPanning ? 'grabbing' : 'default',
-                          userSelect: 'none',
-                          willChange: 'transform',
                         }}
                       >
                         <img
                           src={templateUrl}
-                          alt="Template"
+                          alt="Шаблон сертифіката"
                           onLoad={(event) => setImageDimensions({
                             width: event.currentTarget.naturalWidth || 842,
                             height: event.currentTarget.naturalHeight || 595,
                           })}
-                          style={{ width: '100%', height: '100%', display: 'block', pointerEvents: 'none' }}
                         />
 
                         {blocks.map((block, index) => {
@@ -1017,9 +643,11 @@ export default function GraduationCertificatesPage() {
                           return (
                             <div
                               key={block.key}
+                              className={`${s.canvasBlock} ${isSelected ? s.canvasBlockSelected : ''}`}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 setSelectedBlock(index);
+                                setOpenAccordion('blocks');
                               }}
                               onMouseDown={(event) => {
                                 if (!isSelected) return;
@@ -1032,7 +660,6 @@ export default function GraduationCertificatesPage() {
                                 });
                               }}
                               style={{
-                                position: 'absolute',
                                 left: `${block.xPercent}%`,
                                 bottom: `${block.yPercent}%`,
                                 transform: 'translateX(-50%)',
@@ -1041,65 +668,29 @@ export default function GraduationCertificatesPage() {
                                 fontFamily: getBlockFontFamily(block.key),
                                 fontWeight: block.weight === 'bold' ? 700 : 400,
                                 fontStyle: block.style === 'italic' ? 'italic' : 'normal',
-                                lineHeight: 1.12,
                                 textAlign: block.align,
                                 whiteSpace: block.wrap ? 'pre-wrap' : 'nowrap',
                                 maxWidth: block.wrap ? '360px' : 'none',
-                                padding: isSelected ? '6px 10px' : '4px 6px',
-                                borderRadius: '10px',
-                                border: isSelected ? '1px dashed rgba(37, 99, 235, 0.95)' : '1px solid transparent',
-                                background: isSelected ? 'rgba(255, 255, 255, 0.82)' : 'transparent',
-                                boxShadow: isSelected ? '0 20px 48px rgba(37, 99, 235, 0.16)' : 'none',
-                                cursor: isSelected ? 'grab' : 'pointer',
-                                zIndex: isSelected ? 12 : 1,
-                                transition: 'background-color 180ms ease-out, box-shadow 180ms ease-out, border-color 180ms ease-out',
                               }}
                             >
                               {isSelected && (
                                 <div
+                                  className={s.blockToolbar}
                                   onMouseDown={(event) => event.stopPropagation()}
-                                  style={{
-                                    position: 'absolute',
-                                    bottom: 'calc(100% + 12px)',
-                                    left: '50%',
-                                    transform: `translateX(-50%) scale(${toolbarScale})`,
-                                    transformOrigin: 'bottom center',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    padding: '6px',
-                                    borderRadius: '12px',
-                                    background: 'rgba(255, 255, 255, 0.97)',
-                                    border: '1px solid rgba(148, 163, 184, 0.28)',
-                                    boxShadow: '0 18px 40px rgba(15, 23, 42, 0.18)',
-                                    backdropFilter: 'blur(14px)',
-                                    whiteSpace: 'nowrap',
-                                    zIndex: 30,
-                                  }}
+                                  style={{ transform: `translateX(-50%) scale(${toolbarScale})` }}
                                 >
                                   <input
                                     type="color"
                                     value={block.color}
                                     onChange={(event) => updateBlock(index, { color: event.target.value })}
-                                    style={{ width: '28px', height: '28px', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                    className={s.blockColorInput}
                                   />
                                   {[{ value: 'left', icon: AlignLeft }, { value: 'center', icon: AlignCenter }, { value: 'right', icon: AlignRight }].map(({ value, icon: Icon }) => (
                                     <button
                                       key={value}
                                       type="button"
                                       onClick={() => updateBlock(index, { align: value as BlockSetting['align'] })}
-                                      style={{
-                                        width: '28px',
-                                        height: '28px',
-                                        borderRadius: '8px',
-                                        border: 'none',
-                                        background: block.align === value ? 'var(--gray-900)' : 'transparent',
-                                        color: block.align === value ? '#fff' : 'var(--gray-600)',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: 'pointer',
-                                      }}
+                                      className={`${s.blockToolbarBtn} ${block.align === value ? s.blockToolbarBtnActive : ''}`}
                                     >
                                       <Icon size={14} />
                                     </button>
@@ -1107,50 +698,21 @@ export default function GraduationCertificatesPage() {
                                   <button
                                     type="button"
                                     onClick={() => updateBlock(index, { weight: block.weight === 'bold' ? 'normal' : 'bold' })}
-                                    style={{
-                                      width: '28px',
-                                      height: '28px',
-                                      borderRadius: '8px',
-                                      border: 'none',
-                                      background: block.weight === 'bold' ? 'var(--gray-900)' : 'transparent',
-                                      color: block.weight === 'bold' ? '#fff' : 'var(--gray-600)',
-                                      fontWeight: 700,
-                                      cursor: 'pointer',
-                                    }}
+                                    className={`${s.blockToolbarBtn} ${block.weight === 'bold' ? s.blockToolbarBtnActive : ''}`}
                                   >
                                     B
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => updateBlock(index, { style: block.style === 'italic' ? 'normal' : 'italic' })}
-                                    style={{
-                                      width: '28px',
-                                      height: '28px',
-                                      borderRadius: '8px',
-                                      border: 'none',
-                                      background: block.style === 'italic' ? 'var(--gray-900)' : 'transparent',
-                                      color: block.style === 'italic' ? '#fff' : 'var(--gray-600)',
-                                      fontStyle: 'italic',
-                                      cursor: 'pointer',
-                                    }}
+                                    className={`${s.blockToolbarBtn} ${block.style === 'italic' ? s.blockToolbarBtnActive : ''}`}
                                   >
                                     I
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => updateBlock(index, { wrap: !block.wrap })}
-                                    style={{
-                                      minWidth: '40px',
-                                      height: '28px',
-                                      padding: '0 8px',
-                                      borderRadius: '8px',
-                                      border: 'none',
-                                      background: block.wrap ? 'var(--gray-900)' : 'transparent',
-                                      color: block.wrap ? '#fff' : 'var(--gray-600)',
-                                      fontSize: '11px',
-                                      fontWeight: 700,
-                                      cursor: 'pointer',
-                                    }}
+                                    className={`${s.blockToolbarToggle} ${block.wrap ? s.blockToolbarBtnActive : ''}`}
                                   >
                                     wrap
                                   </button>
@@ -1168,21 +730,12 @@ export default function GraduationCertificatesPage() {
                                     <button
                                       key={handleIndex}
                                       type="button"
+                                      className={s.resizeHandle}
                                       onMouseDown={(event) => {
                                         event.stopPropagation();
                                         setResizing({ index, startSize: block.size, startY: event.clientY });
                                       }}
-                                      style={{
-                                        position: 'absolute',
-                                        width: '14px',
-                                        height: '14px',
-                                        borderRadius: '4px',
-                                        border: '2px solid #ffffff',
-                                        background: '#2563eb',
-                                        boxShadow: '0 8px 18px rgba(37, 99, 235, 0.28)',
-                                        zIndex: 24,
-                                        ...handle,
-                                      }}
+                                      style={handle}
                                     />
                                   ))}
                                 </>
@@ -1194,66 +747,273 @@ export default function GraduationCertificatesPage() {
                         })}
                       </div>
                     </div>
-                  ) : (
-                    <div
-                      style={{
-                        minHeight: '320px',
-                        borderRadius: '18px',
-                        border: '2px dashed var(--gray-300)',
-                        background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '24px',
-                        textAlign: 'center',
-                        color: 'var(--gray-500)',
-                      }}
-                    >
-                      <div style={{ display: 'grid', gap: '8px' }}>
-                        <span style={{ fontSize: '16px', lineHeight: '24px', fontWeight: 600 }}>
-                          Спочатку завантажте шаблон сертифіката
-                        </span>
-                        <span style={{ fontSize: '13px', lineHeight: '18px' }}>
-                          Після цього тут з'явиться живе прев'ю з можливістю перетягувати блоки.
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', color: 'var(--gray-600)', fontSize: '13px', lineHeight: '18px' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                      <Move size={15} />
-                      Перетягування працює прямо на макеті.
-                    </span>
-                    <span>Resize доступний через кутові хендли, а швидкі стилі відкриваються над активним блоком.</span>
                   </div>
-                </section>
-              </div>
+                ) : (
+                  <div className={s.canvasEmpty}>
+                    <span className={s.canvasEmptyTitle}>Спочатку завантажте шаблон сертифіката</span>
+                    <span className={s.canvasEmptyDesc}>Після цього тут з'явиться повноцінне прев’ю з drag & drop і редагуванням блоків.</span>
+                  </div>
+                )}
+
+                <div className={s.canvasBottomHint}>
+                  <span className={s.canvasBottomItem}>
+                    <Move size={15} />
+                    Перетягування працює прямо на полотні.
+                  </span>
+                  <span className={s.canvasBottomItem}>Resize робиться кутовими хендлами, а стилі відкриваються над активним елементом.</span>
+                </div>
+              </section>
+
+              <aside className={s.sidebar}>
+                <div className={s.sidebarInner}>
+                  <section className={s.accordionSection}>
+                    <button type="button" className={s.accordionHeader} onClick={() => setOpenAccordion('data')}>
+                      <div>
+                        <div className={s.accordionTitle}>Дані</div>
+                        <div className={s.accordionMeta}>Учень, курс, дата і стать</div>
+                      </div>
+                      <ChevronDown className={`${s.accordionChevron} ${openAccordion === 'data' ? s.accordionChevronOpen : ''}`} />
+                    </button>
+                    {openAccordion === 'data' && (
+                      <div className={s.accordionBody}>
+                        <div className={s.summaryCard}>
+                          <span className={s.summaryLabel}>Поточний сертифікат</span>
+                          <strong className={s.summaryValue}>{selectedStudent?.full_name || 'Оберіть учня'}</strong>
+                          <span className={s.summaryMeta}>{selectedCourse?.title || 'Курс ще не обрано'}</span>
+                        </div>
+
+                        <div className={s.compactGroup}>
+                          <label className={s.compactLabel}>Учень <span className={s.compactRequired}>*</span></label>
+                          <select className="form-select" value={formData.student_id} onChange={(event) => onStudentChange(event.target.value)}>
+                            <option value="">Оберіть учня</option>
+                            {students.map((student) => (
+                              <option key={student.id} value={student.id}>{student.full_name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className={s.compactGroup}>
+                          <label className={s.compactLabel}>Курс</label>
+                          <select
+                            className="form-select"
+                            value={formData.course_id}
+                            onChange={(event) => setFormData((prev) => ({ ...prev, course_id: event.target.value }))}
+                          >
+                            <option value="">Оберіть курс</option>
+                            {courses.map((course) => (
+                              <option key={course.id} value={course.id}>{course.title}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className={s.compactRow}>
+                          <div className={s.compactGroup}>
+                            <label className={s.compactLabel}>Дата <span className={s.compactRequired}>*</span></label>
+                            <input
+                              type="date"
+                              className="form-input"
+                              value={formData.issue_date}
+                              onChange={(event) => setFormData((prev) => ({ ...prev, issue_date: event.target.value }))}
+                            />
+                          </div>
+                          <div className={s.compactGroup}>
+                            <label className={s.compactLabel}>Стать <span className={s.compactRequired}>*</span></label>
+                            <select
+                              className="form-select"
+                              value={formData.gender}
+                              onChange={(event) => setFormData((prev) => ({ ...prev, gender: event.target.value as 'male' | 'female' }))}
+                            >
+                              <option value="">Оберіть</option>
+                              <option value="female">Жіноча</option>
+                              <option value="male">Чоловіча</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  <section className={s.accordionSection}>
+                    <button type="button" className={s.accordionHeader} onClick={() => setOpenAccordion('blocks')}>
+                      <div>
+                        <div className={s.accordionTitle}>Текстові блоки</div>
+                        <div className={s.accordionMeta}>Позиція, стиль і текст активного елемента</div>
+                      </div>
+                      <ChevronDown className={`${s.accordionChevron} ${openAccordion === 'blocks' ? s.accordionChevronOpen : ''}`} />
+                    </button>
+                    {openAccordion === 'blocks' && (
+                      <div className={s.accordionBody}>
+                        <div className={s.blockList}>
+                          {blocks.map((block, index) => {
+                            const isActive = selectedBlock === index;
+                            return (
+                              <button
+                                key={block.key}
+                                type="button"
+                                onClick={() => setSelectedBlock(index)}
+                                className={`${s.blockItem} ${isActive ? s.blockItemActive : ''}`}
+                              >
+                                <span>
+                                  <span className={s.blockItemName}>{BLOCK_LABELS[block.key]}</span>
+                                  <span className={s.blockItemMeta}>{Math.round(block.xPercent)}% / {Math.round(block.yPercent)}%</span>
+                                </span>
+                                <span className={s.blockItemMeta}>{block.size}px</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className={s.blockEditor}>
+                          <div className={s.compactGroup}>
+                            <label className={s.compactLabel}>Текст у прев’ю</label>
+                            <textarea
+                              className="form-input"
+                              rows={activeBlock.key === 'verb' ? 3 : 2}
+                              value={previewTexts[activeBlock.key] ?? getPreviewText(activeBlock.key)}
+                              onChange={(event) => setPreviewTexts((prev) => ({
+                                ...prev,
+                                [activeBlock.key]: event.target.value,
+                              }))}
+                            />
+                          </div>
+
+                          <div className={s.compactRow}>
+                            <div className={s.compactGroup}>
+                              <label className={s.compactLabel}>Розмір</label>
+                              <input
+                                type="number"
+                                className="form-input"
+                                min="10"
+                                max="160"
+                                value={activeBlock.size}
+                                onChange={(event) => updateBlock(selectedBlock, { size: parseInt(event.target.value, 10) || 10 })}
+                              />
+                            </div>
+                            <div className={s.compactGroup}>
+                              <label className={s.compactLabel}>Колір</label>
+                              <input
+                                type="color"
+                                className={`form-input ${s.colorInput}`}
+                                value={activeBlock.color}
+                                onChange={(event) => updateBlock(selectedBlock, { color: event.target.value })}
+                              />
+                            </div>
+                          </div>
+
+                          <div className={s.compactRow}>
+                            <div className={s.compactGroup}>
+                              <label className={s.compactLabel}>Вирівнювання</label>
+                              <select
+                                className="form-select"
+                                value={activeBlock.align}
+                                onChange={(event) => updateBlock(selectedBlock, { align: event.target.value as BlockSetting['align'] })}
+                              >
+                                <option value="left">Ліворуч</option>
+                                <option value="center">По центру</option>
+                                <option value="right">Праворуч</option>
+                              </select>
+                            </div>
+                            <div className={s.compactGroup}>
+                              <label className={s.compactLabel}>Накреслення</label>
+                              <select
+                                className="form-select"
+                                value={`${activeBlock.weight}:${activeBlock.style}`}
+                                onChange={(event) => {
+                                  const [weight, style] = event.target.value.split(':') as [BlockSetting['weight'], BlockSetting['style']];
+                                  updateBlock(selectedBlock, { weight, style });
+                                }}
+                              >
+                                <option value="normal:normal">Звичайне</option>
+                                <option value="bold:normal">Жирне</option>
+                                <option value="normal:italic">Курсив</option>
+                                <option value="bold:italic">Жирний курсив</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className={s.sliderGroup}>
+                            <label className={s.compactLabel}>Позиція зліва: {activeBlock.xPercent}%</label>
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              value={activeBlock.xPercent}
+                              onChange={(event) => updateBlock(selectedBlock, { xPercent: parseInt(event.target.value, 10) })}
+                            />
+                          </div>
+
+                          <div className={s.sliderGroup}>
+                            <label className={s.compactLabel}>Позиція знизу: {activeBlock.yPercent}%</label>
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              value={activeBlock.yPercent}
+                              onChange={(event) => updateBlock(selectedBlock, { yPercent: parseInt(event.target.value, 10) })}
+                            />
+                          </div>
+
+                          <label className={s.checkboxRow}>
+                            <input
+                              type="checkbox"
+                              checked={activeBlock.wrap}
+                              onChange={(event) => updateBlock(selectedBlock, { wrap: event.target.checked })}
+                            />
+                            <span>Дозволити перенесення рядків</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  <section className={s.accordionSection}>
+                    <button type="button" className={s.accordionHeader} onClick={() => setOpenAccordion('template')}>
+                      <div>
+                        <div className={s.accordionTitle}>Шаблон</div>
+                        <div className={s.accordionMeta}>PNG або JPG до 10 МБ</div>
+                      </div>
+                      <ChevronDown className={`${s.accordionChevron} ${openAccordion === 'template' ? s.accordionChevronOpen : ''}`} />
+                    </button>
+                    {openAccordion === 'template' && (
+                      <div className={s.accordionBody}>
+                        <input
+                          id="completion-certificate-template"
+                          type="file"
+                          accept="image/png,image/jpeg"
+                          style={{ display: 'none' }}
+                          onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
+                        />
+                        <div className={s.templateInfo}>
+                          <span className={s.templateHint}>Поточний файл</span>
+                          <span className={s.templateFileName}>{selectedFile?.name || (templateUrl ? 'Шаблон завантажено' : 'Файл ще не вибрано')}</span>
+                        </div>
+
+                        <div className={s.templateActions}>
+                          <label htmlFor="completion-certificate-template" className={s.templateUploadLabel}>
+                            <Upload size={14} />
+                            Обрати файл
+                          </label>
+                          <button className="btn btn-primary btn-sm" onClick={handleUploadTemplate} disabled={!selectedFile || uploading}>
+                            {uploading ? 'Завантаження…' : 'Оновити'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                </div>
+              </aside>
             </div>
 
-            <div
-              className="modal-footer"
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: '12px',
-                flexShrink: 0,
-                padding: '18px 24px 24px',
-                borderTop: '1px solid rgba(226, 232, 240, 0.9)',
-                background: 'rgba(255, 255, 255, 0.9)',
-              }}
-            >
-              <div style={{ color: 'var(--gray-500)', fontSize: '13px', lineHeight: '18px', alignSelf: 'center' }}>
-                Збереження вигляду не створює документ. PDF генерується окремою кнопкою.
-              </div>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <button className="btn btn-secondary" onClick={() => setShowModal(false)} style={{ minWidth: '112px' }}>
+            <div className={s.modalFooter}>
+              <div className={s.footerNote}>Збереження вигляду не створює документ. PDF генерується окремою кнопкою.</div>
+              <div className={s.footerActions}>
+                <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
                   {t('actions.close')}
                 </button>
-                <button className="btn btn-primary" onClick={handleSaveSettings} disabled={savingSettings} style={{ minWidth: '180px' }}>
+                <button className="btn btn-primary" onClick={handleSaveSettings} disabled={savingSettings}>
                   {savingSettings ? 'Зберігаємо…' : 'Зберегти вигляд'}
                 </button>
-                <button className="btn btn-primary" onClick={handleSave} disabled={!canCreate} style={{ minWidth: '170px' }}>
+                <button className="btn btn-primary" onClick={handleSave} disabled={!canCreate}>
                   {saving ? 'Генеруємо…' : 'Згенерувати PDF'}
                 </button>
               </div>
