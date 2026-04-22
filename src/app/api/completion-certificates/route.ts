@@ -38,7 +38,20 @@ export async function GET(request: NextRequest) {
   if (!user) return unauthorized();
 
   try {
-    const certificates = await getCompletionCertificates();
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const search = searchParams.get('search') || '';
+    const courseId = searchParams.get('courseId');
+    const groupId = searchParams.get('groupId');
+
+    const certificates = await getCompletionCertificates({
+      page: Number.isNaN(page) ? 1 : page,
+      limit: Number.isNaN(limit) ? 20 : limit,
+      search,
+      courseId: courseId ? parseInt(courseId, 10) : undefined,
+      groupId: groupId ? parseInt(groupId, 10) : undefined,
+    });
     return NextResponse.json(certificates);
   } catch (error: any) {
     console.error('Completion Certificates GET Error:', error);

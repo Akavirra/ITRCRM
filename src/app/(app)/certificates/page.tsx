@@ -1,29 +1,26 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  AlertCircle,
-  ArrowLeft,
-  CheckCircle,
-  ChevronDown,
-  Download,
-  Plus,
-  Printer,
-  RotateCcw,
-  Trash2,
-  Undo2,
   Upload,
-  X,
   XCircle,
-  ZoomIn,
-  ZoomOut,
 } from 'lucide-react';
-import PageLoading from '@/components/PageLoading';
+import CompletionCertificatesPanel from '@/components/certificates/CompletionCertificatesPanel';
+import CertificateCanvasToolbar from '@/components/certificates/CertificateCanvasToolbar';
+import CertificateEditorFooterActions from '@/components/certificates/CertificateEditorFooterActions';
+import CertificateEditorLoadingNotice from '@/components/certificates/CertificateEditorLoadingNotice';
+import CertificateEditorModalShell from '@/components/certificates/CertificateEditorModalShell';
+import GiftCertificateCanvas from '@/components/certificates/GiftCertificateCanvas';
+import GiftCertificateEditorSidebar from '@/components/certificates/GiftCertificateEditorSidebar';
+import GiftCertificatesTable, { type GiftCertificateListItem } from '@/components/certificates/GiftCertificatesTable';
+import CertificatesPagination from '@/components/certificates/CertificatesPagination';
+import CertificatesPageShell from '@/components/certificates/CertificatesPageShell';
+import CertificatesSectionHeader from '@/components/certificates/CertificatesSectionHeader';
 import { useUser } from '@/components/UserContext';
 import { t } from '@/i18n/t';
 import { formatDateKyiv } from '@/lib/date-utils';
-import s from './graduation/graduation.module.css';
+import s from '@/components/certificates/certificates-editor.module.css';
 
 interface CertificateData {
   id: number;
@@ -36,6 +33,14 @@ interface CertificateData {
   notes: string | null;
   creator_name: string | null;
   created_at: string;
+}
+
+interface CertificateListResponse {
+  items: CertificateData[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 type TextWeight = 'normal' | 'bold';
@@ -97,12 +102,32 @@ const DEFAULT_FORM_DATA: EditorFormData = {
   count: 1,
 };
 
-export default function CertificatesPage() {
+type CertificatesTab = 'gift' | 'completion';
+
+interface GiftCertificatesPanelProps {
+}
+
+function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user } = useUser();
+  const initialGiftSearch = searchParams.get('gift_search') || '';
+  const initialGiftStatus = searchParams.get('gift_status');
+  const initialGiftPage = Number.parseInt(searchParams.get('gift_page') || '1', 10);
+  const initialGiftArchived = searchParams.get('gift_archived') === '1';
+  const normalizedGiftStatus: 'all' | 'unprinted' | 'printed' | CertificateData['status'] =
+    initialGiftStatus === 'active'
+    || initialGiftStatus === 'used'
+    || initialGiftStatus === 'expired'
+    || initialGiftStatus === 'canceled'
+    || initialGiftStatus === 'printed'
+    || initialGiftStatus === 'unprinted'
+      ? initialGiftStatus
+      : 'all';
 
   const [certificates, setCertificates] = useState<CertificateData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState<EditorFormData>(DEFAULT_FORM_DATA);
   const [saving, setSaving] = useState(false);
@@ -115,7 +140,14 @@ export default function CertificatesPage() {
   const [nextPublicId, setNextPublicId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchived, setShowArchived] = useState(initialGiftArchived);
+  const [editorBootstrapLoading, setEditorBootstrapLoading] = useState(false);
+  const [editorBootstrapReady, setEditorBootstrapReady] = useState(false);
+  const [searchInput, setSearchInput] = useState(initialGiftSearch);
+  const [searchQuery, setSearchQuery] = useState(initialGiftSearch);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unprinted' | 'printed' | CertificateData['status']>(normalizedGiftStatus);
+  const [page, setPage] = useState(Number.isFinite(initialGiftPage) && initialGiftPage > 0 ? initialGiftPage : 1);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
   const [openAccordion, setOpenAccordion] = useState<AccordionKey>('data');
   const [selectedBlock, setSelectedBlock] = useState<BlockKey | null>('amount');
   const [dragging, setDragging] = useState<{ target: BlockKey; offsetX: number; offsetY: number } | null>(null);
@@ -141,6 +173,76 @@ export default function CertificatesPage() {
     y: Math.max(0, Math.round((scaledHeight - viewportSize.height) / 2)),
   };
   const canUndo = historyRef.current.length > 0;
+
+  const fetchCertificates = async (targetPage = page) => {
+    if (!user || user.role !== 'admin') return;
+
+    setListLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(targetPage),
+        limit: String(pagination.limit),
+      });
+
+      if (searchQuery) {
+        params.set('search', searchQuery);
+      }
+
+      const effectiveStatusFilter = statusFilter === 'all'
+        ? (showArchived ? 'printed' : 'unprinted')
+        : statusFilter;
+
+      params.set('status', effectiveStatusFilter);
+
+      const response = await fetch(`/api/admin-app/certificates?${params.toString()}`);
+      const data = await response.json() as CertificateListResponse;
+
+      setCertificates(Array.isArray(data.items) ? data.items : []);
+      setPagination({
+        page: typeof data.page === 'number' ? data.page : targetPage,
+        limit: typeof data.limit === 'number' ? data.limit : 20,
+        total: typeof data.total === 'number' ? data.total : 0,
+        totalPages: typeof data.totalPages === 'number' ? data.totalPages : 1,
+      });
+    } catch (error) {
+      console.error('Failed to fetch certificates:', error);
+      setCertificates([]);
+      setPagination((prev) => ({ ...prev, page: targetPage, total: 0, totalPages: 1 }));
+    } finally {
+      setListLoading(false);
+    }
+  };
+
+  const bootstrapEditor = async (force = false) => {
+    if (editorBootstrapReady && !force) return true;
+
+    setEditorBootstrapLoading(true);
+    try {
+      const [templateRes, settingsRes, nextRes] = await Promise.all([
+        fetch('/api/admin-app/certificates/template'),
+        fetch('/api/admin-app/certificates/settings'),
+        fetch('/api/admin-app/certificates/next-id'),
+      ]);
+
+      const templateData = await templateRes.json();
+      setTemplateUrl(templateData?.url || null);
+
+      const settingsData = await settingsRes.json();
+      if (settingsData && !settingsData.error) {
+        setIdSettings((prev) => ({ ...prev, ...settingsData }));
+      }
+
+      const nextData = await nextRes.json();
+      setNextPublicId(nextData?.nextId || null);
+      setEditorBootstrapReady(true);
+      return true;
+    } catch (error) {
+      console.error('Failed to bootstrap certificate editor:', error);
+      return false;
+    } finally {
+      setEditorBootstrapLoading(false);
+    }
+  };
 
   const activeBlock = selectedBlock === 'id'
     ? {
@@ -173,46 +275,59 @@ export default function CertificatesPage() {
       };
 
   useEffect(() => {
-    const fetchCertificates = async () => {
-      try {
-        if (!user || user.role !== 'admin') {
-          router.push('/dashboard');
-          return;
-        }
-
-        const [certRes, templateRes, settingsRes, nextRes] = await Promise.all([
-          fetch('/api/admin-app/certificates'),
-          fetch('/api/admin-app/certificates/template'),
-          fetch('/api/admin-app/certificates/settings'),
-          fetch('/api/admin-app/certificates/next-id'),
-        ]);
-
-        const certData = await certRes.json();
-        setCertificates(Array.isArray(certData) ? certData : []);
-
-        const templateData = await templateRes.json();
-        if (templateData.url) {
-          setTemplateUrl(templateData.url);
-        }
-
-        const settingsData = await settingsRes.json();
-        if (settingsData && !settingsData.error) {
-          setIdSettings((prev) => ({ ...prev, ...settingsData }));
-        }
-
-        const nextData = await nextRes.json();
-        if (nextData?.nextId) {
-          setNextPublicId(nextData.nextId);
-        }
-      } catch (error) {
-        console.error('Failed to fetch certificates:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCertificates();
+    if (user && user.role !== 'admin') {
+      router.push('/dashboard');
+    }
   }, [router, user]);
+
+  useEffect(() => {
+    if (!user || user.role !== 'admin') return;
+    fetchCertificates(page);
+  }, [page, searchQuery, showArchived, statusFilter, user]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+
+    if (searchQuery) {
+      nextParams.set('gift_search', searchQuery);
+    } else {
+      nextParams.delete('gift_search');
+    }
+
+    if (statusFilter !== 'all') {
+      nextParams.set('gift_status', statusFilter);
+    } else {
+      nextParams.delete('gift_status');
+    }
+
+    if (showArchived) {
+      nextParams.set('gift_archived', '1');
+    } else {
+      nextParams.delete('gift_archived');
+    }
+
+    if (page > 1) {
+      nextParams.set('gift_page', String(page));
+    } else {
+      nextParams.delete('gift_page');
+    }
+
+    const currentQuery = searchParams.toString();
+    const nextQuery = nextParams.toString();
+
+    if (nextQuery !== currentQuery) {
+      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    }
+  }, [page, pathname, router, searchParams, searchQuery, showArchived, statusFilter]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setPage(1);
+      setSearchQuery(searchInput.trim());
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput]);
 
   useEffect(() => {
     if (!showModal) return;
@@ -411,13 +526,14 @@ export default function CertificatesPage() {
     setFormData((prev) => ({ ...prev, ...patch }));
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     setFormData(DEFAULT_FORM_DATA);
     setSelectedFile(null);
     setOpenAccordion('data');
     setSelectedBlock('amount');
     historyRef.current = [];
     setShowModal(true);
+    await bootstrapEditor();
   };
 
   const handleSave = async () => {
@@ -438,9 +554,8 @@ export default function CertificatesPage() {
       }
 
       setShowModal(false);
-      const refreshRes = await fetch('/api/admin-app/certificates');
-      const refreshData = await refreshRes.json();
-      setCertificates(Array.isArray(refreshData) ? refreshData : []);
+      setPage(1);
+      await fetchCertificates(1);
     } catch (error) {
       console.error('Failed to save certificate:', error);
     } finally {
@@ -512,14 +627,7 @@ export default function CertificatesPage() {
       });
 
       if (!res.ok) throw new Error('Failed');
-
-      setCertificates((prev) =>
-        prev.map((certificate) =>
-          certificate.id === id
-            ? { ...certificate, printed_at: isPrinted ? null : new Date().toISOString() }
-            : certificate
-        )
-      );
+      await fetchCertificates(page);
     } catch (error) {
       console.error(error);
       alert('Помилка оновлення статусу друку');
@@ -537,8 +645,10 @@ export default function CertificatesPage() {
     try {
       const res = await fetch(`/api/admin-app/certificates/${deleteConfirmId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed');
-      setCertificates((prev) => prev.filter((certificate) => certificate.id !== deleteConfirmId));
       setDeleteConfirmId(null);
+      const nextPage = certificates.length === 1 && page > 1 ? page - 1 : page;
+      setPage(nextPage);
+      await fetchCertificates(nextPage);
     } catch (error) {
       console.error(error);
       alert('Помилка видалення');
@@ -585,7 +695,7 @@ export default function CertificatesPage() {
     setIsPanning(false);
   };
 
-  const getStatusBadge = (certificate: CertificateData) => {
+  const getStatusBadge = (certificate: GiftCertificateListItem) => {
     if (certificate.status === 'used') return <span className="badge badge-info">Використано</span>;
     if (certificate.status === 'expired') return <span className="badge badge-gray">Протерміновано</span>;
     if (certificate.status === 'canceled') return <span className="badge badge-danger">Скасовано</span>;
@@ -595,167 +705,108 @@ export default function CertificatesPage() {
     return <span className="badge badge-success">{t('status.active')}</span>;
   };
 
-  if (loading) return <PageLoading />;
   if (!user || user.role !== 'admin') return null;
 
-  const filteredCertificates = certificates.filter((certificate) => (
-    showArchived ? Boolean(certificate.printed_at) : !certificate.printed_at
-  ));
+  const filteredCertificates = certificates;
 
   return (
     <>
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--gray-200)', paddingBottom: '0.5rem' }}>
-        <button
-          className="btn btn-sm"
-          style={{
-            fontWeight: 600,
-            color: '#111827',
-            borderBottom: '2px solid #111827',
-            borderRadius: 0,
-            background: 'transparent',
-            padding: '0.5rem 0.75rem',
-          }}
-        >
-          Подарункові
-        </button>
-        <button
-          className="btn btn-sm"
-          onClick={() => router.push('/certificates/graduation')}
-          style={{
-            fontWeight: 400,
-            color: '#6b7280',
-            borderBottom: '2px solid transparent',
-            borderRadius: 0,
-            background: 'transparent',
-            padding: '0.5rem 0.75rem',
-          }}
-        >
-          Про закінчення
-        </button>
-      </div>
-
       <div className="card">
-        <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-          <h3 className="card-title">{t('nav.certificates')}</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
-              <span style={{ fontSize: '0.8125rem', fontWeight: !showArchived ? 600 : 400, color: !showArchived ? '#111827' : '#9ca3af', transition: 'color 150ms ease-out' }}>
-                Активні
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowArchived(!showArchived)}
-                style={{
-                  position: 'relative',
-                  width: '36px',
-                  height: '20px',
-                  backgroundColor: '#e5e7eb',
-                  borderRadius: '4px',
-                  border: '1px solid #d1d5db',
-                  cursor: 'pointer',
-                  transition: 'background-color 150ms ease-out, transform 120ms ease-out',
-                  margin: '0 0.375rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '2px',
+        <CertificatesSectionHeader
+          title={t('nav.certificates')}
+          controls={(
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+              <input
+                type="search"
+                className="form-input"
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="Пошук по ID"
+                style={{ minWidth: '220px' }}
+              />
+              <select
+                className="form-select"
+                value={statusFilter}
+                onChange={(event) => {
+                  setPage(1);
+                  setStatusFilter(event.target.value as typeof statusFilter);
                 }}
+                style={{ minWidth: '190px' }}
               >
-                <div
+                <option value="all">Усі статуси</option>
+                <option value="active">Активні</option>
+                <option value="used">Використані</option>
+                <option value="canceled">Скасовані</option>
+                <option value="expired">Протерміновані</option>
+              </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: !showArchived ? 600 : 400, color: !showArchived ? '#111827' : '#9ca3af', transition: 'color 150ms ease-out' }}>
+                  Активні
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowArchived(!showArchived)}
                   style={{
-                    width: '14px',
-                    height: '14px',
-                    backgroundColor: showArchived ? '#6b7280' : '#374151',
-                    borderRadius: '3px',
-                    transition: 'transform 180ms ease-out, background-color 180ms ease-out',
-                    transform: showArchived ? 'translateX(16px)' : 'translateX(0)',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                    position: 'relative',
+                    width: '36px',
+                    height: '20px',
+                    backgroundColor: '#e5e7eb',
+                    borderRadius: '4px',
+                    border: '1px solid #d1d5db',
+                    cursor: 'pointer',
+                    transition: 'background-color 150ms ease-out, transform 120ms ease-out',
+                    margin: '0 0.375rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '2px',
                   }}
-                />
-              </button>
-              <span style={{ fontSize: '0.8125rem', fontWeight: showArchived ? 600 : 400, color: showArchived ? '#111827' : '#9ca3af', transition: 'color 150ms ease-out' }}>
-                Архів
-              </span>
-            </div>
-            <button className="btn btn-primary" onClick={handleCreate}>
-              <Plus size={18} style={{ marginRight: '8px' }} />
-              {t('actions.add')}
-            </button>
-          </div>
-        </div>
-
-        <div className="table-container">
-          {filteredCertificates.length > 0 ? (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t('table.id')}</th>
-                  <th>Номінал</th>
-                  <th>{t('common.status')}</th>
-                  <th>Дата видачі</th>
-                  <th>Ким видано</th>
-                  <th style={{ textAlign: 'right' }}>{t('common.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCertificates.map((certificate) => (
-                  <tr key={certificate.id}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: '#6b7280' }}>{certificate.public_id}</td>
-                    <td style={{ fontWeight: 600 }}>{certificate.amount} грн</td>
-                    <td>{getStatusBadge(certificate)}</td>
-                    <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{formatDateKyiv(certificate.issued_at)}</td>
-                    <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{certificate.creator_name || '—'}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '6px' }}>
-                        <button
-                          className="btn btn-sm"
-                          onClick={() => handlePrintToggle(certificate.id, Boolean(certificate.printed_at))}
-                          title={certificate.printed_at ? 'Надруковано' : 'Позначити як надруковано'}
-                          style={{
-                            padding: '6px 10px',
-                            background: certificate.printed_at ? '#dcfce7' : 'transparent',
-                            color: certificate.printed_at ? '#16a34a' : 'var(--gray-500)',
-                            border: certificate.printed_at ? '1px solid #16a34a' : '1px solid var(--gray-300)',
-                          }}
-                        >
-                          <Printer size={16} />
-                        </button>
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => handleDownload(certificate.id)}
-                          title="Завантажити PDF"
-                          style={{ padding: '6px 10px' }}
-                        >
-                          <Download size={16} />
-                        </button>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleDelete(certificate.id)}
-                          title="Видалити"
-                          style={{ padding: '6px 10px' }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="empty-state">
-              <h3 className="empty-state-title">{showArchived ? 'Архів порожній' : t('emptyStates.noCertificates')}</h3>
-              <p className="empty-state-description">
-                {showArchived ? 'Надруковані сертифікати з’являться тут.' : t('emptyStates.noCertificatesHint')}
-              </p>
-              {!showArchived && (
-                <button className="btn btn-primary" onClick={handleCreate} style={{ marginTop: '16px' }}>
-                  <Plus size={18} style={{ marginRight: '8px' }} />
-                  {t('modals.newCertificate')}
+                >
+                  <div
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      backgroundColor: showArchived ? '#6b7280' : '#374151',
+                      borderRadius: '3px',
+                      transition: 'transform 180ms ease-out, background-color 180ms ease-out',
+                      transform: showArchived ? 'translateX(16px)' : 'translateX(0)',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                    }}
+                  />
                 </button>
-              )}
+                <span style={{ fontSize: '0.8125rem', fontWeight: showArchived ? 600 : 400, color: showArchived ? '#111827' : '#9ca3af', transition: 'color 150ms ease-out' }}>
+                  Архів
+                </span>
+              </div>
             </div>
           )}
+          actionLabel={t('actions.add')}
+          onAction={handleCreate}
+        />
+
+        <div className="table-container">
+          <GiftCertificatesTable
+            certificates={filteredCertificates}
+            loading={listLoading}
+            showArchived={showArchived}
+            getStatusBadge={getStatusBadge}
+            formatIssuedAt={formatDateKyiv}
+            onTogglePrinted={handlePrintToggle}
+            onDownload={handleDownload}
+            onDelete={handleDelete}
+            onCreate={handleCreate}
+            emptyTitle={showArchived ? 'Архів порожній' : t('emptyStates.noCertificates')}
+            emptyDescription={showArchived ? 'Надруковані сертифікати з’являться тут.' : t('emptyStates.noCertificatesHint')}
+          />
         </div>
+        <CertificatesPagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.total}
+          visibleItems={certificates.length}
+          loading={listLoading}
+          onPrev={() => setPage((prev) => Math.max(1, prev - 1))}
+          onNext={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
+        />
       </div>
 
       {deleteConfirmId !== null && (
@@ -784,538 +835,114 @@ export default function CertificatesPage() {
         </div>
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className={s.modalShell} onClick={(event) => event.stopPropagation()}>
-            <div className={s.modalHeader}>
-              <div className={s.modalHeaderMain}>
-                <button type="button" className={s.headerBack} onClick={() => setShowModal(false)} aria-label="Назад">
-                  <ArrowLeft size={16} />
-                </button>
-                <div className={s.headerTitleStack}>
-                  <div className={s.headerTitleRow}>
-                    <h3 className={s.modalTitle}>Сертифікат на навчання</h3>
-                    <span className={s.headerDivider}>•</span>
-                    <span className={s.headerStudent}>{activeBlock.preview}</span>
-                  </div>
-                  <p className={s.modalSubtitle}>
-                    Одне вікно для генерації, шаблону й точного керування двома блоками: сумою та ID.
-                  </p>
-                </div>
-              </div>
-
-              <div className={s.headerActions}>
-                <button type="button" className={s.modalClose} onClick={() => setShowModal(false)} aria-label="Закрити">
-                  <X size={16} />
-                </button>
-              </div>
+      <CertificateEditorModalShell
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        shellClassName={s.modalShell}
+        headerClassName={s.modalHeader}
+        headerMainClassName={s.modalHeaderMain}
+        headerBackClassName={s.headerBack}
+        headerTitleStackClassName={s.headerTitleStack}
+        headerActionsClassName={s.headerActions}
+        closeButtonClassName={s.modalClose}
+        bodyClassName={s.modalBody}
+        footerClassName={s.modalFooter}
+        headerContent={(
+          <>
+            <div className={s.headerTitleRow}>
+              <h3 className={s.modalTitle}>Сертифікат на навчання</h3>
+              <span className={s.headerDivider}>•</span>
+              <span className={s.headerStudent}>{activeBlock.preview}</span>
             </div>
+            <p className={s.modalSubtitle}>
+              Одне вікно для генерації, шаблону й точного керування двома блоками: сумою та ID.
+            </p>
+          </>
+        )}
+        bodyNotice={editorBootstrapLoading ? (
+          <CertificateEditorLoadingNotice description="Підтягуємо шаблон, налаштування і наступний ID сертифіката." />
+        ) : undefined}
+        footer={(
+          <CertificateEditorFooterActions
+            className={s.footerActions}
+            onClose={() => setShowModal(false)}
+            onSaveSettings={handleSaveSettings}
+            onPrimaryAction={handleSave}
+            settingsDisabled={savingSettings || editorBootstrapLoading}
+            primaryDisabled={!canCreate || editorBootstrapLoading}
+            savingSettings={savingSettings}
+            primaryLoading={saving}
+            primaryLabel="Згенерувати сертифікати"
+            primaryLoadingLabel="Генеруємо…"
+          />
+        )}
+      >
+              <GiftCertificateCanvas
+                templateUrl={templateUrl}
+                viewportRef={viewportRef}
+                previewRef={previewRef}
+                imageDimensions={imageDimensions}
+                setImageDimensions={setImageDimensions}
+                pan={pan}
+                scale={scale}
+                dragging={dragging}
+                isPanning={isPanning}
+                handleMouseMove={handleMouseMove}
+                handleMouseUp={handleMouseUp}
+                handleCanvasMouseDown={handleCanvasMouseDown}
+                selectedBlock={selectedBlock}
+                setSelectedBlock={setSelectedBlock}
+                setOpenAccordion={setOpenAccordion}
+                pushHistory={pushHistory}
+                setDragging={setDragging}
+                idSettings={idSettings}
+                updateSettings={updateSettings}
+                nextPublicId={nextPublicId}
+                amountValue={formData.amount}
+                panBounds={panBounds}
+                setPan={setPan}
+                canUndo={canUndo}
+                undoLastChange={undoLastChange}
+                adjustScale={adjustScale}
+                resetViewport={resetViewport}
+              />
 
-            <div className={s.modalBody}>
-              <section className={s.canvasArea}>
-                <div className={s.canvasTopbar}>
-                  <div className={s.canvasMeta}>
-                    <span className={s.canvasLabel}>Полотно сертифіката</span>
-                    <span className={s.canvasHint}>
-                      Wheel масштабує, `Ctrl+Z` повертає попередній стан, а drag & drop не змінює пропорції самого шаблону.
-                    </span>
-                  </div>
-
-                  <div className={s.canvasToolbar}>
-                    <button type="button" className={s.toolbarBtn} onClick={undoLastChange} title="Крок назад (Ctrl+Z)" disabled={!canUndo}>
-                      <Undo2 size={15} />
-                    </button>
-                    <button type="button" className={s.toolbarBtn} onClick={() => adjustScale(-0.08)} title="Зменшити">
-                      <ZoomOut size={15} />
-                    </button>
-                    <span className={s.toolbarScale}>{Math.round(scale * 100)}%</span>
-                    <button type="button" className={s.toolbarBtn} onClick={resetViewport} title="Скинути вигляд">
-                      <RotateCcw size={15} />
-                    </button>
-                    <button type="button" className={s.toolbarBtn} onClick={() => adjustScale(0.08)} title="Збільшити">
-                      <ZoomIn size={15} />
-                    </button>
-                  </div>
-                </div>
-
-                {templateUrl ? (
-                  <div ref={viewportRef} className={s.canvasViewport}>
-                    <div className={s.canvasFrame}>
-                      <div
-                        ref={previewRef}
-                        className={s.canvasContent}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
-                        onMouseDown={handleCanvasMouseDown}
-                        style={{
-                          width: `${imageDimensions.width}px`,
-                          aspectRatio: `${imageDimensions.width} / ${imageDimensions.height}`,
-                          transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
-                          transformOrigin: 'center center',
-                          cursor: dragging ? 'grabbing' : isPanning ? 'grabbing' : (scale > 1 || pan.x !== 0 || pan.y !== 0) ? 'grab' : 'default',
-                        }}
-                      >
-                        <img
-                          src={templateUrl}
-                          alt="Шаблон сертифіката"
-                          onLoad={(event) => setImageDimensions({
-                            width: event.currentTarget.naturalWidth || 842,
-                            height: event.currentTarget.naturalHeight || 595,
-                          })}
-                          style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }}
-                        />
-
-                        <div
-                          className={`${s.canvasBlock} ${selectedBlock === 'id' ? s.canvasBlockSelected : ''}`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedBlock('id');
-                            setOpenAccordion('blocks');
-                          }}
-                          onMouseDown={(event) => {
-                            if (selectedBlock !== 'id') return;
-                            event.stopPropagation();
-                            pushHistory();
-                            const rect = event.currentTarget.getBoundingClientRect();
-                            setDragging({
-                              target: 'id',
-                              offsetX: event.clientX - (rect.left + rect.width / 2),
-                              offsetY: event.clientY - (rect.top + rect.height / 2),
-                            });
-                          }}
-                          style={{
-                            left: `${idSettings.xPercent}%`,
-                            bottom: `${idSettings.yPercent}%`,
-                            transform: 'translateX(-50%)',
-                            color: idSettings.color,
-                            fontSize: `${idSettings.fontSize}px`,
-                            letterSpacing: `${idSettings.idLetterSpacing}px`,
-                            fontFamily: 'var(--font-certificate-id), sans-serif',
-                            fontWeight: idSettings.idWeight === 'bold' ? 700 : 400,
-                            fontStyle: idSettings.idStyle,
-                            whiteSpace: 'nowrap',
-                            maxWidth: 'none',
-                          }}
-                        >
-                          {selectedBlock === 'id' && (
-                            <div className={s.blockToolbar} onMouseDown={(event) => event.stopPropagation()} style={{ transform: `translateX(-50%) scale(${1 / scale})` }}>
-                              <input type="color" value={idSettings.color} onChange={(event) => updateSettings({ color: event.target.value })} className={s.blockColorInput} />
-                              <button type="button" onClick={() => updateSettings({ idWeight: idSettings.idWeight === 'bold' ? 'normal' : 'bold' })} className={`${s.blockToolbarBtn} ${idSettings.idWeight === 'bold' ? s.blockToolbarBtnActive : ''}`} title="Жирний">B</button>
-                              <button type="button" onClick={() => updateSettings({ idStyle: idSettings.idStyle === 'italic' ? 'normal' : 'italic' })} className={`${s.blockToolbarBtn} ${idSettings.idStyle === 'italic' ? s.blockToolbarBtnActive : ''}`} title="Курсив">I</button>
-                              <button type="button" onClick={() => updateSettings({ fontSize: Math.max(10, idSettings.fontSize - 2) })} className={s.blockToolbarBtn} title="Зменшити розмір">-</button>
-                              <button type="button" className={s.blockToolbarSize} title={`Поточний розмір: ${idSettings.fontSize}px`}>{idSettings.fontSize}px</button>
-                              <button type="button" onClick={() => updateSettings({ fontSize: Math.min(160, idSettings.fontSize + 2) })} className={s.blockToolbarBtn} title="Збільшити розмір">+</button>
-                            </div>
-                          )}
-                          {nextPublicId || 'GC-00001'}
-                        </div>
-
-                        <div
-                          className={`${s.canvasBlock} ${selectedBlock === 'amount' ? s.canvasBlockSelected : ''}`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedBlock('amount');
-                            setOpenAccordion('blocks');
-                          }}
-                          onMouseDown={(event) => {
-                            if (selectedBlock !== 'amount') return;
-                            event.stopPropagation();
-                            pushHistory();
-                            const rect = event.currentTarget.getBoundingClientRect();
-                            setDragging({
-                              target: 'amount',
-                              offsetX: event.clientX - (rect.left + rect.width / 2),
-                              offsetY: event.clientY - (rect.top + rect.height / 2),
-                            });
-                          }}
-                          style={{
-                            left: `${idSettings.amountXPercent}%`,
-                            bottom: `${idSettings.amountYPercent}%`,
-                            transform: `translateX(-50%) rotate(${idSettings.amountRotation}deg)`,
-                            color: idSettings.amountColor,
-                            fontSize: `${idSettings.amountFontSize}px`,
-                            fontFamily: 'var(--font-certificate-amount), sans-serif',
-                            fontWeight: idSettings.amountWeight === 'bold' ? 700 : 400,
-                            fontStyle: idSettings.amountStyle,
-                            whiteSpace: 'nowrap',
-                            maxWidth: 'none',
-                            textAlign: 'center',
-                          }}
-                        >
-                          {selectedBlock === 'amount' && (
-                            <div className={s.blockToolbar} onMouseDown={(event) => event.stopPropagation()} style={{ transform: `translateX(-50%) scale(${1 / scale})` }}>
-                              <input type="color" value={idSettings.amountColor} onChange={(event) => updateSettings({ amountColor: event.target.value })} className={s.blockColorInput} />
-                              <button type="button" onClick={() => updateSettings({ amountWeight: idSettings.amountWeight === 'bold' ? 'normal' : 'bold' })} className={`${s.blockToolbarBtn} ${idSettings.amountWeight === 'bold' ? s.blockToolbarBtnActive : ''}`} title="Жирний">B</button>
-                              <button type="button" onClick={() => updateSettings({ amountStyle: idSettings.amountStyle === 'italic' ? 'normal' : 'italic' })} className={`${s.blockToolbarBtn} ${idSettings.amountStyle === 'italic' ? s.blockToolbarBtnActive : ''}`} title="Курсив">I</button>
-                              <button type="button" onClick={() => updateSettings({ amountFontSize: Math.max(10, idSettings.amountFontSize - 2) })} className={s.blockToolbarBtn} title="Зменшити розмір">-</button>
-                              <button type="button" className={s.blockToolbarSize} title={`Поточний розмір: ${idSettings.amountFontSize}px`}>{idSettings.amountFontSize}px</button>
-                              <button type="button" onClick={() => updateSettings({ amountFontSize: Math.min(160, idSettings.amountFontSize + 2) })} className={s.blockToolbarBtn} title="Збільшити розмір">+</button>
-                            </div>
-                          )}
-                          {formData.amount || 0}
-                        </div>
-                      </div>
-
-                      {(panBounds.x > 0 || panBounds.y > 0) && (
-                        <div className={s.panOverlay}>
-                          {panBounds.y > 0 && (
-                            <div className={`${s.panRail} ${s.panRailVertical}`}>
-                              <input
-                                type="range"
-                                min={-panBounds.y}
-                                max={panBounds.y}
-                                value={Math.round(pan.y)}
-                                onChange={(event) => setPan((prev) => ({ ...prev, y: parseInt(event.target.value, 10) }))}
-                                className={`${s.panSlider} ${s.panSliderVertical}`}
-                                aria-label="Прокрутка по вертикалі"
-                              />
-                            </div>
-                          )}
-                          {panBounds.x > 0 && (
-                            <div className={`${s.panRail} ${s.panRailHorizontal}`}>
-                              <input
-                                type="range"
-                                min={-panBounds.x}
-                                max={panBounds.x}
-                                value={Math.round(pan.x)}
-                                onChange={(event) => setPan((prev) => ({ ...prev, x: parseInt(event.target.value, 10) }))}
-                                className={`${s.panSlider} ${s.panSliderHorizontal}`}
-                                aria-label="Прокрутка по горизонталі"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className={s.canvasEmpty}>
-                    <span className={s.canvasEmptyTitle}>Спочатку завантажте шаблон сертифіката</span>
-                    <span className={s.canvasEmptyDesc}>Після цього тут з’явиться повноцінне прев’ю без спотворення пропорцій.</span>
-                  </div>
-                )}
-              </section>
-
-              <aside className={s.sidebar}>
-                <div className={s.sidebarInner}>
-                  <section className={s.accordionSection}>
-                    <button type="button" className={s.accordionHeader} onClick={() => toggleAccordion('data')}>
-                      <div>
-                        <div className={s.accordionTitle}>Дані</div>
-                        <div className={s.accordionMeta}>Номінал, кількість і службова нотатка</div>
-                      </div>
-                      <ChevronDown className={`${s.accordionChevron} ${openAccordion === 'data' ? s.accordionChevronOpen : ''}`} />
-                    </button>
-                    {openAccordion === 'data' && (
-                      <div className={s.accordionBody}>
-                        <div className={s.summaryCard}>
-                          <span className={s.summaryLabel}>Поточна генерація</span>
-                          <strong className={s.summaryValue}>{formData.count} шт. · {totalAmount} грн</strong>
-                          <span className={s.summaryMeta}>Максимум за один запуск: 50 сертифікатів</span>
-                        </div>
-
-                        <div className={s.compactGroup}>
-                          <label className={s.compactLabel}>Номінал <span className={s.compactRequired}>*</span></label>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                            {presetAmounts.map((amount) => (
-                              <button
-                                key={amount}
-                                type="button"
-                                className={`${s.segmentedOption} ${formData.amount === amount ? s.segmentedOptionActive : ''}`}
-                                style={{ minWidth: '84px' }}
-                                onClick={() => updateFormData({ amount }, true)}
-                              >
-                                {amount} грн
-                              </button>
-                            ))}
-                            <button
-                              type="button"
-                              className={`${s.segmentedOption} ${isCustomAmount ? s.segmentedOptionActive : ''}`}
-                              onClick={() => updateFormData({ amount: 0 }, true)}
-                            >
-                              Свій номінал
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className={s.compactRow}>
-                          <div className={s.compactGroup}>
-                            <label className={s.compactLabel}>Сума вручну</label>
-                            <input
-                              type="number"
-                              className="form-input"
-                              value={formData.amount === 0 ? '' : formData.amount}
-                              onChange={(event) => updateFormData({ amount: parseInt(event.target.value, 10) || 0 }, true)}
-                              min="1"
-                            />
-                          </div>
-                          <div className={s.compactGroup}>
-                            <label className={s.compactLabel}>Кількість <span className={s.compactRequired}>*</span></label>
-                            <input
-                              type="number"
-                              className="form-input"
-                              value={formData.count}
-                              onChange={(event) => updateFormData({ count: parseInt(event.target.value, 10) || 1 }, true)}
-                              min="1"
-                              max="50"
-                            />
-                          </div>
-                        </div>
-
-                        <div className={s.compactGroup}>
-                          <label className={s.compactLabel}>{t('common.note')}</label>
-                          <textarea
-                            className="form-input"
-                            rows={3}
-                            value={formData.notes}
-                            onChange={(event) => updateFormData({ notes: event.target.value }, true)}
-                            placeholder="Наприклад: для подарунка, акції чи внутрішнього обліку"
-                          />
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', color: 'var(--text-muted)' }}>
-                          <CheckCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
-                          <span style={{ fontSize: '12px', lineHeight: '16px' }}>
-                            Без учнів, груп і курсів: тільки те, що реально потрібно подарунковому сертифікату.
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </section>
-
-                  <section className={s.accordionSection}>
-                    <button type="button" className={s.accordionHeader} onClick={() => toggleAccordion('blocks')}>
-                      <div>
-                        <div className={s.accordionTitle}>Текстові блоки</div>
-                        <div className={s.accordionMeta}>ID і сума сертифіката</div>
-                      </div>
-                      <ChevronDown className={`${s.accordionChevron} ${openAccordion === 'blocks' ? s.accordionChevronOpen : ''}`} />
-                    </button>
-                    {openAccordion === 'blocks' && (
-                      <div className={s.accordionBody}>
-                        <div className={s.blockList}>
-                          {[
-                            { key: 'id' as const, name: 'ID сертифіката', x: idSettings.xPercent, y: idSettings.yPercent, size: idSettings.fontSize },
-                            { key: 'amount' as const, name: 'Номінал', x: idSettings.amountXPercent, y: idSettings.amountYPercent, size: idSettings.amountFontSize },
-                          ].map((block) => (
-                            <button
-                              key={block.key}
-                              type="button"
-                              onClick={() => setSelectedBlock(block.key)}
-                              className={`${s.blockItem} ${selectedBlock === block.key ? s.blockItemActive : ''}`}
-                            >
-                              <span>
-                                <span className={s.blockItemName}>{block.name}</span>
-                                <span className={s.blockItemMeta}>{Math.round(block.x)}% / {Math.round(block.y)}%</span>
-                              </span>
-                              <span className={s.blockItemMeta}>{block.size}px</span>
-                            </button>
-                          ))}
-                        </div>
-
-                        <div className={s.blockEditor}>
-                          <div className={s.compactGroup}>
-                            <label className={s.compactLabel}>Текст у прев’ю</label>
-                            <input
-                              className="form-input"
-                              value={activeBlock.preview}
-                              onChange={(event) => {
-                                if (activeBlock.key === 'amount') {
-                                  const numericValue = parseInt(event.target.value.replace(/[^\d]/g, ''), 10) || 0;
-                                  updateFormData({ amount: numericValue }, true);
-                                }
-                              }}
-                              disabled={activeBlock.key === 'id'}
-                            />
-                          </div>
-
-                          <div className={s.compactRow}>
-                            <div className={s.compactGroup}>
-                              <label className={s.compactLabel}>Розмір</label>
-                              <input
-                                type="number"
-                                className="form-input"
-                                min="10"
-                                max="160"
-                                value={activeBlock.fontSize}
-                                onChange={(event) => {
-                                  const nextValue = parseInt(event.target.value, 10) || 10;
-                                  if (activeBlock.key === 'id') {
-                                    updateSettings({ fontSize: nextValue });
-                                  } else {
-                                    updateSettings({ amountFontSize: nextValue });
-                                  }
-                                }}
-                              />
-                            </div>
-                            <div className={s.compactGroup}>
-                              <label className={s.compactLabel}>Колір</label>
-                              <input
-                                type="color"
-                                className={`form-input ${s.colorInput}`}
-                                value={activeBlock.color}
-                                onChange={(event) => {
-                                  if (activeBlock.key === 'id') {
-                                    updateSettings({ color: event.target.value });
-                                  } else {
-                                    updateSettings({ amountColor: event.target.value });
-                                  }
-                                }}
-                              />
-                            </div>
-                          </div>
-
-                          <div className={s.compactRow}>
-                            <div className={s.compactGroup}>
-                              <label className={s.compactLabel}>Накреслення</label>
-                              <select
-                                className="form-select"
-                                value={`${activeBlock.weight}:${activeBlock.style}`}
-                                onChange={(event) => {
-                                  const [weight, style] = event.target.value.split(':') as [TextWeight, TextStyle];
-                                  if (activeBlock.key === 'id') {
-                                    updateSettings({ idWeight: weight, idStyle: style });
-                                  } else {
-                                    updateSettings({ amountWeight: weight, amountStyle: style });
-                                  }
-                                }}
-                              >
-                                <option value="normal:normal">Звичайне</option>
-                                <option value="bold:normal">Жирне</option>
-                                <option value="normal:italic">Курсив</option>
-                                <option value="bold:italic">Жирний курсив</option>
-                              </select>
-                            </div>
-                            <div className={s.compactGroup}>
-                              <label className={s.compactLabel}>Шрифт</label>
-                              <input className="form-input" value={activeBlock.key === 'id' ? 'Bebas Neue Cyrillic' : 'Ermilov'} readOnly />
-                            </div>
-                          </div>
-
-                          <div className={s.sliderGroup}>
-                            <label className={s.compactLabel}>Позиція зліва: {Math.round(activeBlock.xPercent)}%</label>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={activeBlock.xPercent}
-                              onChange={(event) => {
-                                const nextValue = parseInt(event.target.value, 10);
-                                if (activeBlock.key === 'id') {
-                                  updateSettings({ xPercent: nextValue });
-                                } else {
-                                  updateSettings({ amountXPercent: nextValue });
-                                }
-                              }}
-                            />
-                          </div>
-
-                          <div className={s.sliderGroup}>
-                            <label className={s.compactLabel}>Позиція знизу: {Math.round(activeBlock.yPercent)}%</label>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={activeBlock.yPercent}
-                              onChange={(event) => {
-                                const nextValue = parseInt(event.target.value, 10);
-                                if (activeBlock.key === 'id') {
-                                  updateSettings({ yPercent: nextValue });
-                                } else {
-                                  updateSettings({ amountYPercent: nextValue });
-                                }
-                              }}
-                            />
-                          </div>
-
-                          <div className={s.compactGroup}>
-                            <label className={s.compactLabel}>{activeBlock.extraLabel}</label>
-                            <input
-                              type="number"
-                              className="form-input"
-                              step={activeBlock.key === 'id' ? '0.5' : '1'}
-                              value={activeBlock.extraValue}
-                              onChange={(event) => {
-                                const nextValue = activeBlock.key === 'id'
-                                  ? parseFloat(event.target.value) || 0
-                                  : parseInt(event.target.value, 10) || 0;
-
-                                if (activeBlock.key === 'id') {
-                                  updateSettings({ idLetterSpacing: nextValue });
-                                } else {
-                                  updateSettings({ amountRotation: nextValue });
-                                }
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </section>
-
-                  <section className={s.accordionSection}>
-                    <button type="button" className={s.accordionHeader} onClick={() => toggleAccordion('template')}>
-                      <div>
-                        <div className={s.accordionTitle}>Шаблон</div>
-                        <div className={s.accordionMeta}>PNG або JPG для фону</div>
-                      </div>
-                      <ChevronDown className={`${s.accordionChevron} ${openAccordion === 'template' ? s.accordionChevronOpen : ''}`} />
-                    </button>
-                    {openAccordion === 'template' && (
-                      <div className={s.accordionBody}>
-                        <input
-                          id="certificate-template-upload"
-                          type="file"
-                          accept="image/png,image/jpeg"
-                          style={{ display: 'none' }}
-                          onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
-                        />
-
-                        <div className={s.templateInfo}>
-                          <span className={s.templateHint}>Поточний файл</span>
-                          <span className={s.templateFileName}>{selectedTemplateName}</span>
-                        </div>
-
-                        <div className={s.templateActions}>
-                          <label htmlFor="certificate-template-upload" className={s.templateUploadLabel}>
-                            <Upload size={14} />
-                            Обрати файл
-                          </label>
-                          <button className="btn btn-primary btn-sm" onClick={handleUploadTemplate} disabled={!selectedFile || uploading}>
-                            {uploading ? 'Завантаження…' : 'Оновити'}
-                          </button>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', color: 'var(--text-muted)' }}>
-                          <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
-                          <span style={{ fontSize: '12px', lineHeight: '16px' }}>
-                            Підтримуються PNG і JPG. Пропорції шаблону в прев’ю зберігаються один в один.
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </section>
-                </div>
-              </aside>
-            </div>
-
-            <div className={s.modalFooter}>
-              <div className={s.footerActions}>
-                <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
-                  {t('actions.close')}
-                </button>
-                <button className="btn btn-primary" onClick={handleSaveSettings} disabled={savingSettings}>
-                  {savingSettings ? 'Зберігаємо…' : 'Зберегти вигляд'}
-                </button>
-                <button className="btn btn-primary" onClick={handleSave} disabled={!canCreate}>
-                  {saving ? 'Генеруємо…' : 'Згенерувати сертифікати'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+              <GiftCertificateEditorSidebar
+                openAccordion={openAccordion}
+                toggleAccordion={toggleAccordion}
+                formData={formData}
+                totalAmount={totalAmount}
+                presetAmounts={presetAmounts}
+                isCustomAmount={isCustomAmount}
+                updateFormData={updateFormData}
+                activeBlock={activeBlock}
+                idSettings={idSettings}
+                selectedBlock={selectedBlock ?? activeBlock.key}
+                setSelectedBlock={setSelectedBlock}
+                updateSettings={updateSettings}
+                setSelectedFile={setSelectedFile}
+                selectedTemplateName={selectedTemplateName}
+                handleUploadTemplate={handleUploadTemplate}
+                selectedFile={selectedFile}
+                uploading={uploading}
+              />
+      </CertificateEditorModalShell>
     </>
+  );
+}
+
+export default function CertificatesPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTab: CertificatesTab = searchParams.get('tab') === 'completion' ? 'completion' : 'gift';
+
+  const handleTabChange = (tab: CertificatesTab) => {
+    router.push(tab === 'gift' ? '/certificates' : '/certificates?tab=completion');
+  };
+
+  return (
+    <CertificatesPageShell activeTab={activeTab} onTabChange={handleTabChange}>
+      {activeTab === 'completion' ? <CompletionCertificatesPanel /> : <GiftCertificatesPanel />}
+    </CertificatesPageShell>
   );
 }

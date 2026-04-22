@@ -16,13 +16,75 @@ export interface Certificate {
   updated_at: string;
 }
 
-export async function getCertificates() {
-  return await all<Certificate>(
+export interface CertificateListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: CertificateStatus | 'printed' | 'unprinted';
+}
+
+export interface CertificateListResult {
+  items: Certificate[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export async function getCertificates(params: CertificateListParams = {}): Promise<CertificateListResult> {
+  const page = Math.max(1, params.page ?? 1);
+  const limit = Math.min(100, Math.max(1, params.limit ?? 20));
+  const offset = (page - 1) * limit;
+  const values: Array<string | number | boolean> = [];
+  const where: string[] = [];
+
+  if (params.search?.trim()) {
+    values.push(`%${params.search.trim()}%`);
+    where.push(`c.public_id ILIKE $${values.length}`);
+  }
+
+  if (params.status === 'printed') {
+    where.push('c.printed_at IS NOT NULL');
+  } else if (params.status === 'unprinted') {
+    where.push('c.printed_at IS NULL');
+  } else if (params.status) {
+    values.push(params.status);
+    where.push(`c.status = $${values.length}`);
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const countRow = await get<{ count: string }>(
+    `SELECT COUNT(*)::text as count
+     FROM certificates c
+     ${whereClause}`,
+    values
+  );
+
+  values.push(limit);
+  const limitParam = `$${values.length}`;
+  values.push(offset);
+  const offsetParam = `$${values.length}`;
+
+  const items = await all<Certificate>(
     `SELECT c.*, u.name as creator_name 
      FROM certificates c 
-     LEFT JOIN users u ON c.created_by = u.id 
-     ORDER BY c.created_at DESC`
+     LEFT JOIN users u ON c.created_by = u.id
+     ${whereClause}
+     ORDER BY c.created_at DESC
+     LIMIT ${limitParam}
+     OFFSET ${offsetParam}`,
+    values
   );
+
+  const total = Number.parseInt(countRow?.count || '0', 10) || 0;
+
+  return {
+    items,
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  };
 }
 
 export async function getCertificateByPublicId(publicId: string) {

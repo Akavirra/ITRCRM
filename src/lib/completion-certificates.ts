@@ -20,8 +20,69 @@ export interface CompletionCertificateWithDetails extends CompletionCertificate 
   creator_name: string | null;
 }
 
-export async function getCompletionCertificates(): Promise<CompletionCertificateWithDetails[]> {
-  return await all<CompletionCertificateWithDetails>(
+export interface CompletionCertificateListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  courseId?: number;
+  groupId?: number;
+}
+
+export interface CompletionCertificateListResult {
+  items: CompletionCertificateWithDetails[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export async function getCompletionCertificates(
+  params: CompletionCertificateListParams = {}
+): Promise<CompletionCertificateListResult> {
+  const page = Math.max(1, params.page ?? 1);
+  const limit = Math.min(100, Math.max(1, params.limit ?? 20));
+  const offset = (page - 1) * limit;
+  const values: Array<string | number> = [];
+  const where: string[] = [];
+
+  if (params.search?.trim()) {
+    values.push(`%${params.search.trim()}%`);
+    const searchParam = `$${values.length}`;
+    where.push(`(
+      s.full_name ILIKE ${searchParam}
+      OR c.title ILIKE ${searchParam}
+      OR g.title ILIKE ${searchParam}
+    )`);
+  }
+
+  if (typeof params.courseId === 'number' && !Number.isNaN(params.courseId)) {
+    values.push(params.courseId);
+    where.push(`cc.course_id = $${values.length}`);
+  }
+
+  if (typeof params.groupId === 'number' && !Number.isNaN(params.groupId)) {
+    values.push(params.groupId);
+    where.push(`cc.group_id = $${values.length}`);
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const countRow = await get<{ count: string }>(
+    `SELECT COUNT(*)::text as count
+     FROM completion_certificates cc
+     LEFT JOIN students s ON cc.student_id = s.id
+     LEFT JOIN courses c ON cc.course_id = c.id
+     LEFT JOIN groups g ON cc.group_id = g.id
+     ${whereClause}`,
+    values
+  );
+
+  values.push(limit);
+  const limitParam = `$${values.length}`;
+  values.push(offset);
+  const offsetParam = `$${values.length}`;
+
+  const items = await all<CompletionCertificateWithDetails>(
     `SELECT cc.*,
             s.full_name as student_name,
             c.title as course_title,
@@ -32,8 +93,22 @@ export async function getCompletionCertificates(): Promise<CompletionCertificate
      LEFT JOIN courses c ON cc.course_id = c.id
      LEFT JOIN groups g ON cc.group_id = g.id
      LEFT JOIN users u ON cc.created_by = u.id
-     ORDER BY cc.created_at DESC`
+     ${whereClause}
+     ORDER BY cc.created_at DESC
+     LIMIT ${limitParam}
+     OFFSET ${offsetParam}`,
+    values
   );
+
+  const total = Number.parseInt(countRow?.count || '0', 10) || 0;
+
+  return {
+    items,
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  };
 }
 
 export async function getCompletionCertificateById(id: number): Promise<CompletionCertificateWithDetails | undefined> {

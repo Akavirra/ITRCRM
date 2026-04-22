@@ -9,7 +9,21 @@ export async function GET(request: NextRequest) {
   if (!user) return unauthorized();
 
   try {
-    const certificates = await getCertificates();
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const search = searchParams.get('search') || '';
+    const statusParam = searchParams.get('status');
+    const status = statusParam && ['active', 'used', 'expired', 'canceled', 'printed', 'unprinted'].includes(statusParam)
+      ? statusParam as 'active' | 'used' | 'expired' | 'canceled' | 'printed' | 'unprinted'
+      : undefined;
+
+    const certificates = await getCertificates({
+      page: Number.isNaN(page) ? 1 : page,
+      limit: Number.isNaN(limit) ? 20 : limit,
+      search,
+      status,
+    });
     return NextResponse.json(certificates);
   } catch (error: any) {
     console.error('Certificates GET Error:', error);
