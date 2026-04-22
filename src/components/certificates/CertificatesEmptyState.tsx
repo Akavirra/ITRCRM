@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Award, Plus } from 'lucide-react';
 
 interface CertificatesEmptyStateProps {
   title: string;
@@ -17,26 +17,19 @@ export default function CertificatesEmptyState({
   onAction,
   centered = false,
 }: CertificatesEmptyStateProps) {
-  const content = (
-    <>
+  return (
+    <div className="empty-state" style={centered ? { padding: '48px 24px' } : undefined}>
+      <div className="empty-state-icon">
+        <Award size={48} strokeWidth={1.5} />
+      </div>
       <h3 className="empty-state-title">{title}</h3>
-      <p className="empty-state-description">{description}</p>
+      <p className="empty-state-text" style={{ maxWidth: '360px', margin: '0 auto 16px' }}>{description}</p>
       {actionLabel && onAction ? (
-        <button className="btn btn-primary" onClick={onAction} style={{ marginTop: '16px' }}>
-          <Plus size={18} style={{ marginRight: '8px' }} />
+        <button className="btn btn-primary" onClick={onAction}>
+          <Plus size={16} strokeWidth={1.75} />
           {actionLabel}
         </button>
       ) : null}
-    </>
+    </div>
   );
-
-  if (centered) {
-    return (
-      <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-        {content}
-      </div>
-    );
-  }
-
-  return <div className="empty-state">{content}</div>;
 }

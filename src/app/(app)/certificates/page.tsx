@@ -3,11 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  Upload,
   XCircle,
 } from 'lucide-react';
 import CompletionCertificatesPanel from '@/components/certificates/CompletionCertificatesPanel';
-import CertificateCanvasToolbar from '@/components/certificates/CertificateCanvasToolbar';
 import CertificateEditorFooterActions from '@/components/certificates/CertificateEditorFooterActions';
 import CertificateEditorLoadingNotice from '@/components/certificates/CertificateEditorLoadingNotice';
 import CertificateEditorModalShell from '@/components/certificates/CertificateEditorModalShell';
@@ -715,14 +713,14 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
         <CertificatesSectionHeader
           title={t('nav.certificates')}
           controls={(
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: '100%' }}>
+            <>
               <input
                 type="search"
                 className="form-input"
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Пошук по ID"
-                style={{ minWidth: '220px' }}
+                style={{ maxWidth: '220px' }}
               />
               <select
                 className="form-select"
@@ -731,7 +729,7 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
                   setPage(1);
                   setStatusFilter(event.target.value as typeof statusFilter);
                 }}
-                style={{ minWidth: '190px' }}
+                style={{ maxWidth: '200px' }}
               >
                 <option value="all">Усі статуси</option>
                 <option value="active">Активні</option>
@@ -739,45 +737,50 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
                 <option value="canceled">Скасовані</option>
                 <option value="expired">Протерміновані</option>
               </select>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
-                <span style={{ fontSize: '0.8125rem', fontWeight: !showArchived ? 600 : 400, color: !showArchived ? '#111827' : '#9ca3af', transition: 'color 150ms ease-out' }}>
-                  Активні
-                </span>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  borderRadius: '8px',
+                  border: '1px solid var(--gray-200)',
+                  overflow: 'hidden',
+                  marginLeft: 'auto',
+                }}
+              >
                 <button
                   type="button"
-                  onClick={() => setShowArchived(!showArchived)}
+                  onClick={() => setShowArchived(false)}
                   style={{
-                    position: 'relative',
-                    width: '36px',
-                    height: '20px',
-                    backgroundColor: '#e5e7eb',
-                    borderRadius: '4px',
-                    border: '1px solid #d1d5db',
+                    padding: '6px 16px',
+                    fontSize: '13px',
+                    fontWeight: !showArchived ? 600 : 400,
+                    color: !showArchived ? 'var(--primary)' : 'var(--gray-500)',
+                    background: !showArchived ? 'var(--primary-light)' : 'white',
+                    border: 'none',
                     cursor: 'pointer',
-                    transition: 'background-color 150ms ease-out, transform 120ms ease-out',
-                    margin: '0 0.375rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '2px',
+                    transition: 'background-color 150ms ease-out, color 150ms ease-out',
                   }}
                 >
-                  <div
-                    style={{
-                      width: '14px',
-                      height: '14px',
-                      backgroundColor: showArchived ? '#6b7280' : '#374151',
-                      borderRadius: '3px',
-                      transition: 'transform 180ms ease-out, background-color 180ms ease-out',
-                      transform: showArchived ? 'translateX(16px)' : 'translateX(0)',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                    }}
-                  />
+                  Активні
                 </button>
-                <span style={{ fontSize: '0.8125rem', fontWeight: showArchived ? 600 : 400, color: showArchived ? '#111827' : '#9ca3af', transition: 'color 150ms ease-out' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowArchived(true)}
+                  style={{
+                    padding: '6px 16px',
+                    fontSize: '13px',
+                    fontWeight: showArchived ? 600 : 400,
+                    color: showArchived ? 'var(--primary)' : 'var(--gray-500)',
+                    background: showArchived ? 'var(--primary-light)' : 'white',
+                    border: 'none',
+                    borderLeft: '1px solid var(--gray-200)',
+                    cursor: 'pointer',
+                    transition: 'background-color 150ms ease-out, color 150ms ease-out',
+                  }}
+                >
                   Архів
-                </span>
+                </button>
               </div>
-            </div>
+            </>
           )}
           actionLabel={t('actions.add')}
           onAction={handleCreate}

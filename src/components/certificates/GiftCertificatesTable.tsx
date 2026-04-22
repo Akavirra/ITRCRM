@@ -45,7 +45,8 @@ export default function GiftCertificatesTable({
     return (
       <CertificatesEmptyState
         title="Завантажуємо сертифікати…"
-        description="Каркас сторінки вже доступний, список з'явиться одразу після відповіді API."
+        description="Список з'явиться одразу після відповіді API."
+        centered
       />
     );
   }
@@ -57,6 +58,7 @@ export default function GiftCertificatesTable({
         description={emptyDescription}
         actionLabel={!showArchived ? 'Створити сертифікат' : undefined}
         onAction={!showArchived ? onCreate : undefined}
+        centered
       />
     );
   }
@@ -76,31 +78,49 @@ export default function GiftCertificatesTable({
       <tbody>
         {certificates.map((certificate) => (
           <tr key={certificate.id}>
-            <td style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: '#6b7280' }}>{certificate.public_id}</td>
-            <td style={{ fontWeight: 600 }}>{certificate.amount} грн</td>
+            <td style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: 'var(--gray-500)' }}>
+              {certificate.public_id}
+            </td>
+            <td style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+              {certificate.amount} грн
+            </td>
             <td>{getStatusBadge(certificate)}</td>
-            <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{formatIssuedAt(certificate.issued_at)}</td>
-            <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{certificate.creator_name || '—'}</td>
+            <td style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
+              {formatIssuedAt(certificate.issued_at)}
+            </td>
+            <td style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
+              {certificate.creator_name || '—'}
+            </td>
             <td style={{ textAlign: 'right' }}>
-              <div style={{ display: 'inline-flex', gap: '6px' }}>
+              <div style={{ display: 'inline-flex', gap: '8px' }}>
                 <button
-                  className="btn btn-sm"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => onTogglePrinted(certificate.id, Boolean(certificate.printed_at))}
                   title={certificate.printed_at ? 'Надруковано' : 'Позначити як надруковано'}
                   style={{
-                    padding: '6px 10px',
-                    background: certificate.printed_at ? '#dcfce7' : 'transparent',
-                    color: certificate.printed_at ? '#16a34a' : 'var(--gray-500)',
-                    border: certificate.printed_at ? '1px solid #16a34a' : '1px solid var(--gray-300)',
+                    padding: '6px 8px',
+                    background: certificate.printed_at ? 'var(--success, #dcfce7)' : undefined,
+                    color: certificate.printed_at ? 'white' : undefined,
+                    borderColor: certificate.printed_at ? 'var(--success)' : undefined,
                   }}
                 >
-                  <Printer size={16} />
+                  <Printer size={16} strokeWidth={1.75} />
                 </button>
-                <button className="btn btn-secondary btn-sm" onClick={() => onDownload(certificate.id)} title="Завантажити PDF" style={{ padding: '6px 10px' }}>
-                  <Download size={16} />
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => onDownload(certificate.id)}
+                  title="Завантажити PDF"
+                  style={{ padding: '6px 8px' }}
+                >
+                  <Download size={16} strokeWidth={1.75} />
                 </button>
-                <button className="btn btn-danger btn-sm" onClick={() => onDelete(certificate.id)} title="Видалити" style={{ padding: '6px 10px' }}>
-                  <Trash2 size={16} />
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={() => onDelete(certificate.id)}
+                  title="Видалити"
+                  style={{ padding: '6px 8px' }}
+                >
+                  <Trash2 size={16} strokeWidth={1.75} />
                 </button>
               </div>
             </td>

@@ -18,58 +18,46 @@ export default function CertificatesSectionHeader({
   actionLabel,
   onAction,
 }: CertificatesSectionHeaderProps) {
-  const hasActionsRow = Boolean(controls || (actionLabel && onAction));
-
   return (
     <div
       className="card-header"
       style={{
-        display: 'grid',
-        gap: hasActionsRow ? '1rem' : '0.25rem',
-        alignItems: 'start',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        gap: '16px',
       }}
     >
-      <div style={{ display: 'grid', gap: '4px', maxWidth: '720px' }}>
-        <h3 className="card-title" style={{ margin: 0 }}>{title}</h3>
-        {subtitle ? (
-          <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-500)' }}>
-            {subtitle}
-          </span>
+      {/* Top row: title + add button */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+        <div style={{ display: 'grid', gap: '4px' }}>
+          <h3 className="card-title" style={{ margin: 0 }}>{title}</h3>
+          {subtitle ? (
+            <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-500)' }}>
+              {subtitle}
+            </span>
+          ) : null}
+        </div>
+
+        {actionLabel && onAction ? (
+          <button className="btn btn-primary" onClick={onAction} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <Plus size={16} strokeWidth={1.75} />
+            {actionLabel}
+          </button>
         ) : null}
       </div>
 
-      {hasActionsRow ? (
+      {/* Controls row: filters, search, toggle */}
+      {controls ? (
         <div
           style={{
             display: 'flex',
             flexWrap: 'wrap',
-            gap: '0.75rem',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
+            gap: '12px',
+            alignItems: 'center',
           }}
         >
-          {controls ? (
-            <div
-              style={{
-                display: 'flex',
-                flex: '1 1 720px',
-                flexWrap: 'wrap',
-                gap: '0.75rem',
-                alignItems: 'flex-start',
-              }}
-            >
-              {controls}
-            </div>
-          ) : (
-            <div style={{ flex: '1 1 auto' }} />
-          )}
-
-          {actionLabel && onAction ? (
-            <button className="btn btn-primary" onClick={onAction}>
-              <Plus size={18} style={{ marginRight: '8px' }} />
-              {actionLabel}
-            </button>
-          ) : null}
+          {controls}
         </div>
       ) : null}
     </div>

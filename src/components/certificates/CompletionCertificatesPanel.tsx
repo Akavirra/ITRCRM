@@ -1148,7 +1148,7 @@ export default function CompletionCertificatesPanel({
                   setPage(1);
                   setCourseFilter(event.target.value);
                 }}
-                style={{ minWidth: '220px' }}
+                style={{ maxWidth: '240px' }}
                 disabled={filterOptionsLoading}
               >
                 <option value="">Усі курси</option>
@@ -1163,7 +1163,7 @@ export default function CompletionCertificatesPanel({
                   setPage(1);
                   setGroupFilter(event.target.value);
                 }}
-                style={{ minWidth: '220px' }}
+                style={{ maxWidth: '240px' }}
                 disabled={filterOptionsLoading || (!courseFilter && groups.length > 0)}
               >
                 <option value="">{courseFilter ? 'Усі групи курсу' : 'Спершу оберіть курс'}</option>
@@ -1179,7 +1179,7 @@ export default function CompletionCertificatesPanel({
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Пошук по учню, групі або курсу"
-                style={{ minWidth: '260px' }}
+                style={{ maxWidth: '280px' }}
               />
             </>
           )}

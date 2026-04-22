@@ -1,5 +1,7 @@
 'use client';
 
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
 interface CertificatesPaginationProps {
   page: number;
   totalPages: number;
@@ -20,19 +22,49 @@ export default function CertificatesPagination({
   onNext,
 }: CertificatesPaginationProps) {
   return (
-    <div className="card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-      <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '12px',
+        flexWrap: 'wrap',
+        padding: '12px 24px',
+        borderTop: '1px solid var(--gray-200)',
+      }}
+    >
+      <span style={{ color: 'var(--gray-500)', fontSize: '13px' }}>
         {totalItems > 0 ? `Показано ${visibleItems} з ${totalItems}` : 'Немає записів'}
       </span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button className="btn btn-secondary btn-sm" onClick={onPrev} disabled={page <= 1 || loading}>
-          Назад
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={onPrev}
+          disabled={page <= 1 || loading}
+          style={{ padding: '6px 8px' }}
+          aria-label="Попередня сторінка"
+        >
+          <ChevronLeft size={16} strokeWidth={1.75} />
         </button>
-        <span style={{ minWidth: '88px', textAlign: 'center', fontSize: '14px', color: 'var(--text-muted)' }}>
+        <span
+          style={{
+            minWidth: '72px',
+            textAlign: 'center',
+            fontSize: '13px',
+            color: 'var(--gray-500)',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
           {page} / {totalPages}
         </span>
-        <button className="btn btn-secondary btn-sm" onClick={onNext} disabled={page >= totalPages || loading}>
-          Далі
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={onNext}
+          disabled={page >= totalPages || loading}
+          style={{ padding: '6px 8px' }}
+          aria-label="Наступна сторінка"
+        >
+          <ChevronRight size={16} strokeWidth={1.75} />
         </button>
       </div>
     </div>

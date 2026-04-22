@@ -1,5 +1,7 @@
 'use client';
 
+import { Award, Gift } from 'lucide-react';
+
 type CertificatesTabKey = 'gift' | 'completion';
 
 interface CertificatesTabsProps {
@@ -7,35 +9,36 @@ interface CertificatesTabsProps {
   onChange: (tab: CertificatesTabKey) => void;
 }
 
-const tabs: Array<{ key: CertificatesTabKey; label: string }> = [
-  { key: 'gift', label: 'Подарункові' },
-  { key: 'completion', label: 'Про закінчення' },
+const tabs: Array<{ key: CertificatesTabKey; label: string; icon: typeof Gift }> = [
+  { key: 'gift', label: 'Подарункові', icon: Gift },
+  { key: 'completion', label: 'Про закінчення', icon: Award },
 ];
 
 export default function CertificatesTabs({ active, onChange }: CertificatesTabsProps) {
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--gray-200)', paddingBottom: '0.5rem' }}>
+    <div className="tabs" style={{ marginBottom: '24px', gap: '4px' }}>
       {tabs.map((tab) => {
         const isActive = tab.key === active;
+        const Icon = tab.icon;
 
         return (
           <button
             key={tab.key}
-            className="btn btn-sm"
+            className={`tab${isActive ? ' active' : ''}`}
             onClick={() => {
               if (!isActive) {
                 onChange(tab.key);
               }
             }}
             style={{
-              fontWeight: isActive ? 600 : 400,
-              color: isActive ? '#111827' : '#6b7280',
-              borderBottom: isActive ? '2px solid #111827' : '2px solid transparent',
-              borderRadius: 0,
-              background: 'transparent',
-              padding: '0.5rem 0.75rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: 'none',
+              border: 'none',
             }}
           >
+            <Icon size={16} strokeWidth={1.75} />
             {tab.label}
           </button>
         );

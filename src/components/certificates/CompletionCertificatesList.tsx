@@ -53,10 +53,26 @@ export default function CompletionCertificatesList({
   }
 
   return (
-    <div style={{ display: 'grid', gap: '1rem', padding: '0.5rem 0' }}>
+    <div style={{ display: 'grid', gap: '16px', padding: '8px 0' }}>
       {Object.entries(groupedCertificates).map(([groupTitle, items]) => (
-        <div key={groupTitle} style={{ border: '1px solid var(--gray-200)', borderRadius: '14px', overflow: 'hidden' }}>
-          <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-200)', background: 'var(--gray-50)', fontWeight: 700 }}>
+        <div
+          key={groupTitle}
+          style={{
+            border: '1px solid var(--gray-200)',
+            borderRadius: '12px',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              padding: '12px 16px',
+              borderBottom: '1px solid var(--gray-200)',
+              background: 'var(--gray-50)',
+              fontWeight: 600,
+              fontSize: '14px',
+              color: 'var(--gray-700)',
+            }}
+          >
             {groupTitle}
           </div>
           <table className="table">
@@ -72,15 +88,29 @@ export default function CompletionCertificatesList({
               {items.map((certificate) => (
                 <tr key={certificate.id}>
                   <td style={{ fontWeight: 600 }}>{certificate.student_name}</td>
-                  <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{certificate.course_title || '—'}</td>
-                  <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{formatIssuedAt(certificate.issue_date)}</td>
+                  <td style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
+                    {certificate.course_title || '—'}
+                  </td>
+                  <td style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
+                    {formatIssuedAt(certificate.issue_date)}
+                  </td>
                   <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: '6px' }}>
-                      <button className="btn btn-secondary btn-sm" onClick={() => onDownload(certificate.id)} title="Завантажити PDF">
-                        <Download size={16} />
+                    <div style={{ display: 'inline-flex', gap: '8px' }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => onDownload(certificate.id)}
+                        title="Завантажити PDF"
+                        style={{ padding: '6px 8px' }}
+                      >
+                        <Download size={16} strokeWidth={1.75} />
                       </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => onDelete(certificate.id)} title="Видалити">
-                        <Trash2 size={16} />
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => onDelete(certificate.id)}
+                        title="Видалити"
+                        style={{ padding: '6px 8px' }}
+                      >
+                        <Trash2 size={16} strokeWidth={1.75} />
                       </button>
                     </div>
                   </td>
