@@ -42,7 +42,9 @@ function getBottomAlignedBaseline(font: any, size: number, bottomAnchorY: number
   const textHeight = getTextHeight(font, size);
   const descenderAllowance = textHeight * 0.20;
   const previewBottomPadding = 4;
-  return bottomAnchorY - previewBottomPadding - descenderAllowance;
+  // The editor positions blocks with CSS `bottom`, which anchors the block box
+  // while the glyph baseline sits above that edge by the descender + padding.
+  return bottomAnchorY + previewBottomPadding + descenderAllowance;
 }
 
 function formatDate(dateStr: string): string {
