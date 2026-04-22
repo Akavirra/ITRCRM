@@ -18,9 +18,18 @@ export default function CertificatesSectionHeader({
   actionLabel,
   onAction,
 }: CertificatesSectionHeaderProps) {
+  const hasActionsRow = Boolean(controls || (actionLabel && onAction));
+
   return (
-    <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
-      <div style={{ display: 'grid', gap: '4px' }}>
+    <div
+      className="card-header"
+      style={{
+        display: 'grid',
+        gap: hasActionsRow ? '1rem' : '0.25rem',
+        alignItems: 'start',
+      }}
+    >
+      <div style={{ display: 'grid', gap: '4px', maxWidth: '720px' }}>
         <h3 className="card-title" style={{ margin: 0 }}>{title}</h3>
         {subtitle ? (
           <span style={{ fontSize: '13px', lineHeight: '18px', color: 'var(--gray-500)' }}>
@@ -29,13 +38,39 @@ export default function CertificatesSectionHeader({
         ) : null}
       </div>
 
-      {controls}
+      {hasActionsRow ? (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+          }}
+        >
+          {controls ? (
+            <div
+              style={{
+                display: 'flex',
+                flex: '1 1 720px',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+                alignItems: 'flex-start',
+              }}
+            >
+              {controls}
+            </div>
+          ) : (
+            <div style={{ flex: '1 1 auto' }} />
+          )}
 
-      {actionLabel && onAction ? (
-        <button className="btn btn-primary" onClick={onAction}>
-          <Plus size={18} style={{ marginRight: '8px' }} />
-          {actionLabel}
-        </button>
+          {actionLabel && onAction ? (
+            <button className="btn btn-primary" onClick={onAction}>
+              <Plus size={18} style={{ marginRight: '8px' }} />
+              {actionLabel}
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

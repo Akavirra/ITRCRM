@@ -715,7 +715,7 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
         <CertificatesSectionHeader
           title={t('nav.certificates')}
           controls={(
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: '100%' }}>
               <input
                 type="search"
                 className="form-input"

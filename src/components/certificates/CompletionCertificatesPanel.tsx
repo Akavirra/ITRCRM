@@ -1148,7 +1148,7 @@ export default function CompletionCertificatesPanel({
                   setPage(1);
                   setCourseFilter(event.target.value);
                 }}
-                style={{ minWidth: '220px', marginLeft: 'auto' }}
+                style={{ minWidth: '220px' }}
                 disabled={filterOptionsLoading}
               >
                 <option value="">Усі курси</option>
