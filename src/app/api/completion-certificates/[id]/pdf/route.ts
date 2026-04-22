@@ -11,19 +11,9 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const FONT_DIR = path.join(process.cwd(), 'public', 'fonts');
-const ROBOTO_BOLD_URL = 'https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc4.woff2';
-
 async function loadFontLocal(filename: string): Promise<Uint8Array> {
   const buf = await fs.readFile(path.join(FONT_DIR, filename));
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
-}
-
-async function fetchFont(url: string): Promise<Uint8Array> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch font ${url}: ${res.status}`);
-  }
-  return new Uint8Array(await res.arrayBuffer());
 }
 
 function getHexColor(hexColor: string | undefined, fallback: [number, number, number]) {
@@ -175,21 +165,28 @@ export async function GET(
       fonts.cassandra = await pdfDoc.embedFont(StandardFonts.Helvetica);
     }
     try {
-      fonts.sansRegular = await pdfDoc.embedFont(await loadFontLocal('Roboto-Regular.ttf'));
+      fonts.sansRegular = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Regular.ttf'));
     } catch (e) {
-      console.warn('Failed to load Roboto-Regular:', e);
-      try {
-        fonts.sansRegular = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Regular.ttf'));
-      } catch (innerError) {
-        console.warn('Failed to load Montserrat-Regular:', innerError);
-        fonts.sansRegular = fonts.cassandra;
-      }
+      console.warn('Failed to load Montserrat-Regular:', e);
+      fonts.sansRegular = fonts.cassandra;
     }
     try {
-      fonts.sansBold = await pdfDoc.embedFont(await fetchFont(ROBOTO_BOLD_URL));
+      fonts.sansBold = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Bold.ttf'));
     } catch (e) {
-      console.warn('Failed to load Roboto-Bold:', e);
+      console.warn('Failed to load Montserrat-Bold:', e);
       fonts.sansBold = fonts.sansRegular;
+    }
+    try {
+      fonts.sansItalic = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Italic.ttf'));
+    } catch (e) {
+      console.warn('Failed to load Montserrat-Italic:', e);
+      fonts.sansItalic = fonts.sansRegular;
+    }
+    try {
+      fonts.sansBoldItalic = await pdfDoc.embedFont(await loadFontLocal('Montserrat-BoldItalic.ttf'));
+    } catch (e) {
+      console.warn('Failed to load Montserrat-BoldItalic:', e);
+      fonts.sansBoldItalic = fonts.sansBold;
     }
 
     const resolveFont = (key: string, weight?: string, style?: string) => {
@@ -202,11 +199,16 @@ export async function GET(
           fauxItalic: isItalic,
         };
       }
-      return {
-        font: isBold ? fonts.sansBold : fonts.sansRegular,
-        fauxBold: isBold && fonts.sansBold === fonts.sansRegular,
-        fauxItalic: isItalic,
-      };
+      if (isBold && isItalic) {
+        return { font: fonts.sansBoldItalic, fauxBold: false, fauxItalic: false };
+      }
+      if (isBold) {
+        return { font: fonts.sansBold, fauxBold: false, fauxItalic: false };
+      }
+      if (isItalic) {
+        return { font: fonts.sansItalic, fauxBold: false, fauxItalic: false };
+      }
+      return { font: fonts.sansRegular, fauxBold: false, fauxItalic: false };
     };
 
     // 3. Load Template

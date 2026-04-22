@@ -659,7 +659,7 @@ export default function GraduationCertificatesPage() {
   };
 
   const getBlockFontFamily = (key: string) => (
-    key === 'student_name' ? "'CertificateCassandra', cursive" : "'CertificateRoboto', sans-serif"
+    key === 'student_name' ? "'CertificateCassandra', cursive" : "'CertificateMontserrat', sans-serif"
   );
 
   const adjustScale = (delta: number, shouldRecordHistory = true) => {
