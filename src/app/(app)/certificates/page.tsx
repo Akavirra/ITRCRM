@@ -71,7 +71,7 @@ interface EditorSnapshot {
   formData: EditorFormData;
   pan: { x: number; y: number };
   scale: number;
-  selectedBlock: BlockKey;
+  selectedBlock: BlockKey | null;
 }
 
 const DEFAULT_SETTINGS: GiftCertificateSettings = {
@@ -117,10 +117,12 @@ export default function CertificatesPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<AccordionKey>('data');
-  const [selectedBlock, setSelectedBlock] = useState<BlockKey>('amount');
+  const [selectedBlock, setSelectedBlock] = useState<BlockKey | null>('amount');
   const [dragging, setDragging] = useState<{ target: BlockKey; offsetX: number; offsetY: number } | null>(null);
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
 
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -158,7 +160,7 @@ export default function CertificatesPage() {
     : {
         key: 'amount' as const,
         label: 'Номінал',
-        preview: `${formData.amount || 0} грн`,
+        preview: `${formData.amount || 0}`,
         fontSize: idSettings.amountFontSize,
         xPercent: idSettings.amountXPercent,
         yPercent: idSettings.amountYPercent,
@@ -377,6 +379,26 @@ export default function CertificatesPage() {
     setScale((prev) => Math.max(0.45, Math.min(2.4, Math.round((prev + delta) * 100) / 100)));
   };
 
+  const handleCanvasMouseDown = (event: React.MouseEvent) => {
+    const clickedCanvasSurface = event.target === event.currentTarget || event.target instanceof HTMLImageElement;
+
+    if (event.button === 0 && clickedCanvasSurface && (scale > 1 || pan.x !== 0 || pan.y !== 0)) {
+      event.preventDefault();
+      pushHistory();
+      setSelectedBlock(null);
+      setDragging(null);
+      setIsPanning(true);
+      setPanStart({ x: event.clientX - pan.x, y: event.clientY - pan.y });
+      return;
+    }
+
+    if (event.button === 0 && clickedCanvasSurface) {
+      event.preventDefault();
+      setSelectedBlock(null);
+      setDragging(null);
+    }
+  };
+
   const updateSettings = (patch: Partial<GiftCertificateSettings>) => {
     pushHistory();
     setIdSettings((prev) => ({ ...prev, ...patch }));
@@ -526,6 +548,11 @@ export default function CertificatesPage() {
   };
 
   const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (isPanning) {
+      setPan({ x: event.clientX - panStart.x, y: event.clientY - panStart.y });
+      return;
+    }
+
     if (!dragging) return;
 
     const container = previewRef.current?.getBoundingClientRect();
@@ -555,6 +582,7 @@ export default function CertificatesPage() {
 
   const handleMouseUp = () => {
     setDragging(null);
+    setIsPanning(false);
   };
 
   const getStatusBadge = (certificate: CertificateData) => {
@@ -819,11 +847,13 @@ export default function CertificatesPage() {
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
                         onMouseLeave={handleMouseUp}
+                        onMouseDown={handleCanvasMouseDown}
                         style={{
                           width: `${imageDimensions.width}px`,
                           aspectRatio: `${imageDimensions.width} / ${imageDimensions.height}`,
                           transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
                           transformOrigin: 'center center',
+                          cursor: dragging ? 'grabbing' : isPanning ? 'grabbing' : (scale > 1 || pan.x !== 0 || pan.y !== 0) ? 'grab' : 'default',
                         }}
                       >
                         <img
@@ -923,7 +953,7 @@ export default function CertificatesPage() {
                               <button type="button" onClick={() => updateSettings({ amountFontSize: Math.min(160, idSettings.amountFontSize + 2) })} className={s.blockToolbarBtn} title="Збільшити розмір">+</button>
                             </div>
                           )}
-                          {formData.amount || 0} грн
+                          {formData.amount || 0}
                         </div>
                       </div>
 
