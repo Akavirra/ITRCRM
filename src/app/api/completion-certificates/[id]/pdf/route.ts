@@ -41,8 +41,9 @@ function getTextHeight(font: any, size: number) {
 
 function getBottomAlignedBaseline(font: any, size: number, bottomAnchorY: number) {
   const textHeight = getTextHeight(font, size);
-  const descenderAllowance = textHeight * 0.14;
-  return bottomAnchorY + descenderAllowance;
+  const descenderAllowance = textHeight * 0.28;
+  const previewBottomPadding = 4;
+  return bottomAnchorY + descenderAllowance + previewBottomPadding;
 }
 
 function formatDate(dateStr: string): string {
@@ -76,20 +77,21 @@ function drawBlockText(page: any, text: string, options: {
   const lines = text.split('\n').filter(Boolean);
   if (!lines.length) return;
 
-  const lineHeight = options.size * 1.15;
+  const lineHeight = options.size * 1.12;
 
   lines.forEach((line, lineIndex) => {
     const textWidth = options.font.widthOfTextAtSize(line, options.size);
     const currentBottomY = options.bottomAnchorY + lineHeight * (lines.length - lineIndex - 1);
     const baselineY = getBottomAlignedBaseline(options.font, options.size, currentBottomY);
+    const horizontalInset = options.align === 'left' ? 6 : options.align === 'right' ? -6 : 0;
 
     let x: number;
     if (options.align === 'center') {
       x = (options.width * (options.xPercent / 100)) - (textWidth / 2);
     } else if (options.align === 'right') {
-      x = (options.width * (options.xPercent / 100)) - textWidth;
+      x = (options.width * (options.xPercent / 100)) - textWidth + horizontalInset;
     } else {
-      x = options.width * (options.xPercent / 100);
+      x = options.width * (options.xPercent / 100) + horizontalInset;
     }
 
     page.drawText(line, {
