@@ -11,10 +11,19 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const FONT_DIR = path.join(process.cwd(), 'public', 'fonts');
+const ROBOTO_BOLD_URL = 'https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc4.woff2';
 
 async function loadFontLocal(filename: string): Promise<Uint8Array> {
   const buf = await fs.readFile(path.join(FONT_DIR, filename));
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
+}
+
+async function fetchFont(url: string): Promise<Uint8Array> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch font ${url}: ${res.status}`);
+  }
+  return new Uint8Array(await res.arrayBuffer());
 }
 
 function getHexColor(hexColor: string | undefined, fallback: [number, number, number]) {
@@ -65,6 +74,35 @@ function toSafeAsciiFilename(value: string) {
     .toLowerCase();
 }
 
+function drawStyledLine(page: any, text: string, options: {
+  x: number;
+  y: number;
+  size: number;
+  font: any;
+  color: any;
+  fauxItalic?: boolean;
+  fauxBold?: boolean;
+}) {
+  const drawOptions = {
+    x: options.x,
+    y: options.y,
+    size: options.size,
+    font: options.font,
+    color: options.color,
+    ...(options.fauxItalic ? { xSkew: degrees(-11) } : {}),
+  };
+
+  page.drawText(text, drawOptions);
+
+  if (options.fauxBold) {
+    const boldOffset = Math.max(0.35, options.size * 0.018);
+    page.drawText(text, {
+      ...drawOptions,
+      x: options.x + boldOffset,
+    });
+  }
+}
+
 function drawBlockText(page: any, text: string, options: {
   font: any;
   size: number;
@@ -73,6 +111,8 @@ function drawBlockText(page: any, text: string, options: {
   width: number;
   bottomAnchorY: number;
   xPercent: number;
+  fauxItalic?: boolean;
+  fauxBold?: boolean;
 }) {
   const lines = text.split('\n').filter(Boolean);
   if (!lines.length) return;
@@ -94,12 +134,14 @@ function drawBlockText(page: any, text: string, options: {
       x = options.width * (options.xPercent / 100) + horizontalInset;
     }
 
-    page.drawText(line, {
+    drawStyledLine(page, line, {
       x,
       y: baselineY,
       size: options.size,
       font: options.font,
       color: options.color,
+      fauxItalic: options.fauxItalic,
+      fauxBold: options.fauxBold,
     });
   });
 }
@@ -132,28 +174,38 @@ export async function GET(
       fonts.cassandra = await pdfDoc.embedFont(StandardFonts.Helvetica);
     }
     try {
-      fonts.montserratRegular = await pdfDoc.embedFont(await loadFontLocal('Roboto-Regular.ttf'));
+      fonts.sansRegular = await pdfDoc.embedFont(await loadFontLocal('Roboto-Regular.ttf'), { subset: false });
     } catch (e) {
       console.warn('Failed to load Roboto-Regular:', e);
       try {
-        fonts.montserratRegular = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Regular.ttf'));
+        fonts.sansRegular = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Regular.ttf'), { subset: false });
       } catch (innerError) {
         console.warn('Failed to load Montserrat-Regular:', innerError);
-        fonts.montserratRegular = fonts.cassandra;
+        fonts.sansRegular = fonts.cassandra;
       }
     }
-    fonts.montserratBold = fonts.montserratRegular;
-    fonts.montserratItalic = fonts.montserratRegular;
+    try {
+      fonts.sansBold = await pdfDoc.embedFont(await fetchFont(ROBOTO_BOLD_URL), { subset: false });
+    } catch (e) {
+      console.warn('Failed to load Roboto-Bold:', e);
+      fonts.sansBold = fonts.sansRegular;
+    }
 
     const resolveFont = (key: string, weight?: string, style?: string) => {
-      if (key === 'student_name') {
-        return fonts.cassandra;
-      }
       const isBold = weight === 'bold' || weight === '700';
       const isItalic = style === 'italic' || style === 'oblique';
-      if (isBold) return fonts.montserratBold;
-      if (isItalic) return fonts.montserratItalic;
-      return fonts.montserratRegular;
+      if (key === 'student_name') {
+        return {
+          font: fonts.cassandra,
+          fauxBold: isBold,
+          fauxItalic: isItalic,
+        };
+      }
+      return {
+        font: isBold ? fonts.sansBold : fonts.sansRegular,
+        fauxBold: isBold && fonts.sansBold === fonts.sansRegular,
+        fauxItalic: isItalic,
+      };
     };
 
     // 3. Load Template
@@ -213,7 +265,7 @@ export async function GET(
       page.drawImage(bgImage, { x: 0, y: 0, width, height });
     } else {
       page.drawRectangle({ x: 0, y: 0, width, height, borderColor: rgb(0, 0, 0), borderWidth: 2 });
-      page.drawText('СЕРТИФІКАТ ПРО ЗАКІНЧЕННЯ', { x: width / 2 - 150, y: height / 2 + 50, size: 30, font: fonts.montserratBold, color: rgb(0, 0, 0) });
+      page.drawText('СЕРТИФІКАТ ПРО ЗАКІНЧЕННЯ', { x: width / 2 - 150, y: height / 2 + 50, size: 30, font: fonts.sansBold || fonts.sansRegular, color: rgb(0, 0, 0) });
     }
 
     // 4. Load Settings
@@ -258,20 +310,22 @@ export async function GET(
       const text = textValues[block.key] || '';
       if (!text) continue;
 
-      const font = resolveFont(block.key, block.weight, block.style);
+      const fontOptions = resolveFont(block.key, block.weight, block.style);
       const size = block.size ?? 14;
       const color = getHexColor(block.color, [0, 0, 0]);
       const align = block.align || 'left';
 
       const bottomAnchorY = height * (block.yPercent / 100);
       drawBlockText(page, text, {
-        font,
+        font: fontOptions.font,
         size,
         color,
         align,
         width,
         bottomAnchorY,
         xPercent: block.xPercent,
+        fauxBold: fontOptions.fauxBold,
+        fauxItalic: fontOptions.fauxItalic,
       });
     }
 
