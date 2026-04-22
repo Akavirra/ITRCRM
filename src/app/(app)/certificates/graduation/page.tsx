@@ -31,6 +31,7 @@ interface CompletionCertificateData {
   course_id: number | null;
   course_title: string | null;
   group_id: number | null;
+  group_title?: string | null;
   issue_date: string;
   gender: 'male' | 'female';
   creator_name: string | null;
@@ -41,6 +42,11 @@ interface StudentOption {
   id: number;
   full_name: string;
   gender: 'male' | 'female' | null;
+}
+
+interface GroupStudentDraft {
+  gender: 'male' | 'female' | '';
+  previewTexts: Record<string, string>;
 }
 
 interface CourseOption {
@@ -148,8 +154,12 @@ export default function GraduationCertificatesPage() {
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [groups, setGroups] = useState<GroupOption[]>([]);
   const [loadingGroupStudents, setLoadingGroupStudents] = useState(false);
+  const [loadingStudentOptions, setLoadingStudentOptions] = useState(false);
   const [selectionMode, setSelectionMode] = useState<SelectionMode>('single');
   const [selectedGroupStudentIds, setSelectedGroupStudentIds] = useState<string[]>([]);
+  const [activeGroupStudentId, setActiveGroupStudentId] = useState('');
+  const [groupStudentDrafts, setGroupStudentDrafts] = useState<Record<string, GroupStudentDraft>>({});
+  const [studentSearch, setStudentSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -190,13 +200,26 @@ export default function GraduationCertificatesPage() {
   });
   const activeBlock = renderedBlocks[selectedBlock ?? 0];
   const activeBlockIndex = selectedBlock ?? 0;
-  const selectedStudent = students.find((student) => String(student.id) === formData.student_id) || null;
+  const effectiveStudentId = selectionMode === 'group' ? activeGroupStudentId : formData.student_id;
+  const selectedStudent = students.find((student) => String(student.id) === effectiveStudentId) || null;
   const selectedCourse = courses.find((course) => String(course.id) === formData.course_id) || null;
   const filteredGroups = formData.course_id
     ? groups.filter((group) => String(group.course_id) === formData.course_id)
     : groups;
   const selectedGroup = groups.find((group) => String(group.id) === formData.group_id) || null;
   const selectedCourseLabel = getFallbackCourseLabel(selectedCourse?.title);
+  const activeGroupDraft = activeGroupStudentId ? groupStudentDrafts[activeGroupStudentId] : undefined;
+  const effectiveGender = selectionMode === 'group'
+    ? (activeGroupDraft?.gender || formData.gender)
+    : formData.gender;
+  const groupedCertificates = certificates.reduce<Record<string, CompletionCertificateData[]>>((acc, certificate) => {
+    const key = certificate.group_title || 'Без групи';
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(certificate);
+    return acc;
+  }, {});
   const canCreate = selectionMode === 'group'
     ? !saving && !!formData.group_id && !!formData.issue_date && selectedGroupStudentIds.length > 0
     : !saving && !!formData.student_id && !!formData.issue_date && !!formData.gender;
@@ -354,9 +377,73 @@ export default function GraduationCertificatesPage() {
   }, [imageDimensions, templateUrl, showModal]);
 
   useEffect(() => {
+    if (showModal && selectionMode === 'single') {
+      let cancelled = false;
+
+      const fetchStudentOptions = async () => {
+        setLoadingStudentOptions(true);
+        try {
+          const params = new URLSearchParams({
+            withGroups: 'true',
+            limit: '40',
+          });
+
+          if (studentSearch.trim()) {
+            params.set('search', studentSearch.trim());
+          }
+          if (formData.course_id) {
+            params.set('courseId', formData.course_id);
+          }
+          if (formData.group_id) {
+            params.set('groupId', formData.group_id);
+          }
+
+          const response = await fetch(`/api/students?${params.toString()}`);
+          const data = await response.json();
+          if (cancelled) return;
+
+          const nextStudents: StudentOption[] = Array.isArray(data.students)
+            ? data.students.map((student: any) => ({
+                id: student.id,
+                full_name: student.full_name,
+                gender: student.gender ?? null,
+              }))
+            : [];
+
+          setStudents(nextStudents);
+          setFormData((prev) => {
+            if (!prev.student_id) return prev;
+            return nextStudents.some((student) => String(student.id) === prev.student_id)
+              ? prev
+              : { ...prev, student_id: '', gender: '' };
+          });
+        } catch (error) {
+          console.error('Failed to fetch student options:', error);
+          if (!cancelled) {
+            setStudents([]);
+          }
+        } finally {
+          if (!cancelled) {
+            setLoadingStudentOptions(false);
+          }
+        }
+      };
+
+      fetchStudentOptions();
+
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [showModal, selectionMode, studentSearch, formData.course_id, formData.group_id]);
+
+  useEffect(() => {
     if (!formData.group_id) {
-      setStudents([]);
+      if (selectionMode === 'group') {
+        setStudents([]);
+      }
       setSelectedGroupStudentIds([]);
+      setActiveGroupStudentId('');
       return;
     }
 
@@ -382,21 +469,17 @@ export default function GraduationCertificatesPage() {
         if (selectionMode === 'group') {
           const allIds = nextStudents.map((student) => String(student.id));
           setSelectedGroupStudentIds(allIds);
+          setActiveGroupStudentId((prev) => prev && allIds.includes(prev) ? prev : (allIds[0] || ''));
           setFormData((prev) => ({ ...prev, student_id: allIds[0] || '' }));
         } else {
           setSelectedGroupStudentIds([]);
-          setFormData((prev) => {
-            if (!prev.student_id) return prev;
-            return nextStudents.some((student) => String(student.id) === prev.student_id)
-              ? prev
-              : { ...prev, student_id: '', gender: '' };
-          });
         }
       } catch (error) {
         console.error('Failed to fetch group students:', error);
         if (!cancelled) {
           setStudents([]);
           setSelectedGroupStudentIds([]);
+          setActiveGroupStudentId('');
         }
       } finally {
         if (!cancelled) {
@@ -416,8 +499,22 @@ export default function GraduationCertificatesPage() {
     if (!formData.student_id || !selectedStudent) return;
     const nextGender = selectedStudent.gender || inferGenderFromName(selectedStudent.full_name);
     if (!nextGender) return;
+    if (selectionMode === 'group' && activeGroupStudentId) {
+      setGroupStudentDrafts((prev) => {
+        const current = prev[activeGroupStudentId];
+        if (current?.gender === nextGender) return prev;
+        return {
+          ...prev,
+          [activeGroupStudentId]: {
+            gender: nextGender,
+            previewTexts: current?.previewTexts || {},
+          },
+        };
+      });
+      return;
+    }
     setFormData((prev) => (prev.gender === nextGender ? prev : { ...prev, gender: nextGender }));
-  }, [formData.student_id, selectedStudent?.gender, selectedStudent?.full_name]);
+  }, [selectionMode, activeGroupStudentId, formData.student_id, selectedStudent?.gender, selectedStudent?.full_name]);
 
   useEffect(() => {
     if (!resizing) return;
@@ -528,8 +625,12 @@ export default function GraduationCertificatesPage() {
   };
 
   const getPreviewText = (key: string) => {
-    if (key !== 'course_name' && previewTexts[key] !== undefined) {
-      return previewTexts[key];
+    const currentPreviewTexts = selectionMode === 'group' && activeGroupDraft
+      ? activeGroupDraft.previewTexts
+      : previewTexts;
+
+    if (key !== 'course_name' && currentPreviewTexts[key] !== undefined) {
+      return currentPreviewTexts[key];
     }
 
     switch (key) {
@@ -537,8 +638,8 @@ export default function GraduationCertificatesPage() {
         if (!selectedStudent) return '';
         return selectedStudent?.full_name || "Єва Григор'єва";
       case 'verb':
-        if (!selectedStudent || !formData.gender) return '';
-        return formData.gender === 'male'
+        if (!selectedStudent || !effectiveGender) return '';
+        return effectiveGender === 'male'
           ? 'успішно завершив навчання\nз курсу'
           : 'успішно завершила навчання\nз курсу';
       case 'course_name':
@@ -635,11 +736,13 @@ export default function GraduationCertificatesPage() {
     if (mode === 'group') {
       const allIds = students.map((student) => String(student.id));
       setSelectedGroupStudentIds(allIds);
+      setActiveGroupStudentId(allIds[0] || '');
       setFormData((prev) => ({ ...prev, student_id: allIds[0] || '' }));
       return;
     }
 
     setSelectedGroupStudentIds([]);
+    setActiveGroupStudentId('');
     setFormData((prev) => ({ ...prev, student_id: '', gender: '' }));
   };
 
@@ -647,12 +750,15 @@ export default function GraduationCertificatesPage() {
     setFormData((prev) => ({
       ...prev,
       course_id: courseId,
-      group_id: '',
+      group_id: selectionMode === 'group' ? '' : prev.group_id,
       student_id: '',
-      gender: '',
+      gender: selectionMode === 'group' ? '' : prev.gender,
     }));
-    setStudents([]);
-    setSelectedGroupStudentIds([]);
+    if (selectionMode === 'group') {
+      setStudents([]);
+      setSelectedGroupStudentIds([]);
+      setActiveGroupStudentId('');
+    }
   };
 
   const handleGroupChange = (groupId: string) => {
@@ -672,13 +778,22 @@ export default function GraduationCertificatesPage() {
         ? prev.filter((id) => id !== studentId)
         : [...prev, studentId];
 
-      setFormData((current) => ({
-        ...current,
-        student_id: nextIds[0] || '',
-      }));
+      if (!nextIds.includes(activeGroupStudentId)) {
+        const fallbackId = nextIds[0] || '';
+        setActiveGroupStudentId(fallbackId);
+        setFormData((current) => ({
+          ...current,
+          student_id: fallbackId,
+        }));
+      }
 
       return nextIds;
     });
+  };
+
+  const selectGroupStudent = (studentId: string) => {
+    setActiveGroupStudentId(studentId);
+    setFormData((prev) => ({ ...prev, student_id: studentId }));
   };
 
   const handleCreate = () => {
@@ -696,6 +811,9 @@ export default function GraduationCertificatesPage() {
     setSelectionMode('single');
     setStudents([]);
     setSelectedGroupStudentIds([]);
+    setActiveGroupStudentId('');
+    setGroupStudentDrafts({});
+    setStudentSearch('');
     setShowModal(true);
   };
 
@@ -709,7 +827,10 @@ export default function GraduationCertificatesPage() {
             course_id: formData.course_id,
             group_id: formData.group_id,
             issue_date: formData.issue_date,
-            student_ids: selectedGroupStudentIds,
+            students: selectedGroupStudentIds.map((studentId) => ({
+              student_id: studentId,
+              gender: groupStudentDrafts[studentId]?.gender || null,
+            })),
           }
         : formData;
 
@@ -887,35 +1008,44 @@ export default function GraduationCertificatesPage() {
 
         <div className="table-container">
           {certificates.length > 0 ? (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t('table.student')}</th>
-                  <th>{t('table.course')}</th>
-                  <th>Дата видачі</th>
-                  <th style={{ textAlign: 'right' }}>{t('common.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {certificates.map((certificate) => (
-                  <tr key={certificate.id}>
-                    <td style={{ fontWeight: 600 }}>{certificate.student_name}</td>
-                    <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{certificate.course_title || '—'}</td>
-                    <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{formatDateKyiv(certificate.issue_date)}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '6px' }}>
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleDownload(certificate.id)} title="Завантажити PDF">
-                          <Download size={16} />
-                        </button>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(certificate.id)} title="Видалити">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div style={{ display: 'grid', gap: '1rem', padding: '0.5rem 0' }}>
+              {Object.entries(groupedCertificates).map(([groupTitle, items]) => (
+                <div key={groupTitle} style={{ border: '1px solid var(--gray-200)', borderRadius: '14px', overflow: 'hidden' }}>
+                  <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-200)', background: 'var(--gray-50)', fontWeight: 700 }}>
+                    {groupTitle}
+                  </div>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>{t('table.student')}</th>
+                        <th>{t('table.course')}</th>
+                        <th>Дата видачі</th>
+                        <th style={{ textAlign: 'right' }}>{t('common.actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((certificate) => (
+                        <tr key={certificate.id}>
+                          <td style={{ fontWeight: 600 }}>{certificate.student_name}</td>
+                          <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{certificate.course_title || '—'}</td>
+                          <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{formatDateKyiv(certificate.issue_date)}</td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'inline-flex', gap: '6px' }}>
+                              <button className="btn btn-secondary btn-sm" onClick={() => handleDownload(certificate.id)} title="Завантажити PDF">
+                                <Download size={16} />
+                              </button>
+                              <button className="btn btn-danger btn-sm" onClick={() => handleDelete(certificate.id)} title="Видалити">
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
               <p style={{ color: 'var(--gray-500)', marginBottom: '1rem' }}>
@@ -1241,15 +1371,30 @@ export default function GraduationCertificatesPage() {
                           </select>
                         </div>
 
+                        {selectionMode === 'single' && (
+                          <div className={s.compactGroup}>
+                            <label className={s.compactLabel}>Пошук учня</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={studentSearch}
+                              onChange={(event) => setStudentSearch(event.target.value)}
+                              placeholder="Введіть ім’я учня"
+                            />
+                          </div>
+                        )}
+
                         <div className={s.compactGroup}>
-                          <label className={s.compactLabel}>Група <span className={s.compactRequired}>*</span></label>
+                          <label className={s.compactLabel}>
+                            Група {selectionMode === 'group' && <span className={s.compactRequired}>*</span>}
+                          </label>
                           <select
                             className="form-select"
                             value={formData.group_id}
                             onChange={(event) => handleGroupChange(event.target.value)}
-                            disabled={!formData.course_id}
+                            disabled={selectionMode === 'group' ? !formData.course_id : false}
                           >
-                            <option value="">Оберіть групу</option>
+                            <option value="">{selectionMode === 'single' ? 'Будь-яка група' : 'Оберіть групу'}</option>
                             {filteredGroups.map((group) => (
                               <option key={group.id} value={group.id}>{group.title}</option>
                             ))}
@@ -1263,9 +1408,11 @@ export default function GraduationCertificatesPage() {
                               className="form-select"
                               value={formData.student_id}
                               onChange={(event) => onStudentChange(event.target.value)}
-                              disabled={!formData.group_id || loadingGroupStudents}
+                              disabled={loadingStudentOptions || loadingGroupStudents}
                             >
-                              <option value="">{loadingGroupStudents ? 'Завантаження учнів…' : 'Оберіть учня'}</option>
+                              <option value="">
+                                {loadingStudentOptions || loadingGroupStudents ? 'Завантаження учнів…' : 'Оберіть учня'}
+                              </option>
                               {students.map((student) => (
                                 <option key={student.id} value={student.id}>{student.full_name}</option>
                               ))}
@@ -1281,6 +1428,7 @@ export default function GraduationCertificatesPage() {
                                 onClick={() => {
                                   const allIds = students.map((student) => String(student.id));
                                   setSelectedGroupStudentIds(allIds);
+                                  setActiveGroupStudentId(allIds[0] || '');
                                   setFormData((prev) => ({ ...prev, student_id: allIds[0] || '' }));
                                 }}
                                 disabled={!students.length}
@@ -1293,14 +1441,30 @@ export default function GraduationCertificatesPage() {
                                 <span className={s.groupSelectionHint}>Завантаження активних учнів…</span>
                               ) : students.length ? (
                                 students.map((student) => (
-                                  <label key={student.id} className={s.groupStudentItem}>
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedGroupStudentIds.includes(String(student.id))}
-                                      onChange={() => toggleGroupStudent(String(student.id))}
-                                    />
-                                    <span>{student.full_name}</span>
-                                  </label>
+                                  <div
+                                    key={student.id}
+                                    className={`${s.groupStudentItem} ${activeGroupStudentId === String(student.id) ? s.groupStudentItemActive : ''}`}
+                                  >
+                                    <label className={s.groupStudentCheck}>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedGroupStudentIds.includes(String(student.id))}
+                                        onChange={() => toggleGroupStudent(String(student.id))}
+                                      />
+                                    </label>
+                                    <button
+                                      type="button"
+                                      className={s.groupStudentButton}
+                                      onClick={() => selectGroupStudent(String(student.id))}
+                                    >
+                                      <span>{student.full_name}</span>
+                                      {groupStudentDrafts[String(student.id)]?.gender && (
+                                        <span className={s.groupStudentMeta}>
+                                          {groupStudentDrafts[String(student.id)]?.gender === 'male' ? 'чол.' : 'жін.'}
+                                        </span>
+                                      )}
+                                    </button>
+                                  </div>
                                 ))
                               ) : (
                                 <span className={s.groupSelectionHint}>У вибраній групі немає активних учнів</span>
@@ -1325,8 +1489,21 @@ export default function GraduationCertificatesPage() {
                             </label>
                             <select
                               className="form-select"
-                              value={formData.gender}
-                              onChange={(event) => setFormData((prev) => ({ ...prev, gender: event.target.value as 'male' | 'female' }))}
+                              value={effectiveGender}
+                              onChange={(event) => {
+                                const nextGender = event.target.value as 'male' | 'female';
+                                if (selectionMode === 'group' && activeGroupStudentId) {
+                                  setGroupStudentDrafts((prev) => ({
+                                    ...prev,
+                                    [activeGroupStudentId]: {
+                                      gender: nextGender,
+                                      previewTexts: prev[activeGroupStudentId]?.previewTexts || {},
+                                    },
+                                  }));
+                                  return;
+                                }
+                                setFormData((prev) => ({ ...prev, gender: nextGender }));
+                              }}
                               disabled={selectionMode === 'group' && !formData.student_id}
                             >
                               <option value="">Оберіть</option>
@@ -1380,10 +1557,25 @@ export default function GraduationCertificatesPage() {
                               rows={activeBlock.key === 'verb' ? 3 : 2}
                               value={activeBlock.key === 'course_name'
                                 ? getPreviewText(activeBlock.key)
-                                : (previewTexts[activeBlock.key] ?? getPreviewText(activeBlock.key))}
+                                : ((selectionMode === 'group' && activeGroupDraft
+                                    ? activeGroupDraft.previewTexts[activeBlock.key]
+                                    : previewTexts[activeBlock.key]) ?? getPreviewText(activeBlock.key))}
                               disabled={activeBlock.key === 'course_name'}
                               onChange={(event) => {
                                 pushHistory();
+                                if (selectionMode === 'group' && activeGroupStudentId) {
+                                  setGroupStudentDrafts((prev) => ({
+                                    ...prev,
+                                    [activeGroupStudentId]: {
+                                      gender: prev[activeGroupStudentId]?.gender || effectiveGender,
+                                      previewTexts: {
+                                        ...(prev[activeGroupStudentId]?.previewTexts || {}),
+                                        [activeBlock.key]: event.target.value,
+                                      },
+                                    },
+                                  }));
+                                  return;
+                                }
                                 setPreviewTexts((prev) => ({
                                   ...prev,
                                   [activeBlock.key]: event.target.value,

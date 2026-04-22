@@ -52,34 +52,49 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { student_id, student_ids, course_id, group_id, issue_date, gender } = body;
+    const { student_id, student_ids, students: studentEntries, course_id, group_id, issue_date, gender } = body;
     const parsedCourseId = course_id ? parseInt(String(course_id), 10) : null;
     const parsedGroupId = group_id ? parseInt(String(group_id), 10) : null;
     const parsedStudentId = student_id ? parseInt(String(student_id), 10) : null;
+
+    const normalizedEntries = Array.isArray(studentEntries)
+      ? studentEntries
+          .map((entry) => ({
+            student_id: parseInt(String(entry?.student_id), 10),
+            gender: entry?.gender === 'male' || entry?.gender === 'female' ? entry.gender : null,
+          }))
+          .filter((entry) => !Number.isNaN(entry.student_id))
+      : [];
+
     const normalizedStudentIds = Array.isArray(student_ids)
       ? student_ids.map((value) => parseInt(String(value), 10)).filter((value) => !Number.isNaN(value))
       : [];
 
-    if ((!parsedStudentId && normalizedStudentIds.length === 0) || !issue_date) {
+    const batchStudentIds = normalizedEntries.length > 0
+      ? normalizedEntries.map((entry) => entry.student_id)
+      : normalizedStudentIds;
+
+    if ((!parsedStudentId && batchStudentIds.length === 0) || !issue_date) {
       return badRequest("Обов'язкові поля: учень або група учнів, дата видачі");
     }
 
-    if (normalizedStudentIds.length > 0) {
+    if (batchStudentIds.length > 0) {
       const students = await all<{ id: number; full_name: string; gender: 'male' | 'female' | null }>(
         `SELECT id, full_name, gender
          FROM students
          WHERE id = ANY($1::int[])`,
-        [normalizedStudentIds]
+        [batchStudentIds]
       );
 
-      if (students.length !== normalizedStudentIds.length) {
+      if (students.length !== batchStudentIds.length) {
         return badRequest('Частину учнів не знайдено');
       }
 
       const studentsById = new Map(students.map((student) => [student.id, student]));
+      const genderOverrides = new Map(normalizedEntries.map((entry) => [entry.student_id, entry.gender]));
       const created = [];
 
-      for (const currentStudentId of normalizedStudentIds) {
+      for (const currentStudentId of batchStudentIds) {
         const currentStudent = studentsById.get(currentStudentId);
         if (!currentStudent) continue;
 
@@ -88,7 +103,7 @@ export async function POST(request: NextRequest) {
           course_id: parsedCourseId,
           group_id: parsedGroupId,
           issue_date,
-          gender: currentStudent.gender || inferGenderFromName(currentStudent.full_name),
+          gender: genderOverrides.get(currentStudentId) || currentStudent.gender || inferGenderFromName(currentStudent.full_name),
           created_by: user.id,
         });
 
@@ -130,7 +145,6 @@ export async function POST(request: NextRequest) {
     }
 
     const fullCertificate = await getCompletionCertificateById(certificate.id);
-
     return NextResponse.json(fullCertificate ?? certificate);
   } catch (error: any) {
     console.error('Completion Certificates POST Error:', error);
