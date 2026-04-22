@@ -42,7 +42,7 @@ function getBottomAlignedBaseline(font: any, size: number, bottomAnchorY: number
   const textHeight = getTextHeight(font, size);
   const descenderAllowance = textHeight * 0.20;
   const previewBottomPadding = 4;
-  return bottomAnchorY - previewBottomPadding + descenderAllowance;
+  return bottomAnchorY - previewBottomPadding - descenderAllowance;
 }
 
 function formatDate(dateStr: string): string {
