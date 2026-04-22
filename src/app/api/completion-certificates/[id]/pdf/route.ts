@@ -54,6 +54,16 @@ function formatDate(dateStr: string): string {
   return `${day}.${month}.${year}`;
 }
 
+function toSafeAsciiFilename(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[^\x00-\x7F]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase();
+}
+
 function drawBlockText(page: any, text: string, options: {
   font: any;
   size: number;
@@ -270,10 +280,12 @@ export async function GET(
 
     const pdfBytes = await pdfDoc.save();
 
+    const safeFilename = toSafeAsciiFilename(cert.student_name || String(cert.id)) || `certificate-${cert.id}`;
+
     return new Response(Buffer.from(pdfBytes), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="completion-certificate-${cert.student_name || cert.id}.pdf"`,
+        'Content-Disposition': `attachment; filename="completion-certificate-${safeFilename}.pdf"`,
       },
     });
   } catch (error: any) {
