@@ -118,20 +118,21 @@ function drawBlockText(page: any, text: string, options: {
   if (!lines.length) return;
 
   const lineHeight = options.size * 1.12;
+  const maxWidth = Math.max(...lines.map((line) => options.font.widthOfTextAtSize(line, options.size)));
+  const centerX = options.width * (options.xPercent / 100);
 
   lines.forEach((line, lineIndex) => {
     const textWidth = options.font.widthOfTextAtSize(line, options.size);
     const currentBottomY = options.bottomAnchorY + lineHeight * (lines.length - lineIndex - 1);
     const baselineY = getBottomAlignedBaseline(options.font, options.size, currentBottomY);
-    const horizontalInset = options.align === 'left' ? 6 : options.align === 'right' ? -6 : 0;
 
     let x: number;
     if (options.align === 'center') {
-      x = (options.width * (options.xPercent / 100)) - (textWidth / 2);
+      x = centerX - (textWidth / 2);
     } else if (options.align === 'right') {
-      x = (options.width * (options.xPercent / 100)) - textWidth + horizontalInset;
+      x = centerX + (maxWidth / 2) - textWidth;
     } else {
-      x = options.width * (options.xPercent / 100) + horizontalInset;
+      x = centerX - (maxWidth / 2);
     }
 
     drawStyledLine(page, line, {
@@ -174,18 +175,18 @@ export async function GET(
       fonts.cassandra = await pdfDoc.embedFont(StandardFonts.Helvetica);
     }
     try {
-      fonts.sansRegular = await pdfDoc.embedFont(await loadFontLocal('Roboto-Regular.ttf'), { subset: false });
+      fonts.sansRegular = await pdfDoc.embedFont(await loadFontLocal('Roboto-Regular.ttf'));
     } catch (e) {
       console.warn('Failed to load Roboto-Regular:', e);
       try {
-        fonts.sansRegular = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Regular.ttf'), { subset: false });
+        fonts.sansRegular = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Regular.ttf'));
       } catch (innerError) {
         console.warn('Failed to load Montserrat-Regular:', innerError);
         fonts.sansRegular = fonts.cassandra;
       }
     }
     try {
-      fonts.sansBold = await pdfDoc.embedFont(await fetchFont(ROBOTO_BOLD_URL), { subset: false });
+      fonts.sansBold = await pdfDoc.embedFont(await fetchFont(ROBOTO_BOLD_URL));
     } catch (e) {
       console.warn('Failed to load Roboto-Bold:', e);
       fonts.sansBold = fonts.sansRegular;
