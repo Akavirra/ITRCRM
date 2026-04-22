@@ -38,25 +38,37 @@ interface CertificateData {
   created_at: string;
 }
 
+type TextWeight = 'normal' | 'bold';
+type TextStyle = 'normal' | 'italic';
+type AccordionKey = 'data' | 'blocks' | 'template';
+type BlockKey = 'id' | 'amount';
+
 interface GiftCertificateSettings {
   fontSize: number;
   xPercent: number;
   yPercent: number;
   color: string;
   idLetterSpacing: number;
+  idWeight: TextWeight;
+  idStyle: TextStyle;
   amountFontSize: number;
   amountXPercent: number;
   amountYPercent: number;
   amountColor: string;
   amountRotation: number;
+  amountWeight: TextWeight;
+  amountStyle: TextStyle;
 }
 
-type AccordionKey = 'data' | 'blocks' | 'template';
-type BlockKey = 'id' | 'amount';
+interface EditorFormData {
+  amount: number;
+  notes: string;
+  count: number;
+}
 
 interface EditorSnapshot {
   settings: GiftCertificateSettings;
-  amount: number;
+  formData: EditorFormData;
   pan: { x: number; y: number };
   scale: number;
   selectedBlock: BlockKey;
@@ -68,11 +80,21 @@ const DEFAULT_SETTINGS: GiftCertificateSettings = {
   yPercent: 12,
   color: '#000000',
   idLetterSpacing: 1.5,
+  idWeight: 'normal',
+  idStyle: 'normal',
   amountFontSize: 48,
   amountXPercent: 78,
   amountYPercent: 28,
   amountColor: '#FFFFFF',
   amountRotation: -28,
+  amountWeight: 'normal',
+  amountStyle: 'normal',
+};
+
+const DEFAULT_FORM_DATA: EditorFormData = {
+  amount: 1000,
+  notes: '',
+  count: 1,
 };
 
 export default function CertificatesPage() {
@@ -82,7 +104,7 @@ export default function CertificatesPage() {
   const [certificates, setCertificates] = useState<CertificateData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ amount: 1000, notes: '', count: 1 });
+  const [formData, setFormData] = useState<EditorFormData>(DEFAULT_FORM_DATA);
   const [saving, setSaving] = useState(false);
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -127,8 +149,11 @@ export default function CertificatesPage() {
         xPercent: idSettings.xPercent,
         yPercent: idSettings.yPercent,
         color: idSettings.color,
+        weight: idSettings.idWeight,
+        style: idSettings.idStyle,
         extraLabel: 'Відступ між символами',
         extraValue: idSettings.idLetterSpacing,
+        fontFamily: 'var(--font-certificate-id), sans-serif',
       }
     : {
         key: 'amount' as const,
@@ -138,8 +163,11 @@ export default function CertificatesPage() {
         xPercent: idSettings.amountXPercent,
         yPercent: idSettings.amountYPercent,
         color: idSettings.amountColor,
+        weight: idSettings.amountWeight,
+        style: idSettings.amountStyle,
         extraLabel: 'Поворот',
         extraValue: idSettings.amountRotation,
+        fontFamily: 'var(--font-certificate-amount), sans-serif',
       };
 
   useEffect(() => {
@@ -167,7 +195,7 @@ export default function CertificatesPage() {
 
         const settingsData = await settingsRes.json();
         if (settingsData && !settingsData.error) {
-          setIdSettings(settingsData);
+          setIdSettings((prev) => ({ ...prev, ...settingsData }));
         }
 
         const nextData = await nextRes.json();
@@ -210,7 +238,28 @@ export default function CertificatesPage() {
   useEffect(() => {
     if (!showModal) return;
 
+    const element = viewportRef.current;
+    if (!element) return;
+
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      adjustScale(event.deltaY > 0 ? -0.08 : 0.08);
+    };
+
+    element.addEventListener('wheel', handleWheel, { passive: false });
+    return () => element.removeEventListener('wheel', handleWheel);
+  }, [showModal]);
+
+  useEffect(() => {
+    if (!showModal) return;
+
     const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.code === 'KeyZ') {
+        event.preventDefault();
+        undoLastChange();
+        return;
+      }
+
       const target = event.target as HTMLElement | null;
       const isTypingTarget = Boolean(
         target && (
@@ -221,12 +270,6 @@ export default function CertificatesPage() {
         )
       );
 
-      if ((event.ctrlKey || event.metaKey) && event.code === 'KeyZ') {
-        event.preventDefault();
-        undoLastChange();
-        return;
-      }
-
       if (isTypingTarget || event.ctrlKey || event.metaKey || event.altKey) {
         return;
       }
@@ -236,6 +279,7 @@ export default function CertificatesPage() {
 
       if (event.key === 'ArrowLeft') {
         event.preventDefault();
+        pushHistory();
         if (selectedBlock === 'id') {
           setIdSettings((prev) => ({ ...prev, xPercent: Number(Math.max(0, prev.xPercent - stepX).toFixed(3)) }));
         } else {
@@ -245,6 +289,7 @@ export default function CertificatesPage() {
 
       if (event.key === 'ArrowRight') {
         event.preventDefault();
+        pushHistory();
         if (selectedBlock === 'id') {
           setIdSettings((prev) => ({ ...prev, xPercent: Number(Math.min(100, prev.xPercent + stepX).toFixed(3)) }));
         } else {
@@ -254,6 +299,7 @@ export default function CertificatesPage() {
 
       if (event.key === 'ArrowUp') {
         event.preventDefault();
+        pushHistory();
         if (selectedBlock === 'id') {
           setIdSettings((prev) => ({ ...prev, yPercent: Number(Math.min(100, prev.yPercent + stepY).toFixed(3)) }));
         } else {
@@ -263,6 +309,7 @@ export default function CertificatesPage() {
 
       if (event.key === 'ArrowDown') {
         event.preventDefault();
+        pushHistory();
         if (selectedBlock === 'id') {
           setIdSettings((prev) => ({ ...prev, yPercent: Number(Math.max(0, prev.yPercent - stepY).toFixed(3)) }));
         } else {
@@ -277,7 +324,7 @@ export default function CertificatesPage() {
 
   const createSnapshot = (): EditorSnapshot => ({
     settings: { ...idSettings },
-    amount: formData.amount,
+    formData: { ...formData },
     pan: { ...pan },
     scale,
     selectedBlock,
@@ -285,7 +332,7 @@ export default function CertificatesPage() {
 
   const applySnapshot = (snapshot: EditorSnapshot) => {
     setIdSettings({ ...snapshot.settings });
-    setFormData((prev) => ({ ...prev, amount: snapshot.amount }));
+    setFormData({ ...snapshot.formData });
     setPan({ ...snapshot.pan });
     setScale(snapshot.scale);
     setSelectedBlock(snapshot.selectedBlock);
@@ -335,13 +382,15 @@ export default function CertificatesPage() {
     setIdSettings((prev) => ({ ...prev, ...patch }));
   };
 
-  const updateAmountPreview = (amount: number) => {
-    pushHistory();
-    setFormData((prev) => ({ ...prev, amount }));
+  const updateFormData = (patch: Partial<EditorFormData>, shouldRecordHistory = false) => {
+    if (shouldRecordHistory) {
+      pushHistory();
+    }
+    setFormData((prev) => ({ ...prev, ...patch }));
   };
 
   const handleCreate = () => {
-    setFormData({ amount: 1000, notes: '', count: 1 });
+    setFormData(DEFAULT_FORM_DATA);
     setSelectedFile(null);
     setOpenAccordion('data');
     setSelectedBlock('amount');
@@ -722,7 +771,7 @@ export default function CertificatesPage() {
                     <span className={s.headerStudent}>{activeBlock.preview}</span>
                   </div>
                   <p className={s.modalSubtitle}>
-                    Одне вікно для генерації, завантаження шаблону та редагування вигляду сертифіката.
+                    Одне вікно для генерації, шаблону й точного керування двома блоками: сумою та ID.
                   </p>
                 </div>
               </div>
@@ -740,7 +789,7 @@ export default function CertificatesPage() {
                   <div className={s.canvasMeta}>
                     <span className={s.canvasLabel}>Полотно сертифіката</span>
                     <span className={s.canvasHint}>
-                      Перетягуйте ID і суму на макеті. Праворуч залишилися лише релевантні для цього сертифіката поля.
+                      Wheel масштабує, `Ctrl+Z` повертає попередній стан, а drag & drop не змінює пропорції самого шаблону.
                     </span>
                   </div>
 
@@ -772,7 +821,7 @@ export default function CertificatesPage() {
                         onMouseLeave={handleMouseUp}
                         style={{
                           width: `${imageDimensions.width}px`,
-                          height: `${imageDimensions.height}px`,
+                          aspectRatio: `${imageDimensions.width} / ${imageDimensions.height}`,
                           transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
                           transformOrigin: 'center center',
                         }}
@@ -784,6 +833,7 @@ export default function CertificatesPage() {
                             width: event.currentTarget.naturalWidth || 842,
                             height: event.currentTarget.naturalHeight || 595,
                           })}
+                          style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }}
                         />
 
                         <div
@@ -811,6 +861,9 @@ export default function CertificatesPage() {
                             color: idSettings.color,
                             fontSize: `${idSettings.fontSize}px`,
                             letterSpacing: `${idSettings.idLetterSpacing}px`,
+                            fontFamily: 'var(--font-certificate-id), sans-serif',
+                            fontWeight: idSettings.idWeight === 'bold' ? 700 : 400,
+                            fontStyle: idSettings.idStyle,
                             whiteSpace: 'nowrap',
                             maxWidth: 'none',
                           }}
@@ -818,6 +871,8 @@ export default function CertificatesPage() {
                           {selectedBlock === 'id' && (
                             <div className={s.blockToolbar} onMouseDown={(event) => event.stopPropagation()} style={{ transform: `translateX(-50%) scale(${1 / scale})` }}>
                               <input type="color" value={idSettings.color} onChange={(event) => updateSettings({ color: event.target.value })} className={s.blockColorInput} />
+                              <button type="button" onClick={() => updateSettings({ idWeight: idSettings.idWeight === 'bold' ? 'normal' : 'bold' })} className={`${s.blockToolbarBtn} ${idSettings.idWeight === 'bold' ? s.blockToolbarBtnActive : ''}`} title="Жирний">B</button>
+                              <button type="button" onClick={() => updateSettings({ idStyle: idSettings.idStyle === 'italic' ? 'normal' : 'italic' })} className={`${s.blockToolbarBtn} ${idSettings.idStyle === 'italic' ? s.blockToolbarBtnActive : ''}`} title="Курсив">I</button>
                               <button type="button" onClick={() => updateSettings({ fontSize: Math.max(10, idSettings.fontSize - 2) })} className={s.blockToolbarBtn} title="Зменшити розмір">-</button>
                               <button type="button" className={s.blockToolbarSize} title={`Поточний розмір: ${idSettings.fontSize}px`}>{idSettings.fontSize}px</button>
                               <button type="button" onClick={() => updateSettings({ fontSize: Math.min(160, idSettings.fontSize + 2) })} className={s.blockToolbarBtn} title="Збільшити розмір">+</button>
@@ -850,6 +905,9 @@ export default function CertificatesPage() {
                             transform: `translateX(-50%) rotate(${idSettings.amountRotation}deg)`,
                             color: idSettings.amountColor,
                             fontSize: `${idSettings.amountFontSize}px`,
+                            fontFamily: 'var(--font-certificate-amount), sans-serif',
+                            fontWeight: idSettings.amountWeight === 'bold' ? 700 : 400,
+                            fontStyle: idSettings.amountStyle,
                             whiteSpace: 'nowrap',
                             maxWidth: 'none',
                             textAlign: 'center',
@@ -858,6 +916,8 @@ export default function CertificatesPage() {
                           {selectedBlock === 'amount' && (
                             <div className={s.blockToolbar} onMouseDown={(event) => event.stopPropagation()} style={{ transform: `translateX(-50%) scale(${1 / scale})` }}>
                               <input type="color" value={idSettings.amountColor} onChange={(event) => updateSettings({ amountColor: event.target.value })} className={s.blockColorInput} />
+                              <button type="button" onClick={() => updateSettings({ amountWeight: idSettings.amountWeight === 'bold' ? 'normal' : 'bold' })} className={`${s.blockToolbarBtn} ${idSettings.amountWeight === 'bold' ? s.blockToolbarBtnActive : ''}`} title="Жирний">B</button>
+                              <button type="button" onClick={() => updateSettings({ amountStyle: idSettings.amountStyle === 'italic' ? 'normal' : 'italic' })} className={`${s.blockToolbarBtn} ${idSettings.amountStyle === 'italic' ? s.blockToolbarBtnActive : ''}`} title="Курсив">I</button>
                               <button type="button" onClick={() => updateSettings({ amountFontSize: Math.max(10, idSettings.amountFontSize - 2) })} className={s.blockToolbarBtn} title="Зменшити розмір">-</button>
                               <button type="button" className={s.blockToolbarSize} title={`Поточний розмір: ${idSettings.amountFontSize}px`}>{idSettings.amountFontSize}px</button>
                               <button type="button" onClick={() => updateSettings({ amountFontSize: Math.min(160, idSettings.amountFontSize + 2) })} className={s.blockToolbarBtn} title="Збільшити розмір">+</button>
@@ -902,7 +962,7 @@ export default function CertificatesPage() {
                 ) : (
                   <div className={s.canvasEmpty}>
                     <span className={s.canvasEmptyTitle}>Спочатку завантажте шаблон сертифіката</span>
-                    <span className={s.canvasEmptyDesc}>Після цього тут з’явиться повноцінне прев’ю з drag & drop для ID і суми.</span>
+                    <span className={s.canvasEmptyDesc}>Після цього тут з’явиться повноцінне прев’ю без спотворення пропорцій.</span>
                   </div>
                 )}
               </section>
@@ -934,7 +994,7 @@ export default function CertificatesPage() {
                                 type="button"
                                 className={`${s.segmentedOption} ${formData.amount === amount ? s.segmentedOptionActive : ''}`}
                                 style={{ minWidth: '84px' }}
-                                onClick={() => updateAmountPreview(amount)}
+                                onClick={() => updateFormData({ amount }, true)}
                               >
                                 {amount} грн
                               </button>
@@ -942,7 +1002,7 @@ export default function CertificatesPage() {
                             <button
                               type="button"
                               className={`${s.segmentedOption} ${isCustomAmount ? s.segmentedOptionActive : ''}`}
-                              onClick={() => updateAmountPreview(0)}
+                              onClick={() => updateFormData({ amount: 0 }, true)}
                             >
                               Свій номінал
                             </button>
@@ -956,7 +1016,7 @@ export default function CertificatesPage() {
                               type="number"
                               className="form-input"
                               value={formData.amount === 0 ? '' : formData.amount}
-                              onChange={(event) => updateAmountPreview(parseInt(event.target.value, 10) || 0)}
+                              onChange={(event) => updateFormData({ amount: parseInt(event.target.value, 10) || 0 }, true)}
                               min="1"
                             />
                           </div>
@@ -966,7 +1026,7 @@ export default function CertificatesPage() {
                               type="number"
                               className="form-input"
                               value={formData.count}
-                              onChange={(event) => setFormData((prev) => ({ ...prev, count: parseInt(event.target.value, 10) || 1 }))}
+                              onChange={(event) => updateFormData({ count: parseInt(event.target.value, 10) || 1 }, true)}
                               min="1"
                               max="50"
                             />
@@ -979,7 +1039,7 @@ export default function CertificatesPage() {
                             className="form-input"
                             rows={3}
                             value={formData.notes}
-                            onChange={(event) => setFormData((prev) => ({ ...prev, notes: event.target.value }))}
+                            onChange={(event) => updateFormData({ notes: event.target.value }, true)}
                             placeholder="Наприклад: для подарунка, акції чи внутрішнього обліку"
                           />
                         </div>
@@ -987,7 +1047,7 @@ export default function CertificatesPage() {
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', color: 'var(--text-muted)' }}>
                           <CheckCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
                           <span style={{ fontSize: '12px', lineHeight: '16px' }}>
-                            Нових сутностей тут немає: тільки налаштування шаблону та параметри генерації.
+                            Без учнів, груп і курсів: тільки те, що реально потрібно подарунковому сертифікату.
                           </span>
                         </div>
                       </div>
@@ -1033,7 +1093,7 @@ export default function CertificatesPage() {
                               onChange={(event) => {
                                 if (activeBlock.key === 'amount') {
                                   const numericValue = parseInt(event.target.value.replace(/[^\d]/g, ''), 10) || 0;
-                                  updateAmountPreview(numericValue);
+                                  updateFormData({ amount: numericValue }, true);
                                 }
                               }}
                               disabled={activeBlock.key === 'id'}
@@ -1073,6 +1133,33 @@ export default function CertificatesPage() {
                                   }
                                 }}
                               />
+                            </div>
+                          </div>
+
+                          <div className={s.compactRow}>
+                            <div className={s.compactGroup}>
+                              <label className={s.compactLabel}>Накреслення</label>
+                              <select
+                                className="form-select"
+                                value={`${activeBlock.weight}:${activeBlock.style}`}
+                                onChange={(event) => {
+                                  const [weight, style] = event.target.value.split(':') as [TextWeight, TextStyle];
+                                  if (activeBlock.key === 'id') {
+                                    updateSettings({ idWeight: weight, idStyle: style });
+                                  } else {
+                                    updateSettings({ amountWeight: weight, amountStyle: style });
+                                  }
+                                }}
+                              >
+                                <option value="normal:normal">Звичайне</option>
+                                <option value="bold:normal">Жирне</option>
+                                <option value="normal:italic">Курсив</option>
+                                <option value="bold:italic">Жирний курсив</option>
+                              </select>
+                            </div>
+                            <div className={s.compactGroup}>
+                              <label className={s.compactLabel}>Шрифт</label>
+                              <input className="form-input" value={activeBlock.key === 'id' ? 'Bebas Neue Cyrillic' : 'Ermilov'} readOnly />
                             </div>
                           </div>
 
@@ -1173,7 +1260,7 @@ export default function CertificatesPage() {
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', color: 'var(--text-muted)' }}>
                           <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
                           <span style={{ fontSize: '12px', lineHeight: '16px' }}>
-                            Підтримуються PNG і JPG. Після завантаження прев’ю оновиться в цьому ж вікні.
+                            Підтримуються PNG і JPG. Пропорції шаблону в прев’ю зберігаються один в один.
                           </span>
                         </div>
                       </div>

@@ -19,12 +19,16 @@ export async function GET(request: NextRequest) {
       yPercent: 12,
       color: '#000000',
       idLetterSpacing: 1.5,
+      idWeight: 'normal',
+      idStyle: 'normal',
       // Amount settings
       amountFontSize: 48,
       amountXPercent: 78,
       amountYPercent: 28,
       amountColor: '#FFFFFF',
-      amountRotation: -28
+      amountRotation: -28,
+      amountWeight: 'normal',
+      amountStyle: 'normal'
     };
     return NextResponse.json(settings);
   } catch (error: any) {

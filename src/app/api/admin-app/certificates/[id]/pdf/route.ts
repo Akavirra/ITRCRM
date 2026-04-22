@@ -53,6 +53,43 @@ function getBottomAlignedBaseline(font: any, size: number, bottomAnchorY: number
   return bottomAnchorY + descenderAllowance;
 }
 
+function drawStyledText(
+  page: any,
+  text: string,
+  options: {
+    x: number;
+    y: number;
+    size: number;
+    font: any;
+    color: any;
+    rotate?: any;
+    characterSpacing?: number;
+    weight?: 'normal' | 'bold';
+    style?: 'normal' | 'italic';
+  }
+) {
+  const {
+    weight = 'normal',
+    style = 'normal',
+    ...baseOptions
+  } = options;
+
+  const xSkew = style === 'italic' ? degrees(-12) : undefined;
+
+  page.drawText(text, {
+    ...baseOptions,
+    xSkew,
+  } as any);
+
+  if (weight === 'bold') {
+    page.drawText(text, {
+      ...baseOptions,
+      x: baseOptions.x + Math.max(0.45, options.size * 0.018),
+      xSkew,
+    } as any);
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -208,11 +245,15 @@ export async function GET(
       yPercent: 12,
       color: '#000000',
       idLetterSpacing: 1.5,
+      idWeight: 'normal',
+      idStyle: 'normal',
       amountFontSize: 48,
       amountXPercent: 78,
       amountYPercent: 28,
       amountColor: '#FFFFFF',
-      amountRotation: -28
+      amountRotation: -28,
+      amountWeight: 'normal',
+      amountStyle: 'normal'
     };
 
     // 5. Draw Certificate ID
@@ -235,14 +276,16 @@ export async function GET(
     const idBottomAnchorY = height * (settings.yPercent / 100);
     const y = getBottomAlignedBaseline(font, fontSize, idBottomAnchorY);
 
-    page.drawText(idText, {
+    drawStyledText(page, idText, {
       x,
       y,
       size: fontSize,
       font: font,
       color: getHexColor(settings.color, [0, 0, 0]),
       characterSpacing: characterSpacing,
-    } as any);
+      weight: settings.idWeight ?? 'normal',
+      style: settings.idStyle ?? 'normal',
+    });
 
     // 6. Draw Amount
     const amountVal = `${cert.amount}`;
@@ -268,13 +311,15 @@ export async function GET(
     const ax = cx + rotRelX;
     const ay = cy + rotRelY;
 
-    page.drawText(amountVal, {
+    drawStyledText(page, amountVal, {
       x: ax,
       y: ay,
       size: amountFontSize,
       font: ermilovFont,
       color: getHexColor(settings.amountColor, [1, 1, 1]),
       rotate: degrees(-cssRotation),
+      weight: settings.amountWeight ?? 'normal',
+      style: settings.amountStyle ?? 'normal',
     });
 
     const pdfBytes = await pdfDoc.save();
