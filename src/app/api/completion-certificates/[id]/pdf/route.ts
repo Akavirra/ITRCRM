@@ -130,23 +130,18 @@ export async function GET(
       fonts.cassandra = await pdfDoc.embedFont(StandardFonts.Helvetica);
     }
     try {
-      fonts.montserratRegular = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Regular.ttf'));
+      fonts.montserratRegular = await pdfDoc.embedFont(await loadFontLocal('Roboto-Regular.ttf'));
     } catch (e) {
-      console.warn('Failed to load Montserrat-Regular:', e);
-      fonts.montserratRegular = fonts.cassandra;
+      console.warn('Failed to load Roboto-Regular:', e);
+      try {
+        fonts.montserratRegular = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Regular.ttf'));
+      } catch (innerError) {
+        console.warn('Failed to load Montserrat-Regular:', innerError);
+        fonts.montserratRegular = fonts.cassandra;
+      }
     }
-    try {
-      fonts.montserratBold = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Bold.ttf'));
-    } catch (e) {
-      console.warn('Failed to load Montserrat-Bold:', e);
-      fonts.montserratBold = fonts.montserratRegular;
-    }
-    try {
-      fonts.montserratItalic = await pdfDoc.embedFont(await loadFontLocal('Montserrat-Italic.ttf'));
-    } catch (e) {
-      console.warn('Failed to load Montserrat-Italic:', e);
-      fonts.montserratItalic = fonts.montserratRegular;
-    }
+    fonts.montserratBold = fonts.montserratRegular;
+    fonts.montserratItalic = fonts.montserratRegular;
 
     const resolveFont = (key: string, weight?: string, style?: string) => {
       if (key === 'student_name') {
