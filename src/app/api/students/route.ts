@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
   const agesParam = searchParams.get('ages');
   const sortByParam = searchParams.get('sortBy');
   const sortOrderParam = searchParams.get('sortOrder');
+  const surnameFirstParam = searchParams.get('surnameFirst');
   
   if (ageOptionsOnly) {
     const ages = await getOrSetServerCache(
@@ -85,6 +86,7 @@ export async function GET(request: NextRequest) {
     : undefined;
   const sortBy = sortByParam === 'created_at' ? 'created_at' : 'name';
   const sortOrder = sortOrderParam === 'desc' ? 'desc' : 'asc';
+  const surnameFirst = surnameFirstParam === 'true';
   let total: number | undefined;
   
   if (search) {
@@ -100,6 +102,7 @@ export async function GET(request: NextRequest) {
         ages,
         sortBy,
         sortOrder,
+        surnameFirst,
         limit: limit || 48,
         offset,
       });
@@ -116,6 +119,7 @@ export async function GET(request: NextRequest) {
       ages,
       sortBy,
       sortOrder,
+      surnameFirst,
       limit,
       offset,
     });
@@ -129,6 +133,7 @@ export async function GET(request: NextRequest) {
       ages,
       sortBy,
       sortOrder,
+      surnameFirst,
     });
     students = result.students;
     total = result.total;

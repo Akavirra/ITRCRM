@@ -303,6 +303,10 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
       sortOrder,
     });
 
+    if (sortBy === 'name' && showSurnameFirst) {
+      params.set('surnameFirst', 'true');
+    }
+
     if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
     if (courseFilter) params.set('courseId', courseFilter);
     if (groupFilter) params.set('groupId', groupFilter);
@@ -323,7 +327,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
       total: (result.students || []).length,
       totalPages: 1,
     });
-  }, [courseFilter, currentPage, debouncedSearch, groupFilter, selectedAges, sortBy, sortOrder]);
+  }, [courseFilter, currentPage, debouncedSearch, groupFilter, selectedAges, showSurnameFirst, sortBy, sortOrder]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

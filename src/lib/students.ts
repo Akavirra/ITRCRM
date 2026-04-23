@@ -717,6 +717,7 @@ export interface StudentsWithGroupsQuery {
   ages?: number[];
   sortBy?: 'name' | 'created_at';
   sortOrder?: 'asc' | 'desc';
+  surnameFirst?: boolean;
 }
 
 export interface StudentsWithGroupsResult {
@@ -819,6 +820,22 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
   const { whereClause, params } = buildStudentsWhereClause(options);
   const sortBy = options.sortBy === 'created_at' ? 'created_at' : 'full_name';
   const sortOrder = options.sortOrder === 'desc' ? 'DESC' : 'ASC';
+  const pagedNameSortExpression = options.surnameFirst
+    ? `CASE
+         WHEN POSITION(' ' IN BTRIM(s.full_name)) > 0
+           THEN REGEXP_REPLACE(BTRIM(s.full_name), '^(.+)\\s+(\\S+)$', '\\2 \\1')
+         ELSE BTRIM(s.full_name)
+       END`
+    : 's.full_name';
+  const resultNameSortExpression = options.surnameFirst
+    ? `CASE
+         WHEN POSITION(' ' IN BTRIM(ps.full_name)) > 0
+           THEN REGEXP_REPLACE(BTRIM(ps.full_name), '^(.+)\\s+(\\S+)$', '\\2 \\1')
+         ELSE BTRIM(ps.full_name)
+       END`
+    : 'ps.full_name';
+  const pagedSortExpression = sortBy === 'created_at' ? 's.created_at' : pagedNameSortExpression;
+  const resultSortExpression = sortBy === 'created_at' ? 'ps.created_at' : resultNameSortExpression;
   const limit = typeof options.limit === 'number' ? Math.max(1, options.limit) : null;
   const offset = typeof options.offset === 'number' ? Math.max(0, options.offset) : 0;
 
@@ -850,7 +867,7 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
          s.parent_relation
        FROM students s
        ${whereClause}
-       ORDER BY s.${sortBy} ${sortOrder}, s.id ASC
+       ORDER BY ${pagedSortExpression} ${sortOrder}, s.id ASC
        ${limitClause}
      ),
      grouped_students AS (
@@ -892,7 +909,7 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
          AND sg.is_active = TRUE
          AND g.is_active = TRUE
      ) group_data ON TRUE
-     ORDER BY ps.${sortBy} ${sortOrder}, ps.id ASC`,
+     ORDER BY ${resultSortExpression} ${sortOrder}, ps.id ASC`,
     dataParams
   );
 
