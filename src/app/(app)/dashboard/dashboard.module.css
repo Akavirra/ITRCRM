@@ -25,6 +25,8 @@
 .page {
   display: grid;
   gap: 2rem;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 /* ── Hero ── */
@@ -1829,13 +1831,14 @@
 
   .nextLessonBar {
     align-items: center;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 0.6rem;
     padding: 0.7rem 0.85rem;
     border-radius: 12px;
     background: linear-gradient(135deg, var(--accent-soft) 0%, #ffffff 100%);
     border: 1px solid #dbeafe;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.04);
+    min-width: 0;
   }
 
   .nextLessonText {
@@ -1843,6 +1846,8 @@
     flex: 1;
     line-height: 1.3;
     font-size: 0.82rem;
+    min-width: 0;
+    overflow-wrap: break-word;
     min-width: 0;
     display: -webkit-box;
     -webkit-line-clamp: 2;
