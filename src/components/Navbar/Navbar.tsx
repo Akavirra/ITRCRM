@@ -202,7 +202,15 @@ const Navbar: React.FC<NavbarProps> = ({
   // ── Backup state ───────────────────────────────────────────────────────────
   const [backupLoading, setBackupLoading] = useState(false);
   const [backupProgress, setBackupProgress] = useState(0);
-  const [lastBackupStatus, setLastBackupStatus] = useState<any>(null);
+  const [lastBackupStatus, setLastBackupStatus] = useState<{
+    timestamp: string;
+    user: string | null;
+    includeExcel?: boolean;
+    results: Array<{
+      category: string;
+      artifacts?: Array<{ kind: 'json' | 'excel'; fileName: string }>;
+    }>;
+  } | null>(null);
   const [backupSettings, setBackupSettings] = useState({
     categories: ['students', 'payments', 'attendance', 'groups', 'courses', 'system'],
     format: 'json' as 'json' | 'excel'
@@ -225,7 +233,7 @@ const Navbar: React.FC<NavbarProps> = ({
       if (!res.ok) throw new Error(data.error || 'Помилка бекапу');
       
       setBackupProgress(100);
-      setLastBackupStatus(data.results);
+      setLastBackupStatus(data.backup ?? null);
       setSaved(true);
       setTimeout(() => { setSaved(false); setBackupProgress(0); }, 2000);
     } catch (err: any) {
@@ -719,6 +727,23 @@ const Navbar: React.FC<NavbarProps> = ({
           });
           setAssistantSettings({
             assistant_widget_enabled: String(systemSettings.assistant_widget_enabled ?? '1') !== '0',
+          });
+        }
+      })
+      .catch(() => {});
+    fetch('/api/admin-app/backup')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        if (d.lastBackup) {
+          setLastBackupStatus(d.lastBackup);
+        }
+        if (d.settings) {
+          setBackupSettings({
+            categories: Array.isArray(d.settings.categories) && d.settings.categories.length > 0
+              ? d.settings.categories
+              : ['students', 'payments', 'attendance', 'groups', 'courses', 'system'],
+            format: d.settings.format === 'excel' ? 'excel' : 'json',
           });
         }
       })
@@ -1728,7 +1753,7 @@ const Navbar: React.FC<NavbarProps> = ({
                               checked={backupSettings.format === 'json'} 
                               onChange={() => setBackupSettings(prev => ({ ...prev, format: 'json' }))}
                             />
-                            JSON (для відновлення)
+                            JSON архів (для відновлення)
                           </label>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer', fontWeight: backupSettings.format === 'excel' ? 600 : 400 }}>
                             <input 
@@ -1737,9 +1762,13 @@ const Navbar: React.FC<NavbarProps> = ({
                               checked={backupSettings.format === 'excel'} 
                               onChange={() => setBackupSettings(prev => ({ ...prev, format: 'excel' }))}
                             />
-                            Excel (для перегляду)
+                            JSON + Excel preview
                           </label>
                         </div>
+
+                        <p style={{ margin: 0, fontSize: '0.8125rem', color: '#64748b', lineHeight: 1.5 }}>
+                          Резервна копія завжди зберігається як стиснений JSON для відновлення. Якщо обрати Excel, сервіс додатково створить переглядовий `.xlsx` без втрати довгих полів через overflow-аркуш.
+                        </p>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                           {[
@@ -1791,8 +1820,9 @@ const Navbar: React.FC<NavbarProps> = ({
 
                         {lastBackupStatus && (
                           <div style={{ fontSize: '0.8125rem', color: '#64748b', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                            <strong>Останній бекап:</strong> {new Date().toLocaleString('uk-UA')}<br/>
-                            Успішно завантажено {lastBackupStatus.length} категорій в Google Drive.
+                            <strong>Останній бекап:</strong> {new Date(lastBackupStatus.timestamp).toLocaleString('uk-UA')}<br/>
+                            Успішно завантажено {lastBackupStatus.results.length} категорій в Google Drive.
+                            {lastBackupStatus.includeExcel ? ' Також створено Excel preview.' : ' Створено лише JSON архів для restore.'}
                           </div>
                         )}
                       </div>
