@@ -820,6 +820,7 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
   const { whereClause, params } = buildStudentsWhereClause(options);
   const sortBy = options.sortBy === 'created_at' ? 'created_at' : 'full_name';
   const sortOrder = options.sortOrder === 'desc' ? 'DESC' : 'ASC';
+  const ukrainianCollation = 'COLLATE "uk-x-icu"';
   const pagedNameSortExpression = options.surnameFirst
     ? `CASE
          WHEN POSITION(' ' IN BTRIM(s.full_name)) > 0
@@ -834,8 +835,8 @@ export async function listStudentsWithGroups(options: StudentsWithGroupsQuery = 
          ELSE BTRIM(ps.full_name)
        END`
     : 'ps.full_name';
-  const pagedSortExpression = sortBy === 'created_at' ? 's.created_at' : pagedNameSortExpression;
-  const resultSortExpression = sortBy === 'created_at' ? 'ps.created_at' : resultNameSortExpression;
+  const pagedSortExpression = sortBy === 'created_at' ? 's.created_at' : `${pagedNameSortExpression} ${ukrainianCollation}`;
+  const resultSortExpression = sortBy === 'created_at' ? 'ps.created_at' : `${resultNameSortExpression} ${ukrainianCollation}`;
   const limit = typeof options.limit === 'number' ? Math.max(1, options.limit) : null;
   const offset = typeof options.offset === 'number' ? Math.max(0, options.offset) : 0;
 
