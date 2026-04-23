@@ -93,4 +93,46 @@ describe('messaging audience preview', () => {
     expect(preview.missingEmail).toBe(1);
     expect(preview.students[0].full_name).toBe('Груповий Учень');
   });
+
+  it('excludes individual students from segment audiences', async () => {
+    mockAll
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 11,
+          public_id: 'STU-111',
+          full_name: 'Перший Учень',
+          email: 'first@example.com',
+          parent_name: null,
+          parent_phone: null,
+          school: null,
+          is_active: true,
+          study_status: 'studying',
+          groups_json: [],
+        },
+        {
+          id: 12,
+          public_id: 'STU-112',
+          full_name: 'Другий Учень',
+          email: 'second@example.com',
+          parent_name: null,
+          parent_phone: null,
+          school: null,
+          is_active: true,
+          study_status: 'studying',
+          groups_json: [],
+        },
+      ] as any);
+
+    const preview = await getAudiencePreview({
+      mode: 'all',
+      excludedStudentIds: [12],
+      studyStatuses: ['studying'],
+      requireEmail: true,
+    });
+
+    expect(preview.total).toBe(1);
+    expect(preview.deliverable).toBe(1);
+    expect(preview.students.map((student) => student.id)).toEqual([11]);
+  });
 });

@@ -39,6 +39,7 @@ export interface MessagingStudent {
 export interface AudienceFilter {
   mode?: 'all' | 'manual';
   studentIds?: number[];
+  excludedStudentIds?: number[];
   courseIds?: number[];
   groupIds?: number[];
   studyStatuses?: Array<'studying' | 'not_studying'>;
@@ -168,11 +169,12 @@ function emailLooksValid(email: string | null): boolean {
 }
 
 export function normalizeAudienceFilter(filter: AudienceFilter = {}): Required<AudienceFilter> {
-  return {
-    mode: filter.mode === 'manual' ? 'manual' : 'all',
-    studentIds: uniqueNumbers(filter.studentIds),
-    courseIds: uniqueNumbers(filter.courseIds),
-    groupIds: uniqueNumbers(filter.groupIds),
+    return {
+      mode: filter.mode === 'manual' ? 'manual' : 'all',
+      studentIds: uniqueNumbers(filter.studentIds),
+      excludedStudentIds: uniqueNumbers(filter.excludedStudentIds),
+      courseIds: uniqueNumbers(filter.courseIds),
+      groupIds: uniqueNumbers(filter.groupIds),
     studyStatuses: (filter.studyStatuses || []).filter(
       (status): status is 'studying' | 'not_studying' => status === 'studying' || status === 'not_studying'
     ),
@@ -345,6 +347,7 @@ export async function getAudiencePreview(inputFilter: AudienceFilter): Promise<A
 
   const search = normalizeSearch(filter.search);
   const selectedStudents = new Set(filter.studentIds);
+  const excludedStudents = new Set(filter.excludedStudentIds);
   const selectedGroups = new Set(filter.groupIds);
   const selectedCourses = new Set(filter.courseIds);
   const selectedStatuses = new Set(filter.studyStatuses);
@@ -364,6 +367,10 @@ export async function getAudiencePreview(inputFilter: AudienceFilter): Promise<A
     }))
     .filter((student) => {
       if (filter.mode === 'manual' && selectedStudents.size > 0 && !selectedStudents.has(student.id)) {
+        return false;
+      }
+
+      if (excludedStudents.has(student.id)) {
         return false;
       }
 

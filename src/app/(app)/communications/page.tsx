@@ -1,13 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
+  AtSign,
+  BookOpen,
   Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Copy,
   Edit3,
   Mail,
   Plus,
@@ -15,9 +16,13 @@ import {
   Save,
   Search,
   Send,
+  School,
   Trash2,
+  UserRound,
   Users,
+  UsersRound,
   X,
+  type LucideIcon,
 } from 'lucide-react';
 import styles from './communications.module.css';
 import type {
@@ -62,13 +67,13 @@ const EMPTY_TEMPLATE = {
 const DEFAULT_SUBJECT = 'Повідомлення від ITRobotics';
 const DEFAULT_BODY = 'Вітаємо, {{parentName}}!\n\nПишемо щодо навчання {{studentName}}.\n\nЗ повагою,\nITRobotics';
 
-const VARIABLE_LABELS: Record<string, string> = {
-  studentName: 'Імʼя учня',
-  parentName: 'Імʼя батьків',
-  studentEmail: 'Email учня',
-  school: 'Школа',
-  groups: 'Групи',
-  courses: 'Курси',
+const VARIABLE_CHIPS: Record<string, { label: string; icon: LucideIcon }> = {
+  studentName: { label: 'Імʼя учня', icon: UserRound },
+  parentName: { label: 'Батьки', icon: UsersRound },
+  studentEmail: { label: 'Email', icon: AtSign },
+  school: { label: 'Школа', icon: School },
+  groups: { label: 'Групи', icon: Users },
+  courses: { label: 'Курси', icon: BookOpen },
 };
 
 function renderMessage(template: string, student: MessagingStudent | null): string {
@@ -145,14 +150,19 @@ export default function CommunicationsPage() {
   const [preview, setPreview] = useState<AudiencePreview | null>(null);
   const [selectedPreviewIndex, setSelectedPreviewIndex] = useState(0);
   const [studentSearch, setStudentSearch] = useState('');
+  const studentSearchRef = useRef<HTMLInputElement | null>(null);
   const [studentOptions, setStudentOptions] = useState<StudentOption[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<StudentOption[]>([]);
+  const [excludedIds, setExcludedIds] = useState<Set<number>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [courseFilterOpen, setCourseFilterOpen] = useState(false);
+  const [groupFilterOpen, setGroupFilterOpen] = useState(false);
+  const [courseSearch, setCourseSearch] = useState('');
+  const [groupSearch, setGroupSearch] = useState('');
   const [audienceListOpen, setAudienceListOpen] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [lastSendResult, setLastSendResult] = useState<CampaignSummary | null>(null);
@@ -162,12 +172,31 @@ export default function CommunicationsPage() {
     [selectedTemplateId, templates]
   );
 
-  const selectedPreviewStudent = preview?.students[selectedPreviewIndex] || preview?.students[0] || null;
-
   const effectiveFilter = useMemo<AudienceFilter>(() => ({
     ...filter,
     studentIds: selectedStudents.map((student) => student.id),
-  }), [filter, selectedStudents]);
+    excludedStudentIds: Array.from(excludedIds),
+  }), [excludedIds, filter, selectedStudents]);
+
+  const visibleStudents = useMemo(
+    () => (preview?.students || []).filter((student) => !excludedIds.has(student.id)),
+    [excludedIds, preview?.students]
+  );
+
+  const visibleCounts = useMemo(() => {
+    const missingEmail = visibleStudents.filter((student) => !student.email || !student.email.includes('@')).length;
+    const deliverable = filter.requireEmail === false
+      ? visibleStudents.filter((student) => Boolean(student.email && student.email.includes('@'))).length
+      : visibleStudents.length;
+    return {
+      total: visibleStudents.length,
+      deliverable,
+      missingEmail,
+      suppressed: preview?.suppressed ?? 0,
+    };
+  }, [filter.requireEmail, preview?.suppressed, visibleStudents]);
+
+  const selectedPreviewStudent = visibleStudents[selectedPreviewIndex] || visibleStudents[0] || null;
 
   const audienceLabel = useMemo(() => {
     if (filter.mode === 'manual') {
@@ -200,8 +229,21 @@ export default function CommunicationsPage() {
     if (selectedGroupTitles.length > 0) parts.push(`групи: ${selectedGroupTitles.slice(0, 3).join(', ')}`);
     if (filter.search?.trim()) parts.push(`пошук: "${filter.search.trim()}"`);
     if (filter.includeInactive) parts.push('включно з архівом');
+    if (excludedIds.size > 0) parts.push(`виключено: ${excludedIds.size}`);
     return `Показуємо: ${parts.join('; ')}.`;
-  }, [filter.includeInactive, filter.mode, filter.requireEmail, filter.search, filter.studyStatuses, selectedCourseTitles, selectedGroupTitles, selectedStudents.length]);
+  }, [excludedIds.size, filter.includeInactive, filter.mode, filter.requireEmail, filter.search, filter.studyStatuses, selectedCourseTitles, selectedGroupTitles, selectedStudents.length]);
+
+  const filteredCourses = useMemo(() => {
+    const query = courseSearch.trim().toLowerCase();
+    return query ? courses.filter((course) => course.title.toLowerCase().includes(query)) : courses;
+  }, [courseSearch, courses]);
+
+  const filteredGroups = useMemo(() => {
+    const query = groupSearch.trim().toLowerCase();
+    return query
+      ? groups.filter((group) => `${group.title} ${group.course_title || ''}`.toLowerCase().includes(query))
+      : groups;
+  }, [groupSearch, groups]);
 
   const usedVariables = useMemo(
     () => Array.from(new Set([...extractVariables(subject), ...extractVariables(body)])),
@@ -219,7 +261,7 @@ export default function CommunicationsPage() {
     return usedVariables.filter((variable) => variables.includes(variable) && !values[variable]);
   }, [selectedPreviewStudent, usedVariables, variables]);
 
-  const canGoReview = Boolean(subject.trim() && body.trim() && preview?.deliverable && unknownVariables.length === 0);
+  const canGoReview = Boolean(subject.trim() && body.trim() && visibleCounts.deliverable && unknownVariables.length === 0);
   const currentStepIndex = STEPS.findIndex((item) => item.id === step);
 
   const loadBootstrap = useCallback(async () => {
@@ -294,6 +336,10 @@ export default function CommunicationsPage() {
     const id = window.setTimeout(() => setNotice(null), 5000);
     return () => window.clearTimeout(id);
   }, [notice]);
+
+  useEffect(() => {
+    setSelectedPreviewIndex((current) => Math.min(current, Math.max(visibleStudents.length - 1, 0)));
+  }, [visibleStudents.length]);
 
   useEffect(() => {
     const query = studentSearch.trim();
@@ -435,17 +481,36 @@ export default function CommunicationsPage() {
   const addStudent = (student: StudentOption) => {
     if (selectedStudents.some((item) => item.id === student.id)) return;
     setSelectedStudents((current) => [...current, student]);
+    setExcludedIds((current) => {
+      const next = new Set(current);
+      next.delete(student.id);
+      return next;
+    });
     setFilter((current) => ({ ...current, mode: 'manual' }));
     setStudentSearch('');
     setStudentOptions([]);
+    window.requestAnimationFrame(() => studentSearchRef.current?.focus());
   };
 
   const removeStudent = (id: number) => {
     setSelectedStudents((current) => current.filter((student) => student.id !== id));
   };
 
+  const excludeStudent = (id: number) => {
+    setExcludedIds((current) => {
+      const next = new Set(current);
+      next.add(id);
+      return next;
+    });
+    setSelectedStudents((current) => current.filter((student) => student.id !== id));
+  };
+
+  const restoreExcludedStudents = () => {
+    setExcludedIds(new Set());
+  };
+
   const sendCampaign = async () => {
-    if (!preview || preview.deliverable === 0) {
+    if (!preview || visibleCounts.deliverable === 0) {
       setNotice({ type: 'error', text: 'Немає отримувачів з валідним email' });
       return;
     }
@@ -567,20 +632,26 @@ export default function CommunicationsPage() {
               className={(filter.courseIds || []).length > 0 ? styles.pillActive : styles.pill}
               onClick={() => {
                 setFilter((current) => ({ ...current, mode: 'all' }));
-                setAdvancedOpen(true);
+                setCourseFilterOpen((current) => !current);
+                setGroupFilterOpen(false);
               }}
+              aria-expanded={courseFilterOpen}
             >
               За курсом {(filter.courseIds || []).length > 0 ? `· ${filter.courseIds?.length}` : ''}
+              <ChevronDown className={courseFilterOpen ? styles.chevronOpen : ''} size={15} />
             </button>
             <button
               type="button"
               className={(filter.groupIds || []).length > 0 ? styles.pillActive : styles.pill}
               onClick={() => {
                 setFilter((current) => ({ ...current, mode: 'all' }));
-                setAdvancedOpen(true);
+                setGroupFilterOpen((current) => !current);
+                setCourseFilterOpen(false);
               }}
+              aria-expanded={groupFilterOpen}
             >
               За групою {(filter.groupIds || []).length > 0 ? `· ${filter.groupIds?.length}` : ''}
+              <ChevronDown className={groupFilterOpen ? styles.chevronOpen : ''} size={15} />
             </button>
             <button
               type="button"
@@ -590,6 +661,82 @@ export default function CommunicationsPage() {
               Вручну {selectedStudents.length > 0 ? `· ${selectedStudents.length}` : ''}
             </button>
           </div>
+
+          {selectedCourseTitles.length > 0 && (
+            <div className={styles.selectedChips} aria-label="Вибрані курси">
+              {courses.filter((course) => (filter.courseIds || []).includes(course.id)).map((course) => (
+                <span key={course.id} className={styles.filterChip}>
+                  {course.title}
+                  <button type="button" onClick={() => setArrayValue('courseIds', course.id, false)} aria-label={`Прибрати курс ${course.title}`}>
+                    <X size={13} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {selectedGroupTitles.length > 0 && (
+            <div className={styles.selectedChips} aria-label="Вибрані групи">
+              {groups.filter((group) => (filter.groupIds || []).includes(group.id)).map((group) => (
+                <span key={group.id} className={styles.filterChip}>
+                  {group.title}
+                  <button type="button" onClick={() => setArrayValue('groupIds', group.id, false)} aria-label={`Прибрати групу ${group.title}`}>
+                    <X size={13} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {courseFilterOpen && (
+            <div className={styles.filterDropdown}>
+              <div className={styles.inputWithIcon}>
+                <Search size={16} />
+                <input
+                  value={courseSearch}
+                  onChange={(event) => setCourseSearch(event.target.value)}
+                  placeholder="Знайти курс"
+                />
+              </div>
+              <div className={styles.optionList}>
+                {filteredCourses.map((course) => (
+                  <label key={course.id}>
+                    <input
+                      type="checkbox"
+                      checked={(filter.courseIds || []).includes(course.id)}
+                      onChange={(event) => setArrayValue('courseIds', course.id, event.target.checked)}
+                    />
+                    {course.title}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {groupFilterOpen && (
+            <div className={styles.filterDropdown}>
+              <div className={styles.inputWithIcon}>
+                <Search size={16} />
+                <input
+                  value={groupSearch}
+                  onChange={(event) => setGroupSearch(event.target.value)}
+                  placeholder="Знайти групу"
+                />
+              </div>
+              <div className={styles.optionList}>
+                {filteredGroups.map((group) => (
+                  <label key={group.id}>
+                    <input
+                      type="checkbox"
+                      checked={(filter.groupIds || []).includes(group.id)}
+                      onChange={(event) => setArrayValue('groupIds', group.id, event.target.checked)}
+                    />
+                    <span>{group.title}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className={styles.filterRow}>
             <label className={styles.field}>
@@ -647,6 +794,7 @@ export default function CommunicationsPage() {
                 <div className={styles.inputWithIcon}>
                   <Search size={16} />
                   <input
+                    ref={studentSearchRef}
                     value={studentSearch}
                     onChange={(event) => setStudentSearch(event.target.value)}
                     placeholder="Почни вводити імʼя"
@@ -678,57 +826,12 @@ export default function CommunicationsPage() {
             </div>
           )}
 
-          <button
-            className={styles.disclosure}
-            type="button"
-            onClick={() => setAdvancedOpen((current) => !current)}
-            aria-expanded={advancedOpen}
-          >
-            <ChevronDown className={advancedOpen ? styles.chevronOpen : ''} size={17} />
-            Розширені фільтри
-          </button>
-
-          {advancedOpen && (
-            <div className={styles.advancedGrid}>
-              <div className={styles.filterSection}>
-                <h3>Курси</h3>
-                <div className={styles.optionList}>
-                  {courses.map((course) => (
-                    <label key={course.id}>
-                      <input
-                        type="checkbox"
-                        checked={(filter.courseIds || []).includes(course.id)}
-                        onChange={(event) => setArrayValue('courseIds', course.id, event.target.checked)}
-                      />
-                      {course.title}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className={styles.filterSection}>
-                <h3>Групи</h3>
-                <div className={styles.optionList}>
-                  {groups.map((group) => (
-                    <label key={group.id}>
-                      <input
-                        type="checkbox"
-                        checked={(filter.groupIds || []).includes(group.id)}
-                        onChange={(event) => setArrayValue('groupIds', group.id, event.target.checked)}
-                      />
-                      <span>{group.title}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className={styles.counters}>
-            <span><strong>{preview?.total ?? 0}</strong> учні</span>
-            <span><strong>{preview?.deliverable ?? 0}</strong> з email</span>
-            <span><strong>{preview?.missingEmail ?? 0}</strong> без email</span>
-            <span><strong>{preview?.suppressed ?? 0}</strong> пропущено</span>
+            <span><strong>{visibleCounts.total}</strong> учні</span>
+            <span><strong>{visibleCounts.deliverable}</strong> готові</span>
+            <span><strong>{visibleCounts.missingEmail}</strong> без email</span>
+            <span><strong>{visibleCounts.suppressed}</strong> пропущено</span>
+            {excludedIds.size > 0 && <span><strong>{excludedIds.size}</strong> виключено</span>}
           </div>
 
           <div className={styles.listDisclosure}>
@@ -742,6 +845,11 @@ export default function CommunicationsPage() {
               {audienceListOpen ? 'Сховати список учнів' : 'Показати список учнів'}
             </button>
             <div className={styles.inlineActions}>
+              {excludedIds.size > 0 && (
+                <button className={styles.ghostButton} type="button" onClick={restoreExcludedStudents}>
+                  Повернути виключених
+                </button>
+              )}
               <button className={styles.ghostButton} type="button" onClick={refreshPreview} disabled={previewLoading}>
                 <RefreshCw size={16} />
                 Оновити
@@ -753,19 +861,22 @@ export default function CommunicationsPage() {
           <div className={styles.audiencePreview}>
             <p className={styles.supportText}>{previewLoading ? 'Оновлюємо список...' : audienceExplanation}</p>
 
-            {preview?.students.length ? (
+            {visibleStudents.length ? (
               <div className={styles.audienceList}>
-                {preview.students.slice(0, 16).map((student, index) => (
-                  <button
+                {visibleStudents.slice(0, 16).map((student, index) => (
+                  <div
                     key={student.id}
-                    type="button"
                     className={index === selectedPreviewIndex ? styles.audienceRowActive : styles.audienceRow}
-                    onClick={() => setSelectedPreviewIndex(index)}
                   >
-                    <span>{student.full_name}</span>
-                    <small>{student.email || 'немає email'}</small>
-                    <em>{student.groups.map((group) => group.title).slice(0, 2).join(', ') || 'без групи'}</em>
-                  </button>
+                    <button type="button" onClick={() => setSelectedPreviewIndex(index)}>
+                      <span>{student.full_name}</span>
+                      <small>{student.email || 'немає email'}</small>
+                      <em>{student.groups.map((group) => group.title).slice(0, 2).join(', ') || 'без групи'}</em>
+                    </button>
+                    <button type="button" className={styles.excludeButton} onClick={() => excludeStudent(student.id)} aria-label={`Виключити ${student.full_name}`}>
+                      <X size={15} />
+                    </button>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -775,8 +886,8 @@ export default function CommunicationsPage() {
               </div>
             )}
 
-            {preview && preview.students.length > 16 && (
-              <p className={styles.moreText}>Показано 16 з {preview.students.length}. Звузь пошук або групи, щоб швидше перевірити список.</p>
+            {visibleStudents.length > 16 && (
+              <p className={styles.moreText}>Показано 16 з {visibleStudents.length}. Звузь пошук або групи, щоб швидше перевірити список.</p>
             )}
           </div>
           )}
@@ -848,17 +959,20 @@ export default function CommunicationsPage() {
                 <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={10} />
               </label>
               <div className={styles.variables}>
-                {variables.map((variable) => (
+                {variables.map((variable) => {
+                  const MetaIcon = VARIABLE_CHIPS[variable]?.icon || Mail;
+                  return (
                   <button
                     key={variable}
                     type="button"
                     onClick={() => setBody((current) => `${current} {{${variable}}}`)}
-                    title={VARIABLE_LABELS[variable] || variable}
+                    title={`Вставити {{${variable}}}`}
                   >
-                    <Copy size={14} />
-                    {`{{${variable}}}`}
+                    <MetaIcon size={15} />
+                    {VARIABLE_CHIPS[variable]?.label || variable}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -892,8 +1006,8 @@ export default function CommunicationsPage() {
                 <span>{selectedPreviewStudent?.full_name || 'Немає отримувача'}</span>
                 <button
                   type="button"
-                  onClick={() => setSelectedPreviewIndex((current) => Math.min((preview?.students.length || 1) - 1, current + 1))}
-                  disabled={!preview?.students.length || selectedPreviewIndex >= preview.students.length - 1}
+                  onClick={() => setSelectedPreviewIndex((current) => Math.min((visibleStudents.length || 1) - 1, current + 1))}
+                  disabled={!visibleStudents.length || selectedPreviewIndex >= visibleStudents.length - 1}
                   aria-label="Наступний отримувач"
                 >
                   <ChevronRight size={16} />
@@ -1000,12 +1114,12 @@ export default function CommunicationsPage() {
               <p>{audienceExplanation}</p>
             </div>
             <div className={styles.confirmSummary}>
-              <span><strong>Отримувачі</strong>{preview?.deliverable ?? 0}</span>
-              <span><strong>Без email</strong>{preview?.missingEmail ?? 0}</span>
+              <span><strong>Отримувачі</strong>{visibleCounts.deliverable}</span>
+              <span><strong>Без email</strong>{visibleCounts.missingEmail}</span>
               <span><strong>Канал</strong>Email</span>
               <span><strong>Шаблон</strong>{selectedTemplate?.name || 'Власний текст'}</span>
               <span><strong>Тема</strong>{subject || 'Без теми'}</span>
-              <span><strong>Пропущено</strong>{preview?.suppressed ?? 0}</span>
+              <span><strong>Виключено</strong>{excludedIds.size}</span>
             </div>
             {(unknownVariables.length > 0 || emptyVariables.length > 0) && (
               <div className={styles.safetyWarning}>
@@ -1035,19 +1149,22 @@ export default function CommunicationsPage() {
 
             <aside className={styles.recipientsList}>
               <h3>Отримувачі</h3>
-              {preview?.students.slice(0, 14).map((student, index) => (
-                <button
+              {visibleStudents.slice(0, 14).map((student, index) => (
+                <div
                   key={student.id}
-                  type="button"
                   className={index === selectedPreviewIndex ? styles.recipientActive : styles.recipientButton}
-                  onClick={() => setSelectedPreviewIndex(index)}
                 >
-                  <span>{student.full_name}</span>
-                  <small>{student.email || 'немає email'}</small>
-                </button>
+                  <button type="button" onClick={() => setSelectedPreviewIndex(index)}>
+                    <span>{student.full_name}</span>
+                    <small>{student.email || 'немає email'}</small>
+                  </button>
+                  <button type="button" className={styles.excludeButton} onClick={() => excludeStudent(student.id)} aria-label={`Виключити ${student.full_name}`}>
+                    <X size={15} />
+                  </button>
+                </div>
               ))}
-              {preview && preview.students.length > 14 && (
-                <p className={styles.moreText}>Ще {preview.students.length - 14} отримувачів у цій аудиторії</p>
+              {visibleStudents.length > 14 && (
+                <p className={styles.moreText}>Ще {visibleStudents.length - 14} отримувачів у цій аудиторії</p>
               )}
             </aside>
           </div>
@@ -1078,9 +1195,9 @@ export default function CommunicationsPage() {
               <ChevronLeft size={16} />
               Назад
             </button>
-            <button className={styles.primaryButton} type="button" onClick={sendCampaign} disabled={sending || !preview?.deliverable}>
+            <button className={styles.primaryButton} type="button" onClick={sendCampaign} disabled={sending || !visibleCounts.deliverable}>
               <Send size={16} />
-              {sending ? 'Надсилаємо...' : `Надіслати ${preview?.deliverable ?? 0} листів`}
+              {sending ? 'Надсилаємо...' : `Надіслати ${visibleCounts.deliverable} листів`}
             </button>
           </div>
         </section>

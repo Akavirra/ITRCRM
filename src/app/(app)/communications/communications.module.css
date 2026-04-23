@@ -20,12 +20,13 @@
   --warning-soft: #fffbeb;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 
-  width: min(100%, 960px);
+  width: 100%;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 32px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 32px;
   color: var(--text-primary);
 }
 
@@ -41,7 +42,7 @@
   font-size: 24px;
   font-weight: 650;
   line-height: 1.2;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
 }
 
 .pageHeader p,
@@ -51,7 +52,7 @@
   margin: 6px 0 0;
   color: var(--text-secondary);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .stepCounter {
@@ -114,7 +115,9 @@
 .dangerButton:active,
 .recipientNav button:active,
 .searchResults button:active,
-.chip button:active {
+.chip button:active,
+.filterChip button:active,
+.excludeButton:active {
   transform: scale(0.97);
 }
 
@@ -178,7 +181,7 @@
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   background: var(--bg-card);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: none;
 }
 
 .stageHeader {
@@ -194,7 +197,7 @@
   font-size: 20px;
   font-weight: 650;
   line-height: 1.25;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
 }
 
 .stageHeader svg {
@@ -211,7 +214,8 @@
 .recipientNav,
 .inlineActions,
 .audienceBadges,
-.chipList {
+.chipList,
+.selectedChips {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -228,6 +232,9 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: transform 150ms var(--ease-out), background 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
@@ -344,7 +351,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: var(--bg-panel);
+  background: rgba(241, 243, 246, 0.72);
+  backdrop-filter: blur(8px);
 }
 
 .searchResults {
@@ -382,8 +390,10 @@
 }
 
 .chip button,
+.filterChip button,
 .modalClose,
-.recipientNav button {
+.recipientNav button,
+.excludeButton {
   width: 28px;
   height: 28px;
   border: 0;
@@ -461,6 +471,35 @@
   accent-color: var(--accent-primary);
 }
 
+.filterDropdown {
+  width: min(100%, 560px);
+  border: 1px solid rgba(209, 213, 219, 0.78);
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+}
+
+.filterDropdown .optionList {
+  max-height: 260px;
+}
+
+.filterChip {
+  min-height: 32px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+  padding: 6px 8px 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
 .counters {
   display: flex;
   align-items: center;
@@ -497,15 +536,29 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  color: var(--text-primary);
+  transition: transform 150ms var(--ease-out), background 150ms ease;
+}
+
+.audienceRow > button:first-child,
+.audienceRowActive > button:first-child {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   padding: 8px 10px;
   display: grid;
   grid-template-columns: minmax(140px, 1fr) minmax(160px, 1fr) minmax(120px, 0.8fr);
   gap: 12px;
   align-items: center;
   text-align: left;
-  color: var(--text-primary);
+  color: inherit;
+  font: inherit;
   cursor: pointer;
-  transition: transform 150ms var(--ease-out), background 150ms ease;
 }
 
 .audienceRowActive {
@@ -602,6 +655,11 @@
 .recipientNav button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.variables button {
+  border-color: rgba(209, 213, 219, 0.72);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .livePreview,
@@ -759,13 +817,27 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  color: var(--text-primary);
+  transition: transform 150ms var(--ease-out), background 150ms ease;
+}
+
+.recipientButton > button:first-child,
+.recipientActive > button:first-child {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   padding: 8px 10px;
   display: grid;
   gap: 2px;
   text-align: left;
-  color: var(--text-primary);
+  color: inherit;
+  font: inherit;
   cursor: pointer;
-  transition: transform 150ms var(--ease-out), background 150ms ease;
 }
 
 .recipientActive {
@@ -881,8 +953,14 @@
   .recipientButton:hover,
   .searchResults button:hover,
   .modalClose:hover,
-  .recipientNav button:hover {
+  .recipientNav button:hover,
+  .excludeButton:hover,
+  .filterChip button:hover {
     background: var(--bg-hover);
+  }
+
+  .variables button:hover {
+    transform: scale(1.02);
   }
 
   .primaryButton:hover {
@@ -947,6 +1025,11 @@
     grid-template-columns: 1fr;
   }
 
+  .audienceRow > button:first-child,
+  .audienceRowActive > button:first-child {
+    grid-template-columns: 1fr;
+  }
+
   .stage,
   .templateModal {
     padding: 18px;
@@ -987,7 +1070,9 @@
   .dangerButton:active,
   .recipientNav button:active,
   .searchResults button:active,
-  .chip button:active {
+  .chip button:active,
+  .filterChip button:active,
+  .excludeButton:active {
     transform: none;
   }
 }
