@@ -62,6 +62,8 @@
     "smoke:student-auth": "node scripts/smoke-test-student-auth.js",
     "db:schema:dump": "node scripts/dump-schema.js",
     "db:backup:data": "node scripts/backup-crm-data.js",
+    "import:students:excel": "node scripts/import-students-from-excel.js",
+    "fix:students:name-order": "node scripts/fix-imported-student-name-order.js",
     "test": "jest"
   },
   "dependencies": {

@@ -136,6 +136,18 @@ function getPrimaryContactPhone(student: Pick<Student, 'parent_phone'>): string 
   return student.parent_phone || null;
 }
 
+function formatStudentListName(fullName: string, surnameFirst: boolean): string {
+  const normalized = fullName.trim().replace(/\s+/g, ' ');
+  if (!surnameFirst || !normalized) return normalized;
+
+  const parts = normalized.split(' ');
+  if (parts.length < 2) return normalized;
+
+  const surname = parts[parts.length - 1];
+  const givenNames = parts.slice(0, -1).join(' ');
+  return `${surname} ${givenNames}`;
+}
+
 // Calculate age from birth date
 function calculateAge(birthDate: string | null): number | null {
   if (!birthDate) return null;
@@ -188,6 +200,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
   const router = useRouter();
   const searchParams = useSearchParams();
   const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
+  const [showSurnameFirst, setShowSurnameFirst] = useState(true);
   const { user } = useUser();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -345,6 +358,13 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
       if (savedViewMode === 'compact' || savedViewMode === 'detailed') {
         setViewMode(savedViewMode);
       }
+
+      const savedNameOrder = localStorage.getItem('studentsSurnameFirst');
+      if (savedNameOrder === 'false') {
+        setShowSurnameFirst(false);
+      } else if (savedNameOrder === 'true') {
+        setShowSurnameFirst(true);
+      }
     } catch (e) {
       console.warn('LocalStorage blocked or unavailable:', e);
     }
@@ -392,6 +412,18 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
       return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  const handleToggleSurnameFirst = () => {
+    setShowSurnameFirst((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('studentsSurnameFirst', String(next));
+      } catch (e) {
+        console.warn('LocalStorage blocked or unavailable:', e);
+      }
+      return next;
+    });
+  };
 
   const handleSearch = async (query: string) => {
     setSearch(query);
@@ -811,6 +843,71 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
               </button>
             </div>
             
+            <button
+              type="button"
+              onClick={handleToggleSurnameFirst}
+              aria-pressed={showSurnameFirst}
+              title={showSurnameFirst ? 'Показувати імʼя першим' : 'Показувати прізвище першим'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.625rem',
+                padding: '0.3125rem 0.375rem 0.3125rem 0.75rem',
+                minHeight: '2rem',
+                borderRadius: '9999px',
+                border: `1px solid ${showSurnameFirst ? '#c7d2fe' : '#e2e8f0'}`,
+                backgroundColor: showSurnameFirst ? '#eef2ff' : '#ffffff',
+                color: showSurnameFirst ? '#3730a3' : '#475569',
+                cursor: 'pointer',
+                transition: 'background-color 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)), border-color 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)), color 160ms ease, transform 120ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = showSurnameFirst ? '#a5b4fc' : '#cbd5e1';
+                e.currentTarget.style.backgroundColor = showSurnameFirst ? '#e0e7ff' : '#f8fafc';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = showSurnameFirst ? '#c7d2fe' : '#e2e8f0';
+                e.currentTarget.style.backgroundColor = showSurnameFirst ? '#eef2ff' : '#ffffff';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+              onMouseDown={(e) => {
+                e.currentTarget.style.transform = 'scale(0.98)';
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                Прізвище спочатку
+              </span>
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'relative',
+                  width: '2.125rem',
+                  height: '1.25rem',
+                  borderRadius: '9999px',
+                  backgroundColor: showSurnameFirst ? '#6366f1' : '#cbd5e1',
+                  transition: 'background-color 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))',
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '2px',
+                    left: showSurnameFirst ? 'calc(100% - 1rem - 2px)' : '2px',
+                    width: '1rem',
+                    height: '1rem',
+                    borderRadius: '50%',
+                    backgroundColor: '#ffffff',
+                    boxShadow: '0 1px 3px rgba(15, 23, 42, 0.2)',
+                    transition: 'left 180ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))',
+                  }}
+                />
+              </span>
+            </button>
+
             <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '0.5rem', padding: '0.25rem', alignItems: 'center', gap: '0.125rem' }}>
               <button
                 onClick={() => { setViewMode('detailed'); localStorage.setItem('studentsViewMode', 'detailed'); }}
@@ -864,7 +961,8 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
             }}>
               {students.map((student) => {
                 const age = calculateAge(student.birth_date);
-                const firstLetter = getFirstLetter(student.full_name);
+                const displayName = formatStudentListName(student.full_name, showSurnameFirst);
+                const firstLetter = getFirstLetter(displayName);
                 
                 // Truncate notes for display
                 const MAX_NOTE_LENGTH = 80;
@@ -940,7 +1038,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                           }}
                         >
                           {student.photo ? (
-                            <img src={student.photo} alt={student.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={student.photo} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           ) : (
                             <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#6366f1' }}>{firstLetter}</span>
                           )}
@@ -960,7 +1058,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                             fontWeight: 600, fontSize: '0.875rem', color: '#1e293b',
                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                           }}>
-                            {student.full_name}
+                            {displayName}
                           </span>
                         </div>
                         
@@ -1280,7 +1378,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                             {student.photo ? (
                               <img
                                 src={student.photo.startsWith('data:') ? student.photo : student.photo}
-                                alt={student.full_name}
+                                alt={displayName}
                                 style={{
                                   width: '100%',
                                   height: '100%',
@@ -1375,7 +1473,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                           onMouseEnter={(e) => { e.currentTarget.style.color = '#6366f1'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.color = '#1e293b'; }}
                         >
-                          {student.full_name}
+                          {displayName}
                         </a>
                         
                         {/* Contact Info */}
