@@ -22,6 +22,7 @@ export interface MessagingStudent {
   id: number;
   public_id: string;
   full_name: string;
+  photo: string | null;
   email: string | null;
   parent_name: string | null;
   parent_phone: string | null;
@@ -291,6 +292,7 @@ export async function getAudiencePreview(inputFilter: AudienceFilter): Promise<A
     id: number;
     public_id: string;
     full_name: string;
+    photo: string | null;
     email: string | null;
     parent_name: string | null;
     parent_phone: string | null;
@@ -303,6 +305,7 @@ export async function getAudiencePreview(inputFilter: AudienceFilter): Promise<A
        s.id,
        s.public_id,
        s.full_name,
+       s.photo,
        s.email,
        s.parent_name,
        s.parent_phone,
@@ -357,6 +360,7 @@ export async function getAudiencePreview(inputFilter: AudienceFilter): Promise<A
       id: student.id,
       public_id: student.public_id,
       full_name: student.full_name,
+      photo: student.photo,
       email: student.email,
       parent_name: student.parent_name,
       parent_phone: student.parent_phone,

@@ -125,6 +125,11 @@ function statusLabel(status: CampaignSummary['status']): string {
   return labels[status] || status;
 }
 
+function studentInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
+  return parts.map((part) => part[0]?.toUpperCase() || '').join('') || 'У';
+}
+
 export default function CommunicationsPage() {
   const [step, setStep] = useState<Step>('audience');
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
@@ -154,6 +159,7 @@ export default function CommunicationsPage() {
   const [studentOptions, setStudentOptions] = useState<StudentOption[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<StudentOption[]>([]);
   const [excludedIds, setExcludedIds] = useState<Set<number>>(() => new Set());
+  const [excludedStudents, setExcludedStudents] = useState<MessagingStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -481,6 +487,7 @@ export default function CommunicationsPage() {
   const addStudent = (student: StudentOption) => {
     if (selectedStudents.some((item) => item.id === student.id)) return;
     setSelectedStudents((current) => [...current, student]);
+    setExcludedStudents((current) => current.filter((item) => item.id !== student.id));
     setExcludedIds((current) => {
       const next = new Set(current);
       next.delete(student.id);
@@ -497,6 +504,12 @@ export default function CommunicationsPage() {
   };
 
   const excludeStudent = (id: number) => {
+    const student = visibleStudents.find((item) => item.id === id);
+    if (student) {
+      setExcludedStudents((current) => (
+        current.some((item) => item.id === id) ? current : [...current, student]
+      ));
+    }
     setExcludedIds((current) => {
       const next = new Set(current);
       next.add(id);
@@ -505,8 +518,18 @@ export default function CommunicationsPage() {
     setSelectedStudents((current) => current.filter((student) => student.id !== id));
   };
 
+  const restoreExcludedStudent = (id: number) => {
+    setExcludedIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+    setExcludedStudents((current) => current.filter((student) => student.id !== id));
+  };
+
   const restoreExcludedStudents = () => {
     setExcludedIds(new Set());
+    setExcludedStudents([]);
   };
 
   const sendCampaign = async () => {
@@ -834,6 +857,42 @@ export default function CommunicationsPage() {
             {excludedIds.size > 0 && <span><strong>{excludedIds.size}</strong> виключено</span>}
           </div>
 
+          {excludedStudents.length > 0 && (
+            <div className={styles.excludedPanel}>
+              <div className={styles.excludedHeader}>
+                <strong>Виключені зі списку</strong>
+                <button className={styles.ghostButton} type="button" onClick={restoreExcludedStudents}>
+                  Повернути всіх
+                </button>
+              </div>
+              <div className={styles.excludedList}>
+                {excludedStudents.map((student) => (
+                  <div key={student.id} className={styles.excludedItem}>
+                    <span className={styles.recipientAvatar}>
+                      {student.photo ? (
+                        <img src={student.photo} alt={student.full_name} />
+                      ) : (
+                        <span>{studentInitials(student.full_name)}</span>
+                      )}
+                    </span>
+                    <span className={styles.recipientContent}>
+                      <strong>{student.full_name}</strong>
+                      <small>{student.email || 'немає email'}</small>
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.excludeButton}
+                      onClick={() => restoreExcludedStudent(student.id)}
+                      aria-label={`Повернути ${student.full_name}`}
+                    >
+                      <Plus size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className={styles.listDisclosure}>
             <button
               className={styles.expandButton}
@@ -845,11 +904,6 @@ export default function CommunicationsPage() {
               {audienceListOpen ? 'Сховати список учнів' : 'Показати список учнів'}
             </button>
             <div className={styles.inlineActions}>
-              {excludedIds.size > 0 && (
-                <button className={styles.ghostButton} type="button" onClick={restoreExcludedStudents}>
-                  Повернути виключених
-                </button>
-              )}
               <button className={styles.ghostButton} type="button" onClick={refreshPreview} disabled={previewLoading}>
                 <RefreshCw size={16} />
                 Оновити
@@ -869,9 +923,18 @@ export default function CommunicationsPage() {
                     className={index === selectedPreviewIndex ? styles.audienceRowActive : styles.audienceRow}
                   >
                     <button type="button" onClick={() => setSelectedPreviewIndex(index)}>
-                      <span>{student.full_name}</span>
-                      <small>{student.email || 'немає email'}</small>
-                      <em>{student.groups.map((group) => group.title).slice(0, 2).join(', ') || 'без групи'}</em>
+                      <span className={styles.recipientAvatar}>
+                        {student.photo ? (
+                          <img src={student.photo} alt={student.full_name} />
+                        ) : (
+                          <span>{studentInitials(student.full_name)}</span>
+                        )}
+                      </span>
+                      <span className={styles.recipientContent}>
+                        <strong>{student.full_name}</strong>
+                        <small>{student.email || 'немає email'}</small>
+                        <em>{student.groups.map((group) => group.title).slice(0, 2).join(', ') || 'без групи'}</em>
+                      </span>
                     </button>
                     <button type="button" className={styles.excludeButton} onClick={() => excludeStudent(student.id)} aria-label={`Виключити ${student.full_name}`}>
                       <X size={15} />
@@ -1155,8 +1218,17 @@ export default function CommunicationsPage() {
                   className={index === selectedPreviewIndex ? styles.recipientActive : styles.recipientButton}
                 >
                   <button type="button" onClick={() => setSelectedPreviewIndex(index)}>
-                    <span>{student.full_name}</span>
-                    <small>{student.email || 'немає email'}</small>
+                    <span className={styles.recipientAvatar}>
+                      {student.photo ? (
+                        <img src={student.photo} alt={student.full_name} />
+                      ) : (
+                        <span>{studentInitials(student.full_name)}</span>
+                      )}
+                    </span>
+                    <span className={styles.recipientContent}>
+                      <strong>{student.full_name}</strong>
+                      <small>{student.email || 'немає email'}</small>
+                    </span>
                   </button>
                   <button type="button" className={styles.excludeButton} onClick={() => excludeStudent(student.id)} aria-label={`Виключити ${student.full_name}`}>
                     <X size={15} />

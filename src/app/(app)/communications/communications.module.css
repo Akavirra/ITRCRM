@@ -340,7 +340,8 @@
 .manualBox,
 .audiencePreview,
 .safetyPanel,
-.history {
+.history,
+.excludedPanel {
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 16px;
@@ -524,6 +525,42 @@
   gap: 12px;
 }
 
+.excludedPanel {
+  display: grid;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+}
+
+.excludedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.excludedHeader strong {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.excludedList {
+  display: grid;
+  gap: 6px;
+}
+
+.excludedItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 44px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--bg-panel);
+}
+
 .audienceList {
   display: grid;
   gap: 2px;
@@ -550,15 +587,52 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  padding: 8px 10px;
+  padding: 8px 12px;
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) minmax(160px, 1fr) minmax(120px, 0.8fr);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   text-align: left;
   color: inherit;
   font: inherit;
   cursor: pointer;
+}
+
+.recipientAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  border: 1px solid #dbe4ff;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.recipientAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.recipientContent {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.recipientContent strong {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .audienceRowActive {
@@ -831,9 +905,11 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  padding: 8px 10px;
+  padding: 8px 12px;
   display: grid;
-  gap: 2px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
   text-align: left;
   color: inherit;
   font: inherit;
@@ -998,7 +1074,8 @@
   }
 
   .pageHeader,
-  .listDisclosure {
+  .listDisclosure,
+  .excludedHeader {
     flex-direction: column;
     align-items: stretch;
   }
