@@ -139,7 +139,7 @@ export default function CommunicationsPage() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [templateEditorOpen, setTemplateEditorOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId) || null,
@@ -289,7 +289,7 @@ export default function CommunicationsPage() {
     setSubject(template.subject || DEFAULT_SUBJECT);
     setBody(template.body);
     setCampaignName(template.name);
-    setTemplateEditorOpen(false);
+    setTemplateModalOpen(false);
   };
 
   const handleNewTemplate = () => {
@@ -299,7 +299,21 @@ export default function CommunicationsPage() {
       subject: DEFAULT_SUBJECT,
       body: DEFAULT_BODY,
     });
-    setTemplateEditorOpen(true);
+    setTemplateModalOpen(true);
+  };
+
+  const handleEditTemplate = () => {
+    if (!selectedTemplate) {
+      handleNewTemplate();
+      return;
+    }
+
+    setTemplateDraft({
+      name: selectedTemplate.name,
+      subject: selectedTemplate.subject || '',
+      body: selectedTemplate.body,
+    });
+    setTemplateModalOpen(true);
   };
 
   const saveTemplate = async () => {
@@ -328,7 +342,7 @@ export default function CommunicationsPage() {
       setSelectedTemplateId(data.template.id);
       setSubject(data.template.subject || DEFAULT_SUBJECT);
       setBody(data.template.body);
-      setTemplateEditorOpen(false);
+      setTemplateModalOpen(false);
       setNotice({ type: 'success', text: 'Шаблон збережено' });
     } catch (error) {
       setNotice({ type: 'error', text: error instanceof Error ? error.message : 'Не вдалося зберегти шаблон' });
@@ -347,7 +361,7 @@ export default function CommunicationsPage() {
       setTemplates((current) => current.filter((template) => template.id !== selectedTemplateId));
       setSelectedTemplateId(null);
       setTemplateDraft(EMPTY_TEMPLATE);
-      setTemplateEditorOpen(false);
+      setTemplateModalOpen(false);
       setNotice({ type: 'success', text: 'Шаблон видалено' });
     } catch (error) {
       setNotice({ type: 'error', text: error instanceof Error ? error.message : 'Не вдалося видалити шаблон' });
@@ -664,6 +678,45 @@ export default function CommunicationsPage() {
               </div>
             </div>
           )}
+
+          <div className={styles.audiencePreview}>
+            <div className={styles.audiencePreviewHeader}>
+              <div>
+                <h3>Учні в аудиторії</h3>
+                <p>{previewLoading ? 'Оновлюємо список...' : `${preview?.deliverable ?? 0} з валідним email`}</p>
+              </div>
+              <button className={styles.ghostButton} type="button" onClick={refreshPreview} disabled={previewLoading}>
+                <RefreshCw size={16} />
+                Оновити
+              </button>
+            </div>
+
+            {preview?.students.length ? (
+              <div className={styles.audienceList}>
+                {preview.students.slice(0, 16).map((student, index) => (
+                  <button
+                    key={student.id}
+                    type="button"
+                    className={index === selectedPreviewIndex ? styles.audienceRowActive : styles.audienceRow}
+                    onClick={() => setSelectedPreviewIndex(index)}
+                  >
+                    <span>{student.full_name}</span>
+                    <small>{student.email || 'немає email'}</small>
+                    <em>{student.groups.map((group) => group.title).slice(0, 2).join(', ') || 'без групи'}</em>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.emptyAudience}>
+                <Users size={20} />
+                Немає учнів за поточними фільтрами
+              </div>
+            )}
+
+            {preview && preview.students.length > 16 && (
+              <p className={styles.moreText}>Показано 16 з {preview.students.length}. Звузь пошук або групи, щоб швидше перевірити список.</p>
+            )}
+          </div>
         </section>
       )}
 
@@ -693,6 +746,10 @@ export default function CommunicationsPage() {
             <button className={styles.iconTextButton} type="button" onClick={handleNewTemplate}>
               <Plus size={16} />
               Новий
+            </button>
+            <button className={styles.iconTextButton} type="button" onClick={handleEditTemplate}>
+              <Edit3 size={16} />
+              Редагувати
             </button>
           </div>
 
@@ -740,18 +797,19 @@ export default function CommunicationsPage() {
             </aside>
           </div>
 
-          <button
-            className={styles.disclosure}
-            type="button"
-            onClick={() => setTemplateEditorOpen((current) => !current)}
-            aria-expanded={templateEditorOpen}
-          >
-            <Edit3 size={17} />
-            {templateEditorOpen ? 'Сховати редагування шаблону' : 'Редагувати шаблон'}
-          </button>
+          {templateModalOpen && (
+            <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="template-modal-title">
+              <div className={styles.templateModal}>
+                <div className={styles.modalHeader}>
+                  <div>
+                    <p className={styles.panelKicker}>Шаблон</p>
+                    <h2 id="template-modal-title">{selectedTemplateId ? 'Редагувати шаблон' : 'Новий шаблон'}</h2>
+                  </div>
+                  <button type="button" className={styles.modalClose} onClick={() => setTemplateModalOpen(false)} aria-label="Закрити">
+                    <X size={18} />
+                  </button>
+                </div>
 
-          {templateEditorOpen && (
-            <div className={styles.templateEditor}>
               <label className={styles.field}>
                 <span>Назва шаблону</span>
                 <input
@@ -787,6 +845,7 @@ export default function CommunicationsPage() {
                     Видалити
                   </button>
                 )}
+              </div>
               </div>
             </div>
           )}
