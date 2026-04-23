@@ -269,6 +269,16 @@ export async function archiveMessageTemplate(id: number, userId: number): Promis
 
 export async function getAudiencePreview(inputFilter: AudienceFilter): Promise<AudiencePreview> {
   const filter = normalizeAudienceFilter(inputFilter);
+  if (filter.mode === 'manual' && filter.studentIds.length === 0) {
+    return {
+      students: [],
+      total: 0,
+      deliverable: 0,
+      missingEmail: 0,
+      suppressed: 0,
+    };
+  }
+
   const suppressedRows = await all<{ address: string }>(
     `SELECT address FROM message_suppression_list WHERE channel = 'email'`
   );
@@ -295,7 +305,12 @@ export async function getAudiencePreview(inputFilter: AudienceFilter): Promise<A
        s.parent_phone,
        s.school,
        s.is_active,
-       CASE WHEN COUNT(DISTINCT sg.id) FILTER (WHERE sg.is_active = TRUE) > 0
+       CASE WHEN EXISTS (
+              SELECT 1
+              FROM student_groups sg2
+              WHERE sg2.student_id = s.id
+                AND sg2.is_active = TRUE
+            )
             OR EXISTS (
               SELECT 1
               FROM attendance a2
@@ -319,7 +334,7 @@ export async function getAudiencePreview(inputFilter: AudienceFilter): Promise<A
        ) AS groups_json
      FROM students s
      LEFT JOIN student_groups sg ON sg.student_id = s.id AND sg.is_active = TRUE
-     LEFT JOIN groups g ON g.id = sg.group_id
+     LEFT JOIN groups g ON g.id = sg.group_id AND g.is_active = TRUE
      LEFT JOIN courses c ON c.id = g.course_id
      WHERE ($1::boolean = TRUE OR s.is_active = TRUE)
      GROUP BY s.id
