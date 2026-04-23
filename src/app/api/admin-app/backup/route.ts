@@ -205,10 +205,12 @@ export async function GET(request: NextRequest) {
   if (!user) return unauthorized();
 
   const lastStatus = await query(`SELECT value FROM system_settings WHERE key = 'last_backup_status'`);
+  const lastRestore = await query(`SELECT value FROM system_settings WHERE key = 'last_restore_status'`);
   const settings = await query(`SELECT value FROM system_settings WHERE key = 'backup_settings'`);
 
   return NextResponse.json({
     lastBackup: lastStatus[0]?.value ? JSON.parse(lastStatus[0].value) : null,
+    lastRestore: lastRestore[0]?.value ? JSON.parse(lastRestore[0].value) : null,
     settings: settings[0]?.value
       ? JSON.parse(settings[0].value)
       : {

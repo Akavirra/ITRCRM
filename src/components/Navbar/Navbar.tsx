@@ -121,6 +121,54 @@ const BACKUP_WEEKDAYS = [
   { id: 6, label: 'Сб' },
   { id: 7, label: 'Нд' },
 ];
+const BACKUP_CATEGORY_LABELS: Record<string, string> = {
+  students: 'Учні та баланси',
+  payments: 'Оплати та ціни',
+  attendance: 'Відвідуваність',
+  groups: 'Групи та розклад',
+  courses: 'Курси та програми',
+  system: 'Системні налаштування',
+};
+
+function formatBackupFileSize(size: number | null | undefined) {
+  if (!size || size <= 0) return 'розмір невідомий';
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} КБ`;
+  return `${(size / 1024 / 1024).toFixed(1)} МБ`;
+}
+
+interface BackupDriveFile {
+  fileId: string;
+  fileName: string;
+  category: string;
+  dateFolder: string;
+  categoryFolder: string;
+  createdAt: string | null;
+  size: number | null;
+  url: string;
+}
+
+interface BackupPreview {
+  file: {
+    id: string;
+    name: string;
+    size: number | null;
+    url?: string;
+  };
+  backup: {
+    version: string | null;
+    createdAt: string | null;
+    category: string | null;
+    tables: Array<{ name: string; rows: number }>;
+    totalRows: number;
+  };
+  dryRun?: {
+    mode: 'merge';
+    inserts: number;
+    updates: number;
+    skipped: number;
+    tables: Array<{ name: string; inserts: number; updates: number; skipped: number }>;
+  };
+}
 
 const Navbar: React.FC<NavbarProps> = ({
   user,
@@ -227,6 +275,13 @@ const Navbar: React.FC<NavbarProps> = ({
   const [backupSettingsSaving, setBackupSettingsSaving] = useState(false);
   const [backupRetentionOpen, setBackupRetentionOpen] = useState(false);
   const [backupScheduleOpen, setBackupScheduleOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [restoreFiles, setRestoreFiles] = useState<BackupDriveFile[]>([]);
+  const [restoreFilesLoading, setRestoreFilesLoading] = useState(false);
+  const [restoreSelectedFileId, setRestoreSelectedFileId] = useState('');
+  const [restorePreview, setRestorePreview] = useState<BackupPreview | null>(null);
+  const [restoreConfirmText, setRestoreConfirmText] = useState('');
+  const [restoreRunning, setRestoreRunning] = useState(false);
   const [backupProgress, setBackupProgress] = useState(0);
   const [lastBackupStatus, setLastBackupStatus] = useState<{
     timestamp: string;
@@ -243,6 +298,17 @@ const Navbar: React.FC<NavbarProps> = ({
       deletedJson: number;
       errors?: string[];
     } | null;
+  } | null>(null);
+  const [lastRestoreStatus, setLastRestoreStatus] = useState<{
+    timestamp: string;
+    user: string | null;
+    sourceFileName: string;
+    sourceFileId: string;
+    sourceCreatedAt: string | null;
+    category: string;
+    mode?: string;
+    restoredTables: Array<{ table: string; rows: number; skipped: number }>;
+    emergencyBackup?: unknown;
   } | null>(null);
   const [backupSettings, setBackupSettings] = useState({
     categories: DEFAULT_BACKUP_CATEGORIES,
@@ -342,22 +408,76 @@ const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
-  const handleRestore = async (fileId: string) => {
-    if (!confirm('УВАГА! Це ПОВНІСТЮ перезапише дані у вибраних таблицях. Продовжити?')) return;
-    setBackupLoading(true);
+  const loadRestoreFiles = async () => {
+    setRestoreFilesLoading(true);
+    try {
+      const res = await fetch('/api/admin-app/backup/files');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Помилка завантаження списку backup');
+      setRestoreFiles(Array.isArray(data.backups) ? data.backups : []);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setRestoreFilesLoading(false);
+    }
+  };
+
+  const handlePreviewRestore = async () => {
+    if (!restoreSelectedFileId) return;
+    setRestorePreview(null);
+    setRestoreConfirmText('');
+    try {
+      const res = await fetch('/api/admin-app/backup/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId: restoreSelectedFileId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Помилка preview backup');
+      setRestorePreview(data);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleRestoreSelected = async () => {
+    if (!restorePreview || restoreConfirmText !== 'RESTORE') return;
+    if (!confirm('Останнє підтвердження: CRM додасть або оновить рядки з JSON у вибраній категорії. Інші дані не видаляються. Продовжити?')) return;
+
+    setRestoreRunning(true);
     try {
       const res = await fetch('/api/admin-app/backup/restore', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileId }),
+        body: JSON.stringify({
+          fileId: restorePreview.file.id,
+          confirmation: 'RESTORE',
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Помилка відновлення');
-      alert('Дані успішно відновлено!');
+
+      alert('Дані успішно відновлено у режимі merge. Перед restore створено emergency backup поточного стану.');
+      const restoredTables = Array.isArray(data.restoredTables) ? data.restoredTables : [];
+      setLastRestoreStatus({
+        timestamp: new Date().toISOString(),
+        user: user?.name ?? null,
+        sourceFileName: restorePreview.file.name,
+        sourceFileId: restorePreview.file.id,
+        sourceCreatedAt: restorePreview.backup.createdAt,
+        category: restorePreview.backup.category ?? 'unknown',
+        mode: data.mode ?? 'merge',
+        restoredTables,
+        emergencyBackup: data.emergencyBackup ?? null,
+      });
+      setRestorePreview(null);
+      setRestoreSelectedFileId('');
+      setRestoreConfirmText('');
+      await loadRestoreFiles();
     } catch (err: any) {
       alert(err.message);
     } finally {
-      setBackupLoading(false);
+      setRestoreRunning(false);
     }
   };
 
@@ -836,6 +956,9 @@ const Navbar: React.FC<NavbarProps> = ({
         if (d.lastBackup) {
           setLastBackupStatus(d.lastBackup);
         }
+        if (d.lastRestore) {
+          setLastRestoreStatus(d.lastRestore);
+        }
         if (d.settings) {
           setBackupSettings({
             categories: Array.isArray(d.settings.categories) && d.settings.categories.length > 0
@@ -872,6 +995,14 @@ const Navbar: React.FC<NavbarProps> = ({
         }
       })
       .catch(() => {});
+    fetch('/api/admin-app/backup/files')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (Array.isArray(d?.backups)) {
+          setRestoreFiles(d.backups);
+        }
+      })
+      .catch(() => {});
   }, [settingsOpen]);
 
   const handleSettingChange = (field: string, value: string | boolean) => {
@@ -892,6 +1023,8 @@ const Navbar: React.FC<NavbarProps> = ({
     setMobileSearchOpen(true);
     setTimeout(() => mobileSearchInputRef.current?.focus(), 60);
   }, []);
+
+  const selectedRestoreFile = restoreFiles.find(file => file.fileId === restoreSelectedFileId) ?? null;
 
   return (
     <>
@@ -2210,6 +2343,242 @@ const Navbar: React.FC<NavbarProps> = ({
                             ) : null}
                           </div>
                         )}
+
+                        {lastRestoreStatus && (
+                          <div style={{ fontSize: '0.8125rem', color: '#64748b', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <strong>Останнє відновлення:</strong> {new Date(lastRestoreStatus.timestamp).toLocaleString('uk-UA')}<br/>
+                            Категорія: {BACKUP_CATEGORY_LABELS[lastRestoreStatus.category] ?? lastRestoreStatus.category}. Файл: {lastRestoreStatus.sourceFileName}.<br/>
+                            Режим: {lastRestoreStatus.mode === 'merge' ? 'merge без видалення інших даних' : lastRestoreStatus.mode ?? 'restore'}.
+                            {' '}
+                            Таблиць: {lastRestoreStatus.restoredTables.length}, рядків відновлено: {lastRestoreStatus.restoredTables.reduce((sum, table) => sum + table.rows, 0)}.
+                          </div>
+                        )}
+
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: restoreOpen ? '0.875rem' : 0,
+                          padding: '0.875rem',
+                          backgroundColor: restoreOpen ? '#fff7ed' : '#fff',
+                          border: `1px solid ${restoreOpen ? '#fed7aa' : '#e2e8f0'}`,
+                          borderRadius: '10px',
+                        }}>
+                          <button
+                            type="button"
+                            aria-expanded={restoreOpen}
+                            onClick={() => setRestoreOpen(prev => !prev)}
+                            style={{
+                              appearance: 'none',
+                              border: 0,
+                              background: 'transparent',
+                              padding: 0,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '0.75rem',
+                              textAlign: 'left',
+                              color: 'inherit',
+                            }}
+                          >
+                            <span>
+                              <span style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 700, color: '#9a3412', marginBottom: '0.25rem' }}>
+                                Відновлення з резервної копії
+                              </span>
+                              <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', lineHeight: 1.45 }}>
+                                Оберіть JSON з Google Drive, перевірте preview і підтвердіть restore вручну.
+                              </span>
+                            </span>
+                            <ChevronDown
+                              size={16}
+                              style={{
+                                color: '#9a3412',
+                                flexShrink: 0,
+                                transform: restoreOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 160ms ease-out',
+                              }}
+                            />
+                          </button>
+
+                          {restoreOpen && (
+                            <>
+                              <div style={{ fontSize: '0.75rem', color: '#9a3412', lineHeight: 1.5, padding: '0.75rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px' }}>
+                                Restore працює у режимі merge: додає відсутні рядки та оновлює наявні з JSON, але не видаляє інші дані. Перед відновленням CRM автоматично попросить upload-service створити emergency backup поточного стану цієї категорії.
+                              </div>
+
+                              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
+                                <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
+                                    JSON backup з Google Drive
+                                  </span>
+                                  <select
+                                    value={restoreSelectedFileId}
+                                    onChange={(e) => {
+                                      setRestoreSelectedFileId(e.target.value);
+                                      setRestorePreview(null);
+                                      setRestoreConfirmText('');
+                                    }}
+                                    disabled={restoreFilesLoading || restoreFiles.length === 0}
+                                    style={{
+                                      width: '100%',
+                                      border: '1px solid #cbd5e1',
+                                      borderRadius: '8px',
+                                      padding: '0.5rem 0.625rem',
+                                      fontSize: '0.875rem',
+                                      color: '#0f172a',
+                                      backgroundColor: '#fff',
+                                    }}
+                                  >
+                                    <option value="">
+                                      {restoreFilesLoading ? 'Завантаження списку...' : 'Оберіть файл для відновлення'}
+                                    </option>
+                                    {restoreFiles.map(file => (
+                                      <option key={file.fileId} value={file.fileId}>
+                                        {file.dateFolder} · {BACKUP_CATEGORY_LABELS[file.category] ?? file.category} · {file.fileName}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary"
+                                  onClick={loadRestoreFiles}
+                                  disabled={restoreFilesLoading}
+                                  style={{ whiteSpace: 'nowrap' }}
+                                >
+                                  {restoreFilesLoading ? 'Оновлення...' : 'Оновити список'}
+                                </button>
+                              </div>
+
+                              {selectedRestoreFile && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
+                                  <span>
+                                    {BACKUP_CATEGORY_LABELS[selectedRestoreFile.category] ?? selectedRestoreFile.category} · {formatBackupFileSize(selectedRestoreFile.size)}
+                                  </span>
+                                  <a
+                                    href={selectedRestoreFile.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}
+                                  >
+                                    Відкрити в Drive <ExternalLink size={13} />
+                                  </a>
+                                </div>
+                              )}
+
+                              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary"
+                                  onClick={handlePreviewRestore}
+                                  disabled={!restoreSelectedFileId || restoreFilesLoading || restoreRunning}
+                                >
+                                  Перевірити backup
+                                </button>
+                              </div>
+
+                              {restorePreview && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.875rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem', fontSize: '0.75rem' }}>
+                                    <div>
+                                      <strong style={{ display: 'block', color: '#334155', marginBottom: '0.2rem' }}>Категорія</strong>
+                                      <span style={{ color: '#64748b' }}>{BACKUP_CATEGORY_LABELS[restorePreview.backup.category ?? ''] ?? restorePreview.backup.category ?? 'Невідомо'}</span>
+                                    </div>
+                                    <div>
+                                      <strong style={{ display: 'block', color: '#334155', marginBottom: '0.2rem' }}>Створено</strong>
+                                      <span style={{ color: '#64748b' }}>
+                                        {restorePreview.backup.createdAt
+                                          ? new Date(restorePreview.backup.createdAt).toLocaleString('uk-UA')
+                                          : 'Невідомо'}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <strong style={{ display: 'block', color: '#334155', marginBottom: '0.2rem' }}>Рядків</strong>
+                                      <span style={{ color: '#64748b' }}>{restorePreview.backup.totalRows}</span>
+                                    </div>
+                                  </div>
+
+                                  {restorePreview.dryRun && (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem', fontSize: '0.75rem' }}>
+                                      <div style={{ padding: '0.65rem', backgroundColor: '#ecfdf5', border: '1px solid #bbf7d0', borderRadius: '8px' }}>
+                                        <strong style={{ display: 'block', color: '#166534', marginBottom: '0.2rem' }}>Буде додано</strong>
+                                        <span style={{ color: '#166534', fontSize: '1rem', fontWeight: 700 }}>{restorePreview.dryRun.inserts}</span>
+                                      </div>
+                                      <div style={{ padding: '0.65rem', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
+                                        <strong style={{ display: 'block', color: '#1d4ed8', marginBottom: '0.2rem' }}>Буде оновлено</strong>
+                                        <span style={{ color: '#1d4ed8', fontSize: '1rem', fontWeight: 700 }}>{restorePreview.dryRun.updates}</span>
+                                      </div>
+                                      <div style={{ padding: '0.65rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                                        <strong style={{ display: 'block', color: '#475569', marginBottom: '0.2rem' }}>Буде пропущено</strong>
+                                        <span style={{ color: '#475569', fontSize: '1rem', fontWeight: 700 }}>{restorePreview.dryRun.skipped}</span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <div style={{ maxHeight: '160px', overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: '#fff' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                                      <thead>
+                                        <tr style={{ backgroundColor: '#f1f5f9', color: '#475569' }}>
+                                          <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid #e2e8f0' }}>Таблиця</th>
+                                          <th style={{ textAlign: 'right', padding: '0.5rem', borderBottom: '1px solid #e2e8f0' }}>В архіві</th>
+                                          <th style={{ textAlign: 'right', padding: '0.5rem', borderBottom: '1px solid #e2e8f0' }}>Додати</th>
+                                          <th style={{ textAlign: 'right', padding: '0.5rem', borderBottom: '1px solid #e2e8f0' }}>Оновити</th>
+                                          <th style={{ textAlign: 'right', padding: '0.5rem', borderBottom: '1px solid #e2e8f0' }}>Пропустити</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {restorePreview.backup.tables.map(table => {
+                                          const dryRunTable = restorePreview.dryRun?.tables.find(item => item.name === table.name);
+                                          return (
+                                            <tr key={table.name}>
+                                              <td style={{ padding: '0.45rem 0.5rem', borderBottom: '1px solid #f1f5f9', color: '#0f172a' }}>{table.name}</td>
+                                              <td style={{ padding: '0.45rem 0.5rem', borderBottom: '1px solid #f1f5f9', color: '#475569', textAlign: 'right' }}>{table.rows}</td>
+                                              <td style={{ padding: '0.45rem 0.5rem', borderBottom: '1px solid #f1f5f9', color: '#166534', textAlign: 'right' }}>{dryRunTable?.inserts ?? 0}</td>
+                                              <td style={{ padding: '0.45rem 0.5rem', borderBottom: '1px solid #f1f5f9', color: '#1d4ed8', textAlign: 'right' }}>{dryRunTable?.updates ?? 0}</td>
+                                              <td style={{ padding: '0.45rem 0.5rem', borderBottom: '1px solid #f1f5f9', color: '#64748b', textAlign: 'right' }}>{dryRunTable?.skipped ?? 0}</td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+
+                                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9a3412' }}>
+                                      Для відновлення введіть RESTORE
+                                    </span>
+                                    <input
+                                      type="text"
+                                      value={restoreConfirmText}
+                                      onChange={(e) => setRestoreConfirmText(e.target.value)}
+                                      placeholder="RESTORE"
+                                      style={{
+                                        width: '100%',
+                                        border: '1px solid #fed7aa',
+                                        borderRadius: '8px',
+                                        padding: '0.5rem 0.625rem',
+                                        fontSize: '0.875rem',
+                                        color: '#0f172a',
+                                        backgroundColor: '#fff',
+                                      }}
+                                    />
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    className="btn btn-danger"
+                                    onClick={handleRestoreSelected}
+                                    disabled={restoreRunning || restoreConfirmText !== 'RESTORE'}
+                                    style={{ alignSelf: 'flex-start' }}
+                                  >
+                                    {restoreRunning ? 'Відновлення...' : 'Відновити з цього JSON'}
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

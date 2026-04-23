@@ -13,6 +13,16 @@ interface DriveFolder {
   webViewLink?: string;
 }
 
+export interface DriveListItem {
+  id: string;
+  name: string;
+  mimeType: string;
+  webViewLink?: string;
+  size?: string;
+  createdTime?: string;
+  modifiedTime?: string;
+}
+
 // Cache access token in module scope — survives across warm Vercel invocations
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
@@ -307,6 +317,41 @@ export async function fetchDriveFileContent(fileId: string, range?: string | nul
       },
     }
   );
+}
+
+export async function listDriveChildren(parentId: string): Promise<DriveListItem[]> {
+  const token = await getAccessToken();
+  const files: DriveListItem[] = [];
+  let pageToken: string | null = null;
+
+  do {
+    const q = `'${parentId}' in parents and trashed=false`;
+    const params = new URLSearchParams({
+      q,
+      fields: 'nextPageToken,files(id,name,mimeType,webViewLink,size,createdTime,modifiedTime)',
+      pageSize: '1000',
+      supportsAllDrives: 'true',
+      includeItemsFromAllDrives: 'true',
+    });
+
+    if (pageToken) {
+      params.set('pageToken', pageToken);
+    }
+
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Drive list children failed: ${await res.text()}`);
+    }
+
+    const data = await res.json();
+    files.push(...(data.files || []));
+    pageToken = data.nextPageToken || null;
+  } while (pageToken);
+
+  return files;
 }
 
 // Make a file publicly readable (so anyone with link can view/download)
