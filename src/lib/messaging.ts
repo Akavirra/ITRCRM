@@ -91,6 +91,34 @@ export interface CampaignSummary {
   created_at: string;
 }
 
+export interface CampaignRecipientDetails {
+  id: number;
+  campaign_id: number;
+  student_id: number | null;
+  channel: MessageChannel;
+  address: string | null;
+  recipient_name: string;
+  status: RecipientStatus;
+  provider_message_id: string | null;
+  error: string | null;
+  rendered_subject: string | null;
+  rendered_body: string | null;
+  sent_at: string | null;
+  public_id: string | null;
+  full_name: string | null;
+  photo: string | null;
+  email: string | null;
+  is_active: boolean | null;
+  study_status: 'studying' | 'not_studying' | null;
+}
+
+export interface CampaignDetails extends CampaignSummary {
+  template_id: number | null;
+  body: string;
+  audience_filter: Required<AudienceFilter>;
+  recipients: CampaignRecipientDetails[];
+}
+
 const DEFAULT_VARIABLES = [
   'studentName',
   'parentName',
@@ -167,6 +195,14 @@ function normalizeSearch(value?: string): string {
 
 function emailLooksValid(email: string | null): boolean {
   return Boolean(email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()));
+}
+
+function parseAudienceFilter(value: unknown): Required<AudienceFilter> {
+  if (!value || typeof value !== 'object') {
+    return normalizeAudienceFilter({});
+  }
+
+  return normalizeAudienceFilter(value as AudienceFilter);
 }
 
 export function normalizeAudienceFilter(filter: AudienceFilter = {}): Required<AudienceFilter> {
@@ -693,6 +729,99 @@ export async function getCampaignById(id: number): Promise<CampaignSummary | nul
   );
 
   return row || null;
+}
+
+export async function getCampaignDetails(id: number): Promise<CampaignDetails | null> {
+  const campaign = await get<
+    Omit<CampaignDetails, 'audience_filter' | 'recipients'> & { audience_filter: unknown }
+  >(
+    `SELECT
+       c.id,
+       c.name,
+       c.channel,
+       c.provider,
+       c.template_id,
+       c.subject,
+       c.body,
+       c.audience_filter,
+       c.status,
+       c.total_count,
+       c.sent_count,
+       c.failed_count,
+       c.skipped_count,
+       c.created_by,
+       u.name AS created_by_name,
+       c.sent_at,
+       c.created_at
+     FROM message_campaigns c
+     LEFT JOIN users u ON u.id = c.created_by
+     WHERE c.id = $1`,
+    [id]
+  );
+
+  if (!campaign) {
+    return null;
+  }
+
+  const recipients = await all<CampaignRecipientDetails>(
+    `SELECT
+       r.id,
+       r.campaign_id,
+       r.student_id,
+       r.channel,
+       r.address,
+       r.recipient_name,
+       r.status,
+       r.provider_message_id,
+       r.error,
+       r.rendered_subject,
+       r.rendered_body,
+       r.sent_at,
+       s.public_id,
+       s.full_name,
+       s.photo,
+       s.email,
+       s.is_active,
+       CASE
+         WHEN s.id IS NULL THEN NULL
+         WHEN EXISTS (
+           SELECT 1
+           FROM student_groups sg2
+           WHERE sg2.student_id = s.id
+             AND sg2.is_active = TRUE
+         )
+         OR EXISTS (
+           SELECT 1
+           FROM attendance a2
+           JOIN lessons l2 ON a2.lesson_id = l2.id
+           WHERE a2.student_id = s.id
+             AND l2.group_id IS NULL
+             AND l2.status = 'scheduled'
+             AND l2.lesson_date >= CURRENT_DATE
+         )
+         THEN 'studying'
+         ELSE 'not_studying'
+       END AS study_status
+     FROM message_recipients r
+     LEFT JOIN students s ON s.id = r.student_id
+     WHERE r.campaign_id = $1
+     ORDER BY
+       CASE r.status
+         WHEN 'failed' THEN 0
+         WHEN 'skipped' THEN 1
+         WHEN 'sent' THEN 2
+         ELSE 3
+       END,
+       r.sent_at DESC NULLS LAST,
+       r.id DESC`,
+    [id]
+  );
+
+  return {
+    ...campaign,
+    audience_filter: parseAudienceFilter(campaign.audience_filter),
+    recipients,
+  };
 }
 
 export async function getMessagingBootstrap(): Promise<{

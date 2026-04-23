@@ -44,10 +44,11 @@ const SESSION_REFRESH_THROTTLE_MS = 5 * 60 * 1000;
 export default function Layout({ children, user, headerActions, hideNavbar }: LayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isDesktop, setIsDesktop] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [viewportReady, setViewportReady] = useState(false);
   const [assistantWidgetEnabled, setAssistantWidgetEnabled] = useState<boolean | null>(null);
 
   // Check viewport size
@@ -58,6 +59,7 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
       setIsDesktop(desktop);
       setIsTablet(width >= 769 && width < 1025);
       setIsMobile(width < 769);
+      setViewportReady(true);
       // When resizing to/from desktop, sync sidebar state
       setSidebarOpen(desktop);
     };
@@ -200,17 +202,20 @@ export default function Layout({ children, user, headerActions, hideNavbar }: La
 
   // Calculate margin based on sidebar state and viewport
   const getContentMarginLeft = () => {
+    if (!viewportReady) return '0px';
     if (isMobile || isTablet) return '0px';
     return sidebarOpen ? '272px' : '16px';
   };
 
   const getContentMarginRight = () => {
+    if (!viewportReady) return '0px';
     if (isMobile) return '0px';
     if (isTablet) return '8px';
     return '16px';
   };
 
   const getMainPadding = () => {
+    if (!viewportReady) return '0.75rem';
     if (isMobile) return '0.75rem';
     if (isTablet) return '1rem';
     return '1.5rem';

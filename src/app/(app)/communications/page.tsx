@@ -28,6 +28,7 @@ import styles from './communications.module.css';
 import type {
   AudienceFilter,
   AudiencePreview,
+  CampaignDetails,
   CampaignSummary,
   MessageTemplate,
   MessagingStudent,
@@ -125,6 +126,57 @@ function statusLabel(status: CampaignSummary['status']): string {
   return labels[status] || status;
 }
 
+function recipientStatusLabel(status: 'pending' | 'sent' | 'failed' | 'skipped'): string {
+  const labels = {
+    pending: 'Очікує',
+    sent: 'Надіслано',
+    failed: 'Помилка',
+    skipped: 'Пропущено',
+  } satisfies Record<'pending' | 'sent' | 'failed' | 'skipped', string>;
+
+  return labels[status] || status;
+}
+
+function channelLabel(channel: CampaignSummary['channel']): string {
+  if (channel === 'email') return 'Email';
+  if (channel === 'telegram') return 'Telegram';
+  if (channel === 'viber') return 'Viber';
+  return channel;
+}
+
+function snippet(value: string | null, max = 120): string {
+  const normalized = (value || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) return '—';
+  return normalized.length > max ? `${normalized.slice(0, max - 1)}…` : normalized;
+}
+
+function describeAudienceFilter(filter: AudienceFilter | null): string[] {
+  if (!filter) return [];
+
+  const parts: string[] = [];
+  if (filter.mode === 'manual') {
+    parts.push(`Ручний список: ${filter.studentIds?.length || 0}`);
+  } else {
+    parts.push('Сегментна аудиторія');
+  }
+  if ((filter.courseIds || []).length > 0) parts.push(`Курси: ${filter.courseIds?.length}`);
+  if ((filter.groupIds || []).length > 0) parts.push(`Групи: ${filter.groupIds?.length}`);
+  if ((filter.studyStatuses || []).length > 0) {
+    parts.push(
+      (filter.studyStatuses || []).includes('studying') && (filter.studyStatuses || []).includes('not_studying')
+        ? 'Статуси: усі'
+        : (filter.studyStatuses || []).includes('studying')
+          ? 'Статуси: навчаються'
+          : 'Статуси: не навчаються'
+    );
+  }
+  if (filter.requireEmail !== false) parts.push('Лише з email');
+  if (filter.includeInactive) parts.push('З архівом');
+  if (filter.search?.trim()) parts.push(`Пошук: ${filter.search.trim()}`);
+  if ((filter.excludedStudentIds || []).length > 0) parts.push(`Виключено: ${filter.excludedStudentIds?.length}`);
+  return parts;
+}
+
 function studentInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
   return parts.map((part) => part[0]?.toUpperCase() || '').join('') || 'У';
@@ -172,10 +224,18 @@ export default function CommunicationsPage() {
   const [audienceListOpen, setAudienceListOpen] = useState(true);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [lastSendResult, setLastSendResult] = useState<CampaignSummary | null>(null);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
+  const [campaignDetails, setCampaignDetails] = useState<CampaignDetails | null>(null);
+  const [campaignDetailsLoading, setCampaignDetailsLoading] = useState(false);
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId) || null,
     [selectedTemplateId, templates]
+  );
+
+  const selectedCampaignSummary = useMemo(
+    () => campaigns.find((campaign) => campaign.id === selectedCampaignId) || null,
+    [campaigns, selectedCampaignId]
   );
 
   const effectiveFilter = useMemo<AudienceFilter>(() => ({
@@ -285,6 +345,9 @@ export default function CommunicationsPage() {
 
       setTemplates(Array.isArray(bootstrap.templates) ? bootstrap.templates : []);
       setCampaigns(Array.isArray(bootstrap.campaigns) ? bootstrap.campaigns : []);
+      if (Array.isArray(bootstrap.campaigns) && bootstrap.campaigns.length > 0) {
+        setSelectedCampaignId((current) => current ?? bootstrap.campaigns[0].id);
+      }
       setVariables(Array.isArray(bootstrap.variables) ? bootstrap.variables : []);
       setCourses(Array.isArray(coursesData.courses) ? coursesData.courses : []);
       setGroups(Array.isArray(groupsData.groups) ? groupsData.groups : []);
@@ -305,6 +368,24 @@ export default function CommunicationsPage() {
       setNotice({ type: 'error', text: 'Не вдалося завантажити дані розсилок' });
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const loadCampaignDetails = useCallback(async (campaignId: number) => {
+    setCampaignDetailsLoading(true);
+    try {
+      const res = await fetch(`/api/messaging/campaigns/${campaignId}`, { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Не вдалося завантажити деталі розсилки');
+      setCampaignDetails(data.campaign);
+    } catch (error) {
+      setCampaignDetails(null);
+      setNotice({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Не вдалося завантажити деталі розсилки',
+      });
+    } finally {
+      setCampaignDetailsLoading(false);
     }
   }, []);
 
@@ -336,6 +417,27 @@ export default function CommunicationsPage() {
       void refreshPreview();
     }
   }, [loading, refreshPreview]);
+
+  useEffect(() => {
+    if (!campaigns.length) {
+      setSelectedCampaignId(null);
+      setCampaignDetails(null);
+      return;
+    }
+
+    if (!selectedCampaignId || !campaigns.some((campaign) => campaign.id === selectedCampaignId)) {
+      setSelectedCampaignId(campaigns[0].id);
+    }
+  }, [campaigns, selectedCampaignId]);
+
+  useEffect(() => {
+    if (!selectedCampaignId) {
+      setCampaignDetails(null);
+      return;
+    }
+
+    void loadCampaignDetails(selectedCampaignId);
+  }, [loadCampaignDetails, selectedCampaignId]);
 
   useEffect(() => {
     if (!notice) return;
@@ -554,6 +656,7 @@ export default function CommunicationsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Не вдалося надіслати розсилку');
       setCampaigns((current) => [data.campaign, ...current].slice(0, 10));
+      setSelectedCampaignId(data.campaign.id);
       setLastSendResult(data.campaign);
       setNotice({
         type: data.campaign.failed_count > 0 ? 'error' : 'success',
@@ -761,20 +864,6 @@ export default function CommunicationsPage() {
             </div>
           )}
 
-          <div className={styles.filterRow}>
-            <label className={styles.field}>
-              <span className={styles.srOnly}>Пошук у сегменті</span>
-              <div className={styles.inputWithIcon}>
-                <Search size={16} />
-                <input
-                  value={filter.search || ''}
-                  onChange={(event) => setFilter((current) => ({ ...current, search: event.target.value }))}
-                  placeholder="Імʼя, email, школа або група"
-                />
-              </div>
-            </label>
-          </div>
-
           {filter.mode === 'manual' && (
             <div className={styles.manualBox}>
               <label className={styles.field}>
@@ -879,6 +968,16 @@ export default function CommunicationsPage() {
           {audienceListOpen && (
           <div className={styles.audiencePreview}>
             <div className={styles.audiencePreviewToolbar}>
+              <div className={styles.audienceSearch}>
+                <div className={styles.inputWithIcon}>
+                  <Search size={16} />
+                  <input
+                    value={filter.search || ''}
+                    onChange={(event) => setFilter((current) => ({ ...current, search: event.target.value }))}
+                    placeholder="Імʼя, email, школа або група"
+                  />
+                </div>
+              </div>
               <div className={styles.toggleRow}>
                 <label className={styles.toggle}>
                   <input
@@ -1243,22 +1342,140 @@ export default function CommunicationsPage() {
           </div>
 
           <div className={styles.history}>
-            <h3>Останні розсилки</h3>
+            <div className={styles.historyHeader}>
+              <div>
+                <h3>Історія розсилок</h3>
+                <p className={styles.supportText}>Повна інформація по кампаніях, автору, тексту та статусах отримувачів.</p>
+              </div>
+              {selectedCampaignSummary && (
+                <button
+                  className={styles.ghostButton}
+                  type="button"
+                  onClick={() => void loadCampaignDetails(selectedCampaignSummary.id)}
+                  disabled={campaignDetailsLoading}
+                >
+                  <RefreshCw size={16} className={campaignDetailsLoading ? styles.spin : ''} />
+                  Оновити деталі
+                </button>
+              )}
+            </div>
             {campaigns.length === 0 ? (
               <p className={styles.emptyText}>Історії ще немає</p>
             ) : (
-              <div className={styles.historyGrid}>
-                {campaigns.slice(0, 4).map((campaign) => (
-                  <div key={campaign.id} className={styles.historyItem}>
-                    <div>
-                      <strong>{campaign.name}</strong>
-                      <span>{formatDateTime(campaign.sent_at || campaign.created_at)}</span>
+              <div className={styles.historyLayout}>
+                <div className={styles.historyRail}>
+                  {campaigns.map((campaign) => (
+                    <button
+                      key={campaign.id}
+                      type="button"
+                      className={campaign.id === selectedCampaignId ? styles.historyItemActive : styles.historyItem}
+                      onClick={() => setSelectedCampaignId(campaign.id)}
+                    >
+                      <div className={styles.historyItemMain}>
+                        <strong>{campaign.name}</strong>
+                        <span>{formatDateTime(campaign.sent_at || campaign.created_at)}</span>
+                      </div>
+                      <div className={styles.historyItemMeta}>
+                        <small>{campaign.created_by_name || 'Невідомий автор'}</small>
+                        <small>
+                          {statusLabel(campaign.status)} · {campaign.sent_count}/{campaign.total_count}
+                        </small>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className={styles.historyDetail}>
+                  {campaignDetailsLoading ? (
+                    <div className={styles.loadingState}>
+                      <RefreshCw size={20} />
+                      Завантажуємо деталі розсилки...
                     </div>
-                    <small>
-                      {statusLabel(campaign.status)} · {campaign.sent_count}/{campaign.total_count}
-                    </small>
-                  </div>
-                ))}
+                  ) : campaignDetails ? (
+                    <>
+                      <div className={styles.historyDetailHeader}>
+                        <div>
+                          <p className={styles.panelKicker}>Кампанія #{campaignDetails.id}</p>
+                          <h4>{campaignDetails.name}</h4>
+                        </div>
+                        <span className={styles.historyStatusPill}>{statusLabel(campaignDetails.status)}</span>
+                      </div>
+
+                      <div className={styles.historySummaryGrid}>
+                        <span><strong>Хто запускав</strong>{campaignDetails.created_by_name || 'Невідомо'}</span>
+                        <span><strong>Канал</strong>{channelLabel(campaignDetails.channel)}</span>
+                        <span><strong>Провайдер</strong>{campaignDetails.provider || '—'}</span>
+                        <span><strong>Створено</strong>{formatDateTime(campaignDetails.created_at)}</span>
+                        <span><strong>Надіслано</strong>{formatDateTime(campaignDetails.sent_at)}</span>
+                        <span><strong>Успішно</strong>{campaignDetails.sent_count} з {campaignDetails.total_count}</span>
+                        <span><strong>Помилки</strong>{campaignDetails.failed_count}</span>
+                        <span><strong>Пропущено</strong>{campaignDetails.skipped_count}</span>
+                      </div>
+
+                      <div className={styles.historyBadges}>
+                        {describeAudienceFilter(campaignDetails.audience_filter).map((item) => (
+                          <span key={item} className={styles.historyBadge}>{item}</span>
+                        ))}
+                      </div>
+
+                      <div className={styles.historyMessageGrid}>
+                        <div className={styles.historyMessageCard}>
+                          <span className={styles.historyLabel}>Тема</span>
+                          <strong>{campaignDetails.subject || 'Без теми'}</strong>
+                        </div>
+                        <div className={styles.historyMessageCard}>
+                          <span className={styles.historyLabel}>Текст кампанії</span>
+                          <div className={styles.historyBody}>{campaignDetails.body}</div>
+                        </div>
+                      </div>
+
+                      <div className={styles.historyRecipientsHeader}>
+                        <h4>Отримувачі</h4>
+                        <span>{campaignDetails.recipients.length} записів</span>
+                      </div>
+
+                      <div className={styles.historyRecipientsList}>
+                        {campaignDetails.recipients.map((recipient) => (
+                          <article key={recipient.id} className={styles.historyRecipientCard}>
+                            <div className={styles.historyRecipientTop}>
+                              <div className={styles.historyRecipientIdentity}>
+                                <span className={styles.recipientAvatar}>
+                                  {recipient.photo ? (
+                                    <img src={recipient.photo} alt={recipient.recipient_name} />
+                                  ) : (
+                                    <span>{studentInitials(recipient.recipient_name)}</span>
+                                  )}
+                                </span>
+                                <span className={styles.recipientContent}>
+                                  <strong>{recipient.recipient_name}</strong>
+                                  <small>{recipient.address || recipient.email || 'Немає адреси'}</small>
+                                </span>
+                              </div>
+                              <span className={styles.historyRecipientStatus}>{recipientStatusLabel(recipient.status)}</span>
+                            </div>
+
+                            <div className={styles.historyRecipientMeta}>
+                              <span><strong>Час</strong>{formatDateTime(recipient.sent_at)}</span>
+                              <span><strong>ID повідомлення</strong>{recipient.provider_message_id || '—'}</span>
+                              <span><strong>Статус учня</strong>{recipient.study_status === 'studying' ? 'Навчається' : recipient.study_status === 'not_studying' ? 'Не навчається' : '—'}</span>
+                            </div>
+
+                            <div className={styles.historyRecipientContent}>
+                              <span><strong>Тема листа</strong>{snippet(recipient.rendered_subject, 160)}</span>
+                              <span><strong>Текст</strong>{snippet(recipient.rendered_body, 220)}</span>
+                              <span><strong>Помилка</strong>{recipient.error || '—'}</span>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className={styles.emptyAudience}>
+                      <Mail size={20} />
+                      Обери розсилку зі списку, щоб подивитися деталі
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
