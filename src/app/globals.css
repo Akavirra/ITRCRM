@@ -591,10 +591,6 @@ textarea.form-input {
    RESPONSIVE UTILITIES
    ============================================ */
 
-/* Viewport meta helper */
-@viewport {
-  width: device-width;
-}
 
 /* Touch-friendly tap targets */
 @media (pointer: coarse) {

@@ -1,9 +1,15 @@
+import type { Viewport } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getSession, getUserById } from '@/lib/auth';
 import Layout from '@/components/Layout';
 import { NotesProvider } from '@/components/NotesProvider';
 import { UserProvider, User } from '@/components/UserContext';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = cookies();
