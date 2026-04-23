@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useTelegramInitData } from '@/components/TelegramWebAppProvider';
-import { GiftIcon, CheckCircleIcon, BellIcon } from '@/components/Icons';
+import {
+  GiftIcon, CheckCircleIcon, BellIcon, FileTextIcon, XCircleIcon,
+  CalendarIcon, UsersIcon, DollarIcon, SettingsIcon, ClockIcon,
+  CheckIcon, UserPlusIcon, UserMinusIcon, EditIcon, TrashIcon,
+} from '@/components/Icons';
 
 interface Notification {
   id: number;
@@ -17,6 +21,23 @@ interface Notification {
 const TYPE_ICON: Record<string, React.FC<{ size?: number; color?: string }>> = {
   birthday: GiftIcon,
   lesson_done: CheckCircleIcon,
+  note_reminder: BellIcon,
+  enrollment_submission: FileTextIcon,
+  lesson_canceled: XCircleIcon,
+  lesson_rescheduled: CalendarIcon,
+  teacher_replaced: UsersIcon,
+  trial_lesson_scheduled: UserPlusIcon,
+  camp_payment_added: DollarIcon,
+  system_settings_updated: SettingsIcon,
+  enrollment_approved: CheckIcon,
+  enrollment_rejected: XCircleIcon,
+  student_added_to_group: UserPlusIcon,
+  student_removed_from_group: UserMinusIcon,
+  payment_created: DollarIcon,
+  payment_updated: EditIcon,
+  payment_deleted: TrashIcon,
+  lessons_generated: CalendarIcon,
+  lesson_stale: ClockIcon,
 };
 
 function timeAgo(dateStr: string): string {

@@ -683,7 +683,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
   return (
     <>
       <div className="card">
-        <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+        <div className="card-header" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem 1rem', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Search */}
           <input
             type="text"
@@ -691,7 +691,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
             placeholder={`${t('actions.search')} ${t('nav.students').toLowerCase()}...`}
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
-            style={{ width: '200px', padding: '0.5rem 0.875rem', fontSize: '0.875rem' }}
+            style={{ width: '200px', maxWidth: '100%', minWidth: '170px', padding: '0.5rem 0.875rem', fontSize: '0.875rem', flex: '1 1 200px' }}
           />
 
           {/* Course filter */}
@@ -699,7 +699,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
             className="form-input"
             value={courseFilter}
             onChange={(e) => handleCourseFilterChange(e.target.value)}
-            style={{ width: '160px', padding: '0.5rem 0.875rem', fontSize: '0.875rem' }}
+            style={{ width: '160px', maxWidth: '100%', minWidth: '140px', padding: '0.5rem 0.875rem', fontSize: '0.875rem', flex: '0 1 160px' }}
           >
             <option value="">Курс</option>
             {courses.map((course) => (
@@ -714,7 +714,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
             className="form-input"
             value={groupFilter}
             onChange={(e) => handleGroupFilterChange(e.target.value)}
-            style={{ width: '180px', padding: '0.5rem 0.875rem', fontSize: '0.875rem' }}
+            style={{ width: '180px', maxWidth: '100%', minWidth: '150px', padding: '0.5rem 0.875rem', fontSize: '0.875rem', flex: '0 1 180px' }}
           >
             <option value="">Група</option>
             {groups
@@ -728,7 +728,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
 
           {/* Age filter - interactive multi-select chips */}
           {allAges.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem', flex: '1 1 260px', minWidth: '220px' }}>
               {allAges.map((age) => (
                 <button
                   key={age}
@@ -770,18 +770,18 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
           )}
 
           {/* Right side: count and button */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem 0.75rem', marginLeft: 'auto', flex: '1 1 420px', minWidth: 0 }}>
             {isRefreshing && (
-              <span style={{ fontSize: '0.75rem', color: '#6366f1', fontWeight: 500 }}>
+              <span style={{ fontSize: '0.75rem', color: '#6366f1', fontWeight: 500, whiteSpace: 'nowrap' }}>
                 Оновлення...
               </span>
             )}
-            <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+            <span style={{ fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
               Показано {students.length} з {pagination.total} {pagination.total === 1 ? 'учня' : pagination.total > 1 && pagination.total < 5 ? 'учнів' : 'учнів'}
             </span>
             
             {/* Sort buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
               <span style={{ fontSize: '0.75rem', color: '#6b7280', marginRight: '0.25rem' }}>Сортування:</span>
               <button
                 onClick={() => {
@@ -806,6 +806,8 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                   alignItems: 'center',
                   gap: '0.25rem',
                   transition: 'all 0.15s',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                 }}
                 title="Сортувати за іменем"
               >
@@ -837,6 +839,8 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                   alignItems: 'center',
                   gap: '0.25rem',
                   transition: 'all 0.15s',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                 }}
                 title="Сортувати за датою створення"
               >
@@ -858,6 +862,8 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                 gap: '0.625rem',
                 padding: '0.3125rem 0.375rem 0.3125rem 0.75rem',
                 minHeight: '2rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
                 borderRadius: '9999px',
                 border: `1px solid ${showSurnameFirst ? '#c7d2fe' : '#e2e8f0'}`,
                 backgroundColor: showSurnameFirst ? '#eef2ff' : '#ffffff',
@@ -912,7 +918,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
               </span>
             </button>
 
-            <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '0.5rem', padding: '0.25rem', alignItems: 'center', gap: '0.125rem' }}>
+            <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '0.5rem', padding: '0.25rem', alignItems: 'center', gap: '0.125rem', flexShrink: 0 }}>
               <button
                 onClick={() => { setViewMode('detailed'); localStorage.setItem('studentsViewMode', 'detailed'); }}
                 style={{
@@ -944,7 +950,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
             </div>
             
             {user.role === 'admin' && (
-              <button className="btn btn-primary" onClick={handleCreate}>
+              <button className="btn btn-primary" onClick={handleCreate} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
                 + {t('modals.newStudent')}
               </button>
             )}

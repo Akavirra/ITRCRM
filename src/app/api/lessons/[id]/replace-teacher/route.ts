@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, checkGroupAccess, forbidden } from '@/lib/api-utils';
 import { get, run } from '@/db';
+import { createGlobalNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,7 +107,26 @@ export async function POST(
       `UPDATE lessons SET teacher_id = $1, updated_at = NOW() WHERE id = $2`,
       [replacementTeacherId, lessonId]
     );
-    
+
+    const originalTeacher = await get<{ name: string }>(
+      `SELECT name FROM users WHERE id = $1`,
+      [originalTeacherId]
+    );
+
+    const groupForNotif = await get<{ title: string }>(
+      `SELECT title FROM groups WHERE id = $1`,
+      [lesson.group_id]
+    );
+
+    await createGlobalNotification(
+      'teacher_replaced',
+      'Заміна викладача',
+      `${groupForNotif?.title || 'Заняття'} • ${replacementTeacher.name} замість ${originalTeacher?.name || 'попереднього'}`,
+      '/schedule',
+      { lessonId, replacementTeacherId, originalTeacherId },
+      `teacher_replaced:${lessonId}`
+    );
+
     // Get updated lesson with details
     const updatedLessonRaw = await get<Lesson & { group_title: string; course_title: string; teacher_name: string | null }>(
       `SELECT 

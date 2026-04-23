@@ -5,7 +5,26 @@ import { uk } from 'date-fns/locale';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type NotificationType = 'birthday' | 'lesson_done';
+export type NotificationType =
+  | 'birthday'
+  | 'lesson_done'
+  | 'note_reminder'
+  | 'enrollment_submission'
+  | 'lesson_canceled'
+  | 'lesson_rescheduled'
+  | 'teacher_replaced'
+  | 'trial_lesson_scheduled'
+  | 'camp_payment_added'
+  | 'system_settings_updated'
+  | 'enrollment_approved'
+  | 'enrollment_rejected'
+  | 'student_added_to_group'
+  | 'student_removed_from_group'
+  | 'payment_created'
+  | 'payment_updated'
+  | 'payment_deleted'
+  | 'lessons_generated'
+  | 'lesson_stale';
 
 export interface AppNotification {
   id: number;
@@ -297,4 +316,73 @@ export async function clearNotificationsForUser(userId: number): Promise<void> {
      ON CONFLICT (user_id) DO UPDATE SET cleared_at = NOW()`,
     [userId]
   );
+}
+
+// ─── Stale lessons check (lessons that ended 3+ hours ago but still scheduled) ─
+
+export async function checkStaleLessonsAndNotify(): Promise<number> {
+  try {
+    const staleLessons = await all<{
+      id: number;
+      lesson_date: string;
+      start_datetime: string;
+      end_datetime: string;
+      group_id: number | null;
+      group_title: string | null;
+      course_title: string | null;
+      teacher_name: string | null;
+    }>(
+      `SELECT
+         l.id,
+         l.lesson_date::text as lesson_date,
+         l.start_datetime,
+         l.end_datetime,
+         l.group_id,
+         g.title as group_title,
+         c.title as course_title,
+         COALESCE(u.name, gu.name) as teacher_name
+       FROM lessons l
+       LEFT JOIN groups g ON l.group_id = g.id
+       LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
+       LEFT JOIN users u ON l.teacher_id = u.id
+       LEFT JOIN users gu ON g.teacher_id = gu.id
+       WHERE l.status = 'scheduled'
+         AND l.end_datetime < NOW() - INTERVAL '3 hours'
+         AND l.lesson_date >= CURRENT_DATE - INTERVAL '1 day'
+       ORDER BY l.end_datetime DESC
+       LIMIT 20`,
+      []
+    );
+
+    let created = 0;
+    for (const lesson of staleLessons) {
+      const dateObj = new Date(lesson.lesson_date as string | Date);
+      const dy = String(dateObj.getUTCDate()).padStart(2, '0');
+      const mo = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+      const formattedDate = `${dy}.${mo}`;
+
+      const startKyiv = toZonedTime(new Date(lesson.start_datetime), 'Europe/Kyiv');
+      const startTime = format(startKyiv, 'HH:mm');
+
+      const title = lesson.group_title
+        ? `Заняття не оновлено: ${lesson.group_title}`
+        : 'Заняття не оновлено';
+
+      const body = `${formattedDate}, ${startTime}${lesson.teacher_name ? ` • ${lesson.teacher_name}` : ''}`;
+
+      const id = await createGlobalNotification(
+        'lesson_stale',
+        title,
+        body,
+        lesson.group_id ? `/schedule` : null,
+        { lessonId: lesson.id, groupId: lesson.group_id },
+        `lesson_stale:${lesson.id}`
+      );
+      if (id > 0) created++;
+    }
+    return created;
+  } catch (err) {
+    console.error('[notifications] checkStaleLessonsAndNotify failed:', err);
+    return 0;
+  }
 }

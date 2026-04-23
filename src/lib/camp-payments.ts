@@ -1,4 +1,5 @@
 import { get, all, run } from '@/db';
+import { createGlobalNotification } from '@/lib/notifications';
 
 export interface CampPayment {
   id: number;
@@ -62,7 +63,36 @@ export async function addPayment(input: {
       input.created_by,
     ]
   );
-  return rows[0] as CampPayment;
+  const payment = rows[0] as CampPayment;
+
+  try {
+    const meta = await get<{
+      camp_id: number;
+      camp_name: string;
+      participant_name: string;
+    }>(
+      `SELECT c.id as camp_id, c.name as camp_name,
+              TRIM(BOTH ' ' FROM COALESCE(p.last_name, '') || ' ' || COALESCE(p.first_name, '')) as participant_name
+       FROM camp_participants p
+       JOIN camps c ON p.camp_id = c.id
+       WHERE p.id = $1`,
+      [input.participant_id]
+    );
+    if (meta) {
+      await createGlobalNotification(
+        'camp_payment_added',
+        'Оплата табору',
+        `${meta.participant_name} — ${meta.camp_name} — ${input.amount} ₴`,
+        `/camps/${meta.camp_id}`,
+        { paymentId: payment.id, campId: meta.camp_id, participantId: input.participant_id },
+        `camp_payment_added:${payment.id}`
+      );
+    }
+  } catch (err) {
+    console.error('[camp-payments] Failed to create notification:', err);
+  }
+
+  return payment;
 }
 
 export async function deletePayment(paymentId: number): Promise<void> {

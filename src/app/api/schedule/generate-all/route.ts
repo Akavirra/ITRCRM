@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, isAdmin, forbidden } from '@/lib/api-utils';
 import { generateLessonsForAllGroups } from '@/lib/lessons';
+import { createGlobalNotification } from '@/lib/notifications';
 import { format, addMonths, endOfMonth, startOfMonth } from 'date-fns';
 import { uk } from 'date-fns/locale';
 
@@ -41,6 +42,15 @@ export async function POST(request: NextRequest) {
     
     console.log('[generate-all] Returning response. Total generated:', totalGenerated, 'Total skipped:', totalSkipped);
     
+    await createGlobalNotification(
+      'lessons_generated',
+      'Заняття згенеровано',
+      `Створено ${totalGenerated} занять на ${monthsLabel}`,
+      '/schedule',
+      { totalGenerated, totalSkipped, monthsLabel },
+      `lessons_generated:${format(new Date(), 'yyyy-MM-dd')}`
+    );
+
     return NextResponse.json({
       message: 'Заняття успішно згенеровано',
       totalGenerated,

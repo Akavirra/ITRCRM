@@ -4,6 +4,7 @@ import { get, run } from '@/db';
 import { rescheduleLesson } from '@/lib/lessons';
 import { formatTimeKyiv } from '@/lib/date-utils';
 import { syncLessonPhotoFolderName } from '@/lib/lesson-photos';
+import { createGlobalNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,6 +136,27 @@ export async function PATCH(
 
     if (!updatedLesson) {
       return NextResponse.json({ error: 'Не вдалося отримати оновлене заняття' }, { status: 500 });
+    }
+
+    const oldLesson = await get<{ lesson_date: string }>(
+      `SELECT lesson_date::text as lesson_date FROM lessons WHERE id = $1`,
+      [lessonId]
+    );
+
+    if (oldLesson) {
+      const oldDateObj = new Date(oldLesson.lesson_date);
+      const newDateObj = new Date(updatedLesson.lesson_date);
+      const oldDateStr = `${String(oldDateObj.getUTCDate()).padStart(2, '0')}.${String(oldDateObj.getUTCMonth() + 1).padStart(2, '0')}`;
+      const newDateStr = `${String(newDateObj.getUTCDate()).padStart(2, '0')}.${String(newDateObj.getUTCMonth() + 1).padStart(2, '0')}`;
+      const name = updatedLesson.group_title || updatedLesson.course_title || 'Заняття';
+      await createGlobalNotification(
+        'lesson_rescheduled',
+        `Заняття перенесено: ${name}`,
+        `З ${oldDateStr} на ${newDateStr}, ${updatedLesson.start_time_formatted || formatTimeKyiv(updatedLesson.start_datetime)}–${updatedLesson.end_time_formatted || formatTimeKyiv(updatedLesson.end_datetime)}`,
+        '/schedule',
+        { lessonId, groupId: updatedLesson.group_id },
+        `lesson_rescheduled:${lessonId}`
+      );
     }
 
     return NextResponse.json({

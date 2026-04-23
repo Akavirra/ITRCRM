@@ -11,6 +11,7 @@ import {
 } from '@/lib/group-history';
 import type { AttendanceStatus } from '@/lib/attendance';
 import { logLessonChange } from '@/lib/lessons';
+import { createGlobalNotification } from '@/lib/notifications';
 
 export interface TrialAdditionResult {
   added: number[];
@@ -141,6 +142,15 @@ export async function addTrialStudentsToLesson(
         addedBy,
         actorName,
         'admin'
+      );
+
+      await createGlobalNotification(
+        'trial_lesson_scheduled',
+        'Пробне заняття записано',
+        `${student.full_name} — ${groupTitle || 'заняття'}`,
+        '/schedule',
+        { lessonId, studentId, groupId: lesson.group_id },
+        `trial_lesson_scheduled:${lessonId}:${studentId}`
       );
     }
   }

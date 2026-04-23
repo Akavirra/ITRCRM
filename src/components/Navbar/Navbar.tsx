@@ -21,6 +21,16 @@ import {
   Calculator,
   Shuffle,
   NotebookPen,
+  FileText,
+  XCircle,
+  CalendarClock,
+  UserCog,
+  UserPlus,
+  UserMinus,
+  CheckSquare,
+  CalendarDays,
+  Clock,
+  Pencil,
 } from 'lucide-react';
 import { t } from '@/i18n/t';
 import styles from './Navbar.module.css';
@@ -77,16 +87,97 @@ function NotifIcon({ type }: { type: string }) {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   };
-  if (type === 'birthday') return (
-    <div style={{ ...base, background: '#fef9c3' }}>
-      <Cake size={16} style={{ color: '#ca8a04' }} />
-    </div>
-  );
-  return (
-    <div style={{ ...base, background: '#dcfce7' }}>
-      <CheckCircle size={16} style={{ color: '#16a34a' }} />
-    </div>
-  );
+  switch (type) {
+    case 'birthday':
+      return (
+        <div style={{ ...base, background: '#fef9c3' }}>
+          <Cake size={16} style={{ color: '#ca8a04' }} />
+        </div>
+      );
+    case 'lesson_canceled':
+    case 'enrollment_rejected':
+      return (
+        <div style={{ ...base, background: '#fee2e2' }}>
+          <XCircle size={16} style={{ color: '#dc2626' }} />
+        </div>
+      );
+    case 'lesson_rescheduled':
+      return (
+        <div style={{ ...base, background: '#e0f2fe' }}>
+          <CalendarClock size={16} style={{ color: '#0284c7' }} />
+        </div>
+      );
+    case 'teacher_replaced':
+      return (
+        <div style={{ ...base, background: '#f3e8ff' }}>
+          <UserCog size={16} style={{ color: '#9333ea' }} />
+        </div>
+      );
+    case 'enrollment_submission':
+      return (
+        <div style={{ ...base, background: '#dbeafe' }}>
+          <FileText size={16} style={{ color: '#2563eb' }} />
+        </div>
+      );
+    case 'trial_lesson_scheduled':
+    case 'student_added_to_group':
+      return (
+        <div style={{ ...base, background: '#dcfce7' }}>
+          <UserPlus size={16} style={{ color: '#16a34a' }} />
+        </div>
+      );
+    case 'student_removed_from_group':
+      return (
+        <div style={{ ...base, background: '#fee2e2' }}>
+          <UserMinus size={16} style={{ color: '#dc2626' }} />
+        </div>
+      );
+    case 'enrollment_approved':
+      return (
+        <div style={{ ...base, background: '#dcfce7' }}>
+          <CheckSquare size={16} style={{ color: '#16a34a' }} />
+        </div>
+      );
+    case 'camp_payment_added':
+    case 'payment_created':
+    case 'payment_updated':
+    case 'payment_deleted':
+      return (
+        <div style={{ ...base, background: '#fef9c3' }}>
+          <DollarSign size={16} style={{ color: '#ca8a04' }} />
+        </div>
+      );
+    case 'system_settings_updated':
+      return (
+        <div style={{ ...base, background: '#f3f4f6' }}>
+          <Settings size={16} style={{ color: '#4b5563' }} />
+        </div>
+      );
+    case 'lessons_generated':
+      return (
+        <div style={{ ...base, background: '#e0f2fe' }}>
+          <CalendarDays size={16} style={{ color: '#0284c7' }} />
+        </div>
+      );
+    case 'lesson_stale':
+      return (
+        <div style={{ ...base, background: '#ffedd5' }}>
+          <Clock size={16} style={{ color: '#ea580c' }} />
+        </div>
+      );
+    case 'note_reminder':
+      return (
+        <div style={{ ...base, background: '#dbeafe' }}>
+          <NotebookPen size={16} style={{ color: '#2563eb' }} />
+        </div>
+      );
+    default:
+      return (
+        <div style={{ ...base, background: '#dcfce7' }}>
+          <CheckCircle size={16} style={{ color: '#16a34a' }} />
+        </div>
+      );
+  }
 }
 
 interface NavbarProps {

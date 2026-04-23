@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateToken, markTokenUsed, createSubmission } from '@/lib/enrollment';
 import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
+import { createGlobalNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,6 +78,16 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
   });
 
   await markTokenUsed(tokenData.id);
+
+  await createGlobalNotification(
+    'enrollment_submission',
+    'Нова заявка на навчання',
+    `Подано анкету від ${submission.child_last_name} ${submission.child_first_name}`.trim(),
+    '/enrollment',
+    { submissionId: submission.id },
+    `enrollment_submission:${submission.id}`
+  );
+
   await safeAddAuditEvent({
     entityType: 'enrollment',
     entityId: submission.id,

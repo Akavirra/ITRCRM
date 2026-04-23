@@ -6,6 +6,7 @@ import {
   markNotificationsAsRead,
   clearNotificationsForUser,
   getUnreadCountForUser,
+  checkStaleLessonsAndNotify,
 } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
 
   // Lightweight mode: only return unread count (for navbar badge polling)
   const countOnly = request.nextUrl.searchParams.get('count') === 'true';
+  await checkStaleLessonsAndNotify();
   const unreadCount = await getUnreadCountForUser(admin.id);
 
   if (countOnly) {

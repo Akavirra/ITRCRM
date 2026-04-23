@@ -3,6 +3,7 @@ import { getAuthUser, unauthorized, badRequest, notFound } from '@/lib/api-utils
 import { getSubmissionById, approveSubmission } from '@/lib/enrollment';
 import { createStudent } from '@/lib/students';
 import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
+import { createGlobalNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   );
 
   await approveSubmission(submission.id, user.id, student.id);
+  await createGlobalNotification(
+    'enrollment_approved',
+    'Анкету затверджено',
+    `${fullName} — заявка на навчання схвалена`,
+    '/enrollment',
+    { submissionId: submission.id, studentId: student.id },
+    `enrollment_approved:${submission.id}`
+  );
+
   await safeAddAuditEvent({
     entityType: 'enrollment',
     entityId: submission.id,

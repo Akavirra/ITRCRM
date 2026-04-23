@@ -1,5 +1,6 @@
 import { run, get, all, transaction } from '@/db';
 import { generateUniquePublicId } from './public-id';
+import { createGlobalNotification } from '@/lib/notifications';
 
 // Group status enum
 export type GroupStatus = 'active' | 'graduate' | 'inactive';
@@ -549,16 +550,57 @@ export async function addStudentToGroup(studentId: number, groupId: number, join
     `INSERT INTO student_groups (student_id, group_id, join_date) VALUES ($1, $2, $3) RETURNING id`,
     [studentId, groupId, joinDate || new Date().toISOString().split('T')[0]]
   );
-  
+
+  try {
+    const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [studentId]);
+    const group = await get<{ title: string }>(`SELECT title FROM groups WHERE id = $1`, [groupId]);
+    if (student && group) {
+      await createGlobalNotification(
+        'student_added_to_group',
+        'Учня додано до групи',
+        `${student.full_name} → ${group.title}`,
+        `/groups/${groupId}`,
+        { studentId, groupId },
+        `student_added_to_group:${studentId}:${groupId}`
+      );
+    }
+  } catch (err) {
+    console.error('[groups] Failed to create notification for addStudentToGroup:', err);
+  }
+
   return Number(result[0]?.id);
 }
 
 // Remove student from group
 export async function removeStudentFromGroup(studentGroupId: number): Promise<void> {
+  const sg = await get<{ student_id: number; group_id: number }>(
+    `SELECT student_id, group_id FROM student_groups WHERE id = $1`,
+    [studentGroupId]
+  );
+
   await run(
     `UPDATE student_groups SET is_active = FALSE, leave_date = CURRENT_DATE, status = 'removed', updated_at = NOW() WHERE id = $1`,
     [studentGroupId]
   );
+
+  try {
+    if (sg) {
+      const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [sg.student_id]);
+      const group = await get<{ title: string }>(`SELECT title FROM groups WHERE id = $1`, [sg.group_id]);
+      if (student && group) {
+        await createGlobalNotification(
+          'student_removed_from_group',
+          'Учня видалено з групи',
+          `${student.full_name} ← ${group.title}`,
+          `/groups/${sg.group_id}`,
+          { studentId: sg.student_id, groupId: sg.group_id },
+          `student_removed_from_group:${sg.student_id}:${sg.group_id}`
+        );
+      }
+    }
+  } catch (err) {
+    console.error('[groups] Failed to create notification for removeStudentFromGroup:', err);
+  }
 }
 
 // Remove student from group by student and group IDs

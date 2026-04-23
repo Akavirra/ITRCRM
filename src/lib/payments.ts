@@ -1,5 +1,6 @@
 import { run, get, all } from '@/db';
 import { StudyStatus } from './students';
+import { createGlobalNotification } from '@/lib/notifications';
 
 export type PaymentMethod = 'cash' | 'account';
 
@@ -184,7 +185,24 @@ export async function createPayment(
       createdBy
     ]
   );
-  
+
+  try {
+    const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [studentId]);
+    const group = await get<{ title: string }>(`SELECT title FROM groups WHERE id = $1`, [groupId]);
+    if (student && group) {
+      await createGlobalNotification(
+        'payment_created',
+        'Нова оплата',
+        `${student.full_name} — ${group.title} — ${amount} ₴`,
+        '/payments',
+        { paymentId: Number(result[0]?.id), studentId, groupId },
+        `payment_created:${Number(result[0]?.id)}`
+      );
+    }
+  } catch (err) {
+    console.error('[payments] Failed to create notification for createPayment:', err);
+  }
+
   return Number(result[0]?.id);
 }
 
@@ -196,15 +214,57 @@ export async function updatePayment(
   note?: string,
   paidAt?: string
 ): Promise<void> {
+  const before = await get<{ student_id: number; group_id: number }>(`SELECT student_id, group_id FROM payments WHERE id = $1`, [id]);
+
   await run(
     `UPDATE payments SET amount = $1, method = $2, paid_at = $3, note = $4 WHERE id = $5`,
     [amount, method, paidAt || new Date().toISOString().replace('T', ' ').substring(0, 19), note || null, id]
   );
+
+  try {
+    if (before) {
+      const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [before.student_id]);
+      const group = await get<{ title: string }>(`SELECT title FROM groups WHERE id = $1`, [before.group_id]);
+      if (student && group) {
+        await createGlobalNotification(
+          'payment_updated',
+          'Оплату оновлено',
+          `${student.full_name} — ${group.title} — ${amount} ₴`,
+          '/payments',
+          { paymentId: id },
+          `payment_updated:${id}`
+        );
+      }
+    }
+  } catch (err) {
+    console.error('[payments] Failed to create notification for updatePayment:', err);
+  }
 }
 
 // Delete payment
 export async function deletePayment(id: number): Promise<void> {
+  const before = await get<{ student_id: number; group_id: number; amount: number }>(`SELECT student_id, group_id, amount FROM payments WHERE id = $1`, [id]);
+
   await run(`DELETE FROM payments WHERE id = $1`, [id]);
+
+  try {
+    if (before) {
+      const student = await get<{ full_name: string }>(`SELECT full_name FROM students WHERE id = $1`, [before.student_id]);
+      const group = await get<{ title: string }>(`SELECT title FROM groups WHERE id = $1`, [before.group_id]);
+      if (student && group) {
+        await createGlobalNotification(
+          'payment_deleted',
+          'Оплату видалено',
+          `${student.full_name} — ${group.title} — ${before.amount} ₴`,
+          '/payments',
+          { paymentId: id },
+          `payment_deleted:${id}`
+        );
+      }
+    }
+  } catch (err) {
+    console.error('[payments] Failed to create notification for deletePayment:', err);
+  }
 }
 
 // Get payment by ID

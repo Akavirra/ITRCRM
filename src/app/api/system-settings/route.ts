@@ -3,6 +3,7 @@ import { getAuthUser, unauthorized, forbidden } from '@/lib/api-utils';
 import { all, run } from '@/db';
 import { clearServerCache, getOrSetServerCache } from '@/lib/server-cache';
 import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
+import { createGlobalNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,6 +92,19 @@ export async function PUT(request: NextRequest) {
   }
 
   clearServerCache('system-settings:');
+
+  const changedKeys = Object.keys(body).filter((key) => allowed.includes(key));
+  if (changedKeys.length > 0) {
+    await createGlobalNotification(
+      'system_settings_updated',
+      'Змінено системні налаштування',
+      `Користувач ${user.name} оновив: ${changedKeys.join(', ')}`,
+      null,
+      { changed: changedKeys, before, after: Object.fromEntries(changedKeys.map((k) => [k, body[k]])) },
+      `system_settings_updated:${Date.now()}`
+    );
+  }
+
   await safeAddAuditEvent({
     entityType: 'system',
     entityTitle: 'Системні налаштування',

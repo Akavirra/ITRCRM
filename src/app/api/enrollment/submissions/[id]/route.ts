@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, badRequest, notFound } from '@/lib/api-utils';
 import { getSubmissionById, updateSubmission, rejectSubmission } from '@/lib/enrollment';
 import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
+import { createGlobalNotification } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,6 +118,16 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   }
 
   await rejectSubmission(submission.id, user.id);
+
+  await createGlobalNotification(
+    'enrollment_rejected',
+    'Анкету відхилено',
+    `${submission.child_last_name} ${submission.child_first_name}`.trim(),
+    '/enrollment',
+    { submissionId: submission.id },
+    `enrollment_rejected:${submission.id}`
+  );
+
   await safeAddAuditEvent({
     entityType: 'enrollment',
     entityId: submission.id,
