@@ -76,6 +76,7 @@ async function restoreRow(table: string, row: Record<string, unknown>) {
 
   await run(
     `INSERT INTO ${quoteIdentifier(table)} (${columnNames})
+     OVERRIDING SYSTEM VALUE
      VALUES (${placeholders})
      ON CONFLICT (${conflictTarget}) ${updateClause}`,
     values
