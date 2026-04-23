@@ -22,6 +22,35 @@ const DEFAULT_CATEGORIES: BackupCategory[] = [
   'system',
 ];
 
+const DEFAULT_RETENTION = {
+  excelRetentionDays: 14,
+  jsonKeepAllDays: 14,
+  jsonKeepDailyDays: 90,
+  jsonKeepWeeklyDays: 180,
+};
+
+function normalizeRetention(input: unknown) {
+  const source = input && typeof input === 'object' ? input as Record<string, unknown> : {};
+  const toDays = (key: keyof typeof DEFAULT_RETENTION) => {
+    const raw = source[key];
+    const numeric = typeof raw === 'number' ? raw : Number(raw);
+    if (!Number.isFinite(numeric)) return DEFAULT_RETENTION[key];
+    return Math.max(0, Math.floor(numeric));
+  };
+
+  const excelRetentionDays = toDays('excelRetentionDays');
+  const jsonKeepAllDays = toDays('jsonKeepAllDays');
+  const jsonKeepDailyDays = Math.max(jsonKeepAllDays, toDays('jsonKeepDailyDays'));
+  const jsonKeepWeeklyDays = Math.max(jsonKeepDailyDays, toDays('jsonKeepWeeklyDays'));
+
+  return {
+    excelRetentionDays,
+    jsonKeepAllDays,
+    jsonKeepDailyDays,
+    jsonKeepWeeklyDays,
+  };
+}
+
 async function saveSystemSetting(key: string, value: unknown) {
   await query(
     `INSERT INTO system_settings (key, value, updated_at)
@@ -31,16 +60,25 @@ async function saveSystemSetting(key: string, value: unknown) {
   );
 }
 
+function normalizeBackupSettings(body: any) {
+  const categories = Array.isArray(body?.categories)
+    ? body.categories.filter((value: unknown): value is BackupCategory => typeof value === 'string')
+    : [];
+
+  return {
+    categories,
+    format: body?.format === 'excel' ? 'excel' : 'json',
+    retention: normalizeRetention(body?.retention),
+  };
+}
+
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return unauthorized();
 
   try {
     const body = await request.json().catch(() => null);
-    const categories = Array.isArray(body?.categories)
-      ? body.categories.filter((value: unknown): value is BackupCategory => typeof value === 'string')
-      : [];
-    const format = body?.format === 'excel' ? 'excel' : 'json';
+    const { categories, format, retention } = normalizeBackupSettings(body);
 
     if (categories.length === 0) {
       return badRequest('Категорії для бекапу не вибрані');
@@ -61,6 +99,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         categories,
         includeExcel: format === 'excel',
+        retention,
       }),
       cache: 'no-store',
     });
@@ -75,6 +114,8 @@ export async function POST(request: NextRequest) {
       timestamp: backup?.timestamp ?? new Date().toISOString(),
       user: user.name,
       includeExcel: format === 'excel',
+      retention,
+      retentionResult: backup?.retention ?? null,
       results: Array.isArray(backup?.results) ? backup.results : [],
     };
 
@@ -82,6 +123,7 @@ export async function POST(request: NextRequest) {
     await saveSystemSetting('backup_settings', {
       categories,
       format,
+      retention,
     });
 
     return NextResponse.json({
@@ -93,6 +135,33 @@ export async function POST(request: NextRequest) {
     console.error('Backup API Error:', error);
     return NextResponse.json(
       { error: error.message || 'Помилка при створенні бекапу' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
+
+  try {
+    const body = await request.json().catch(() => null);
+    const settings = normalizeBackupSettings(body);
+
+    if (settings.categories.length === 0) {
+      return badRequest('Категорії для бекапу не вибрані');
+    }
+
+    await saveSystemSetting('backup_settings', settings);
+
+    return NextResponse.json({
+      success: true,
+      settings,
+    });
+  } catch (error: any) {
+    console.error('Backup Settings API Error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Помилка при збереженні налаштувань бекапу' },
       { status: 500 }
     );
   }
@@ -112,6 +181,7 @@ export async function GET(request: NextRequest) {
       : {
           categories: DEFAULT_CATEGORIES,
           format: 'json',
+          retention: DEFAULT_RETENTION,
         },
   });
 }

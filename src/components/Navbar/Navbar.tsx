@@ -99,6 +99,14 @@ interface NavbarProps {
   onMenuClick?: () => void;
 }
 
+const DEFAULT_BACKUP_CATEGORIES = ['students', 'payments', 'attendance', 'groups', 'courses', 'system'];
+const DEFAULT_BACKUP_RETENTION = {
+  excelRetentionDays: 14,
+  jsonKeepAllDays: 14,
+  jsonKeepDailyDays: 90,
+  jsonKeepWeeklyDays: 180,
+};
+
 const Navbar: React.FC<NavbarProps> = ({
   user,
   withSidebar = false,
@@ -201,6 +209,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
   // ── Backup state ───────────────────────────────────────────────────────────
   const [backupLoading, setBackupLoading] = useState(false);
+  const [backupSettingsSaving, setBackupSettingsSaving] = useState(false);
   const [backupProgress, setBackupProgress] = useState(0);
   const [lastBackupStatus, setLastBackupStatus] = useState<{
     timestamp: string;
@@ -210,11 +219,49 @@ const Navbar: React.FC<NavbarProps> = ({
       category: string;
       artifacts?: Array<{ kind: 'json' | 'excel'; fileName: string }>;
     }>;
+    retention?: typeof DEFAULT_BACKUP_RETENTION;
+    retentionResult?: {
+      deletedExcel: number;
+      deletedJson: number;
+      errors?: string[];
+    } | null;
   } | null>(null);
   const [backupSettings, setBackupSettings] = useState({
-    categories: ['students', 'payments', 'attendance', 'groups', 'courses', 'system'],
-    format: 'json' as 'json' | 'excel'
+    categories: DEFAULT_BACKUP_CATEGORIES,
+    format: 'json' as 'json' | 'excel',
+    retention: DEFAULT_BACKUP_RETENTION,
   });
+
+  const updateBackupRetention = (field: keyof typeof DEFAULT_BACKUP_RETENTION, value: string) => {
+    const numeric = Number(value);
+    setBackupSettings(prev => ({
+      ...prev,
+      retention: {
+        ...prev.retention,
+        [field]: Number.isFinite(numeric) ? Math.max(0, Math.floor(numeric)) : 0,
+      },
+    }));
+  };
+
+  const handleBackupSettingsSave = async () => {
+    setBackupSettingsSaving(true);
+    try {
+      const res = await fetch('/api/admin-app/backup', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(backupSettings),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Помилка збереження налаштувань бекапу');
+      setBackupSettings(data.settings ?? backupSettings);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setBackupSettingsSaving(false);
+    }
+  };
 
   const handleRunBackup = async () => {
     setBackupLoading(true);
@@ -225,7 +272,8 @@ const Navbar: React.FC<NavbarProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           categories: backupSettings.categories,
-          format: backupSettings.format 
+          format: backupSettings.format,
+          retention: backupSettings.retention,
         }),
       });
       setBackupProgress(70);
@@ -742,8 +790,22 @@ const Navbar: React.FC<NavbarProps> = ({
           setBackupSettings({
             categories: Array.isArray(d.settings.categories) && d.settings.categories.length > 0
               ? d.settings.categories
-              : ['students', 'payments', 'attendance', 'groups', 'courses', 'system'],
+              : DEFAULT_BACKUP_CATEGORIES,
             format: d.settings.format === 'excel' ? 'excel' : 'json',
+            retention: {
+              excelRetentionDays: Number.isFinite(Number(d.settings.retention?.excelRetentionDays))
+                ? Math.max(0, Math.floor(Number(d.settings.retention.excelRetentionDays)))
+                : DEFAULT_BACKUP_RETENTION.excelRetentionDays,
+              jsonKeepAllDays: Number.isFinite(Number(d.settings.retention?.jsonKeepAllDays))
+                ? Math.max(0, Math.floor(Number(d.settings.retention.jsonKeepAllDays)))
+                : DEFAULT_BACKUP_RETENTION.jsonKeepAllDays,
+              jsonKeepDailyDays: Number.isFinite(Number(d.settings.retention?.jsonKeepDailyDays))
+                ? Math.max(0, Math.floor(Number(d.settings.retention.jsonKeepDailyDays)))
+                : DEFAULT_BACKUP_RETENTION.jsonKeepDailyDays,
+              jsonKeepWeeklyDays: Number.isFinite(Number(d.settings.retention?.jsonKeepWeeklyDays))
+                ? Math.max(0, Math.floor(Number(d.settings.retention.jsonKeepWeeklyDays)))
+                : DEFAULT_BACKUP_RETENTION.jsonKeepWeeklyDays,
+            },
           });
         }
       })
@@ -1796,6 +1858,75 @@ const Navbar: React.FC<NavbarProps> = ({
                           ))}
                         </div>
 
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.75rem',
+                          padding: '0.875rem',
+                          backgroundColor: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '10px',
+                        }}>
+                          <div>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#334155', marginBottom: '0.25rem' }}>
+                              Зберігання резервних файлів
+                            </div>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', lineHeight: 1.45 }}>
+                              Старі файли не перезаписуються. Cleanup переносить зайві копії в кошик Google Drive, а JSON лишається головним архівом для restore.
+                            </p>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+                            {[
+                              {
+                                key: 'excelRetentionDays' as const,
+                                label: 'Excel preview, днів',
+                                hint: 'Після цього старі .xlsx прибираються',
+                              },
+                              {
+                                key: 'jsonKeepAllDays' as const,
+                                label: 'JSON: всі копії, днів',
+                                hint: 'Щільна історія останніх запусків',
+                              },
+                              {
+                                key: 'jsonKeepDailyDays' as const,
+                                label: 'JSON: 1 на день до, днів',
+                                hint: 'Після щільного періоду',
+                              },
+                              {
+                                key: 'jsonKeepWeeklyDays' as const,
+                                label: 'JSON: 1 на тиждень до, днів',
+                                hint: 'Довша історія без зайвого шуму',
+                              },
+                            ].map(item => (
+                              <label key={item.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
+                                  {item.label}
+                                </span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  value={backupSettings.retention[item.key]}
+                                  onChange={(e) => updateBackupRetention(item.key, e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '8px',
+                                    padding: '0.5rem 0.625rem',
+                                    fontSize: '0.875rem',
+                                    color: '#0f172a',
+                                    backgroundColor: '#fff',
+                                  }}
+                                />
+                                <span style={{ fontSize: '0.6875rem', color: '#64748b', lineHeight: 1.35 }}>
+                                  {item.hint}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
                         {backupProgress > 0 && (
                           <div style={{ width: '100%', height: '8px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
                             <div style={{ 
@@ -1808,6 +1939,14 @@ const Navbar: React.FC<NavbarProps> = ({
                         )}
 
                         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                          <button
+                            className="btn btn-secondary"
+                            onClick={handleBackupSettingsSave}
+                            disabled={backupSettingsSaving || backupLoading || backupSettings.categories.length === 0}
+                          >
+                            <Save size={14} />
+                            {backupSettingsSaving ? 'Збереження...' : saved ? 'Збережено!' : 'Зберегти правила'}
+                          </button>
                           <button 
                             className="btn btn-primary" 
                             onClick={handleRunBackup}
@@ -1823,6 +1962,12 @@ const Navbar: React.FC<NavbarProps> = ({
                             <strong>Останній бекап:</strong> {new Date(lastBackupStatus.timestamp).toLocaleString('uk-UA')}<br/>
                             Успішно завантажено {lastBackupStatus.results.length} категорій в Google Drive.
                             {lastBackupStatus.includeExcel ? ' Також створено Excel preview.' : ' Створено лише JSON архів для restore.'}
+                            {lastBackupStatus.retentionResult ? (
+                              <>
+                                <br/>
+                                Cleanup: Excel у кошик — {lastBackupStatus.retentionResult.deletedExcel}, JSON у кошик — {lastBackupStatus.retentionResult.deletedJson}.
+                              </>
+                            ) : null}
                           </div>
                         )}
                       </div>
