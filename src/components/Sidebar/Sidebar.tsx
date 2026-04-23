@@ -14,6 +14,7 @@ import {
   ClipboardList,
   FolderOpen,
   Wallet,
+  Mail,
   FileText,
   Sun,
   Cloud,
@@ -45,6 +46,7 @@ const menuItems = [
   { href: '/teachers', labelKey: 'nav.teachers', icon: GraduationCap },
   { href: '/attendance', labelKey: 'nav.attendance', icon: ClipboardList },
   { href: '/payments', labelKey: 'nav.payments', icon: Wallet },
+  { href: '/communications', labelKey: 'nav.communications', icon: Mail },
   { href: '/enrollment', labelKey: 'nav.enrollment', icon: FileText },
   { href: '/certificates', labelKey: 'nav.certificates', icon: Gift },
 ];

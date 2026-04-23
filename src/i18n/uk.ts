@@ -13,6 +13,7 @@ export const uk = {
     attendance: 'Відвідуваність',
     payments: 'Оплати',
     materials: 'Файли',
+    communications: 'Розсилки',
     enrollment: 'Анкети',
     users: 'Користувачі',
     settings: 'Налаштування',
@@ -50,6 +51,7 @@ export const uk = {
     users: 'Користувачі',
     login: 'Вхід',
     enrollment: 'Анкети',
+    communications: 'Розсилки',
   },
 
   // Enrollment

@@ -10,6 +10,7 @@ data/
 *.db
 cookies.txt
 dev_output.txt
+devserver-messaging.*
 diff.txt
 out.txt
 temp_start.txt
