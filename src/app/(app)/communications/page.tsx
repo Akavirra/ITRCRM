@@ -169,7 +169,7 @@ export default function CommunicationsPage() {
   const [groupFilterOpen, setGroupFilterOpen] = useState(false);
   const [courseSearch, setCourseSearch] = useState('');
   const [groupSearch, setGroupSearch] = useState('');
-  const [audienceListOpen, setAudienceListOpen] = useState(false);
+  const [audienceListOpen, setAudienceListOpen] = useState(true);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [lastSendResult, setLastSendResult] = useState<CampaignSummary | null>(null);
 
@@ -773,41 +773,6 @@ export default function CommunicationsPage() {
                 />
               </div>
             </label>
-
-            <div className={styles.toggleRow}>
-              <label className={styles.toggle}>
-                <input
-                  type="checkbox"
-                  checked={(filter.studyStatuses || []).includes('studying')}
-                  onChange={(event) => setStatusValue('studying', event.target.checked)}
-                />
-                <span>Навчаються</span>
-              </label>
-              <label className={styles.toggle}>
-                <input
-                  type="checkbox"
-                  checked={(filter.studyStatuses || []).includes('not_studying')}
-                  onChange={(event) => setStatusValue('not_studying', event.target.checked)}
-                />
-                <span>Не навчаються</span>
-              </label>
-              <label className={styles.toggle}>
-                <input
-                  type="checkbox"
-                  checked={filter.requireEmail !== false}
-                  onChange={(event) => setFilter((current) => ({ ...current, requireEmail: event.target.checked }))}
-                />
-                <span>З email</span>
-              </label>
-              <label className={styles.toggle}>
-                <input
-                  type="checkbox"
-                  checked={Boolean(filter.includeInactive)}
-                  onChange={(event) => setFilter((current) => ({ ...current, includeInactive: event.target.checked }))}
-                />
-                <span>Архів</span>
-              </label>
-            </div>
           </div>
 
           {filter.mode === 'manual' && (
@@ -913,6 +878,42 @@ export default function CommunicationsPage() {
 
           {audienceListOpen && (
           <div className={styles.audiencePreview}>
+            <div className={styles.audiencePreviewToolbar}>
+              <div className={styles.toggleRow}>
+                <label className={styles.toggle}>
+                  <input
+                    type="checkbox"
+                    checked={(filter.studyStatuses || []).includes('studying')}
+                    onChange={(event) => setStatusValue('studying', event.target.checked)}
+                  />
+                  <span>Навчаються</span>
+                </label>
+                <label className={styles.toggle}>
+                  <input
+                    type="checkbox"
+                    checked={(filter.studyStatuses || []).includes('not_studying')}
+                    onChange={(event) => setStatusValue('not_studying', event.target.checked)}
+                  />
+                  <span>Не навчаються</span>
+                </label>
+                <label className={styles.toggle}>
+                  <input
+                    type="checkbox"
+                    checked={filter.requireEmail !== false}
+                    onChange={(event) => setFilter((current) => ({ ...current, requireEmail: event.target.checked }))}
+                  />
+                  <span>З email</span>
+                </label>
+                <label className={styles.toggle}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(filter.includeInactive)}
+                    onChange={(event) => setFilter((current) => ({ ...current, includeInactive: event.target.checked }))}
+                  />
+                  <span>Архів</span>
+                </label>
+              </div>
+            </div>
             <p className={styles.supportText}>{previewLoading ? 'Оновлюємо список...' : audienceExplanation}</p>
 
             {visibleStudents.length ? (

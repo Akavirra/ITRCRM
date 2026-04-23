@@ -250,7 +250,7 @@
 
 .filterRow {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(220px, 1fr);
   gap: 12px;
   align-items: end;
 }
@@ -523,6 +523,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.audiencePreviewToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .excludedPanel {
@@ -1075,7 +1083,8 @@
 
   .pageHeader,
   .listDisclosure,
-  .excludedHeader {
+  .excludedHeader,
+  .audiencePreviewToolbar {
     flex-direction: column;
     align-items: stretch;
   }
