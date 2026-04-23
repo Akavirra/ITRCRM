@@ -54,9 +54,9 @@ export async function GET(request: NextRequest) {
                  AND (full_name ILIKE $1 OR parent_name ILIKE $2 OR parent_phone ILIKE $3)
                ORDER BY
                  CASE
-                   WHEN full_name ILIKE $5 THEN 0
-                   WHEN parent_name ILIKE $5 THEN 1
-                   WHEN parent_phone ILIKE $5 THEN 2
+                   WHEN full_name ILIKE $4 THEN 0
+                   WHEN parent_name ILIKE $4 THEN 1
+                   WHEN parent_phone ILIKE $4 THEN 2
                    ELSE 3
                  END,
                  full_name
