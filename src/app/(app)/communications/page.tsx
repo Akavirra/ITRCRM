@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Check,
+  ChevronDown,
   Copy,
   Edit3,
   Mail,
@@ -41,6 +42,14 @@ interface StudentOption {
   full_name: string;
   public_id: string;
 }
+
+type Step = 'audience' | 'message' | 'review';
+
+const STEPS: Array<{ id: Step; label: string; hint: string }> = [
+  { id: 'audience', label: 'Аудиторія', hint: 'Кому надсилаємо' },
+  { id: 'message', label: 'Повідомлення', hint: 'Шаблон і текст' },
+  { id: 'review', label: 'Перевірка', hint: 'Preview і запуск' },
+];
 
 const EMPTY_TEMPLATE = {
   name: '',
@@ -98,6 +107,7 @@ function statusLabel(status: CampaignSummary['status']): string {
 }
 
 export default function CommunicationsPage() {
+  const [step, setStep] = useState<Step>('audience');
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([]);
   const [variables, setVariables] = useState<string[]>([]);
@@ -128,6 +138,8 @@ export default function CommunicationsPage() {
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [templateEditorOpen, setTemplateEditorOpen] = useState(false);
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId) || null,
@@ -140,6 +152,17 @@ export default function CommunicationsPage() {
     ...filter,
     studentIds: selectedStudents.map((student) => student.id),
   }), [filter, selectedStudents]);
+
+  const audienceLabel = useMemo(() => {
+    if (filter.mode === 'manual') {
+      return selectedStudents.length > 0 ? `${selectedStudents.length} обрано вручну` : 'Ручний добір';
+    }
+    if ((filter.groupIds || []).length > 0) return `${filter.groupIds?.length} груп`;
+    if ((filter.courseIds || []).length > 0) return `${filter.courseIds?.length} курсів`;
+    return 'Активні учні';
+  }, [filter.courseIds, filter.groupIds, filter.mode, selectedStudents.length]);
+
+  const canGoReview = Boolean(subject.trim() && body.trim() && preview?.deliverable);
 
   const loadBootstrap = useCallback(async () => {
     setLoading(true);
@@ -266,6 +289,7 @@ export default function CommunicationsPage() {
     setSubject(template.subject || DEFAULT_SUBJECT);
     setBody(template.body);
     setCampaignName(template.name);
+    setTemplateEditorOpen(false);
   };
 
   const handleNewTemplate = () => {
@@ -275,6 +299,7 @@ export default function CommunicationsPage() {
       subject: DEFAULT_SUBJECT,
       body: DEFAULT_BODY,
     });
+    setTemplateEditorOpen(true);
   };
 
   const saveTemplate = async () => {
@@ -303,6 +328,7 @@ export default function CommunicationsPage() {
       setSelectedTemplateId(data.template.id);
       setSubject(data.template.subject || DEFAULT_SUBJECT);
       setBody(data.template.body);
+      setTemplateEditorOpen(false);
       setNotice({ type: 'success', text: 'Шаблон збережено' });
     } catch (error) {
       setNotice({ type: 'error', text: error instanceof Error ? error.message : 'Не вдалося зберегти шаблон' });
@@ -321,6 +347,7 @@ export default function CommunicationsPage() {
       setTemplates((current) => current.filter((template) => template.id !== selectedTemplateId));
       setSelectedTemplateId(null);
       setTemplateDraft(EMPTY_TEMPLATE);
+      setTemplateEditorOpen(false);
       setNotice({ type: 'success', text: 'Шаблон видалено' });
     } catch (error) {
       setNotice({ type: 'error', text: error instanceof Error ? error.message : 'Не вдалося видалити шаблон' });
@@ -376,6 +403,16 @@ export default function CommunicationsPage() {
     }
   };
 
+  const goNext = () => {
+    if (step === 'audience') setStep('message');
+    else if (step === 'message') setStep('review');
+  };
+
+  const goBack = () => {
+    if (step === 'review') setStep('message');
+    else if (step === 'message') setStep('audience');
+  };
+
   if (loading) {
     return (
       <div className={styles.loadingState}>
@@ -391,19 +428,11 @@ export default function CommunicationsPage() {
         <div>
           <p className={styles.eyebrow}>Комунікації</p>
           <h1>Розсилки учням і батькам</h1>
-          <p className={styles.heroText}>
-            Email через Resend зараз, інші канали підключаються окремими адаптерами пізніше.
-          </p>
+          <p className={styles.heroText}>Спочатку обери аудиторію, потім текст, і лише після перевірки запускай відправку.</p>
         </div>
-        <div className={styles.heroActions}>
-          <button className={styles.secondaryButton} type="button" onClick={refreshPreview} disabled={previewLoading}>
-            <RefreshCw size={16} />
-            Оновити аудиторію
-          </button>
-          <button className={styles.primaryButton} type="button" onClick={sendCampaign} disabled={sending || !preview?.deliverable}>
-            <Send size={16} />
-            {sending ? 'Надсилаємо...' : 'Надіслати'}
-          </button>
+        <div className={styles.heroMeta}>
+          <span>{audienceLabel}</span>
+          <strong>{preview?.deliverable ?? 0} готові до відправки</strong>
         </div>
       </section>
 
@@ -417,192 +446,311 @@ export default function CommunicationsPage() {
         </div>
       )}
 
-      <section className={styles.statsGrid}>
-        <div className={styles.statBlock}>
+      <nav className={styles.stepper} aria-label="Кроки розсилки">
+        {STEPS.map((item, index) => {
+          const active = item.id === step;
+          const done = STEPS.findIndex((candidate) => candidate.id === step) > index;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={active ? styles.stepActive : done ? styles.stepDone : styles.step}
+              onClick={() => setStep(item.id)}
+            >
+              <span>{done ? <Check size={15} /> : index + 1}</span>
+              <div>
+                <strong>{item.label}</strong>
+                <small>{item.hint}</small>
+              </div>
+            </button>
+          );
+        })}
+      </nav>
+
+      <section className={styles.summaryBar}>
+        <div>
           <span>В аудиторії</span>
           <strong>{preview?.total ?? 0}</strong>
         </div>
-        <div className={styles.statBlock}>
+        <div>
           <span>Можна надіслати</span>
           <strong>{preview?.deliverable ?? 0}</strong>
         </div>
-        <div className={styles.statBlock}>
+        <div>
           <span>Без email</span>
           <strong>{preview?.missingEmail ?? 0}</strong>
         </div>
-        <div className={styles.statBlock}>
-          <span>Виключено</span>
-          <strong>{preview?.suppressed ?? 0}</strong>
-        </div>
+        <button className={styles.ghostButton} type="button" onClick={refreshPreview} disabled={previewLoading}>
+          <RefreshCw size={16} />
+          Оновити
+        </button>
       </section>
 
-      <div className={styles.workspace}>
-        <aside className={styles.panel}>
-          <div className={styles.panelHeader}>
+      {step === 'audience' && (
+        <section className={styles.stage}>
+          <div className={styles.stageHeader}>
             <div>
-              <p className={styles.panelKicker}>Аудиторія</p>
+              <p className={styles.panelKicker}>Крок 1</p>
               <h2>Кого обираємо</h2>
+              <p>Почни з простого сегмента. Детальні фільтри доступні нижче, коли вони справді потрібні.</p>
             </div>
-            <Users size={20} />
+            <Users size={22} />
           </div>
 
-          <div className={styles.segmented}>
+          <div className={styles.choiceGrid}>
             <button
               type="button"
-              className={filter.mode !== 'manual' ? styles.segmentActive : ''}
-              onClick={() => setFilter((current) => ({ ...current, mode: 'all' }))}
+              className={filter.mode !== 'manual' && (filter.studyStatuses || []).includes('studying') ? styles.choiceActive : styles.choice}
+              onClick={() => setFilter((current) => ({ ...current, mode: 'all', studyStatuses: ['studying'], requireEmail: true }))}
             >
-              За фільтрами
+              <strong>Активні учні</strong>
+              <span>Навчаються і мають email</span>
             </button>
             <button
               type="button"
-              className={filter.mode === 'manual' ? styles.segmentActive : ''}
+              className={(filter.courseIds || []).length > 0 ? styles.choiceActive : styles.choice}
+              onClick={() => setAdvancedOpen(true)}
+            >
+              <strong>За курсом</strong>
+              <span>{(filter.courseIds || []).length || 'Обрати'} курсів</span>
+            </button>
+            <button
+              type="button"
+              className={(filter.groupIds || []).length > 0 ? styles.choiceActive : styles.choice}
+              onClick={() => setAdvancedOpen(true)}
+            >
+              <strong>За групою</strong>
+              <span>{(filter.groupIds || []).length || 'Обрати'} груп</span>
+            </button>
+            <button
+              type="button"
+              className={filter.mode === 'manual' ? styles.choiceActive : styles.choice}
               onClick={() => setFilter((current) => ({ ...current, mode: 'manual' }))}
             >
-              Вручну
+              <strong>Вручну</strong>
+              <span>{selectedStudents.length || 'Пошук'} учнів</span>
             </button>
           </div>
 
-          <label className={styles.field}>
-            <span>Пошук у сегменті</span>
-            <div className={styles.inputWithIcon}>
-              <Search size={16} />
-              <input
-                value={filter.search || ''}
-                onChange={(event) => setFilter((current) => ({ ...current, search: event.target.value }))}
-                placeholder="Імʼя, email, група..."
-              />
-            </div>
-          </label>
+          <div className={styles.compactFilters}>
+            <label className={styles.field}>
+              <span>Пошук у сегменті</span>
+              <div className={styles.inputWithIcon}>
+                <Search size={16} />
+                <input
+                  value={filter.search || ''}
+                  onChange={(event) => setFilter((current) => ({ ...current, search: event.target.value }))}
+                  placeholder="Імʼя, email, школа або група"
+                />
+              </div>
+            </label>
 
-          <div className={styles.checkGrid}>
-            <label>
-              <input
-                type="checkbox"
-                checked={(filter.studyStatuses || []).includes('studying')}
-                onChange={(event) => setStatusValue('studying', event.target.checked)}
-              />
-              Навчаються
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={(filter.studyStatuses || []).includes('not_studying')}
-                onChange={(event) => setStatusValue('not_studying', event.target.checked)}
-              />
-              Не навчаються
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={filter.requireEmail !== false}
-                onChange={(event) => setFilter((current) => ({ ...current, requireEmail: event.target.checked }))}
-              />
-              Тільки з email
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={Boolean(filter.includeInactive)}
-                onChange={(event) => setFilter((current) => ({ ...current, includeInactive: event.target.checked }))}
-              />
-              Включити архів
-            </label>
+            <div className={styles.checkGrid}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={(filter.studyStatuses || []).includes('studying')}
+                  onChange={(event) => setStatusValue('studying', event.target.checked)}
+                />
+                Навчаються
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={(filter.studyStatuses || []).includes('not_studying')}
+                  onChange={(event) => setStatusValue('not_studying', event.target.checked)}
+                />
+                Не навчаються
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={filter.requireEmail !== false}
+                  onChange={(event) => setFilter((current) => ({ ...current, requireEmail: event.target.checked }))}
+                />
+                Тільки з email
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={Boolean(filter.includeInactive)}
+                  onChange={(event) => setFilter((current) => ({ ...current, includeInactive: event.target.checked }))}
+                />
+                Включити архів
+              </label>
+            </div>
           </div>
 
-          <div className={styles.filterSection}>
-            <h3>Курси</h3>
-            <div className={styles.optionList}>
-              {courses.map((course) => (
-                <label key={course.id}>
+          {filter.mode === 'manual' && (
+            <div className={styles.manualBox}>
+              <label className={styles.field}>
+                <span>Додати учня</span>
+                <div className={styles.inputWithIcon}>
+                  <Search size={16} />
                   <input
-                    type="checkbox"
-                    checked={(filter.courseIds || []).includes(course.id)}
-                    onChange={(event) => setArrayValue('courseIds', course.id, event.target.checked)}
+                    value={studentSearch}
+                    onChange={(event) => setStudentSearch(event.target.value)}
+                    placeholder="Почни вводити імʼя"
                   />
-                  {course.title}
-                </label>
-              ))}
+                </div>
+              </label>
+              {studentOptions.length > 0 && (
+                <div className={styles.searchResults}>
+                  {studentOptions.map((student) => (
+                    <button key={student.id} type="button" onClick={() => addStudent(student)}>
+                      <Plus size={14} />
+                      {student.full_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {selectedStudents.length > 0 && (
+                <div className={styles.chipList}>
+                  {selectedStudents.map((student) => (
+                    <span key={student.id} className={styles.chip}>
+                      {student.full_name}
+                      <button type="button" onClick={() => removeStudent(student.id)} aria-label="Прибрати учня">
+                        <X size={13} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
+          )}
+
+          <button
+            className={styles.disclosure}
+            type="button"
+            onClick={() => setAdvancedOpen((current) => !current)}
+            aria-expanded={advancedOpen}
+          >
+            <ChevronDown className={advancedOpen ? styles.chevronOpen : ''} size={17} />
+            Розширені фільтри
+          </button>
+
+          {advancedOpen && (
+            <div className={styles.advancedGrid}>
+              <div className={styles.filterSection}>
+                <h3>Курси</h3>
+                <div className={styles.optionList}>
+                  {courses.map((course) => (
+                    <label key={course.id}>
+                      <input
+                        type="checkbox"
+                        checked={(filter.courseIds || []).includes(course.id)}
+                        onChange={(event) => setArrayValue('courseIds', course.id, event.target.checked)}
+                      />
+                      {course.title}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.filterSection}>
+                <h3>Групи</h3>
+                <div className={styles.optionList}>
+                  {groups.map((group) => (
+                    <label key={group.id}>
+                      <input
+                        type="checkbox"
+                        checked={(filter.groupIds || []).includes(group.id)}
+                        onChange={(event) => setArrayValue('groupIds', group.id, event.target.checked)}
+                      />
+                      <span>{group.title}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {step === 'message' && (
+        <section className={styles.stage}>
+          <div className={styles.stageHeader}>
+            <div>
+              <p className={styles.panelKicker}>Крок 2</p>
+              <h2>Повідомлення</h2>
+              <p>Обери шаблон і відредагуй конкретний текст розсилки. Сам шаблон відкривається тільки коли треба.</p>
+            </div>
+            <Mail size={22} />
           </div>
 
-          <div className={styles.filterSection}>
-            <h3>Групи</h3>
-            <div className={styles.optionList}>
-              {groups.map((group) => (
-                <label key={group.id}>
-                  <input
-                    type="checkbox"
-                    checked={(filter.groupIds || []).includes(group.id)}
-                    onChange={(event) => setArrayValue('groupIds', group.id, event.target.checked)}
-                  />
-                  <span>{group.title}</span>
-                </label>
-              ))}
-            </div>
+          <div className={styles.templateStrip}>
+            {templates.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                className={template.id === selectedTemplateId ? styles.templateActive : styles.templateButton}
+                onClick={() => handleTemplateSelect(template.id)}
+              >
+                <Mail size={16} />
+                <span>{template.name}</span>
+              </button>
+            ))}
+            <button className={styles.iconTextButton} type="button" onClick={handleNewTemplate}>
+              <Plus size={16} />
+              Новий
+            </button>
           </div>
 
-          <div className={styles.filterSection}>
-            <h3>Ручний добір</h3>
-            <div className={styles.inputWithIcon}>
-              <Search size={16} />
-              <input
-                value={studentSearch}
-                onChange={(event) => setStudentSearch(event.target.value)}
-                placeholder="Знайти учня"
-              />
-            </div>
-            {studentOptions.length > 0 && (
-              <div className={styles.searchResults}>
-                {studentOptions.map((student) => (
-                  <button key={student.id} type="button" onClick={() => addStudent(student)}>
-                    <Plus size={14} />
-                    {student.full_name}
+          <div className={styles.messageGrid}>
+            <div className={styles.editorStack}>
+              <label className={styles.field}>
+                <span>Назва розсилки</span>
+                <input
+                  value={campaignName}
+                  onChange={(event) => setCampaignName(event.target.value)}
+                  placeholder="Назва для історії"
+                />
+              </label>
+              <label className={styles.field}>
+                <span>Тема</span>
+                <input value={subject} onChange={(event) => setSubject(event.target.value)} />
+              </label>
+              <label className={styles.field}>
+                <span>Текст перед відправкою</span>
+                <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={10} />
+              </label>
+              <div className={styles.variables}>
+                {variables.map((variable) => (
+                  <button
+                    key={variable}
+                    type="button"
+                    onClick={() => setBody((current) => `${current} {{${variable}}}`)}
+                    title={VARIABLE_LABELS[variable] || variable}
+                  >
+                    <Copy size={14} />
+                    {`{{${variable}}}`}
                   </button>
                 ))}
               </div>
-            )}
-            {selectedStudents.length > 0 && (
-              <div className={styles.chipList}>
-                {selectedStudents.map((student) => (
-                  <span key={student.id} className={styles.chip}>
-                    {student.full_name}
-                    <button type="button" onClick={() => removeStudent(student.id)} aria-label="Прибрати учня">
-                      <X size={13} />
-                    </button>
-                  </span>
+            </div>
+
+            <aside className={styles.livePreview}>
+              <p>Preview</p>
+              <strong>{renderMessage(subject, selectedPreviewStudent)}</strong>
+              <div>
+                {renderMessage(body, selectedPreviewStudent).split('\n').map((line, index) => (
+                  <span key={`${line}-${index}`}>{line || '\u00A0'}</span>
                 ))}
               </div>
-            )}
+            </aside>
           </div>
-        </aside>
 
-        <main className={styles.composer}>
-          <section className={styles.panel}>
-            <div className={styles.panelHeader}>
-              <div>
-                <p className={styles.panelKicker}>Шаблони</p>
-                <h2>Текст повідомлення</h2>
-              </div>
-              <button className={styles.iconButton} type="button" onClick={handleNewTemplate} aria-label="Новий шаблон">
-                <Plus size={18} />
-              </button>
-            </div>
+          <button
+            className={styles.disclosure}
+            type="button"
+            onClick={() => setTemplateEditorOpen((current) => !current)}
+            aria-expanded={templateEditorOpen}
+          >
+            <Edit3 size={17} />
+            {templateEditorOpen ? 'Сховати редагування шаблону' : 'Редагувати шаблон'}
+          </button>
 
-            <div className={styles.templateGrid}>
-              {templates.map((template) => (
-                <button
-                  key={template.id}
-                  type="button"
-                  className={template.id === selectedTemplateId ? styles.templateActive : styles.templateButton}
-                  onClick={() => handleTemplateSelect(template.id)}
-                >
-                  <Mail size={16} />
-                  <span>{template.name}</span>
-                </button>
-              ))}
-            </div>
-
+          {templateEditorOpen && (
             <div className={styles.templateEditor}>
               <label className={styles.field}>
                 <span>Назва шаблону</span>
@@ -625,7 +773,7 @@ export default function CommunicationsPage() {
                 <textarea
                   value={templateDraft.body}
                   onChange={(event) => setTemplateDraft((current) => ({ ...current, body: event.target.value }))}
-                  rows={8}
+                  rows={6}
                 />
               </label>
               <div className={styles.templateActions}>
@@ -641,82 +789,48 @@ export default function CommunicationsPage() {
                 )}
               </div>
             </div>
-          </section>
+          )}
+        </section>
+      )}
 
-          <section className={styles.panel}>
-            <div className={styles.panelHeader}>
-              <div>
-                <p className={styles.panelKicker}>Перед відправкою</p>
-                <h2>Можна змінити текст</h2>
-              </div>
-              <Edit3 size={20} />
+      {step === 'review' && (
+        <section className={styles.stage}>
+          <div className={styles.stageHeader}>
+            <div>
+              <p className={styles.panelKicker}>Крок 3</p>
+              <h2>Перевірка і відправка</h2>
+              <p>Переглянь лист для конкретного отримувача і список адрес перед запуском.</p>
             </div>
-            <label className={styles.field}>
-              <span>Назва розсилки</span>
-              <input
-                value={campaignName}
-                onChange={(event) => setCampaignName(event.target.value)}
-                placeholder="Назва для історії"
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Тема</span>
-              <input value={subject} onChange={(event) => setSubject(event.target.value)} />
-            </label>
-            <label className={styles.field}>
-              <span>Повідомлення</span>
-              <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={10} />
-            </label>
-            <div className={styles.variables}>
-              {variables.map((variable) => (
+            {previewLoading ? <RefreshCw className={styles.spin} size={22} /> : <Send size={22} />}
+          </div>
+
+          <div className={styles.reviewGrid}>
+            <div className={styles.previewBox}>
+              <p className={styles.previewSubject}>{renderMessage(subject, selectedPreviewStudent)}</p>
+              <div className={styles.previewBody}>
+                {renderMessage(body, selectedPreviewStudent).split('\n').map((line, index) => (
+                  <p key={`${line}-${index}`}>{line || '\u00A0'}</p>
+                ))}
+              </div>
+            </div>
+
+            <aside className={styles.recipientsList}>
+              <h3>Отримувачі</h3>
+              {preview?.students.slice(0, 14).map((student, index) => (
                 <button
-                  key={variable}
+                  key={student.id}
                   type="button"
-                  onClick={() => setBody((current) => `${current} {{${variable}}}`)}
-                  title={VARIABLE_LABELS[variable] || variable}
+                  className={index === selectedPreviewIndex ? styles.recipientActive : styles.recipientButton}
+                  onClick={() => setSelectedPreviewIndex(index)}
                 >
-                  <Copy size={14} />
-                  {`{{${variable}}}`}
+                  <span>{student.full_name}</span>
+                  <small>{student.email || 'немає email'}</small>
                 </button>
               ))}
-            </div>
-          </section>
-        </main>
-
-        <aside className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <p className={styles.panelKicker}>Preview</p>
-              <h2>Перевірка</h2>
-            </div>
-            {previewLoading ? <RefreshCw className={styles.spin} size={20} /> : <Mail size={20} />}
-          </div>
-
-          <div className={styles.previewBox}>
-            <p className={styles.previewSubject}>{renderMessage(subject, selectedPreviewStudent)}</p>
-            <div className={styles.previewBody}>
-              {renderMessage(body, selectedPreviewStudent).split('\n').map((line, index) => (
-                <p key={`${line}-${index}`}>{line || '\u00A0'}</p>
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.recipientsList}>
-            <h3>Отримувачі</h3>
-            {preview?.students.slice(0, 12).map((student, index) => (
-              <button
-                key={student.id}
-                type="button"
-                className={index === selectedPreviewIndex ? styles.recipientActive : styles.recipientButton}
-                onClick={() => setSelectedPreviewIndex(index)}
-              >
-                <span>{student.full_name}</span>
-                <small>{student.email || 'немає email'}</small>
-              </button>
-            ))}
-            {preview && preview.students.length > 12 && (
-              <p className={styles.moreText}>Ще {preview.students.length - 12} отримувачів у цій аудиторії</p>
-            )}
+              {preview && preview.students.length > 14 && (
+                <p className={styles.moreText}>Ще {preview.students.length - 14} отримувачів у цій аудиторії</p>
+              )}
+            </aside>
           </div>
 
           <div className={styles.history}>
@@ -724,21 +838,39 @@ export default function CommunicationsPage() {
             {campaigns.length === 0 ? (
               <p className={styles.emptyText}>Історії ще немає</p>
             ) : (
-              campaigns.map((campaign) => (
-                <div key={campaign.id} className={styles.historyItem}>
-                  <div>
-                    <strong>{campaign.name}</strong>
-                    <span>{formatDateTime(campaign.sent_at || campaign.created_at)}</span>
+              <div className={styles.historyGrid}>
+                {campaigns.slice(0, 4).map((campaign) => (
+                  <div key={campaign.id} className={styles.historyItem}>
+                    <div>
+                      <strong>{campaign.name}</strong>
+                      <span>{formatDateTime(campaign.sent_at || campaign.created_at)}</span>
+                    </div>
+                    <small>
+                      {statusLabel(campaign.status)} · {campaign.sent_count}/{campaign.total_count}
+                    </small>
                   </div>
-                  <small>
-                    {statusLabel(campaign.status)} · {campaign.sent_count}/{campaign.total_count}
-                  </small>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
-        </aside>
-      </div>
+        </section>
+      )}
+
+      <footer className={styles.footerNav}>
+        <button className={styles.secondaryButton} type="button" onClick={goBack} disabled={step === 'audience'}>
+          Назад
+        </button>
+        {step !== 'review' ? (
+          <button className={styles.primaryButton} type="button" onClick={goNext} disabled={step === 'message' && !canGoReview}>
+            Далі
+          </button>
+        ) : (
+          <button className={styles.primaryButton} type="button" onClick={sendCampaign} disabled={sending || !preview?.deliverable}>
+            <Send size={16} />
+            {sending ? 'Надсилаємо...' : `Надіслати ${preview?.deliverable ?? 0}`}
+          </button>
+        )}
+      </footer>
     </div>
   );
 }
