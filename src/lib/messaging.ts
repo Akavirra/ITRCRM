@@ -269,7 +269,8 @@ export async function archiveMessageTemplate(id: number, userId: number): Promis
 
 export async function getAudiencePreview(inputFilter: AudienceFilter): Promise<AudiencePreview> {
   const filter = normalizeAudienceFilter(inputFilter);
-  if (filter.mode === 'manual' && filter.studentIds.length === 0) {
+  const hasSegmentFilters = filter.groupIds.length > 0 || filter.courseIds.length > 0 || Boolean(filter.search.trim());
+  if (filter.mode === 'manual' && filter.studentIds.length === 0 && !hasSegmentFilters) {
     return {
       students: [],
       total: 0,

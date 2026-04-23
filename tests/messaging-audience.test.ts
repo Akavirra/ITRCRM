@@ -61,4 +61,36 @@ describe('messaging audience preview', () => {
     expect(preview.students[0].full_name).toBe('Індивідуальний Учень');
     expect(preview.students[0].groups).toEqual([]);
   });
+
+  it('does not let empty manual mode suppress selected group filters', async () => {
+    mockAll
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 9,
+          public_id: 'STU-456',
+          full_name: 'Груповий Учень',
+          email: null,
+          parent_name: null,
+          parent_phone: null,
+          school: null,
+          is_active: true,
+          study_status: 'studying',
+          groups_json: [{ id: 3, title: 'Група Lego', course_id: 2, course_title: 'Робототехніка Lego' }],
+        },
+      ] as any);
+
+    const preview = await getAudiencePreview({
+      mode: 'manual',
+      studentIds: [],
+      groupIds: [3],
+      studyStatuses: ['studying'],
+      requireEmail: false,
+    });
+
+    expect(preview.total).toBe(1);
+    expect(preview.deliverable).toBe(0);
+    expect(preview.missingEmail).toBe(1);
+    expect(preview.students[0].full_name).toBe('Груповий Учень');
+  });
 });

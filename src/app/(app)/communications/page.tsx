@@ -5,6 +5,8 @@ import {
   AlertCircle,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Edit3,
   Mail,
@@ -151,6 +153,7 @@ export default function CommunicationsPage() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [audienceListOpen, setAudienceListOpen] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [lastSendResult, setLastSendResult] = useState<CampaignSummary | null>(null);
 
@@ -217,6 +220,7 @@ export default function CommunicationsPage() {
   }, [selectedPreviewStudent, usedVariables, variables]);
 
   const canGoReview = Boolean(subject.trim() && body.trim() && preview?.deliverable && unknownVariables.length === 0);
+  const currentStepIndex = STEPS.findIndex((item) => item.id === step);
 
   const loadBootstrap = useCallback(async () => {
     setLoading(true);
@@ -286,6 +290,12 @@ export default function CommunicationsPage() {
   }, [loading, refreshPreview]);
 
   useEffect(() => {
+    if (!notice) return;
+    const id = window.setTimeout(() => setNotice(null), 5000);
+    return () => window.clearTimeout(id);
+  }, [notice]);
+
+  useEffect(() => {
     const query = studentSearch.trim();
     if (query.length < 2) {
       setStudentOptions([]);
@@ -317,7 +327,7 @@ export default function CommunicationsPage() {
       const values = new Set(current[key] || []);
       if (checked) values.add(id);
       else values.delete(id);
-      return { ...current, [key]: Array.from(values) };
+      return { ...current, mode: 'all', [key]: Array.from(values) };
     });
   };
 
@@ -490,17 +500,16 @@ export default function CommunicationsPage() {
 
   return (
     <div className={styles.page}>
-      <section className={styles.hero}>
+      <header className={styles.pageHeader}>
         <div>
-          <p className={styles.eyebrow}>Комунікації</p>
-          <h1>Розсилки учням і батькам</h1>
-          <p className={styles.heroText}>Спочатку обери аудиторію, потім текст, і лише після перевірки запускай відправку.</p>
+          <h1>Розсилки</h1>
+          <p>Аудиторія, текст і фінальна перевірка перед відправкою.</p>
         </div>
-        <div className={styles.heroMeta}>
-          <span>{audienceLabel}</span>
-          <strong>{preview?.deliverable ?? 0} готові до відправки</strong>
+        <div className={styles.stepCounter}>
+          <span>Крок {currentStepIndex + 1} з {STEPS.length}</span>
+          <strong>{audienceLabel}</strong>
         </div>
-      </section>
+      </header>
 
       {notice && (
         <div className={notice.type === 'success' ? styles.successNotice : styles.errorNotice}>
@@ -517,98 +526,74 @@ export default function CommunicationsPage() {
           const active = item.id === step;
           const done = STEPS.findIndex((candidate) => candidate.id === step) > index;
           return (
-            <button
-              key={item.id}
-              type="button"
-              className={active ? styles.stepActive : done ? styles.stepDone : styles.step}
-              onClick={() => setStep(item.id)}
-            >
-              <span>{done ? <Check size={15} /> : index + 1}</span>
-              <div>
-                <strong>{item.label}</strong>
-                <small>{item.hint}</small>
-              </div>
-            </button>
+            <div key={item.id} className={styles.stepperItem}>
+              <button
+                type="button"
+                className={active ? styles.stepActive : done ? styles.stepDone : styles.step}
+                onClick={() => setStep(item.id)}
+                aria-current={active ? 'step' : undefined}
+              >
+                <span className={styles.stepCircle}>{done ? <Check size={15} /> : index + 1}</span>
+                <span className={styles.stepLabel}>{item.label}</span>
+              </button>
+              {index < STEPS.length - 1 && (
+                <span className={done ? styles.stepLineDone : styles.stepLine} aria-hidden="true" />
+              )}
+            </div>
           );
         })}
       </nav>
-
-      <section className={styles.summaryBar}>
-        <div>
-          <span>В аудиторії</span>
-          <strong>{preview?.total ?? 0}</strong>
-        </div>
-        <div>
-          <span>Можна надіслати</span>
-          <strong>{preview?.deliverable ?? 0}</strong>
-        </div>
-        <div>
-          <span>Без email</span>
-          <strong>{preview?.missingEmail ?? 0}</strong>
-        </div>
-        <div>
-          <span>Пропущено</span>
-          <strong>{preview?.suppressed ?? 0}</strong>
-        </div>
-        <div>
-          <span>Шаблон</span>
-          <strong>{selectedTemplate?.name || 'Власний текст'}</strong>
-        </div>
-        <button className={styles.ghostButton} type="button" onClick={refreshPreview} disabled={previewLoading}>
-          <RefreshCw size={16} />
-          Оновити
-        </button>
-      </section>
 
       {step === 'audience' && (
         <section className={styles.stage}>
           <div className={styles.stageHeader}>
             <div>
-              <p className={styles.panelKicker}>Крок 1</p>
-              <h2>Кого обираємо</h2>
-              <p>Почни з простого сегмента. Детальні фільтри доступні нижче, коли вони справді потрібні.</p>
+              <h2>Кому надсилаємо</h2>
+              <p>Почни з базового сегмента, а точні фільтри відкривай тільки за потреби.</p>
             </div>
             <Users size={22} />
           </div>
 
-          <div className={styles.choiceGrid}>
+          <div className={styles.segmentPills} role="group" aria-label="Тип аудиторії">
             <button
               type="button"
-              className={filter.mode !== 'manual' && (filter.studyStatuses || []).includes('studying') ? styles.choiceActive : styles.choice}
+              className={filter.mode !== 'manual' && (filter.studyStatuses || []).includes('studying') ? styles.pillActive : styles.pill}
               onClick={() => setFilter((current) => ({ ...current, mode: 'all', studyStatuses: ['studying'], requireEmail: true }))}
             >
-              <strong>Активні учні</strong>
-              <span>Навчаються і мають email</span>
+              Активні
             </button>
             <button
               type="button"
-              className={(filter.courseIds || []).length > 0 ? styles.choiceActive : styles.choice}
-              onClick={() => setAdvancedOpen(true)}
+              className={(filter.courseIds || []).length > 0 ? styles.pillActive : styles.pill}
+              onClick={() => {
+                setFilter((current) => ({ ...current, mode: 'all' }));
+                setAdvancedOpen(true);
+              }}
             >
-              <strong>За курсом</strong>
-              <span>{(filter.courseIds || []).length || 'Обрати'} курсів</span>
+              За курсом {(filter.courseIds || []).length > 0 ? `· ${filter.courseIds?.length}` : ''}
             </button>
             <button
               type="button"
-              className={(filter.groupIds || []).length > 0 ? styles.choiceActive : styles.choice}
-              onClick={() => setAdvancedOpen(true)}
+              className={(filter.groupIds || []).length > 0 ? styles.pillActive : styles.pill}
+              onClick={() => {
+                setFilter((current) => ({ ...current, mode: 'all' }));
+                setAdvancedOpen(true);
+              }}
             >
-              <strong>За групою</strong>
-              <span>{(filter.groupIds || []).length || 'Обрати'} груп</span>
+              За групою {(filter.groupIds || []).length > 0 ? `· ${filter.groupIds?.length}` : ''}
             </button>
             <button
               type="button"
-              className={filter.mode === 'manual' ? styles.choiceActive : styles.choice}
+              className={filter.mode === 'manual' ? styles.pillActive : styles.pill}
               onClick={() => setFilter((current) => ({ ...current, mode: 'manual' }))}
             >
-              <strong>Вручну</strong>
-              <span>{selectedStudents.length || 'Пошук'} учнів</span>
+              Вручну {selectedStudents.length > 0 ? `· ${selectedStudents.length}` : ''}
             </button>
           </div>
 
-          <div className={styles.compactFilters}>
+          <div className={styles.filterRow}>
             <label className={styles.field}>
-              <span>Пошук у сегменті</span>
+              <span className={styles.srOnly}>Пошук у сегменті</span>
               <div className={styles.inputWithIcon}>
                 <Search size={16} />
                 <input
@@ -619,38 +604,38 @@ export default function CommunicationsPage() {
               </div>
             </label>
 
-            <div className={styles.checkGrid}>
-              <label>
+            <div className={styles.toggleRow}>
+              <label className={styles.toggle}>
                 <input
                   type="checkbox"
                   checked={(filter.studyStatuses || []).includes('studying')}
                   onChange={(event) => setStatusValue('studying', event.target.checked)}
                 />
-                Навчаються
+                <span>Навчаються</span>
               </label>
-              <label>
+              <label className={styles.toggle}>
                 <input
                   type="checkbox"
                   checked={(filter.studyStatuses || []).includes('not_studying')}
                   onChange={(event) => setStatusValue('not_studying', event.target.checked)}
                 />
-                Не навчаються
+                <span>Не навчаються</span>
               </label>
-              <label>
+              <label className={styles.toggle}>
                 <input
                   type="checkbox"
                   checked={filter.requireEmail !== false}
                   onChange={(event) => setFilter((current) => ({ ...current, requireEmail: event.target.checked }))}
                 />
-                Тільки з email
+                <span>З email</span>
               </label>
-              <label>
+              <label className={styles.toggle}>
                 <input
                   type="checkbox"
                   checked={Boolean(filter.includeInactive)}
                   onChange={(event) => setFilter((current) => ({ ...current, includeInactive: event.target.checked }))}
                 />
-                Включити архів
+                <span>Архів</span>
               </label>
             </div>
           </div>
@@ -739,28 +724,34 @@ export default function CommunicationsPage() {
             </div>
           )}
 
-          <div className={styles.audienceInsight}>
-            <div className={styles.audienceBadges}>
-              <span>Вибрано {preview?.total ?? 0}</span>
-              <span>{preview?.deliverable ?? 0} з email</span>
-              <span>{preview?.missingEmail ?? 0} без email</span>
-              <span>{selectedGroupTitles.length} груп</span>
-              <span>{selectedCourseTitles.length} курсів</span>
-            </div>
-            <p>{audienceExplanation}</p>
+          <div className={styles.counters}>
+            <span><strong>{preview?.total ?? 0}</strong> учні</span>
+            <span><strong>{preview?.deliverable ?? 0}</strong> з email</span>
+            <span><strong>{preview?.missingEmail ?? 0}</strong> без email</span>
+            <span><strong>{preview?.suppressed ?? 0}</strong> пропущено</span>
           </div>
 
-          <div className={styles.audiencePreview}>
-            <div className={styles.audiencePreviewHeader}>
-              <div>
-                <h3>Учні в аудиторії</h3>
-                <p>{previewLoading ? 'Оновлюємо список...' : `${preview?.deliverable ?? 0} з валідним email`}</p>
-              </div>
+          <div className={styles.listDisclosure}>
+            <button
+              className={styles.expandButton}
+              type="button"
+              onClick={() => setAudienceListOpen((current) => !current)}
+              aria-expanded={audienceListOpen}
+            >
+              <ChevronDown className={audienceListOpen ? styles.chevronOpen : ''} size={17} />
+              {audienceListOpen ? 'Сховати список учнів' : 'Показати список учнів'}
+            </button>
+            <div className={styles.inlineActions}>
               <button className={styles.ghostButton} type="button" onClick={refreshPreview} disabled={previewLoading}>
                 <RefreshCw size={16} />
                 Оновити
               </button>
             </div>
+          </div>
+
+          {audienceListOpen && (
+          <div className={styles.audiencePreview}>
+            <p className={styles.supportText}>{previewLoading ? 'Оновлюємо список...' : audienceExplanation}</p>
 
             {preview?.students.length ? (
               <div className={styles.audienceList}>
@@ -788,6 +779,14 @@ export default function CommunicationsPage() {
               <p className={styles.moreText}>Показано 16 з {preview.students.length}. Звузь пошук або групи, щоб швидше перевірити список.</p>
             )}
           </div>
+          )}
+
+          <div className={styles.stageFooter}>
+            <button className={styles.primaryButton} type="button" onClick={goNext}>
+              Далі
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </section>
       )}
 
@@ -795,44 +794,39 @@ export default function CommunicationsPage() {
         <section className={styles.stage}>
           <div className={styles.stageHeader}>
             <div>
-              <p className={styles.panelKicker}>Крок 2</p>
               <h2>Повідомлення</h2>
-              <p>Обери шаблон і відредагуй конкретний текст розсилки. Сам шаблон відкривається тільки коли треба.</p>
+              <p>Обери шаблон, уточни тему і перевір живий preview на реальному отримувачі.</p>
             </div>
             <Mail size={22} />
           </div>
 
-          <div className={styles.templateLibrary}>
-            {templates.map((template) => (
-              <button
-                key={template.id}
-                type="button"
-                className={template.id === selectedTemplateId ? styles.templateCardActive : styles.templateCard}
-                onClick={() => handleTemplateSelect(template.id)}
+          <div className={styles.templateToolbar}>
+            <label className={styles.field}>
+              <span>Шаблон</span>
+              <select
+                className={styles.templateSelect}
+                value={selectedTemplateId ?? ''}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (value) handleTemplateSelect(value);
+                }}
               >
-                <span>
-                  <Mail size={16} />
-                  {template.name}
-                </span>
-                <strong>{template.subject || 'Без теми'}</strong>
-                <small>{templateSnippet(template.body)}</small>
-                <em>Оновлено {formatDateTime(template.updated_at)}</em>
-              </button>
-            ))}
-            <div className={styles.templateCreateCard}>
-              <strong>Бібліотека шаблонів</strong>
-              <span>Шаблони зберігають базовий текст. Перед відправкою його все одно можна змінити нижче.</span>
-              <div className={styles.templateActionsInline}>
-                <button className={styles.iconTextButton} type="button" onClick={handleNewTemplate}>
-                  <Plus size={16} />
-                  Новий
-                </button>
-                <button className={styles.iconTextButton} type="button" onClick={handleEditTemplate}>
-                  <Edit3 size={16} />
-                  Редагувати
-                </button>
-              </div>
-            </div>
+                <option value="">Власний текст</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className={styles.iconTextButton} type="button" onClick={handleNewTemplate}>
+              <Plus size={16} />
+              Новий
+            </button>
+            <button className={styles.iconTextButton} type="button" onClick={handleEditTemplate}>
+              <Edit3 size={16} />
+              Редагувати
+            </button>
           </div>
 
           <div className={styles.messageGrid}>
@@ -886,8 +880,31 @@ export default function CommunicationsPage() {
                   {emptyVariables.length > 0 && <span>Порожні для цього учня: {emptyVariables.join(', ')}</span>}
                 </div>
               )}
+              <div className={styles.recipientNav}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPreviewIndex((current) => Math.max(0, current - 1))}
+                  disabled={selectedPreviewIndex <= 0}
+                  aria-label="Попередній отримувач"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span>{selectedPreviewStudent?.full_name || 'Немає отримувача'}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPreviewIndex((current) => Math.min((preview?.students.length || 1) - 1, current + 1))}
+                  disabled={!preview?.students.length || selectedPreviewIndex >= preview.students.length - 1}
+                  aria-label="Наступний отримувач"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </aside>
           </div>
+
+          {selectedTemplate && (
+            <p className={styles.supportText}>Поточний шаблон: {selectedTemplate.name} · {templateSnippet(selectedTemplate.body)}</p>
+          )}
 
           {templateModalOpen && (
             <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="template-modal-title">
@@ -941,6 +958,17 @@ export default function CommunicationsPage() {
               </div>
             </div>
           )}
+
+          <div className={styles.stageFooter}>
+            <button className={styles.secondaryButton} type="button" onClick={goBack}>
+              <ChevronLeft size={16} />
+              Назад
+            </button>
+            <button className={styles.primaryButton} type="button" onClick={goNext} disabled={!canGoReview}>
+              Далі
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </section>
       )}
 
@@ -948,9 +976,8 @@ export default function CommunicationsPage() {
         <section className={styles.stage}>
           <div className={styles.stageHeader}>
             <div>
-              <p className={styles.panelKicker}>Крок 3</p>
               <h2>Перевірка і відправка</h2>
-              <p>Фінальна перевірка перед реальною відправкою через Resend.</p>
+              <p>Фінальна перевірка отримувачів, теми й тексту перед реальною відправкою.</p>
             </div>
             {previewLoading ? <RefreshCw className={styles.spin} size={22} /> : <Send size={22} />}
           </div>
@@ -969,16 +996,16 @@ export default function CommunicationsPage() {
 
           <div className={styles.safetyPanel}>
             <div>
-              <p className={styles.panelKicker}>Фінальний контроль</p>
-              <h3>Буде надіслано {preview?.deliverable ?? 0} листів</h3>
-              <span>{audienceExplanation}</span>
+              <h3>Фінальна перевірка</h3>
+              <p>{audienceExplanation}</p>
             </div>
-            <div className={styles.safetyFacts}>
-              <span>Аудиторія: {preview?.total ?? 0}</span>
-              <span>Без email: {preview?.missingEmail ?? 0}</span>
-              <span>Пропущено: {preview?.suppressed ?? 0}</span>
-              <span>Канал: Email через Resend</span>
-              <span>Шаблон: {selectedTemplate?.name || 'Власний текст'}</span>
+            <div className={styles.confirmSummary}>
+              <span><strong>Отримувачі</strong>{preview?.deliverable ?? 0}</span>
+              <span><strong>Без email</strong>{preview?.missingEmail ?? 0}</span>
+              <span><strong>Канал</strong>Email</span>
+              <span><strong>Шаблон</strong>{selectedTemplate?.name || 'Власний текст'}</span>
+              <span><strong>Тема</strong>{subject || 'Без теми'}</span>
+              <span><strong>Пропущено</strong>{preview?.suppressed ?? 0}</span>
             </div>
             {(unknownVariables.length > 0 || emptyVariables.length > 0) && (
               <div className={styles.safetyWarning}>
@@ -1045,24 +1072,19 @@ export default function CommunicationsPage() {
               </div>
             )}
           </div>
+
+          <div className={styles.stageFooter}>
+            <button className={styles.secondaryButton} type="button" onClick={goBack}>
+              <ChevronLeft size={16} />
+              Назад
+            </button>
+            <button className={styles.primaryButton} type="button" onClick={sendCampaign} disabled={sending || !preview?.deliverable}>
+              <Send size={16} />
+              {sending ? 'Надсилаємо...' : `Надіслати ${preview?.deliverable ?? 0} листів`}
+            </button>
+          </div>
         </section>
       )}
-
-      <footer className={styles.footerNav}>
-        <button className={styles.secondaryButton} type="button" onClick={goBack} disabled={step === 'audience'}>
-          Назад
-        </button>
-        {step !== 'review' ? (
-          <button className={styles.primaryButton} type="button" onClick={goNext} disabled={step === 'message' && !canGoReview}>
-            Далі
-          </button>
-        ) : (
-          <button className={styles.primaryButton} type="button" onClick={sendCampaign} disabled={sending || !preview?.deliverable}>
-            <Send size={16} />
-            {sending ? 'Надсилаємо...' : `Надіслати ${preview?.deliverable ?? 0} листів`}
-          </button>
-        )}
-      </footer>
     </div>
   );
 }

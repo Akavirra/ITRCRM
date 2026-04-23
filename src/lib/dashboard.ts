@@ -313,33 +313,37 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
           WHERE p.student_id = sg.student_id AND p.group_id = sg.group_id AND p.month >= $1
         )
     `, [firstDayOfMonth]),
-    // Today's unique students count
+    // Today's unique students count (only confirmed presence)
     get<{ count: number }>(`
       SELECT COUNT(DISTINCT a.student_id) as count
       FROM attendance a
       JOIN lessons l ON a.lesson_id = l.id
       WHERE l.lesson_date = $1 AND l.status != 'canceled'
+        AND a.status IN ('present', 'makeup_done')
     `, [todayStr]),
-    // This month's unique students count
+    // This month's unique students count (only confirmed presence)
     get<{ count: number }>(`
       SELECT COUNT(DISTINCT a.student_id) as count
       FROM attendance a
       JOIN lessons l ON a.lesson_id = l.id
       WHERE l.lesson_date >= $1 AND l.status != 'canceled'
+        AND a.status IN ('present', 'makeup_done')
     `, [firstDayOfMonth]),
-    // This year's unique students count
+    // This year's unique students count (only confirmed presence)
     get<{ count: number }>(`
       SELECT COUNT(DISTINCT a.student_id) as count
       FROM attendance a
       JOIN lessons l ON a.lesson_id = l.id
       WHERE l.lesson_date >= $1 AND l.status != 'canceled'
+        AND a.status IN ('present', 'makeup_done')
     `, [firstDayOfYear]),
-    // All-time unique students count
+    // All-time unique students count (only confirmed presence)
     get<{ count: number }>(`
       SELECT COUNT(DISTINCT a.student_id) as count
       FROM attendance a
       JOIN lessons l ON a.lesson_id = l.id
       WHERE l.status != 'canceled'
+        AND a.status IN ('present', 'makeup_done')
     `),
   ]);
 
