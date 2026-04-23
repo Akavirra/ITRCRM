@@ -29,6 +29,13 @@ const DEFAULT_RETENTION = {
   jsonKeepWeeklyDays: 180,
 };
 
+const DEFAULT_SCHEDULE = {
+  enabled: false,
+  frequency: 'daily',
+  time: '03:00',
+  weekdays: [1, 2, 3, 4, 5],
+};
+
 function normalizeRetention(input: unknown) {
   const source = input && typeof input === 'object' ? input as Record<string, unknown> : {};
   const toDays = (key: keyof typeof DEFAULT_RETENTION) => {
@@ -51,6 +58,29 @@ function normalizeRetention(input: unknown) {
   };
 }
 
+function normalizeSchedule(input: unknown) {
+  const source = input && typeof input === 'object' ? input as Record<string, unknown> : {};
+  const time = typeof source.time === 'string' && /^\d{2}:\d{2}$/.test(source.time)
+    ? source.time
+    : DEFAULT_SCHEDULE.time;
+  const [hour, minute] = time.split(':').map(Number);
+  const safeTime = hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59
+    ? time
+    : DEFAULT_SCHEDULE.time;
+  const weekdays = Array.isArray(source.weekdays)
+    ? source.weekdays
+        .map((day) => Number(day))
+        .filter((day) => Number.isInteger(day) && day >= 1 && day <= 7)
+    : DEFAULT_SCHEDULE.weekdays;
+
+  return {
+    enabled: source.enabled === true,
+    frequency: source.frequency === 'weekly' ? 'weekly' : 'daily',
+    time: safeTime,
+    weekdays: weekdays.length > 0 ? Array.from(new Set(weekdays)) : DEFAULT_SCHEDULE.weekdays,
+  };
+}
+
 async function saveSystemSetting(key: string, value: unknown) {
   await query(
     `INSERT INTO system_settings (key, value, updated_at)
@@ -69,6 +99,7 @@ function normalizeBackupSettings(body: any) {
     categories,
     format: body?.format === 'excel' ? 'excel' : 'json',
     retention: normalizeRetention(body?.retention),
+    schedule: normalizeSchedule(body?.schedule),
   };
 }
 
@@ -78,7 +109,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json().catch(() => null);
-    const { categories, format, retention } = normalizeBackupSettings(body);
+    const { categories, format, retention, schedule } = normalizeBackupSettings(body);
 
     if (categories.length === 0) {
       return badRequest('Категорії для бекапу не вибрані');
@@ -115,6 +146,7 @@ export async function POST(request: NextRequest) {
       user: user.name,
       includeExcel: format === 'excel',
       retention,
+      schedule,
       retentionResult: backup?.retention ?? null,
       results: Array.isArray(backup?.results) ? backup.results : [],
     };
@@ -124,6 +156,7 @@ export async function POST(request: NextRequest) {
       categories,
       format,
       retention,
+      schedule,
     });
 
     return NextResponse.json({
@@ -182,6 +215,7 @@ export async function GET(request: NextRequest) {
           categories: DEFAULT_CATEGORIES,
           format: 'json',
           retention: DEFAULT_RETENTION,
+          schedule: DEFAULT_SCHEDULE,
         },
   });
 }

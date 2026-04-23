@@ -106,6 +106,21 @@ const DEFAULT_BACKUP_RETENTION = {
   jsonKeepDailyDays: 90,
   jsonKeepWeeklyDays: 180,
 };
+const DEFAULT_BACKUP_SCHEDULE = {
+  enabled: false,
+  frequency: 'daily' as 'daily' | 'weekly',
+  time: '03:00',
+  weekdays: [1, 2, 3, 4, 5],
+};
+const BACKUP_WEEKDAYS = [
+  { id: 1, label: 'Пн' },
+  { id: 2, label: 'Вт' },
+  { id: 3, label: 'Ср' },
+  { id: 4, label: 'Чт' },
+  { id: 5, label: 'Пт' },
+  { id: 6, label: 'Сб' },
+  { id: 7, label: 'Нд' },
+];
 
 const Navbar: React.FC<NavbarProps> = ({
   user,
@@ -210,6 +225,8 @@ const Navbar: React.FC<NavbarProps> = ({
   // ── Backup state ───────────────────────────────────────────────────────────
   const [backupLoading, setBackupLoading] = useState(false);
   const [backupSettingsSaving, setBackupSettingsSaving] = useState(false);
+  const [backupRetentionOpen, setBackupRetentionOpen] = useState(false);
+  const [backupScheduleOpen, setBackupScheduleOpen] = useState(false);
   const [backupProgress, setBackupProgress] = useState(0);
   const [lastBackupStatus, setLastBackupStatus] = useState<{
     timestamp: string;
@@ -220,6 +237,7 @@ const Navbar: React.FC<NavbarProps> = ({
       artifacts?: Array<{ kind: 'json' | 'excel'; fileName: string }>;
     }>;
     retention?: typeof DEFAULT_BACKUP_RETENTION;
+    schedule?: typeof DEFAULT_BACKUP_SCHEDULE;
     retentionResult?: {
       deletedExcel: number;
       deletedJson: number;
@@ -230,6 +248,7 @@ const Navbar: React.FC<NavbarProps> = ({
     categories: DEFAULT_BACKUP_CATEGORIES,
     format: 'json' as 'json' | 'excel',
     retention: DEFAULT_BACKUP_RETENTION,
+    schedule: DEFAULT_BACKUP_SCHEDULE,
   });
 
   const updateBackupRetention = (field: keyof typeof DEFAULT_BACKUP_RETENTION, value: string) => {
@@ -241,6 +260,36 @@ const Navbar: React.FC<NavbarProps> = ({
         [field]: Number.isFinite(numeric) ? Math.max(0, Math.floor(numeric)) : 0,
       },
     }));
+  };
+
+  const updateBackupSchedule = <K extends keyof typeof DEFAULT_BACKUP_SCHEDULE>(
+    field: K,
+    value: (typeof DEFAULT_BACKUP_SCHEDULE)[K]
+  ) => {
+    setBackupSettings(prev => ({
+      ...prev,
+      schedule: {
+        ...prev.schedule,
+        [field]: value,
+      },
+    }));
+  };
+
+  const toggleBackupScheduleWeekday = (day: number) => {
+    setBackupSettings(prev => {
+      const exists = prev.schedule.weekdays.includes(day);
+      const weekdays = exists
+        ? prev.schedule.weekdays.filter(item => item !== day)
+        : [...prev.schedule.weekdays, day].sort((a, b) => a - b);
+
+      return {
+        ...prev,
+        schedule: {
+          ...prev.schedule,
+          weekdays: weekdays.length > 0 ? weekdays : prev.schedule.weekdays,
+        },
+      };
+    });
   };
 
   const handleBackupSettingsSave = async () => {
@@ -274,6 +323,7 @@ const Navbar: React.FC<NavbarProps> = ({
           categories: backupSettings.categories,
           format: backupSettings.format,
           retention: backupSettings.retention,
+          schedule: backupSettings.schedule,
         }),
       });
       setBackupProgress(70);
@@ -805,6 +855,18 @@ const Navbar: React.FC<NavbarProps> = ({
               jsonKeepWeeklyDays: Number.isFinite(Number(d.settings.retention?.jsonKeepWeeklyDays))
                 ? Math.max(0, Math.floor(Number(d.settings.retention.jsonKeepWeeklyDays)))
                 : DEFAULT_BACKUP_RETENTION.jsonKeepWeeklyDays,
+            },
+            schedule: {
+              enabled: d.settings.schedule?.enabled === true,
+              frequency: d.settings.schedule?.frequency === 'weekly' ? 'weekly' : 'daily',
+              time: typeof d.settings.schedule?.time === 'string' && /^\d{2}:\d{2}$/.test(d.settings.schedule.time)
+                ? d.settings.schedule.time
+                : DEFAULT_BACKUP_SCHEDULE.time,
+              weekdays: Array.isArray(d.settings.schedule?.weekdays) && d.settings.schedule.weekdays.length > 0
+                ? d.settings.schedule.weekdays
+                    .map((day: unknown) => Number(day))
+                    .filter((day: number) => Number.isInteger(day) && day >= 1 && day <= 7)
+                : DEFAULT_BACKUP_SCHEDULE.weekdays,
             },
           });
         }
@@ -1861,70 +1923,248 @@ const Navbar: React.FC<NavbarProps> = ({
                         <div style={{
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '0.75rem',
+                          gap: backupScheduleOpen ? '0.75rem' : 0,
+                          padding: '0.875rem',
+                          backgroundColor: backupSettings.schedule.enabled ? '#eff6ff' : '#f8fafc',
+                          border: `1px solid ${backupSettings.schedule.enabled ? '#bfdbfe' : '#e2e8f0'}`,
+                          borderRadius: '10px',
+                        }}>
+                          <button
+                            type="button"
+                            aria-expanded={backupScheduleOpen}
+                            onClick={() => setBackupScheduleOpen(prev => !prev)}
+                            style={{
+                              appearance: 'none',
+                              border: 0,
+                              background: 'transparent',
+                              padding: 0,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '0.75rem',
+                              textAlign: 'left',
+                              color: 'inherit',
+                            }}
+                          >
+                            <span>
+                              <span style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 700, color: '#334155', marginBottom: '0.25rem' }}>
+                                Автоматичне резервування
+                              </span>
+                              <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', lineHeight: 1.45 }}>
+                                {backupSettings.schedule.enabled
+                                  ? `${backupSettings.schedule.frequency === 'weekly' ? 'Щотижня' : 'Щодня'} о ${backupSettings.schedule.time} за Києвом`
+                                  : 'Вимкнено. Резервні копії створюються тільки вручну.'}
+                              </span>
+                            </span>
+                            <ChevronDown
+                              size={16}
+                              style={{
+                                color: '#64748b',
+                                flexShrink: 0,
+                                transform: backupScheduleOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 160ms ease-out',
+                              }}
+                            />
+                          </button>
+
+                          {backupScheduleOpen && (
+                            <>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '0.875rem', color: '#334155', cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={backupSettings.schedule.enabled}
+                                  onChange={(e) => updateBackupSchedule('enabled', e.target.checked)}
+                                />
+                                Увімкнути автоматичне резервне копіювання
+                              </label>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+                                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
+                                    Періодичність
+                                  </span>
+                                  <select
+                                    value={backupSettings.schedule.frequency}
+                                    onChange={(e) => updateBackupSchedule('frequency', e.target.value === 'weekly' ? 'weekly' : 'daily')}
+                                    style={{
+                                      width: '100%',
+                                      border: '1px solid #cbd5e1',
+                                      borderRadius: '8px',
+                                      padding: '0.5rem 0.625rem',
+                                      fontSize: '0.875rem',
+                                      color: '#0f172a',
+                                      backgroundColor: '#fff',
+                                    }}
+                                  >
+                                    <option value="daily">Щодня</option>
+                                    <option value="weekly">Щотижня</option>
+                                  </select>
+                                </label>
+
+                                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
+                                    Час запуску
+                                  </span>
+                                  <input
+                                    type="time"
+                                    value={backupSettings.schedule.time}
+                                    onChange={(e) => updateBackupSchedule('time', e.target.value || DEFAULT_BACKUP_SCHEDULE.time)}
+                                    style={{
+                                      width: '100%',
+                                      border: '1px solid #cbd5e1',
+                                      borderRadius: '8px',
+                                      padding: '0.5rem 0.625rem',
+                                      fontSize: '0.875rem',
+                                      color: '#0f172a',
+                                      backgroundColor: '#fff',
+                                    }}
+                                  />
+                                  <span style={{ fontSize: '0.6875rem', color: '#64748b', lineHeight: 1.35 }}>
+                                    Cron перевіряє розклад щогодини, тому запуск може відбутися протягом години після вибраного часу.
+                                  </span>
+                                </label>
+                              </div>
+
+                              {backupSettings.schedule.frequency === 'weekly' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
+                                    Дні тижня
+                                  </span>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                    {BACKUP_WEEKDAYS.map(day => {
+                                      const active = backupSettings.schedule.weekdays.includes(day.id);
+                                      return (
+                                        <button
+                                          key={day.id}
+                                          type="button"
+                                          onClick={() => toggleBackupScheduleWeekday(day.id)}
+                                          style={{
+                                            border: `1px solid ${active ? '#2563eb' : '#cbd5e1'}`,
+                                            backgroundColor: active ? '#dbeafe' : '#fff',
+                                            color: active ? '#1d4ed8' : '#475569',
+                                            borderRadius: '999px',
+                                            padding: '0.375rem 0.7rem',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            transition: 'background-color 150ms ease, border-color 150ms ease, transform 120ms ease-out',
+                                          }}
+                                        >
+                                          {day.label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: backupRetentionOpen ? '0.75rem' : 0,
                           padding: '0.875rem',
                           backgroundColor: '#f8fafc',
                           border: '1px solid #e2e8f0',
                           borderRadius: '10px',
                         }}>
-                          <div>
-                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#334155', marginBottom: '0.25rem' }}>
-                              Зберігання резервних файлів
-                            </div>
-                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', lineHeight: 1.45 }}>
-                              Старі файли не перезаписуються. Cleanup переносить зайві копії в кошик Google Drive, а JSON лишається головним архівом для restore.
-                            </p>
-                          </div>
+                          <button
+                            type="button"
+                            aria-expanded={backupRetentionOpen}
+                            onClick={() => setBackupRetentionOpen(prev => !prev)}
+                            style={{
+                              appearance: 'none',
+                              border: 0,
+                              background: 'transparent',
+                              padding: 0,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '0.75rem',
+                              textAlign: 'left',
+                              color: 'inherit',
+                            }}
+                          >
+                            <span>
+                              <span style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 700, color: '#334155', marginBottom: '0.25rem' }}>
+                                Зберігання резервних файлів
+                              </span>
+                              <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', lineHeight: 1.45 }}>
+                                Excel {backupSettings.retention.excelRetentionDays} дн., JSON всі {backupSettings.retention.jsonKeepAllDays} дн., далі 1/день до {backupSettings.retention.jsonKeepDailyDays} дн.
+                              </span>
+                            </span>
+                            <ChevronDown
+                              size={16}
+                              style={{
+                                color: '#64748b',
+                                flexShrink: 0,
+                                transform: backupRetentionOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 160ms ease-out',
+                              }}
+                            />
+                          </button>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
-                            {[
-                              {
-                                key: 'excelRetentionDays' as const,
-                                label: 'Excel preview, днів',
-                                hint: 'Після цього старі .xlsx прибираються',
-                              },
-                              {
-                                key: 'jsonKeepAllDays' as const,
-                                label: 'JSON: всі копії, днів',
-                                hint: 'Щільна історія останніх запусків',
-                              },
-                              {
-                                key: 'jsonKeepDailyDays' as const,
-                                label: 'JSON: 1 на день до, днів',
-                                hint: 'Після щільного періоду',
-                              },
-                              {
-                                key: 'jsonKeepWeeklyDays' as const,
-                                label: 'JSON: 1 на тиждень до, днів',
-                                hint: 'Довша історія без зайвого шуму',
-                              },
-                            ].map(item => (
-                              <label key={item.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
-                                  {item.label}
-                                </span>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={1}
-                                  value={backupSettings.retention[item.key]}
-                                  onChange={(e) => updateBackupRetention(item.key, e.target.value)}
-                                  style={{
-                                    width: '100%',
-                                    border: '1px solid #cbd5e1',
-                                    borderRadius: '8px',
-                                    padding: '0.5rem 0.625rem',
-                                    fontSize: '0.875rem',
-                                    color: '#0f172a',
-                                    backgroundColor: '#fff',
-                                  }}
-                                />
-                                <span style={{ fontSize: '0.6875rem', color: '#64748b', lineHeight: 1.35 }}>
-                                  {item.hint}
-                                </span>
-                              </label>
-                            ))}
-                          </div>
+                          {backupRetentionOpen && (
+                            <>
+                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', lineHeight: 1.45 }}>
+                                Старі файли не перезаписуються. Cleanup переносить зайві копії в кошик Google Drive, а JSON лишається головним архівом для restore.
+                              </p>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+                                {[
+                                  {
+                                    key: 'excelRetentionDays' as const,
+                                    label: 'Excel preview, днів',
+                                    hint: 'Після цього старі .xlsx прибираються',
+                                  },
+                                  {
+                                    key: 'jsonKeepAllDays' as const,
+                                    label: 'JSON: всі копії, днів',
+                                    hint: 'Щільна історія останніх запусків',
+                                  },
+                                  {
+                                    key: 'jsonKeepDailyDays' as const,
+                                    label: 'JSON: 1 на день до, днів',
+                                    hint: 'Після щільного періоду',
+                                  },
+                                  {
+                                    key: 'jsonKeepWeeklyDays' as const,
+                                    label: 'JSON: 1 на тиждень до, днів',
+                                    hint: 'Довша історія без зайвого шуму',
+                                  },
+                                ].map(item => (
+                                  <label key={item.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
+                                      {item.label}
+                                    </span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step={1}
+                                      value={backupSettings.retention[item.key]}
+                                      onChange={(e) => updateBackupRetention(item.key, e.target.value)}
+                                      style={{
+                                        width: '100%',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '8px',
+                                        padding: '0.5rem 0.625rem',
+                                        fontSize: '0.875rem',
+                                        color: '#0f172a',
+                                        backgroundColor: '#fff',
+                                      }}
+                                    />
+                                    <span style={{ fontSize: '0.6875rem', color: '#64748b', lineHeight: 1.35 }}>
+                                      {item.hint}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            </>
+                          )}
                         </div>
 
                         {backupProgress > 0 && (
