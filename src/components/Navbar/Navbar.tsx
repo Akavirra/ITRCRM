@@ -2021,7 +2021,7 @@ const Navbar: React.FC<NavbarProps> = ({
                                     }}
                                   />
                                   <span style={{ fontSize: '0.6875rem', color: '#64748b', lineHeight: 1.35 }}>
-                                    Cron перевіряє розклад щогодини, тому запуск може відбутися протягом години після вибраного часу.
+                                    Upload-service на Railway перевіряє розклад кожні 15 хвилин.
                                   </span>
                                 </label>
                               </div>
