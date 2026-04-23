@@ -72,8 +72,13 @@ const VARIABLE_LABELS: Record<string, string> = {
 function renderMessage(template: string, student: MessagingStudent | null): string {
   if (!student) return template;
 
+  const values = getStudentVariables(student);
+  return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => values[key] ?? '');
+}
+
+function getStudentVariables(student: MessagingStudent): Record<string, string> {
   const courses = Array.from(new Set(student.groups.map((group) => group.course_title).filter(Boolean)));
-  const values: Record<string, string> = {
+  return {
     studentName: student.full_name,
     parentName: student.parent_name || '',
     studentEmail: student.email || '',
@@ -81,8 +86,15 @@ function renderMessage(template: string, student: MessagingStudent | null): stri
     groups: student.groups.map((group) => group.title).join(', '),
     courses: courses.join(', '),
   };
+}
 
-  return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => values[key] ?? '');
+function extractVariables(value: string): string[] {
+  return Array.from(value.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g), (match) => match[1]);
+}
+
+function templateSnippet(value: string): string {
+  const firstLine = value.split('\n').find((line) => line.trim())?.trim() || 'Без тексту';
+  return firstLine.length > 88 ? `${firstLine.slice(0, 85)}...` : firstLine;
 }
 
 function formatDateTime(value: string | null): string {
@@ -140,6 +152,7 @@ export default function CommunicationsPage() {
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [lastSendResult, setLastSendResult] = useState<CampaignSummary | null>(null);
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId) || null,
@@ -162,7 +175,48 @@ export default function CommunicationsPage() {
     return 'Активні учні';
   }, [filter.courseIds, filter.groupIds, filter.mode, selectedStudents.length]);
 
-  const canGoReview = Boolean(subject.trim() && body.trim() && preview?.deliverable);
+  const selectedCourseTitles = useMemo(
+    () => courses.filter((course) => (filter.courseIds || []).includes(course.id)).map((course) => course.title),
+    [courses, filter.courseIds]
+  );
+
+  const selectedGroupTitles = useMemo(
+    () => groups.filter((group) => (filter.groupIds || []).includes(group.id)).map((group) => group.title),
+    [groups, filter.groupIds]
+  );
+
+  const audienceExplanation = useMemo(() => {
+    const parts: string[] = [];
+    if (filter.mode === 'manual') {
+      parts.push(selectedStudents.length > 0 ? `ручний список: ${selectedStudents.length} учнів` : 'ручний список ще порожній');
+    } else {
+      parts.push((filter.studyStatuses || []).includes('studying') ? 'учні, які навчаються' : 'обрані статуси учнів');
+    }
+    if (filter.requireEmail !== false) parts.push('мають email');
+    if (selectedCourseTitles.length > 0) parts.push(`курси: ${selectedCourseTitles.slice(0, 3).join(', ')}`);
+    if (selectedGroupTitles.length > 0) parts.push(`групи: ${selectedGroupTitles.slice(0, 3).join(', ')}`);
+    if (filter.search?.trim()) parts.push(`пошук: "${filter.search.trim()}"`);
+    if (filter.includeInactive) parts.push('включно з архівом');
+    return `Показуємо: ${parts.join('; ')}.`;
+  }, [filter.includeInactive, filter.mode, filter.requireEmail, filter.search, filter.studyStatuses, selectedCourseTitles, selectedGroupTitles, selectedStudents.length]);
+
+  const usedVariables = useMemo(
+    () => Array.from(new Set([...extractVariables(subject), ...extractVariables(body)])),
+    [body, subject]
+  );
+
+  const unknownVariables = useMemo(
+    () => usedVariables.filter((variable) => !variables.includes(variable)),
+    [usedVariables, variables]
+  );
+
+  const emptyVariables = useMemo(() => {
+    if (!selectedPreviewStudent) return [];
+    const values = getStudentVariables(selectedPreviewStudent);
+    return usedVariables.filter((variable) => variables.includes(variable) && !values[variable]);
+  }, [selectedPreviewStudent, usedVariables, variables]);
+
+  const canGoReview = Boolean(subject.trim() && body.trim() && preview?.deliverable && unknownVariables.length === 0);
 
   const loadBootstrap = useCallback(async () => {
     setLoading(true);
@@ -386,9 +440,6 @@ export default function CommunicationsPage() {
       return;
     }
 
-    const confirmed = window.confirm(`Надіслати розсилку ${preview.deliverable} отримувачам?`);
-    if (!confirmed) return;
-
     setSending(true);
     try {
       const res = await fetch('/api/messaging/campaigns/send', {
@@ -405,6 +456,7 @@ export default function CommunicationsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Не вдалося надіслати розсилку');
       setCampaigns((current) => [data.campaign, ...current].slice(0, 10));
+      setLastSendResult(data.campaign);
       setNotice({
         type: data.campaign.failed_count > 0 ? 'error' : 'success',
         text: `Готово: надіслано ${data.campaign.sent_count}, помилок ${data.campaign.failed_count}, пропущено ${data.campaign.skipped_count}`,
@@ -493,6 +545,14 @@ export default function CommunicationsPage() {
         <div>
           <span>Без email</span>
           <strong>{preview?.missingEmail ?? 0}</strong>
+        </div>
+        <div>
+          <span>Пропущено</span>
+          <strong>{preview?.suppressed ?? 0}</strong>
+        </div>
+        <div>
+          <span>Шаблон</span>
+          <strong>{selectedTemplate?.name || 'Власний текст'}</strong>
         </div>
         <button className={styles.ghostButton} type="button" onClick={refreshPreview} disabled={previewLoading}>
           <RefreshCw size={16} />
@@ -679,6 +739,17 @@ export default function CommunicationsPage() {
             </div>
           )}
 
+          <div className={styles.audienceInsight}>
+            <div className={styles.audienceBadges}>
+              <span>Вибрано {preview?.total ?? 0}</span>
+              <span>{preview?.deliverable ?? 0} з email</span>
+              <span>{preview?.missingEmail ?? 0} без email</span>
+              <span>{selectedGroupTitles.length} груп</span>
+              <span>{selectedCourseTitles.length} курсів</span>
+            </div>
+            <p>{audienceExplanation}</p>
+          </div>
+
           <div className={styles.audiencePreview}>
             <div className={styles.audiencePreviewHeader}>
               <div>
@@ -731,26 +802,37 @@ export default function CommunicationsPage() {
             <Mail size={22} />
           </div>
 
-          <div className={styles.templateStrip}>
+          <div className={styles.templateLibrary}>
             {templates.map((template) => (
               <button
                 key={template.id}
                 type="button"
-                className={template.id === selectedTemplateId ? styles.templateActive : styles.templateButton}
+                className={template.id === selectedTemplateId ? styles.templateCardActive : styles.templateCard}
                 onClick={() => handleTemplateSelect(template.id)}
               >
-                <Mail size={16} />
-                <span>{template.name}</span>
+                <span>
+                  <Mail size={16} />
+                  {template.name}
+                </span>
+                <strong>{template.subject || 'Без теми'}</strong>
+                <small>{templateSnippet(template.body)}</small>
+                <em>Оновлено {formatDateTime(template.updated_at)}</em>
               </button>
             ))}
-            <button className={styles.iconTextButton} type="button" onClick={handleNewTemplate}>
-              <Plus size={16} />
-              Новий
-            </button>
-            <button className={styles.iconTextButton} type="button" onClick={handleEditTemplate}>
-              <Edit3 size={16} />
-              Редагувати
-            </button>
+            <div className={styles.templateCreateCard}>
+              <strong>Бібліотека шаблонів</strong>
+              <span>Шаблони зберігають базовий текст. Перед відправкою його все одно можна змінити нижче.</span>
+              <div className={styles.templateActionsInline}>
+                <button className={styles.iconTextButton} type="button" onClick={handleNewTemplate}>
+                  <Plus size={16} />
+                  Новий
+                </button>
+                <button className={styles.iconTextButton} type="button" onClick={handleEditTemplate}>
+                  <Edit3 size={16} />
+                  Редагувати
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className={styles.messageGrid}>
@@ -787,13 +869,23 @@ export default function CommunicationsPage() {
             </div>
 
             <aside className={styles.livePreview}>
-              <p>Preview</p>
+              <p>Preview email</p>
+              <div className={styles.emailMeta}>
+                <span>Від: ITRobotics</span>
+                <span>Кому: {selectedPreviewStudent?.email || 'немає email'}</span>
+              </div>
               <strong>{renderMessage(subject, selectedPreviewStudent)}</strong>
-              <div>
+              <div className={styles.emailBody}>
                 {renderMessage(body, selectedPreviewStudent).split('\n').map((line, index) => (
                   <span key={`${line}-${index}`}>{line || '\u00A0'}</span>
                 ))}
               </div>
+              {(unknownVariables.length > 0 || emptyVariables.length > 0) && (
+                <div className={styles.variableWarnings}>
+                  {unknownVariables.length > 0 && <span>Невідомі змінні: {unknownVariables.join(', ')}</span>}
+                  {emptyVariables.length > 0 && <span>Порожні для цього учня: {emptyVariables.join(', ')}</span>}
+                </div>
+              )}
             </aside>
           </div>
 
@@ -858,13 +950,54 @@ export default function CommunicationsPage() {
             <div>
               <p className={styles.panelKicker}>Крок 3</p>
               <h2>Перевірка і відправка</h2>
-              <p>Переглянь лист для конкретного отримувача і список адрес перед запуском.</p>
+              <p>Фінальна перевірка перед реальною відправкою через Resend.</p>
             </div>
             {previewLoading ? <RefreshCw className={styles.spin} size={22} /> : <Send size={22} />}
           </div>
 
+          {lastSendResult && (
+            <div className={lastSendResult.failed_count > 0 ? styles.sendReportWarn : styles.sendReport}>
+              <Check size={18} />
+              <div>
+                <strong>Остання відправка завершена</strong>
+                <span>
+                  Надіслано {lastSendResult.sent_count}, помилок {lastSendResult.failed_count}, пропущено {lastSendResult.skipped_count}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className={styles.safetyPanel}>
+            <div>
+              <p className={styles.panelKicker}>Фінальний контроль</p>
+              <h3>Буде надіслано {preview?.deliverable ?? 0} листів</h3>
+              <span>{audienceExplanation}</span>
+            </div>
+            <div className={styles.safetyFacts}>
+              <span>Аудиторія: {preview?.total ?? 0}</span>
+              <span>Без email: {preview?.missingEmail ?? 0}</span>
+              <span>Пропущено: {preview?.suppressed ?? 0}</span>
+              <span>Канал: Email через Resend</span>
+              <span>Шаблон: {selectedTemplate?.name || 'Власний текст'}</span>
+            </div>
+            {(unknownVariables.length > 0 || emptyVariables.length > 0) && (
+              <div className={styles.safetyWarning}>
+                <AlertCircle size={17} />
+                <span>
+                  {unknownVariables.length > 0
+                    ? `Є невідомі змінні: ${unknownVariables.join(', ')}`
+                    : `Деякі змінні порожні у preview: ${emptyVariables.join(', ')}`}
+                </span>
+              </div>
+            )}
+          </div>
+
           <div className={styles.reviewGrid}>
             <div className={styles.previewBox}>
+              <div className={styles.previewHeader}>
+                <span>Від: ITRobotics</span>
+                <span>Кому: {selectedPreviewStudent?.email || 'немає email'}</span>
+              </div>
               <p className={styles.previewSubject}>{renderMessage(subject, selectedPreviewStudent)}</p>
               <div className={styles.previewBody}>
                 {renderMessage(body, selectedPreviewStudent).split('\n').map((line, index) => (
@@ -926,7 +1059,7 @@ export default function CommunicationsPage() {
         ) : (
           <button className={styles.primaryButton} type="button" onClick={sendCampaign} disabled={sending || !preview?.deliverable}>
             <Send size={16} />
-            {sending ? 'Надсилаємо...' : `Надіслати ${preview?.deliverable ?? 0}`}
+            {sending ? 'Надсилаємо...' : `Надіслати ${preview?.deliverable ?? 0} листів`}
           </button>
         )}
       </footer>
