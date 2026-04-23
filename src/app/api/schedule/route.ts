@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
     params.push(...accessibleGroupIds);
   }
   
-  sql += ` ORDER BY l.lesson_date ASC, g.start_time ASC`;
+  sql += ` ORDER BY l.lesson_date ASC, l.start_datetime ASC`;
 
   // Try with is_makeup column; fall back silently if the migration hasn't run yet
   let lessons: LessonRow[];
