@@ -20,6 +20,7 @@ const NAV = [
   { href: '/groups', label: 'Групи', icon: '📚' },
   { href: '/schedule', label: 'Розклад', icon: '📅' },
   { href: '/attendance', label: 'Відвід.', icon: '⏳' },
+  { href: '/works', label: 'Роботи', icon: '📂' },
   { href: '/profile', label: 'Профіль', icon: '👤' },
 ];
 

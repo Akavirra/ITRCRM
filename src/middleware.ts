@@ -54,6 +54,7 @@ const STUDENT_ALLOWED_PATHS = [
   '/schedule',
   '/attendance',
   '/profile',
+  '/works',
   '/api/student/',
   // Next.js internals + static
   '/_next/',
@@ -162,13 +163,27 @@ function handleStudentHost(request: NextRequest): NextResponse | null {
  */
 function applyStudentSecurityHeaders(response: NextResponse): void {
   const isDev = process.env.NODE_ENV === 'development';
+
+  // Дозволяємо XHR/fetch на upload-service (multipart POST для /upload/student-work).
+  // UPLOAD_SERVICE_URL — серверна env var; беремо origin (схема+хост), не повний шлях.
+  let uploadOrigin = '';
+  try {
+    if (process.env.UPLOAD_SERVICE_URL) {
+      uploadOrigin = new URL(process.env.UPLOAD_SERVICE_URL).origin;
+    }
+  } catch {
+    // ігноруємо — залишимо connect-src 'self'
+  }
+
+  const connectSrc = uploadOrigin ? `'self' ${uploadOrigin}` : "'self'";
+
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'" + (isDev ? " 'unsafe-eval'" : ""),
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    `connect-src ${connectSrc}`,
     "frame-ancestors 'none'",
     "form-action 'self'",
     "base-uri 'self'",
