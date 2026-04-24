@@ -34,6 +34,12 @@ const STUDENT_PUBLIC_PATHS = new Set<string>([
   '/login',
   '/api/student/auth/login',
   '/api/student/auth/logout',
+  // PWA metadata, які Next.js авто-додає в <head> кожної сторінки.
+  // Мають бути доступні без auth, інакше browser getting 302→/login при fetch manifest.
+  '/manifest.webmanifest',
+  '/icon.svg',
+  '/apple-icon',
+  '/favicon.ico',
 ]);
 
 // Дозволені URL-перші сегменти для піддомена students.* (все інше — 404).
@@ -52,7 +58,10 @@ const STUDENT_ALLOWED_PATHS = [
   '/favicon',
   '/robots.txt',
   '/sitemap.xml',
-  '/manifest',
+  // PWA / metadata (згенеровані Next.js з src/app/manifest.ts, icon.svg, apple-icon.tsx)
+  '/manifest.webmanifest',
+  '/icon.svg',
+  '/apple-icon',
 ];
 
 function isStudentHost(host: string | null): boolean {
