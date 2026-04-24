@@ -7,6 +7,8 @@ const PUBLIC_ROUTES = [
   '/api/auth/lookup',
   '/api/auth/reset-temporary-password',
   '/api/notifications/telegram',
+  '/api/notifications/teacher-daily-reminders',
+  '/api/notifications/teacher-hourly-reminders',
   '/api/telegram',
   '/telegram',
   '/teacher-app',
