@@ -337,6 +337,7 @@ const Navbar: React.FC<NavbarProps> = ({
     dateFormat: 'DD.MM.YYYY',
     currency: 'UAH',
     weatherCity: 'Kyiv',
+    notificationFilters: [] as string[],
   });
   const [saved, setSaved] = useState(false);
   const [salarySettings, setSalarySettings] = useState({
@@ -1118,6 +1119,16 @@ const Navbar: React.FC<NavbarProps> = ({
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
+  const toggleNotificationFilter = (type: string) => {
+    setSettings(prev => {
+      const current = (prev.notificationFilters as string[]) || [];
+      const next = current.includes(type)
+        ? current.filter(t => t !== type)
+        : [...current, type];
+      return { ...prev, notificationFilters: next };
+    });
+  };
+
   const userName = user?.name || 'Максим П.';
   const userRole = user?.role === 'admin' ? t('roles.admin') : t('roles.teacher');
 
@@ -1810,59 +1821,37 @@ const Navbar: React.FC<NavbarProps> = ({
                 {/* Notifications Tab */}
                 {activeSettingsTab === 'notifications' && (
                   <div>
-                    <h3 style={{
+                    <p style={{
                       fontSize: '0.8125rem',
-                      fontWeight: '600',
-                      color: '#374151',
+                      color: '#6b7280',
                       marginBottom: '1rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}>Канали сповіщень</h3>
-                    
-                    {[
-                      { key: 'emailNotifications', label: 'Email сповіщення', desc: 'Отримуйте сповіщення на email' },
-                      { key: 'pushNotifications', label: 'Push-сповіщення', desc: 'Миттєві сповіщення в браузері' },
-                    ].map((item) => (
-                      <label key={item.key} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        padding: '0.75rem 1rem',
-                        marginBottom: '0.5rem',
-                        borderRadius: '0.5rem',
-                        border: '1px solid #e5e7eb',
-                        backgroundColor: '#fafafa',
-                        cursor: 'pointer',
-                      }}>
-                        <input 
-                          type="checkbox"
-                          checked={settings[item.key as keyof typeof settings] as boolean}
-                          onChange={(e) => handleSettingChange(item.key, e.target.checked)}
-                          style={{ width: '18px', height: '18px', accentColor: '#3b82f6' }}
-                        />
-                        <div>
-                          <div style={{ fontWeight: '500', color: '#1f2937' }}>{item.label}</div>
-                          <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{item.desc}</div>
-                        </div>
-                      </label>
-                    ))}
+                      lineHeight: 1.5,
+                    }}>
+                      Вимкніть типи сповіщень, які не хочете бачити у списку. Налаштування зберігаються індивідуально для кожного адміністратора.
+                    </p>
 
-                    <h3 style={{
-                      fontSize: '0.8125rem',
-                      fontWeight: '600',
-                      color: '#374151',
-                      marginTop: '1.5rem',
-                      marginBottom: '1rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}>Типи сповіщень</h3>
-                    
                     {[
-                      { key: 'lessonReminders', label: 'Нагадування про заняття', desc: 'Перед початком занять' },
-                      { key: 'paymentAlerts', label: 'Сповіщення про платежі', desc: 'Оплата та борги' },
-                      { key: 'weeklyReport', label: 'Тижневий звіт', desc: 'Підсумок роботи за тиждень' },
+                      { type: 'birthday', label: 'Дні народження', desc: 'Сповіщення про дні народження учнів' },
+                      { type: 'lesson_done', label: 'Заняття проведено', desc: 'Автоматично, коли відмічена відвідуваність' },
+                      { type: 'note_reminder', label: 'Нагадування з нотаток', desc: 'Сповіщення з персональних нотаток' },
+                      { type: 'enrollment_submission', label: 'Нова заявка на навчання', desc: 'Подана анкета через публічну форму' },
+                      { type: 'lesson_canceled', label: 'Скасоване заняття', desc: 'Заняття скасовано вручну' },
+                      { type: 'lesson_rescheduled', label: 'Перенесене заняття', desc: 'Заняття перенесено на інший час' },
+                      { type: 'teacher_replaced', label: 'Заміна викладача', desc: 'Викладача замінено на занятті' },
+                      { type: 'trial_lesson_scheduled', label: 'Пробне заняття', desc: 'Записано пробного учня' },
+                      { type: 'camp_payment_added', label: 'Оплата табору', desc: 'Нова оплата за табір' },
+                      { type: 'system_settings_updated', label: 'Системні налаштування', desc: 'Зміна тарифів чи цін' },
+                      { type: 'enrollment_approved', label: 'Заявку схвалено', desc: 'Анкету на навчання затверджено' },
+                      { type: 'enrollment_rejected', label: 'Заявку відхилено', desc: 'Анкету на навчання відхилено' },
+                      { type: 'student_added_to_group', label: 'Учня додано до групи', desc: 'Новий учень у групі' },
+                      { type: 'student_removed_from_group', label: 'Учня видалено з групи', desc: 'Учня вилучено з групи' },
+                      { type: 'payment_created', label: 'Нова оплата', desc: 'Створено запис про оплату' },
+                      { type: 'payment_updated', label: 'Оплату оновлено', desc: 'Редагування запису оплати' },
+                      { type: 'payment_deleted', label: 'Оплату видалено', desc: 'Видалення запису оплати' },
+                      { type: 'lessons_generated', label: 'Згенеровані заняття', desc: 'Масова генерація розкладу' },
+                      { type: 'lesson_stale', label: 'Прострочене заняття', desc: 'Заняття не оновлено після завершення' },
                     ].map((item) => (
-                      <label key={item.key} style={{
+                      <label key={item.type} style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.75rem',
@@ -1873,11 +1862,11 @@ const Navbar: React.FC<NavbarProps> = ({
                         backgroundColor: '#fafafa',
                         cursor: 'pointer',
                       }}>
-                        <input 
+                        <input
                           type="checkbox"
-                          checked={settings[item.key as keyof typeof settings] as boolean}
-                          onChange={(e) => handleSettingChange(item.key, e.target.checked)}
-                          style={{ width: '18px', height: '18px', accentColor: '#3b82f6' }}
+                          checked={!((settings.notificationFilters as string[]) || []).includes(item.type)}
+                          onChange={() => toggleNotificationFilter(item.type)}
+                          style={{ width: '18px', height: '18px', accentColor: '#3b82f6', flexShrink: 0 }}
                         />
                         <div>
                           <div style={{ fontWeight: '500', color: '#1f2937' }}>{item.label}</div>

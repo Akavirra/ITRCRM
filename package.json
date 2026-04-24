@@ -47,6 +47,7 @@
     "db:add-notes-archive": "node scripts/add-notes-archive.js",
     "db:add-notes-remind": "node scripts/add-notes-remind.js",
     "db:add-notes-links": "node scripts/add-notes-links.js",
+    "db:add-notification-filters": "node scripts/add-notification-filters.js",
     "db:add-student-group-status": "node scripts/migrate-student-group-status.js",
     "db:add-enrollment": "node scripts/add-enrollment.js",
     "db:add-enrollment-email": "node scripts/add-enrollment-email.js",

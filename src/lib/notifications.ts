@@ -241,10 +241,26 @@ function ageWord(age: number): string {
 
 // ─── Read ─────────────────────────────────────────────────────────────────────
 
+export async function getUserNotificationFilters(userId: number): Promise<string[]> {
+  const row = await get<{ notification_filters: unknown }>(
+    `SELECT notification_filters FROM user_settings WHERE user_id = $1`,
+    [userId]
+  );
+  if (!row?.notification_filters) return [];
+  const filters = row.notification_filters;
+  if (Array.isArray(filters)) return filters as string[];
+  try {
+    return JSON.parse(String(filters)) as string[];
+  } catch {
+    return [];
+  }
+}
+
 export async function getNotificationsForUser(
   userId: number,
   limit = 50
 ): Promise<AppNotification[]> {
+  const filters = await getUserNotificationFilters(userId);
   return await all<AppNotification>(
     `SELECT
        n.*,
@@ -256,13 +272,15 @@ export async function getNotificationsForUser(
        ON nc.user_id = $1
      WHERE (n.is_global = TRUE OR n.target_user_id = $1)
        AND (nc.cleared_at IS NULL OR n.created_at > nc.cleared_at)
+       AND n.type <> ALL($3::text[])
      ORDER BY n.created_at DESC
      LIMIT $2`,
-    [userId, limit]
+    [userId, limit, filters]
   );
 }
 
 export async function getUnreadCountForUser(userId: number): Promise<number> {
+  const filters = await getUserNotificationFilters(userId);
   const result = await get<{ count: string }>(
     `SELECT COUNT(*) AS count
      FROM notifications n
@@ -272,8 +290,9 @@ export async function getUnreadCountForUser(userId: number): Promise<number> {
        ON nc.user_id = $1
      WHERE (n.is_global = TRUE OR n.target_user_id = $1)
        AND (nc.cleared_at IS NULL OR n.created_at > nc.cleared_at)
-       AND nr.user_id IS NULL`,
-    [userId]
+       AND nr.user_id IS NULL
+       AND n.type <> ALL($2::text[])`,
+    [userId, filters]
   );
   return parseInt(result?.count ?? '0', 10);
 }

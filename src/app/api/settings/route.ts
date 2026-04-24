@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
           up.lesson_reminders,
           up.payment_alerts,
           up.weekly_report,
-          up.weather_city
+          up.weather_city,
+          up.notification_filters
         FROM users u
         LEFT JOIN user_settings up ON u.id = up.user_id
         WHERE u.id = $1`,
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
           paymentAlerts: true,
           weeklyReport: true,
           weatherCity: 'Kyiv',
+          notificationFilters: [],
         },
       });
     }
@@ -80,6 +82,7 @@ export async function GET(request: NextRequest) {
         paymentAlerts: Boolean(s.payment_alerts),
         weeklyReport: Boolean(s.weekly_report),
         weatherCity: s.weather_city || 'Kyiv',
+        notificationFilters: Array.isArray(s.notification_filters) ? s.notification_filters : [],
       },
     });
   } catch (error) {
@@ -110,6 +113,7 @@ export async function PUT(request: NextRequest) {
       paymentAlerts,
       weeklyReport,
       weatherCity,
+      notificationFilters,
     } = body;
 
     const before = await get(
@@ -154,8 +158,9 @@ export async function PUT(request: NextRequest) {
           lesson_reminders = $7,
           payment_alerts = $8,
           weekly_report = $9,
-          weather_city = $10
-        WHERE user_id = $11`,
+          weather_city = $10,
+          notification_filters = $11
+        WHERE user_id = $12`,
         [
           language || 'uk',
           timezone || 'Europe/Kyiv',
@@ -167,6 +172,7 @@ export async function PUT(request: NextRequest) {
           paymentAlerts ? 1 : 0,
           weeklyReport ? 1 : 0,
           weatherCity || 'Kyiv',
+          Array.isArray(notificationFilters) ? JSON.stringify(notificationFilters) : '[]',
           user.id,
         ]
       );
@@ -183,8 +189,9 @@ export async function PUT(request: NextRequest) {
           lesson_reminders,
           payment_alerts,
           weekly_report,
-          weather_city
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          weather_city,
+          notification_filters
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
         [
           user.id,
           language || 'uk',
@@ -197,6 +204,7 @@ export async function PUT(request: NextRequest) {
           paymentAlerts ? 1 : 0,
           weeklyReport ? 1 : 0,
           weatherCity || 'Kyiv',
+          Array.isArray(notificationFilters) ? JSON.stringify(notificationFilters) : '[]',
         ]
       );
     }
@@ -226,6 +234,7 @@ export async function PUT(request: NextRequest) {
           paymentAlerts: Boolean(paymentAlerts),
           weeklyReport: Boolean(weeklyReport),
           weatherCity: weatherCity || 'Kyiv',
+          notificationFilters: Array.isArray(notificationFilters) ? notificationFilters : [],
         },
       },
     });
