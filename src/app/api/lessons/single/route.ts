@@ -5,6 +5,7 @@ import {
   findTeacherScheduleConflicts,
   type ManualLessonSlot,
 } from '@/lib/lessons';
+import { notifyTeacherAboutNewLesson } from '@/lib/teacher-notifications';
 import { get, run } from '@/db';
 import { safeAddStudentHistoryEntry, formatTrialScheduledDescription } from '@/lib/student-history';
 
@@ -295,6 +296,31 @@ export async function POST(request: NextRequest) {
             user.name
           );
         }
+      }
+    }
+
+    // Notify teacher about new individual/non-group lessons
+    if (!groupId && teacherId) {
+      try {
+        const course = courseId
+          ? await get<{ title: string }>(`SELECT title FROM courses WHERE id = $1`, [courseId])
+          : null;
+
+        for (const lesson of lessons) {
+          await notifyTeacherAboutNewLesson(
+            lesson.id,
+            teacherId,
+            lesson.lessonDate,
+            lesson.startTime,
+            null,
+            course?.title ?? null,
+            false,
+            !!isTrial
+          );
+        }
+      } catch (notifyError) {
+        console.error('[Create Single Lesson] Failed to notify teacher:', notifyError);
+        // Don't fail the request — lesson is already created
       }
     }
 

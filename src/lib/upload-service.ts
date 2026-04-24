@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-type UploadVia = 'admin' | 'telegram';
+type UploadVia = 'admin' | 'telegram' | 'student';
 
 const UPLOAD_TOKEN_TTL_SECONDS = 10 * 60;
 
@@ -43,6 +43,43 @@ export function createUploadServiceToken(input: {
       userName: input.userName,
       via: input.via,
       telegramId: input.telegramId ?? null,
+    },
+    secret,
+    { expiresIn: UPLOAD_TOKEN_TTL_SECONDS }
+  );
+}
+
+/**
+ * Окремий токен для завантаження робіт учня через /upload/student-work.
+ * На відміну від createUploadServiceToken (який для занять), тут:
+ *   • via='student'
+ *   • присутні studentId/studentCode/studentFullName (verifyUploadToken перевіряє)
+ *   • workTitle/workDescription/courseId/lessonId — опціональний контекст
+ *     (проксюється в /api/internal/student-works/finalize при збереженні).
+ */
+export function createStudentWorkUploadToken(input: {
+  studentId: number;
+  studentCode: string;
+  studentFullName: string;
+  workTitle?: string | null;
+  workDescription?: string | null;
+  courseId?: number | null;
+  lessonId?: number | null;
+}): string {
+  const secret = getRequiredEnv('UPLOAD_SERVICE_JWT_SECRET');
+
+  return jwt.sign(
+    {
+      lessonId: input.lessonId ?? 0,
+      userId: null,
+      userName: input.studentFullName,
+      via: 'student',
+      studentId: input.studentId,
+      studentCode: input.studentCode,
+      studentFullName: input.studentFullName,
+      workTitle: input.workTitle ?? null,
+      workDescription: input.workDescription ?? null,
+      courseId: input.courseId ?? null,
     },
     secret,
     { expiresIn: UPLOAD_TOKEN_TTL_SECONDS }

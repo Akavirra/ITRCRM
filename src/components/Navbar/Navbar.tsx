@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import TeacherNotificationsTab from '@/components/TeacherNotificationsTab';
 import {
   Home,
   Settings,
@@ -320,7 +321,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [clearing, setClearing] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const prevUnreadRef = useRef<number | null>(null);
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'profile' | 'notifications' | 'salary' | 'assistant' | 'system' | 'users'>('general');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'profile' | 'notifications' | 'salary' | 'assistant' | 'teacher_notifications' | 'system' | 'users'>('general');
   const [settings, setSettings] = useState({
     displayName: user?.name || '',
     email: '',
@@ -350,6 +351,14 @@ const Navbar: React.FC<NavbarProps> = ({
     assistant_widget_enabled: true,
   });
   const [assistantSaving, setAssistantSaving] = useState(false);
+  const [teacherNotifSettings, setTeacherNotifSettings] = useState({
+    teacher_daily_reminders_enabled: true,
+    teacher_daily_reminders_time: '09:00',
+    teacher_hourly_reminders_enabled: true,
+    teacher_hourly_reminders_before_minutes: '60',
+    teacher_new_lesson_notify_enabled: true,
+  });
+  const [teacherNotifSaving, setTeacherNotifSaving] = useState(false);
   const [sysUsers, setSysUsers] = useState<{ id: number; name: string; email: string; role: string; is_active: boolean; is_owner: boolean; created_at: string }[]>([]);
   const [currentUserIsOwner, setCurrentUserIsOwner] = useState(false);
   const [sysUsersLoading, setSysUsersLoading] = useState(false);
@@ -777,6 +786,8 @@ const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
+
+
   // Load users when users tab is active
   useEffect(() => {
     if (!settingsOpen || activeSettingsTab !== 'users') return;
@@ -1036,6 +1047,13 @@ const Navbar: React.FC<NavbarProps> = ({
           });
           setAssistantSettings({
             assistant_widget_enabled: String(systemSettings.assistant_widget_enabled ?? '1') !== '0',
+          });
+          setTeacherNotifSettings({
+            teacher_daily_reminders_enabled: String(systemSettings.teacher_daily_reminders_enabled ?? '1') !== '0',
+            teacher_daily_reminders_time: String(systemSettings.teacher_daily_reminders_time ?? '09:00'),
+            teacher_hourly_reminders_enabled: String(systemSettings.teacher_hourly_reminders_enabled ?? '1') !== '0',
+            teacher_hourly_reminders_before_minutes: String(systemSettings.teacher_hourly_reminders_before_minutes ?? '60'),
+            teacher_new_lesson_notify_enabled: String(systemSettings.teacher_new_lesson_notify_enabled ?? '1') !== '0',
           });
         }
       })
@@ -1618,6 +1636,7 @@ const Navbar: React.FC<NavbarProps> = ({
                   { id: 'notifications', label: 'Сповіщення' },
                   { id: 'salary', label: 'Ціни та тарифи' },
                   { id: 'assistant', label: 'ШІ помічник' },
+                  { id: 'teacher_notifications', label: 'Telegram викладачів' },
                   { id: 'system', label: 'Система' },
                   ...(user?.role === 'admin' ? [{ id: 'users', label: 'Користувачі' }] : []),
                 ] as { id: string; label: string }[]).map((tab) => (
@@ -2039,6 +2058,12 @@ const Navbar: React.FC<NavbarProps> = ({
                       </button>
                     </div>
                   </div>
+                )}
+
+                {activeSettingsTab === 'teacher_notifications' && (
+                  <TeacherNotificationsTab
+                    initialSettings={teacherNotifSettings}
+                  />
                 )}
 
                 {/* System Tab */}
@@ -2794,7 +2819,7 @@ const Navbar: React.FC<NavbarProps> = ({
                 )}
 
                 {/* Save Button — hidden on users and profile tabs */}
-                {activeSettingsTab !== 'users' && activeSettingsTab !== 'profile' && activeSettingsTab !== 'salary' && activeSettingsTab !== 'assistant' && (
+                {activeSettingsTab !== 'users' && activeSettingsTab !== 'profile' && activeSettingsTab !== 'salary' && activeSettingsTab !== 'assistant' && activeSettingsTab !== 'teacher_notifications' && (
                   <div style={{
                     marginTop: '1.5rem',
                     paddingTop: '1rem',

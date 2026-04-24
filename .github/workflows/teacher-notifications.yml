@@ -1,0 +1,61 @@
+name: Teacher Notifications
+
+on:
+  schedule:
+    # Daily reminders: run at 5:00, 6:00, 7:00 UTC to cover both winter/summer Kyiv time
+    # (Kyiv is UTC+2 in winter, UTC+3 in summer. 09:00 Kyiv = 07:00 UTC winter / 06:00 UTC summer)
+    - cron: '0 5,6,7 * * *'
+    # Hourly reminders: every 10 minutes for "X minutes before" notifications
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  daily-reminders:
+    name: Send Daily Teacher Reminders
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 5,6,7 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Send daily reminders
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Missing required secrets: APP_URL or CRON_SECRET"
+            exit 1
+          fi
+          echo "Sending daily teacher reminders..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL}/api/notifications/teacher-daily-reminders")
+          echo "Response code: ${HTTP_CODE}"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Daily reminders failed with HTTP ${HTTP_CODE}"
+            exit 1
+          fi
+          echo "Daily reminders sent successfully"
+
+  hourly-reminders:
+    name: Send Hourly Teacher Reminders
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '*/10 * * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Send hourly reminders
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Missing required secrets: APP_URL or CRON_SECRET"
+            exit 1
+          fi
+          echo "Sending hourly teacher reminders..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL}/api/notifications/teacher-hourly-reminders")
+          echo "Response code: ${HTTP_CODE}"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Hourly reminders failed with HTTP ${HTTP_CODE}"
+            exit 1
+          fi
+          echo "Hourly reminders sent successfully"

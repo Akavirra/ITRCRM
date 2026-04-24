@@ -14,6 +14,11 @@ const DEFAULTS: Record<string, string> = {
   individual_lesson_price: '300',
   assistant_widget_enabled: '1',
   camp_price_per_day: '500',
+  teacher_daily_reminders_enabled: '1',
+  teacher_daily_reminders_time: '09:00',
+  teacher_hourly_reminders_enabled: '1',
+  teacher_hourly_reminders_before_minutes: '60',
+  teacher_new_lesson_notify_enabled: '1',
 };
 
 export async function GET(request: NextRequest) {
@@ -56,6 +61,11 @@ export async function PUT(request: NextRequest) {
     'individual_lesson_price',
     'assistant_widget_enabled',
     'camp_price_per_day',
+    'teacher_daily_reminders_enabled',
+    'teacher_daily_reminders_time',
+    'teacher_hourly_reminders_enabled',
+    'teacher_hourly_reminders_before_minutes',
+    'teacher_new_lesson_notify_enabled',
   ];
 
   const beforeRows = await all<{ key: string; value: string }>(
@@ -66,10 +76,28 @@ export async function PUT(request: NextRequest) {
 
   for (const key of allowed) {
     if (key in body) {
-      if (key === 'assistant_widget_enabled') {
+      if (
+        key === 'assistant_widget_enabled' ||
+        key === 'teacher_daily_reminders_enabled' ||
+        key === 'teacher_hourly_reminders_enabled' ||
+        key === 'teacher_new_lesson_notify_enabled'
+      ) {
         const rawValue = String(body[key]);
         if (rawValue !== '0' && rawValue !== '1') {
           return NextResponse.json({ error: `Невірне значення для ${key}` }, { status: 400 });
+        }
+        await run(
+          `INSERT INTO system_settings (key, value, updated_at) VALUES ($1, $2, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+          [key, rawValue]
+        );
+        continue;
+      }
+
+      if (key === 'teacher_daily_reminders_time') {
+        const rawValue = String(body[key]);
+        if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(rawValue)) {
+          return NextResponse.json({ error: `Невірний формат часу для ${key}. Використовуйте HH:MM` }, { status: 400 });
         }
         await run(
           `INSERT INTO system_settings (key, value, updated_at) VALUES ($1, $2, NOW())

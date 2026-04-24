@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, unauthorized, forbidden } from '@/lib/api-utils';
 import { createSingleLesson } from '@/lib/lessons';
+import { notifyTeacherAboutNewLesson } from '@/lib/teacher-notifications';
 import { get, run, all } from '@/db';
 
 export const dynamic = 'force-dynamic';
@@ -116,6 +117,23 @@ export async function POST(request: NextRequest) {
      WHERE id IN (${updatePlaceholders})`,
     [lesson.id, ...verifiedIds]
   );
+
+  // ── Notify teacher about new makeup lesson ──────────────────────────────────
+  try {
+    await notifyTeacherAboutNewLesson(
+      lesson.id,
+      teacherId,
+      lessonDate,
+      startTime,
+      null,
+      null,
+      true,
+      false
+    );
+  } catch (notifyError) {
+    console.error('[Create Makeup Lesson] Failed to notify teacher:', notifyError);
+    // Don't fail the request — lesson is already created
+  }
 
   return NextResponse.json({
     message: `Відпрацювання створено для ${studentIds.length} учн${studentIds.length === 1 ? 'я' : 'ів'}`,
