@@ -2,7 +2,7 @@ import { run, get, all, transaction } from '@/db';
 import { addDays, addMonths, setHours, setMinutes, format, parse, isAfter, isBefore, startOfDay, endOfMonth } from 'date-fns';
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
-import { formatShortDateKyiv } from '@/lib/date-utils';
+import { formatDateTimeKyiv, formatShortDateKyiv } from '@/lib/date-utils';
 import { deleteLessonPhotoFolder } from '@/lib/lesson-photos';
 
 // Character set for generating random alphanumeric strings (uppercase only)
@@ -552,7 +552,7 @@ export async function getLessonChangeHistory(
   // Format created_at to Ukrainian date/time format
   return history.map((entry: any) => ({
     ...entry,
-    created_at: format(new Date(entry.created_at), 'dd.MM.yyyy HH:mm')
+    created_at: formatDateTimeKyiv(entry.created_at)
   }));
 }
 

@@ -2923,7 +2923,7 @@ export default function LessonModalsManager() {
                           )}
                           {entry.field_name === 'photos' && (
                             <div>
-                              <span style={{ fontWeight: 500, color: '#059669' }}>Фото:</span> {entry.new_value || entry.old_value}
+                              <span style={{ fontWeight: 500, color: '#059669' }}>Медіа:</span> {entry.new_value || entry.old_value}
                             </div>
                           )}
                           <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>

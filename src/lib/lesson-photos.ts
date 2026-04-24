@@ -19,6 +19,16 @@ const LESSON_PHOTOS_FALLBACK_TOPIC = 'Без теми';
 
 type UploadVia = 'admin' | 'telegram';
 
+function getLessonMediaChangeLabel(mimeType: string | null | undefined): string {
+  if (typeof mimeType === 'string') {
+    const normalizedMimeType = mimeType.toLowerCase();
+    if (normalizedMimeType.startsWith('video/')) return 'відео';
+    if (normalizedMimeType.startsWith('image/')) return 'фото';
+  }
+
+  return 'медіа';
+}
+
 interface LessonPhotoFolderRow {
   lesson_id: number;
   course_folder_id: string;
@@ -463,7 +473,7 @@ async function registerUploadedDriveFile(input: RegisterLessonDriveFileInput): P
     [
       input.lessonId,
       null,
-      `Завантажено фото: ${driveFile.name}`,
+      `Завантажено ${getLessonMediaChangeLabel(input.mimeType)}: ${driveFile.name}`,
       input.uploadedBy,
       input.uploadedByName,
       input.uploadedByTelegramId ?? null,
