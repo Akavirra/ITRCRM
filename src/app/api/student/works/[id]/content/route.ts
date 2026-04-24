@@ -25,10 +25,11 @@ import { fetchDriveFileContent } from '@/lib/google-drive';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// Навмисне НЕ передаємо content-length: Next.js/Node можуть по-своєму
+// перекодувати body (chunked) і некоректний content-length ламає браузер.
 const PASSTHROUGH_HEADERS = [
   'accept-ranges',
   'content-encoding',
-  'content-length',
   'content-range',
   'content-type',
   'etag',
@@ -39,6 +40,17 @@ function sanitizeHeaderFilename(name: string): string {
   // Content-Disposition filename* квотуємо окремо (RFC 5987), але для простоти
   // вирізаємо символи, які ламають header
   return name.replace(/[\\"\r\n]/g, '').slice(0, 200);
+}
+
+/**
+ * filename="..." у Content-Disposition має бути ASCII-only (RFC 6266).
+ * Не-ASCII символи (Cyrillic тощо) йдуть тільки в filename*=UTF-8''...
+ * Інакше Node.js кидає ERR_INVALID_CHAR при встановленні header-а.
+ */
+function asciiFallbackFilename(name: string): string {
+  // Замінюємо все не-ASCII на '_', обрізаємо до 200 символів
+  const ascii = name.replace(/[^\x20-\x7E]/g, '_').replace(/[\\"\r\n]/g, '').trim();
+  return ascii.slice(0, 200) || 'student-work';
 }
 
 function buildHeaders(
@@ -64,10 +76,13 @@ function buildHeaders(
   }
 
   const disposition = opts.forceDownload ? 'attachment' : 'inline';
-  const fileName = sanitizeHeaderFilename(opts.fileName) || 'student-work';
+  const rawName = sanitizeHeaderFilename(opts.fileName) || 'student-work';
+  const asciiName = asciiFallbackFilename(rawName);
+  // filename="..." — лише ASCII (fallback для старих клієнтів),
+  // filename*=UTF-8''... — реальна Unicode-назва (RFC 5987).
   headers.set(
     'content-disposition',
-    `${disposition}; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`
+    `${disposition}; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(rawName)}`
   );
 
   // Приватний контент — не кешуємо на CDN
@@ -123,7 +138,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     return await resolveAndStream(request, workId, 'GET');
   } catch (error) {
     console.error('[student-works] stream error:', error);
-    return NextResponse.json({ error: 'Stream failed' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Stream failed', detail: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }
 
@@ -136,6 +154,9 @@ export async function HEAD(request: NextRequest, { params }: { params: { id: str
     return await resolveAndStream(request, workId, 'HEAD');
   } catch (error) {
     console.error('[student-works] HEAD error:', error);
-    return NextResponse.json({ error: 'Stream failed' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Stream failed', detail: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }
