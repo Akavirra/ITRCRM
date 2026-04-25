@@ -23,7 +23,8 @@ import {
   Zap,
   EyeOff,
   Gift,
-  Flag
+  Flag,
+  ChevronDown
 } from 'lucide-react';
 import TransitionLink from '@/components/TransitionLink';
 
@@ -46,14 +47,14 @@ const menuItems = [
   { href: '/teachers', labelKey: 'nav.teachers', icon: GraduationCap },
   { href: '/attendance', labelKey: 'nav.attendance', icon: ClipboardList },
   { href: '/payments', labelKey: 'nav.payments', icon: Wallet },
-  { href: '/communications', labelKey: 'nav.communications', icon: Mail },
-  { href: '/enrollment', labelKey: 'nav.enrollment', icon: FileText },
-  { href: '/certificates', labelKey: 'nav.certificates', icon: Gift },
 ];
 
 const filesMenuItem = { href: '/materials', labelKey: 'nav.materials', icon: FolderOpen };
 
-const reportsMenuItems = [
+const secondaryMenuItems = [
+  { href: '/communications', labelKey: 'nav.communications', icon: Mail },
+  { href: '/enrollment', labelKey: 'nav.enrollment', icon: FileText },
+  { href: '/certificates', labelKey: 'nav.certificates', icon: Gift },
   { href: '/reports', labelKey: 'nav.reports', icon: BarChart3 },
 ];
 
@@ -1158,6 +1159,12 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
   const primaryMenuItems = isSmallScreen
     ? menuItems.filter((item) => item.href !== '/dashboard')
     : menuItems;
+
+  const isOnSecondary = secondaryMenuItems.some((item) => pathname === item.href || pathname.startsWith(item.href + '/'));
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => {
+    if (isOnSecondary) setMoreOpen(true);
+  }, [isOnSecondary]);
 
   // --- Interactive robot logo ---
   const logoRef = useRef<HTMLDivElement>(null);
@@ -2304,36 +2311,77 @@ export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTab
               </TransitionLink>
             );
           })()}
-          <div style={{ height: '1px', backgroundColor: '#f0f0f0', margin: '16px 12px' }} />
+          {/* More (collapsible section header) */}
+          <button
+            type="button"
+            onClick={() => setMoreOpen((v) => !v)}
+            aria-expanded={moreOpen}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: 'auto',
+              boxSizing: 'border-box',
+              margin: '20px 12px 8px',
+              padding: '6px 16px',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: '#94a3b8',
+              borderRadius: '8px',
+              transition: 'color 0.15s ease',
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.color = '#475569'; }}
+            onMouseOut={(e) => { e.currentTarget.style.color = '#94a3b8'; }}
+          >
+            <span>Більше</span>
+            <ChevronDown
+              width="14"
+              height="14"
+              style={{
+                transform: moreOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease',
+                flexShrink: 0,
+                opacity: 0.7,
+              }}
+            />
+          </button>
 
-          {/* Reports */}
-          {reportsMenuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <TransitionLink
-                key={item.href}
-                href={item.href}
-                onClick={isSmallScreen ? onClose : undefined}
-                style={navItemStyle(isActive)}
-                onMouseOver={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.backgroundColor = '#f5f5f5';
-                    e.currentTarget.style.color = '#333333';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = '#666666';
-                  }
-                }}
-              >
-                <Icon width="20" height="20" style={{ color: isActive ? '#1565c0' : '#666666', flexShrink: 0 }} />
-                {t(item.labelKey)}
-              </TransitionLink>
-            );
-          })}
+          {moreOpen && (
+            <div>
+              {secondaryMenuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                return (
+                  <TransitionLink
+                    key={item.href}
+                    href={item.href}
+                    onClick={isSmallScreen ? onClose : undefined}
+                    style={navItemStyle(isActive)}
+                    onMouseOver={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = '#f5f5f5';
+                        e.currentTarget.style.color = '#333333';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = '#666666';
+                      }
+                    }}
+                  >
+                    <Icon width="20" height="20" style={{ color: isActive ? '#1565c0' : '#666666', flexShrink: 0 }} />
+                    {t(item.labelKey)}
+                  </TransitionLink>
+                );
+              })}
+            </div>
+          )}
 
         </nav>
 
