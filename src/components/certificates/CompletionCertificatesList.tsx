@@ -2,6 +2,7 @@
 
 import { Download, Trash2 } from 'lucide-react';
 import CertificatesEmptyState from '@/components/certificates/CertificatesEmptyState';
+import CertificatesTableSkeleton from '@/components/certificates/CertificatesTableSkeleton';
 
 export interface CompletionCertificateListItem {
   id: number;
@@ -31,13 +32,7 @@ export default function CompletionCertificatesList({
   onCreate,
 }: CompletionCertificatesListProps) {
   if (loading) {
-    return (
-      <CertificatesEmptyState
-        title="Завантажуємо сертифікати…"
-        description="Список з'явиться одразу після відповіді API."
-        centered
-      />
-    );
+    return <CertificatesTableSkeleton columns={4} rows={5} />;
   }
 
   if (!certificates.length) {

@@ -3,6 +3,7 @@
 import { Download, Plus, Printer, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import CertificatesEmptyState from '@/components/certificates/CertificatesEmptyState';
+import CertificatesTableSkeleton from '@/components/certificates/CertificatesTableSkeleton';
 
 export interface GiftCertificateListItem {
   id: number;
@@ -42,13 +43,7 @@ export default function GiftCertificatesTable({
   emptyDescription,
 }: GiftCertificatesTableProps) {
   if (loading) {
-    return (
-      <CertificatesEmptyState
-        title="Завантажуємо сертифікати…"
-        description="Список з'явиться одразу після відповіді API."
-        centered
-      />
-    );
+    return <CertificatesTableSkeleton columns={6} rows={5} />;
   }
 
   if (!certificates.length) {
