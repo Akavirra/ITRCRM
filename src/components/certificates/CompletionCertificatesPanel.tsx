@@ -1135,8 +1135,7 @@ export default function CompletionCertificatesPanel({
 
   return (
     <>
-      <div className="card">
-        <CertificatesSectionHeader
+      <CertificatesSectionHeader
           title="Сертифікати про закінчення"
           subtitle="Генеруйте PDF і налаштовуйте макет у тому ж вікні."
           controls={(
@@ -1207,7 +1206,6 @@ export default function CompletionCertificatesPanel({
           onPrev={() => setPage((prev) => Math.max(1, prev - 1))}
           onNext={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
         />
-      </div>
 
       <CertificateEditorModalShell
         isOpen={showModal}

@@ -16,7 +16,7 @@ const tabs: Array<{ key: CertificatesTabKey; label: string; icon: typeof Gift }>
 
 export default function CertificatesTabs({ active, onChange }: CertificatesTabsProps) {
   return (
-    <div className="tabs" style={{ marginBottom: '24px', gap: '4px' }}>
+    <div className="tabs" style={{ padding: '0 1.5rem' }}>
       {tabs.map((tab) => {
         const isActive = tab.key === active;
         const Icon = tab.icon;
@@ -24,6 +24,7 @@ export default function CertificatesTabs({ active, onChange }: CertificatesTabsP
         return (
           <button
             key={tab.key}
+            type="button"
             className={`tab${isActive ? ' active' : ''}`}
             onClick={() => {
               if (!isActive) {
@@ -34,8 +35,10 @@ export default function CertificatesTabs({ active, onChange }: CertificatesTabsP
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              background: 'none',
-              border: 'none',
+              background: 'transparent',
+              borderTop: '0',
+              borderLeft: '0',
+              borderRight: '0',
             }}
           >
             <Icon size={16} strokeWidth={1.75} />

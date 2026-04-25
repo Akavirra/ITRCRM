@@ -18,8 +18,10 @@ export default function CertificatesPageShell({
 }: CertificatesPageShellProps) {
   return (
     <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-      <CertificatesTabs active={activeTab} onChange={onTabChange} />
-      {children}
+      <div className="card">
+        <CertificatesTabs active={activeTab} onChange={onTabChange} />
+        {children}
+      </div>
     </div>
   );
 }

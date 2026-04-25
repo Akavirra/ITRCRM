@@ -709,8 +709,7 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
 
   return (
     <>
-      <div className="card">
-        <CertificatesSectionHeader
+      <CertificatesSectionHeader
           title={t('nav.certificates')}
           controls={(
             <>
@@ -810,7 +809,6 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
           onPrev={() => setPage((prev) => Math.max(1, prev - 1))}
           onNext={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
         />
-      </div>
 
       {deleteConfirmId !== null && (
         <div className="modal-overlay" onClick={() => setDeleteConfirmId(null)}>
