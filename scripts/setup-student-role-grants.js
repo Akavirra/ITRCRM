@@ -105,6 +105,19 @@ const EXTERNAL_READS = {
     'uploaded_via',
     'created_at',
   ],
+  // Phase D.1: ярлики на занятті (програми/сайти від викладача).
+  // НЕ включаємо created_by_user / created_by_telegram_id (PII викладача).
+  lesson_shortcuts: [
+    'id',
+    'lesson_id',
+    'kind',
+    'label',
+    'target',
+    'icon',
+    'sort_order',
+    'created_by_name',
+    'created_at',
+  ],
 };
 
 async function run() {

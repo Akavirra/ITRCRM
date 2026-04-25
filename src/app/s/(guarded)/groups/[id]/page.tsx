@@ -20,7 +20,9 @@ import CountdownTimer from '@/components/student/CountdownTimer';
 import LiveLessonBadge from '@/components/student/LiveLessonBadge';
 import LessonWorksPanel from '@/components/student/LessonWorksPanel';
 import LessonGallery from '@/components/student/LessonGallery';
+import LessonShortcuts from '@/components/student/LessonShortcuts';
 import { getStudentGalleryCounts } from '@/lib/student-gallery';
+import { getStudentShortcutsCounts } from '@/lib/student-shortcuts';
 
 export const dynamic = 'force-dynamic';
 
@@ -185,6 +187,14 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
     lessons.map((l) => l.id),
   );
 
+  // Phase D.1: counts ярликів — щоб знати, чи рендерити панель "Швидкий доступ"
+  // на активному занятті взагалі. Не показуємо список тут — це робить
+  // <LessonShortcuts> у клієнті (lazy fetch).
+  const shortcutsCounts = await getStudentShortcutsCounts(
+    session.student_id,
+    lessons.map((l) => l.id),
+  );
+
   const stats = calcStats(lessons);
   const attendanceRate =
     stats.knownAttendance > 0
@@ -242,6 +252,12 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
             />
           )}
         </div>
+      )}
+
+      {/* Phase D.1: ярлики "Швидкий доступ" від викладача — рендеримо тільки
+          для активного заняття. Якщо ярликів нема — компонент сам поверне null. */}
+      {activeLesson && shortcutsCounts[activeLesson.id] > 0 && (
+        <LessonShortcuts lessonId={activeLesson.id} />
       )}
 
       {/* Панель робіт прив'язана до активного заняття.
