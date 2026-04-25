@@ -143,7 +143,11 @@ export async function getGroupFilterOptions(includeInactive: boolean = false): P
 }
 
 // Get groups with details
-export async function getGroupsWithDetails(includeInactive: boolean = false): Promise<GroupWithDetails[]> {
+export async function getGroupsWithDetails(
+  includeInactive: boolean = false,
+  limit?: number,
+  offset?: number
+): Promise<GroupWithDetails[]> {
   const sql = includeInactive
     ? `SELECT g.*, c.title as course_title, u.name as teacher_name,
         (SELECT COUNT(*) FROM student_groups sg WHERE sg.group_id = g.id AND sg.is_active = TRUE) as students_count
@@ -158,8 +162,9 @@ export async function getGroupsWithDetails(includeInactive: boolean = false): Pr
        JOIN users u ON g.teacher_id = u.id
        WHERE g.is_active = TRUE
        ORDER BY g.created_at DESC`;
-  
-  return await all<GroupWithDetails>(sql);
+
+  const pagination = limit ? ` LIMIT ${limit} OFFSET ${offset ?? 0}` : '';
+  return await all<GroupWithDetails>(sql + pagination);
 }
 
 // Get groups for a teacher
@@ -212,50 +217,54 @@ export async function getGroupsFiltered(filters: {
   search?: string;
   includeInactive?: boolean;
   days?: number[];
-}): Promise<GroupWithDetails[]> {
+}, limit?: number, offset?: number): Promise<GroupWithDetails[]> {
   let sql = `SELECT g.*, c.title as course_title, u.name as teacher_name,
     (SELECT COUNT(*) FROM student_groups sg WHERE sg.group_id = g.id AND sg.is_active = TRUE) as students_count
     FROM groups g
     JOIN courses c ON g.course_id = c.id
     JOIN users u ON g.teacher_id = u.id
     WHERE 1=1`;
-  
+
   const params: any[] = [];
   let paramIndex = 1;
-  
+
   if (!filters.includeInactive) {
     sql += ` AND g.is_active = TRUE`;
   }
-  
+
   if (filters.courseId) {
     sql += ` AND g.course_id = $${paramIndex++}`;
     params.push(filters.courseId);
   }
-  
+
   if (filters.teacherId) {
     sql += ` AND g.teacher_id = $${paramIndex++}`;
     params.push(filters.teacherId);
   }
-  
+
   if (filters.status) {
     sql += ` AND g.status = $${paramIndex++}`;
     params.push(filters.status);
   }
-  
+
   if (filters.days && filters.days.length > 0) {
     sql += ` AND g.weekly_day IN (${filters.days.map(() => `$${paramIndex++}`).join(',')})`;
     params.push(...filters.days);
   }
-  
+
   if (filters.search) {
     sql += ` AND (g.title ILIKE $${paramIndex} OR c.title ILIKE $${paramIndex})`;
     const searchTerm = `%${filters.search}%`;
     params.push(searchTerm);
     paramIndex++;
   }
-  
+
   sql += ` ORDER BY g.created_at DESC`;
-  
+
+  if (limit) {
+    sql += ` LIMIT ${limit} OFFSET ${offset ?? 0}`;
+  }
+
   return await all<GroupWithDetails>(sql, params);
 }
 

@@ -494,6 +494,10 @@ export default function MaterialsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortType, setSortType] = useState<SortType>('newest');
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const [editingTopicId, setEditingTopicId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -544,37 +548,40 @@ export default function MaterialsPage() {
     });
   }, []);
 
-  const loadTelegramFiles = useCallback(async () => {
-    setLoading(true);
+  const loadFiles = useCallback(async (targetPage = 1) => {
+    if (targetPage === 1) setLoading(true);
+    else setLoadingMore(true);
     try {
-      const params = new URLSearchParams();
-      if (selectedTopicId) params.set('topic_id', String(selectedTopicId));
-      if (search) params.set('search', search);
-      const res = await fetch(`/api/media/files?${params.toString()}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setFiles((data.files || []).map((file: BrowserFile) => ({ ...file, source: 'telegram' })));
+      if (source === 'telegram') {
+        const params = new URLSearchParams();
+        params.set('page', String(targetPage));
+        if (selectedTopicId) params.set('topic_id', String(selectedTopicId));
+        if (search) params.set('search', search);
+        const res = await fetch(`/api/media/files?${params.toString()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const newFiles = (data.files || []).map((file: BrowserFile) => ({ ...file, source: 'telegram' as const }));
+        setFiles((prev) => targetPage === 1 ? newFiles : [...prev, ...newFiles]);
+        setHasMore(newFiles.length === 50);
+      } else {
+        const params = new URLSearchParams();
+        params.set('page', String(targetPage));
+        if (selectedLessonId) params.set('lesson_id', String(selectedLessonId));
+        else if (selectedLessonGroupId) params.set('group_id', String(selectedLessonGroupId));
+        else if (selectedLessonCourseId) params.set('course_id', String(selectedLessonCourseId));
+        if (search) params.set('search', search);
+        const res = await fetch(`/api/media/lesson-files?${params.toString()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const newFiles = data.files || [];
+        setFiles((prev) => targetPage === 1 ? newFiles : [...prev, ...newFiles]);
+        setHasMore(newFiles.length === 50);
+      }
     } finally {
-      setLoading(false);
+      if (targetPage === 1) setLoading(false);
+      else setLoadingMore(false);
     }
-  }, [search, selectedTopicId]);
-
-  const loadLessonFiles = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (selectedLessonId) params.set('lesson_id', String(selectedLessonId));
-      else if (selectedLessonGroupId) params.set('group_id', String(selectedLessonGroupId));
-      else if (selectedLessonCourseId) params.set('course_id', String(selectedLessonCourseId));
-      if (search) params.set('search', search);
-      const res = await fetch(`/api/media/lesson-files?${params.toString()}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setFiles(data.files || []);
-    } finally {
-      setLoading(false);
-    }
-  }, [search, selectedLessonCourseId, selectedLessonGroupId, selectedLessonId]);
+  }, [source, search, selectedTopicId, selectedLessonId, selectedLessonGroupId, selectedLessonCourseId]);
 
   useEffect(() => {
     loadTopics();
@@ -837,9 +844,30 @@ export default function MaterialsPage() {
   }, [isResizingSidebar]);
 
   useEffect(() => {
-    if (source === 'telegram') loadTelegramFiles();
-    else loadLessonFiles();
-  }, [loadLessonFiles, loadTelegramFiles, source]);
+    setPage(1);
+    setFiles([]);
+    setHasMore(true);
+    loadFiles(1);
+  }, [loadFiles]);
+
+  useEffect(() => {
+    if (page === 1) return;
+    loadFiles(page);
+  }, [page, loadFiles]);
+
+  useEffect(() => {
+    if (!sentinelRef.current || loading || loadingMore || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [loading, loadingMore, hasMore]);
 
   function handleSearchInput(value: string) {
     setSearchInput(value);
@@ -863,7 +891,7 @@ export default function MaterialsPage() {
     });
     setEditingTopicId(null);
     loadTopics();
-    loadTelegramFiles();
+    loadFiles(1);
   }
 
   async function deleteFile(file: BrowserFile) {
@@ -879,10 +907,10 @@ export default function MaterialsPage() {
     setDeletingId(null);
 
     if (isLessonMedia) {
-      loadLessonFiles();
+      loadFiles(1);
       loadLessonFolders();
     } else {
-      loadTelegramFiles();
+      loadFiles(1);
       loadTopics();
     }
   }
@@ -1302,6 +1330,13 @@ export default function MaterialsPage() {
           ) : (
             <ListView files={filteredFiles} showContextLabel={source === 'telegram' ? !selectedTopicId : selectedLessonId === null} onOpenLightbox={openLightbox} onDelete={deleteFile} onMakeAvatar={startAvatarFlow} deletingId={deletingId} />
           )}
+
+          {loadingMore && (
+            <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+              Завантажуємо ще…
+            </div>
+          )}
+          <div ref={sentinelRef} style={{ height: '1px' }} />
         </div>
       </div>
 

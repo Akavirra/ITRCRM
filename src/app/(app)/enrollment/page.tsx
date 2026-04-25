@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { t } from '@/i18n/t';
 import QRCode from 'qrcode';
 
@@ -152,6 +152,10 @@ export default function EnrollmentPage() {
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [approving, setApproving] = useState(false);
   const [closingTokenId, setClosingTokenId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Edit state for selected submission
   const [editData, setEditData] = useState<SubmissionEditData>(EMPTY_EDIT_DATA);
@@ -166,11 +170,23 @@ export default function EnrollmentPage() {
     setEditData(EMPTY_EDIT_DATA);
   };
 
-  const fetchSubmissions = useCallback(async () => {
-    const url = statusFilter ? `/api/enrollment/submissions?status=${statusFilter}` : '/api/enrollment/submissions';
-    const res = await fetch(url);
-    const data = await res.json();
-    setSubmissions(data);
+  const fetchSubmissions = useCallback(async (targetPage = 1) => {
+    if (targetPage === 1) setLoading(true);
+    else setLoadingMore(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter) params.set('status', statusFilter);
+      params.set('page', String(targetPage));
+      const res = await fetch(`/api/enrollment/submissions?${params.toString()}`);
+      const data = await res.json();
+      const items = data.items || [];
+      setSubmissions((prev) => (targetPage === 1 ? items : [...prev, ...items]));
+      setHasMore(items.length === data.limit);
+      setPage(targetPage);
+    } finally {
+      if (targetPage === 1) setLoading(false);
+      else setLoadingMore(false);
+    }
   }, [statusFilter]);
 
   const fetchTokens = useCallback(async () => {
@@ -180,10 +196,36 @@ export default function EnrollmentPage() {
   }, []);
 
   useEffect(() => {
+    setPage(1);
+    setHasMore(true);
+    setSubmissions([]);
+    fetchSubmissions(1);
+  }, [statusFilter]);
+
+  useEffect(() => {
     setLoading(true);
-    Promise.all([fetchSubmissions(), fetchTokens()])
+    Promise.all([fetchSubmissions(1), fetchTokens()])
       .finally(() => setLoading(false));
-  }, [fetchSubmissions, fetchTokens]);
+  }, []);
+
+  useEffect(() => {
+    if (page === 1) return;
+    fetchSubmissions(page);
+  }, [page, fetchSubmissions]);
+
+  useEffect(() => {
+    if (!sentinelRef.current || loading || loadingMore || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [loading, loadingMore, hasMore]);
 
   useEffect(() => {
     fetch('/api/public/courses')
@@ -586,6 +628,13 @@ export default function EnrollmentPage() {
               ))}
             </div>
           )}
+
+          {loadingMore && (
+            <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+              Завантажуємо ще…
+            </div>
+          )}
+          <div ref={sentinelRef} style={{ height: '1px' }} />
 
           {/* ── Submission Detail Modal ── */}
           {selectedSubmission && (

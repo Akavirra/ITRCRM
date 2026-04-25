@@ -52,6 +52,9 @@ export async function GET(request: NextRequest) {
   const teacherId = searchParams.get('teacherId');
   const status = searchParams.get('status') as GroupStatus | null;
   const basic = searchParams.get('basic') === 'true';
+  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));
+  const limit = 20;
+  const offset = (page - 1) * limit;
   
   let groups;
   
@@ -85,12 +88,12 @@ export async function GET(request: NextRequest) {
     groups = await getGroupFilterOptions(includeInactive);
   } else if (Object.keys(filters).length > 1 || search) {
     // Apply filters for admin
-    groups = await getGroupsFiltered(filters);
+    groups = await getGroupsFiltered(filters, limit, offset);
   } else {
-    groups = await getGroupsWithDetails(includeInactive);
+    groups = await getGroupsWithDetails(includeInactive, limit, offset);
   }
-  
-  return NextResponse.json({ groups });
+
+  return NextResponse.json({ groups, page, limit });
 }
 
 // POST /api/groups - Create group

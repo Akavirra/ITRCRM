@@ -45,6 +45,9 @@ export async function GET(request: NextRequest) {
   const groupId = searchParams.get('group_id');
   const courseId = searchParams.get('course_id');
   const search = searchParams.get('search')?.trim();
+  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
+  const limit = 50;
+  const offset = (page - 1) * limit;
 
   const conditions: string[] = [];
   const params: Array<number | string> = [];
@@ -91,11 +94,14 @@ export async function GET(request: NextRequest) {
      LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
      LEFT JOIN lesson_photo_folders lpf ON lpf.lesson_id = l.id
      ${where}
-     ORDER BY lfi.created_at DESC, lfi.id DESC`,
+     ORDER BY lfi.created_at DESC, lfi.id DESC
+     LIMIT ${limit} OFFSET ${offset}`,
     params
   );
 
   return NextResponse.json({
+    page,
+    limit,
     files: rows.map((row) => ({
       id: row.id,
       topic_id: row.lesson_id,

@@ -48,6 +48,10 @@ export default function GroupsPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   
   // Filters
   const [search, setSearch] = useState('');
@@ -112,11 +116,6 @@ export default function GroupsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch groups with includeInactive to get all groups
-        const groupsRes = await fetch('/api/groups?includeInactive=true');
-        const groupsData = await groupsRes.json();
-        setGroups(groupsData.groups || []);
-
         // Fetch courses for filter
         const coursesRes = await fetch('/api/courses');
         const coursesData = await coursesRes.json();
@@ -129,12 +128,11 @@ export default function GroupsPage() {
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchData();
+    applyFilters('', '', '', [], 1);
   }, [router]);
 
   // Handle click outside dropdown to close it
@@ -153,22 +151,41 @@ export default function GroupsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (page === 1) return;
+    applyFilters(search, courseFilter, teacherFilter, daysFilter, page);
+  }, [page]);
+
+  useEffect(() => {
+    if (!sentinelRef.current || loading || loadingMore || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [loading, loadingMore, hasMore]);
+
 
 
   const handleSearch = async (query: string) => {
     setSearch(query);
-    applyFilters(query, courseFilter, teacherFilter, daysFilter);
+    applyFilters(query, courseFilter, teacherFilter, daysFilter, 1);
   };
 
   const handleFilterChange = (filterType: string, value: string) => {
     switch (filterType) {
       case 'course':
         setCourseFilter(value);
-        applyFilters(search, value, teacherFilter, daysFilter);
+        applyFilters(search, value, teacherFilter, daysFilter, 1);
         break;
       case 'teacher':
         setTeacherFilter(value);
-        applyFilters(search, courseFilter, value, daysFilter);
+        applyFilters(search, courseFilter, value, daysFilter, 1);
         break;
     }
   };
@@ -178,20 +195,30 @@ export default function GroupsPage() {
       ? daysFilter.filter(d => d !== day)
       : [...daysFilter, day];
     setDaysFilter(newDays);
-    applyFilters(search, courseFilter, teacherFilter, newDays);
+    applyFilters(search, courseFilter, teacherFilter, newDays, 1);
   };
 
-  const applyFilters = async (searchQuery: string, course: string, teacher: string, days: number[]) => {
-    const params = new URLSearchParams();
-    if (searchQuery) params.append('search', searchQuery);
-    if (course) params.append('courseId', course);
-    if (teacher) params.append('teacherId', teacher);
-    if (days.length > 0) params.append('days', days.join(','));
-    params.append('includeInactive', 'true');
+  const applyFilters = async (searchQuery: string, course: string, teacher: string, days: number[], targetPage = 1) => {
+    if (targetPage === 1) setLoading(true);
+    else setLoadingMore(true);
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('search', searchQuery);
+      if (course) params.append('courseId', course);
+      if (teacher) params.append('teacherId', teacher);
+      if (days.length > 0) params.append('days', days.join(','));
+      params.append('includeInactive', 'true');
+      params.set('page', String(targetPage));
 
-    const res = await fetch(`/api/groups?${params.toString()}`);
-    const data = await res.json();
-    setGroups(data.groups || []);
+      const res = await fetch(`/api/groups?${params.toString()}`);
+      const data = await res.json();
+      setGroups((prev) => targetPage === 1 ? (data.groups || []) : [...prev, ...(data.groups || [])]);
+      setHasMore((data.groups || []).length === data.limit);
+      setPage(targetPage);
+    } finally {
+      if (targetPage === 1) setLoading(false);
+      else setLoadingMore(false);
+    }
   };
 
   const getDayName = (dayIndex: number) => {
@@ -239,9 +266,7 @@ export default function GroupsPage() {
       });
       
       // Refresh groups
-      const res = await fetch('/api/groups?includeInactive=true');
-      const data = await res.json();
-      setGroups(data.groups || []);
+      await applyFilters(search, courseFilter, teacherFilter, daysFilter, 1);
     } catch (error) {
       console.error('Failed to archive/restore group:', error);
     }
@@ -284,9 +309,7 @@ export default function GroupsPage() {
         setGroupToDelete(null);
         setDeletePassword('');
         // Refresh groups
-        const res = await fetch('/api/groups?includeInactive=true');
-        const data = await res.json();
-        setGroups(data.groups || []);
+        await applyFilters(search, courseFilter, teacherFilter, daysFilter, 1);
       } else {
         const errorData = await response.json();
         if (response.status === 401) {
@@ -336,9 +359,7 @@ export default function GroupsPage() {
         setShowGraduateModal(false);
         setGroupToGraduate(null);
         // Refresh groups list
-        const groupsRes = await fetch('/api/groups');
-        const data = await groupsRes.json();
-        setGroups(data.groups || []);
+        await applyFilters(search, courseFilter, teacherFilter, daysFilter, 1);
       } else {
         const data = await res.json();
         alert(data.error || 'Помилка випуску групи');
@@ -370,9 +391,7 @@ export default function GroupsPage() {
       if (res.ok) {
         setShowArchiveModal(false);
         setGroupToArchive(null);
-        const groupsRes = await fetch('/api/groups?includeInactive=true');
-        const data = await groupsRes.json();
-        setGroups(data.groups || []);
+        await applyFilters(search, courseFilter, teacherFilter, daysFilter, 1);
       } else {
         const data = await res.json();
         alert(data.error || 'Помилка архівації групи');
@@ -415,9 +434,7 @@ export default function GroupsPage() {
       setShowChangeTeacherModal(false);
       setGroupToChangeTeacher(null);
       // Refresh groups list
-      const groupsRes = await fetch('/api/groups?includeInactive=true');
-      const groupsData = await groupsRes.json();
-      setGroups(groupsData.groups || []);
+      await applyFilters(search, courseFilter, teacherFilter, daysFilter, 1);
     } catch {
       setChangeTeacherError("Помилка з'єднання");
     } finally {
@@ -1056,6 +1073,12 @@ export default function GroupsPage() {
               )}
             </div>
           )}
+          {loadingMore && (
+            <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+              Завантажуємо ще…
+            </div>
+          )}
+          <div ref={sentinelRef} style={{ height: '1px' }} />
         </div>
       </div>
 
@@ -1431,9 +1454,7 @@ export default function GroupsPage() {
         onClose={() => setShowNewGroupModal(false)} 
         onSuccess={async () => {
           setShowNewGroupModal(false);
-          const groupsRes = await fetch('/api/groups?includeInactive=true');
-          const groupsData = await groupsRes.json();
-          setGroups(groupsData.groups || []);
+          await applyFilters(search, courseFilter, teacherFilter, daysFilter, 1);
         }} 
       />
 
