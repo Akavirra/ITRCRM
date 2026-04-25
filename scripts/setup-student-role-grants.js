@@ -54,7 +54,8 @@ const READ_ONLY_TABLES = ['student_codes', 'student_marks'];
 // ЩО СВІДОМО НЕ ВКЛЮЧЕНО (додавайте якщо з'явиться потреба на стороні UI):
 //   - camps, camp_shifts, camp_participants* (нова camp-система не інтегрована з порталом)
 //   - group_teacher_assignments, lesson_teacher_replacements (учню не треба знати заміни)
-//   - media_files, lesson_photos (окремий продукт з Telegram-медіа)
+//   - media_files (окремий продукт з Telegram-медіа)
+// Оновлено Phase C.1: lesson_photo_files тепер доступний (галерея заняття в порталі).
 //   - enrollment_* (публічна форма запису — окремий кейс)
 const EXTERNAL_READS = {
   // Увага: students.phone видалено в remove-student-phone.js — тільки parent_phone/parent2_phone
@@ -90,6 +91,20 @@ const EXTERNAL_READS = {
   ],
   student_groups: ['id', 'student_id', 'group_id', 'join_date', 'leave_date', 'is_active', 'status'],
   attendance: ['id', 'lesson_id', 'student_id', 'status', 'comment'],
+  // Phase C.1: галерея заняття. Файли на Drive публічні (makeFilePublic),
+  // тож URL-и безпечно віддавати учню. НЕ включаємо uploaded_by / uploaded_by_telegram_id
+  // (PII викладача), залишаємо тільки uploaded_by_name для показу "хто додав".
+  lesson_photo_files: [
+    'id',
+    'lesson_id',
+    'drive_file_id',
+    'file_name',
+    'mime_type',
+    'file_size',
+    'uploaded_by_name',
+    'uploaded_via',
+    'created_at',
+  ],
 };
 
 async function run() {

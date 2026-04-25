@@ -1,7 +1,13 @@
 /**
  * Один рядок уроку в списку розкладу / dashboard.
  * Серверний-сумісний компонент (без useState/useEffect).
+ *
+ * Опційно під рядком рендериться галерея заняття (Phase C.1) — якщо
+ * батьківський компонент передасть `galleryCount > 0`. Сам грід тягнеться
+ * lazy при розгортанні (LessonGallery — клієнтський).
  */
+
+import LessonGallery from './LessonGallery';
 
 interface LessonRowProps {
   lesson: {
@@ -16,11 +22,13 @@ interface LessonRowProps {
     course_title: string | null;
     attendance_status: string | null;
   };
+  /** Кількість файлів у галереї заняття (з getStudentGalleryCounts). 0 / undefined → нічого не рендеримо. */
+  galleryCount?: number;
 }
 
 const MONTHS_SHORT = ['січ', 'лют', 'бер', 'кві', 'тра', 'чер', 'лип', 'сер', 'вер', 'жов', 'лис', 'гру'];
 
-export default function LessonRow({ lesson }: LessonRowProps) {
+export default function LessonRow({ lesson, galleryCount }: LessonRowProps) {
   const start = new Date(lesson.start_datetime);
   const end = new Date(lesson.end_datetime);
 
@@ -54,13 +62,22 @@ export default function LessonRow({ lesson }: LessonRowProps) {
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-            {lesson.is_makeup && <span className="student-badge student-badge--makeup">Перенесення</span>}
+            {lesson.is_makeup && lesson.attendance_status === 'present' ? (
+              <span className="student-badge student-badge--makeup-done">Відпрацьовано</span>
+            ) : lesson.is_makeup ? (
+              <span className="student-badge student-badge--makeup">Перенесення</span>
+            ) : null}
             {lesson.is_trial && <span className="student-badge student-badge--trial">Пробне</span>}
-            {lesson.status === 'done' && <span className="student-badge student-badge--done">Проведено</span>}
-            {attBadge}
+            {lesson.status === 'done' && !lesson.is_makeup && (
+              <span className="student-badge student-badge--done">Проведено</span>
+            )}
+            {!(lesson.is_makeup && lesson.attendance_status === 'present') && attBadge}
           </div>
         </div>
       </div>
+      {typeof galleryCount === 'number' && galleryCount > 0 && (
+        <LessonGallery lessonId={lesson.id} count={galleryCount} />
+      )}
     </div>
   );
 }

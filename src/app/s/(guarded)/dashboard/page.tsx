@@ -1,118 +1,131 @@
 /**
- * Dashboard — головна сторінка учня.
+ * Dashboard — головна сторінка учня (Context-Aware).
  *
- * Показує:
- *   - Привітання
- *   - Наступне заняття (карточка з датою/часом/темою)
- *   - Уроки на цей тиждень (до 5 шт.)
+ * Логіка:
+ *   1) Якщо є активне заняття (start-15min ≤ now ≤ end+1год) і немає ?stay=1 —
+ *      автоматичний редирект на сторінку групи цього заняття.
+ *   2) Інакше — список усіх груп учня (мультигрупи + індивідуальні як окрема картка)
+ *      та картка наступного заняття серед усіх груп.
  *
  * Серверний компонент — читає дані напряму з crm_student ролі.
  */
 
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import {
   STUDENT_COOKIE_NAME,
   getStudentSession,
 } from '@/lib/student-auth';
-import { studentAll } from '@/db/neon-student';
-import LessonRow from '@/components/student/LessonRow';
+import { getStudentLessonContext } from '@/lib/student-lesson-context';
+import GroupOverviewCard from '@/components/student/GroupOverviewCard';
+import CountdownTimer from '@/components/student/CountdownTimer';
 
 export const dynamic = 'force-dynamic';
 
-interface LessonDTO {
-  id: number;
-  group_id: number | null;
-  course_id: number | null;
-  lesson_date: string;
-  start_datetime: string;
-  end_datetime: string;
-  topic: string | null;
-  status: string | null;
-  is_makeup: boolean | null;
-  is_trial: boolean | null;
-  group_title: string | null;
-  course_title: string | null;
-  attendance_status: string | null;
+interface PageProps {
+  searchParams?: { stay?: string };
 }
 
-async function fetchUpcoming(studentId: number): Promise<LessonDTO[]> {
-  const from = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString();
-  const to = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-  return studentAll<LessonDTO>(
-    `SELECT
-       l.id, l.group_id, l.course_id,
-       l.lesson_date, l.start_datetime, l.end_datetime,
-       l.topic, l.status, l.is_makeup, l.is_trial,
-       g.title AS group_title,
-       c.title AS course_title,
-       a.status AS attendance_status
-     FROM lessons l
-     JOIN student_groups sg ON sg.group_id = l.group_id AND sg.student_id = $1 AND sg.is_active = TRUE
-     LEFT JOIN groups g ON g.id = l.group_id
-     LEFT JOIN courses c ON c.id = l.course_id
-     LEFT JOIN attendance a ON a.lesson_id = l.id AND a.student_id = $1
-     WHERE l.start_datetime >= $2 AND l.start_datetime <= $3
-     ORDER BY l.start_datetime ASC
-     LIMIT 5`,
-    [studentId, from, to]
-  );
-}
-
-export default async function StudentDashboardPage() {
-  // Layout уже перевірив сесію — sessionId тут є. Але треба student_id —
-  // дістаємо ще раз швидким запитом (не додаємо зайвої передачі через контекст).
+export default async function StudentDashboardPage({ searchParams }: PageProps) {
   const sessionId = cookies().get(STUDENT_COOKIE_NAME)?.value;
   const session = sessionId ? await getStudentSession(sessionId) : null;
   if (!session) {
-    // Layout уже мав би редіректити, але на всяк випадок
     return <div className="student-empty">Сесія закінчилась</div>;
   }
 
-  const lessons = await fetchUpcoming(session.student_id);
+  const ctx = await getStudentLessonContext(session.student_id);
 
-  const next = lessons.find((l) => new Date(l.start_datetime).getTime() >= Date.now());
+  // Context-Aware redirect: якщо є активне заняття — переходимо на сторінку групи.
+  // Учень може обійти через ?stay=1 (напр. для перегляду інших груп).
+  if (ctx.activeLesson && ctx.activeGroupKey && searchParams?.stay !== '1') {
+    redirect(`/groups/${ctx.activeGroupKey}?active=${ctx.activeLesson.id}`);
+  }
+
+  const { groups, overallNext, activeLesson, activeGroupKey } = ctx;
 
   return (
     <>
       <h1 className="student-page-title">Привіт! 👋</h1>
-      <p className="student-page-subtitle">Ось що заплановано на найближчий час</p>
+      <p className="student-page-subtitle">
+        {groups.length > 1
+          ? `У тебе ${groups.length} ${pluralGroup(groups.length)} — обери, куди зайти`
+          : 'Ось твоє навчальне середовище'}
+      </p>
 
-      {next ? (
-        <div className="student-card" style={{ background: 'linear-gradient(135deg, #2160d0 0%, #3b82f6 100%)', color: '#fff', border: 'none' }}>
-          <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.85, marginBottom: 6 }}>
+      {/* Якщо ми тут попри active — показуємо прозорий банер з поверненням */}
+      {activeLesson && activeGroupKey && (
+        <Link
+          href={`/groups/${activeGroupKey}?active=${activeLesson.id}`}
+          className="student-card student-active-banner"
+        >
+          <div>
+            <div className="student-active-banner__kicker">Зараз триває заняття</div>
+            <div className="student-active-banner__title">
+              {activeLesson.course_title || activeLesson.group_title || 'Заняття'}
+            </div>
+            {activeLesson.topic && (
+              <div className="student-active-banner__topic">Тема: {activeLesson.topic}</div>
+            )}
+          </div>
+          <div className="student-active-banner__cta">Увійти →</div>
+        </Link>
+      )}
+
+      {/* Наступне заняття (оглядова картка; деталі й таймер — на сторінці групи) */}
+      {overallNext ? (
+        <div
+          className="student-card"
+          style={{
+            background: 'linear-gradient(135deg, #2160d0 0%, #3b82f6 100%)',
+            color: '#fff',
+            border: 'none',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              opacity: 0.85,
+              marginBottom: 6,
+            }}
+          >
             Наступне заняття
           </div>
           <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
-            {next.course_title || next.group_title || 'Заняття'}
+            {overallNext.course_title || overallNext.group_title || 'Заняття'}
           </div>
-          <div style={{ fontSize: 14, opacity: 0.95, marginBottom: 2 }}>
-            {formatWhen(next.start_datetime, next.end_datetime)}
+          <div style={{ fontSize: 14, opacity: 0.95, marginBottom: 10 }}>
+            {formatWhen(overallNext.start_datetime, overallNext.end_datetime)}
           </div>
-          {next.topic && (
-            <div style={{ fontSize: 13, opacity: 0.9, marginTop: 8 }}>
-              Тема: <strong>{next.topic}</strong>
+          <div style={{ marginTop: 6 }}>
+            <CountdownTimer targetIso={overallNext.start_datetime} compact />
+          </div>
+          {overallNext.topic && (
+            <div style={{ fontSize: 13, opacity: 0.9, marginTop: 10 }}>
+              Тема: <strong>{overallNext.topic}</strong>
             </div>
           )}
         </div>
       ) : (
         <div className="student-card">
           <h3>Найближчим часом занять немає</h3>
-          <p>Перевірте повний розклад — там можуть бути заняття далі.</p>
+          <p>Коли з&apos;явиться нове заняття — ми покажемо його тут.</p>
         </div>
       )}
 
-      <div className="student-section-header">На цей тиждень</div>
+      <div className="student-section-header">Мої групи</div>
 
-      <div className="student-dashboard-grid">
-        {lessons.length === 0 ? (
-          <div className="student-empty" style={{ gridColumn: '1 / -1' }}>
-            Порожньо. Коли з'явиться наступне заняття — ми покажемо його тут.
-          </div>
-        ) : (
-          lessons.map((l) => <LessonRow key={l.id} lesson={l} />)
-        )}
-      </div>
+      {groups.length === 0 ? (
+        <div className="student-empty">Ти ще не доданий(а) до жодної групи.</div>
+      ) : (
+        <div className="student-groups-grid">
+          {groups.map((g) => (
+            <GroupOverviewCard key={String(g.id)} group={g} />
+          ))}
+        </div>
+      )}
 
       <div style={{ marginTop: 20, textAlign: 'center' }}>
         <Link href="/schedule" className="student-secondary-btn">
@@ -121,6 +134,12 @@ export default async function StudentDashboardPage() {
       </div>
     </>
   );
+}
+
+function pluralGroup(n: number): string {
+  if (n % 10 === 1 && n % 100 !== 11) return 'група';
+  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return 'групи';
+  return 'груп';
 }
 
 function formatWhen(startIso: string, endIso: string): string {

@@ -5,22 +5,22 @@
  * з файлом і токеном. Upload-service завантажує файл у Google Drive
  * і викликає /api/internal/student-works/finalize для створення запису в БД.
  *
- * Ми навмисно НЕ створюємо запис у student_works на цьому кроці —
- * тільки після успішного upload-у (щоб не було "порожніх" записів).
+ * Phase B: lessonId є ОБОВ'ЯЗКОВИМ. Додано перевірку upload-вікна:
+ *   - вікно відкрите лише у [lesson.start; lesson.end + 1 год] (ТЗ п.4)
+ *   - у разі закритого вікна — 403 з деталями часу
  *
  * Body:
  *   {
  *     title?: string,
  *     description?: string,
- *     courseId?: number,      // опційно — учень може прикріпити до курсу
- *     lessonId?: number,      // опційно — або до конкретного уроку
+ *     lessonId: number,   // обов'язково
  *   }
  */
 
 import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStudentFromRequest } from '@/lib/student-auth';
-import { resolveWorkContext } from '@/lib/student-works';
+import { resolveUploadContext } from '@/lib/student-works';
 import { createStudentWorkUploadToken, getUploadServiceUrl } from '@/lib/upload-service';
 
 export const dynamic = 'force-dynamic';
@@ -40,11 +40,42 @@ export async function POST(request: NextRequest) {
   const rawDescription = typeof body?.description === 'string' ? body.description.trim() : '';
   const description = rawDescription ? rawDescription.slice(0, 2000) : null;
 
-  const { courseId, lessonId } = await resolveWorkContext(
-    student.id,
-    body?.courseId,
-    body?.lessonId
-  );
+  const ctx = await resolveUploadContext(student.id, body?.lessonId);
+
+  if (!ctx.ok) {
+    switch (ctx.reason) {
+      case 'lesson-required':
+        return NextResponse.json(
+          { error: 'Роботу можна завантажити лише в рамках заняття. Відкрий сторінку активного заняття.' },
+          { status: 400 },
+        );
+      case 'no-access':
+        return NextResponse.json(
+          { error: 'Немає доступу до цього заняття' },
+          { status: 403 },
+        );
+      case 'window-not-open':
+        return NextResponse.json(
+          {
+            error: 'Заняття ще не почалося. Завантажити роботу можна буде з моменту початку.',
+            opensAt: ctx.uploadWindow?.opensAt,
+            closesAt: ctx.uploadWindow?.closesAt,
+          },
+          { status: 403 },
+        );
+      case 'window-closed':
+        return NextResponse.json(
+          {
+            error: 'Вікно завантаження закрито (минула година після заняття). Роботи тепер доступні лише для перегляду.',
+            opensAt: ctx.uploadWindow?.opensAt,
+            closesAt: ctx.uploadWindow?.closesAt,
+          },
+          { status: 403 },
+        );
+      default:
+        return NextResponse.json({ error: 'Невалідний контекст завантаження' }, { status: 400 });
+    }
+  }
 
   let uploadUrl: string;
   try {
@@ -52,7 +83,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json(
       { error: 'Сервіс завантаження не налаштовано. Зверніться до адміністратора.' },
-      { status: 503 }
+      { status: 503 },
     );
   }
 
@@ -64,19 +95,20 @@ export async function POST(request: NextRequest) {
       studentFullName: student.full_name,
       workTitle: title,
       workDescription: description,
-      courseId,
-      lessonId,
+      courseId: ctx.courseId,
+      lessonId: ctx.lessonId,
     });
   } catch {
     return NextResponse.json(
       { error: 'Не вдалося створити токен завантаження. Зверніться до адміністратора.' },
-      { status: 503 }
+      { status: 503 },
     );
   }
 
   return NextResponse.json({
     uploadUrl,
     token,
-    context: { courseId, lessonId },
+    context: { courseId: ctx.courseId, lessonId: ctx.lessonId },
+    uploadWindow: ctx.uploadWindow,
   });
 }

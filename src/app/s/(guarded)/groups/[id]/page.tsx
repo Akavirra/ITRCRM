@@ -1,5 +1,12 @@
 /**
  * /groups/[id] — детальна сторінка групи або індивідуальних занять.
+ *
+ * Phase A (Context-Aware):
+ *   - Показує тільки ОДНЕ наступне заняття (решта майбутніх приховані).
+ *   - Live-таймер зворотного відліку до початку наступного.
+ *   - Бейдж "Заняття триває" коли now ∈ [start, end].
+ *   - "Active state" банер коли заняття у вікні [start-15хв; end+1год] — сторінка стає "доступною".
+ *   - Історія: усі минулі заняття з темою + статусом присутності.
  */
 
 import Link from 'next/link';
@@ -7,7 +14,13 @@ import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { STUDENT_COOKIE_NAME, getStudentSession } from '@/lib/student-auth';
 import { studentAll, studentGet } from '@/db/neon-student';
+import { isLessonActive, isLessonLive, getUploadWindow } from '@/lib/student-lesson-context';
 import LessonRow from '@/components/student/LessonRow';
+import CountdownTimer from '@/components/student/CountdownTimer';
+import LiveLessonBadge from '@/components/student/LiveLessonBadge';
+import LessonWorksPanel from '@/components/student/LessonWorksPanel';
+import LessonGallery from '@/components/student/LessonGallery';
+import { getStudentGalleryCounts } from '@/lib/student-gallery';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,11 +67,11 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
   let pageTitle = 'Група';
   let pageSubtitle = '';
   let lessons: LessonDTO[] = [];
-  let summaryMeta: string[] = [];
+  const summaryMeta: string[] = [];
 
   if (isIndividual) {
     pageTitle = 'Індивідуальні заняття';
-    pageSubtitle = 'Історія та майбутні індивідуальні уроки';
+    pageSubtitle = 'Історія та майбутнє індивідуальне заняття';
     lessons = await studentAll<LessonDTO>(
       `SELECT
          l.id, l.group_id, l.course_id,
@@ -81,7 +94,7 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
          )
        ORDER BY l.start_datetime DESC
        LIMIT 200`,
-      [session.student_id]
+      [session.student_id],
     );
     summaryMeta.push('Поза груповим розкладом');
   } else {
@@ -105,7 +118,7 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
        JOIN groups g ON g.id = sg.group_id
        LEFT JOIN courses c ON c.id = g.course_id
        WHERE sg.student_id = $1 AND sg.group_id = $2`,
-      [session.student_id, groupId]
+      [session.student_id, groupId],
     );
 
     if (!group) {
@@ -113,14 +126,15 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
     }
 
     pageTitle = group.course_title || group.title || 'Група';
-    pageSubtitle = group.title && group.course_title !== group.title ? group.title : 'Повна інформація по групі';
+    pageSubtitle =
+      group.title && group.course_title !== group.title ? group.title : 'Твоє навчальне середовище';
 
     if (group.weekly_day) summaryMeta.push(`День: ${weeklyDayToLabel(group.weekly_day)}`);
     if (group.start_time) summaryMeta.push(`Час: ${group.start_time.slice(0, 5)}`);
     if (group.duration_minutes) summaryMeta.push(`Тривалість: ${group.duration_minutes} хв`);
     if (group.start_date || group.end_date) {
       summaryMeta.push(
-        `Період: ${group.start_date ? formatDate(group.start_date) : '...'} - ${group.end_date ? formatDate(group.end_date) : '...'}`
+        `Період: ${group.start_date ? formatDate(group.start_date) : '...'} - ${group.end_date ? formatDate(group.end_date) : '...'}`,
       );
     }
     if (group.status) summaryMeta.push(`Статус: ${normalizeStatus(group.status)}`);
@@ -140,37 +154,119 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
        WHERE l.group_id = $2
        ORDER BY l.start_datetime DESC
        LIMIT 300`,
-      [session.student_id, groupId]
+      [session.student_id, groupId],
     );
   }
 
   const now = Date.now();
-  const upcoming = lessons
+
+  // Активне заняття (у вікні [-15хв; +1год])
+  const activeLesson = lessons.find((l) => isLessonActive(l, now)) ?? null;
+
+  // Найближче майбутнє (тільки одне — решту ховаємо згідно ТЗ)
+  const upcomingAll = lessons
     .filter((l) => new Date(l.start_datetime).getTime() >= now)
-    .sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime());
+    .sort(
+      (a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime(),
+    );
+  const nextLesson = upcomingAll[0] ?? null;
+
   const history = lessons
     .filter((l) => new Date(l.start_datetime).getTime() < now)
-    .sort((a, b) => new Date(b.start_datetime).getTime() - new Date(a.start_datetime).getTime());
+    .sort(
+      (a, b) => new Date(b.start_datetime).getTime() - new Date(a.start_datetime).getTime(),
+    );
+
+  // Phase C.1: галерея заняття (read-only для учня).
+  // Тягнемо counts ОДНИМ запитом по всіх занять (active + next + history),
+  // щоб під рядком уроку показати "📷 Галерея (N)" тільки де реально є файли.
+  const galleryCounts = await getStudentGalleryCounts(
+    session.student_id,
+    lessons.map((l) => l.id),
+  );
 
   const stats = calcStats(lessons);
-  const attendanceRate = stats.knownAttendance > 0
-    ? Math.round(((stats.present + stats.late) / stats.knownAttendance) * 100)
-    : 0;
+  const attendanceRate =
+    stats.knownAttendance > 0
+      ? Math.round(((stats.present + stats.late) / stats.knownAttendance) * 100)
+      : 0;
+
+  // Чи заняття зараз реально триває (для pulse-бейджа та особливого оформлення)
+  const lessonLiveNow = activeLesson ? isLessonLive(activeLesson, now) : false;
 
   return (
     <>
-      <Link href="/groups" className="student-secondary-btn" style={{ marginBottom: 12 }}>
-        ← До списку груп
+      <Link href="/dashboard?stay=1" className="student-secondary-btn" style={{ marginBottom: 12 }}>
+        ← До моїх груп
       </Link>
 
       <h1 className="student-page-title">{pageTitle}</h1>
       <p className="student-page-subtitle">{pageSubtitle}</p>
 
+      {/* Active lesson: великий банер з таймером або live-бейджем */}
+      {activeLesson && (
+        <div
+          className={
+            'student-card student-active-lesson' +
+            (lessonLiveNow ? ' student-active-lesson--live' : '')
+          }
+        >
+          <div className="student-active-lesson__header">
+            <div className="student-active-lesson__kicker">
+              {lessonLiveNow ? 'Зараз' : 'Ось-ось почнеться'}
+            </div>
+            <LiveLessonBadge
+              startIso={activeLesson.start_datetime}
+              endIso={activeLesson.end_datetime}
+            />
+          </div>
+          <div className="student-active-lesson__topic">
+            {activeLesson.topic || 'Тему буде оновлено викладачем'}
+          </div>
+          <div className="student-active-lesson__meta">
+            {formatTimeRange(activeLesson.start_datetime, activeLesson.end_datetime)}
+          </div>
+          {!lessonLiveNow && (
+            <div style={{ marginTop: 12 }}>
+              <CountdownTimer
+                targetIso={activeLesson.start_datetime}
+                label="До початку"
+                reachedLabel="Заняття почалось"
+              />
+            </div>
+          )}
+          {galleryCounts[activeLesson.id] > 0 && (
+            <LessonGallery
+              lessonId={activeLesson.id}
+              count={galleryCounts[activeLesson.id]}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Панель робіт прив'язана до активного заняття.
+          Upload-вікно = [start; end + 1год] — див. getUploadWindow.
+          Коли вікно відкрите — можна додавати/видаляти; інакше read-only. */}
+      {activeLesson &&
+        (() => {
+          const uploadWindow = getUploadWindow(activeLesson, now);
+          return (
+            <LessonWorksPanel
+              lessonId={activeLesson.id}
+              uploadWindowOpen={uploadWindow.isOpen}
+              uploadWindowClosesAt={uploadWindow.closesAt}
+              lessonTitle={activeLesson.topic || 'Активне заняття'}
+            />
+          );
+        })()}
+
       {summaryMeta.length > 0 && (
         <div className="student-card">
           <div className="student-group-meta-list">
             {summaryMeta.map((item) => (
-              <span key={item} className="student-group-meta-chip">{item}</span>
+              <span key={item} className="student-group-meta-chip">
+                {item}
+              </span>
             ))}
           </div>
         </div>
@@ -181,7 +277,10 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
           <div className="student-stats-card__label">Загальна присутність</div>
           <div
             className="student-stats-card__value"
-            style={{ color: attendanceRate >= 80 ? '#16a34a' : attendanceRate >= 50 ? '#ca8a04' : '#dc2626' }}
+            style={{
+              color:
+                attendanceRate >= 80 ? '#16a34a' : attendanceRate >= 50 ? '#ca8a04' : '#dc2626',
+            }}
           >
             {stats.knownAttendance > 0 ? `${attendanceRate}%` : 'Немає даних'}
           </div>
@@ -189,28 +288,46 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
         <div className="student-stats-card__grid">
           <div>
             <div className="student-stats-card__small-label">Був(ла)</div>
-            <div className="student-stats-card__small-value" style={{ color: '#16a34a' }}>{stats.present + stats.late}</div>
+            <div className="student-stats-card__small-value" style={{ color: '#16a34a' }}>
+              {stats.present + stats.late}
+            </div>
           </div>
           <div>
             <div className="student-stats-card__small-label">Пропуски</div>
-            <div className="student-stats-card__small-value" style={{ color: '#dc2626' }}>{stats.absent}</div>
+            <div className="student-stats-card__small-value" style={{ color: '#dc2626' }}>
+              {stats.absent}
+            </div>
           </div>
           <div>
             <div className="student-stats-card__small-label">Поважна</div>
-            <div className="student-stats-card__small-value" style={{ color: '#2563eb' }}>{stats.excused}</div>
+            <div className="student-stats-card__small-value" style={{ color: '#2563eb' }}>
+              {stats.excused}
+            </div>
+          </div>
+          <div>
+            <div className="student-stats-card__small-label">Відпрацьовано</div>
+            <div className="student-stats-card__small-value" style={{ color: '#7c3aed' }}>
+              {stats.makeup}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="student-section-header">Майбутні заняття ({upcoming.length})</div>
-      {upcoming.length === 0 ? (
-        <div className="student-empty">Найближчих занять поки немає.</div>
-      ) : (
+      {/* Наступне заняття — тільки ОДНЕ. Решта прихована згідно ТЗ. */}
+      <div className="student-section-header">Наступне заняття</div>
+      {nextLesson ? (
         <div className="student-dashboard-grid">
-          {upcoming.map((lesson) => (
-            <LessonRow key={lesson.id} lesson={lesson} />
-          ))}
+          <div className="student-next-lesson-wrap">
+            <LessonRow lesson={nextLesson} galleryCount={galleryCounts[nextLesson.id] ?? 0} />
+            {!activeLesson && (
+              <div className="student-next-lesson-timer">
+                <CountdownTimer targetIso={nextLesson.start_datetime} />
+              </div>
+            )}
+          </div>
         </div>
+      ) : (
+        <div className="student-empty">Найближчих занять немає.</div>
       )}
 
       <div className="student-section-header">Історія занять ({history.length})</div>
@@ -219,7 +336,11 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
       ) : (
         <div className="student-dashboard-grid">
           {history.map((lesson) => (
-            <LessonRow key={lesson.id} lesson={lesson} />
+            <LessonRow
+              key={lesson.id}
+              lesson={lesson}
+              galleryCount={galleryCounts[lesson.id] ?? 0}
+            />
           ))}
         </div>
       )}
@@ -232,12 +353,14 @@ function calcStats(lessons: LessonDTO[]) {
   let absent = 0;
   let excused = 0;
   let late = 0;
+  let makeup = 0;
 
   lessons.forEach((l) => {
     if (l.attendance_status === 'present') present++;
     if (l.attendance_status === 'absent') absent++;
     if (l.attendance_status === 'excused') excused++;
     if (l.attendance_status === 'late') late++;
+    if (l.is_makeup && l.attendance_status === 'present') makeup++;
   });
 
   return {
@@ -245,6 +368,7 @@ function calcStats(lessons: LessonDTO[]) {
     absent,
     excused,
     late,
+    makeup,
     knownAttendance: present + absent + excused + late,
   };
 }
@@ -271,6 +395,23 @@ function formatDate(ymd: string): string {
     year: 'numeric',
     timeZone: 'Europe/Kyiv',
   }).format(d);
+}
+
+function formatTimeRange(startIso: string, endIso: string): string {
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  const dateFmt = new Intl.DateTimeFormat('uk-UA', {
+    day: 'numeric',
+    month: 'long',
+    weekday: 'long',
+    timeZone: 'Europe/Kyiv',
+  });
+  const timeFmt = new Intl.DateTimeFormat('uk-UA', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Kyiv',
+  });
+  return `${dateFmt.format(start)} · ${timeFmt.format(start)}–${timeFmt.format(end)}`;
 }
 
 function normalizeStatus(status: string): string {

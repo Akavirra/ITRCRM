@@ -14,6 +14,7 @@
 
 import 'server-only';
 import { studentAll, studentGet, studentRun } from '@/db/neon-student';
+import { getUploadWindow, type UploadWindow } from '@/lib/student-lesson-context';
 
 export interface StudentWorkRow {
   id: number;
@@ -43,6 +44,12 @@ export interface StudentWorkView {
   courseTitle: string | null;
   lessonId: number | null;
   lessonDate: string | null;
+  lessonStartAt: string | null;
+  lessonEndAt: string | null;
+  lessonTopic: string | null;
+  /** Чи upload-вікно для заняття цієї роботи зараз відкрите (для UI read-only). */
+  uploadWindowOpen: boolean;
+  uploadWindowClosesAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,7 +58,18 @@ export interface StudentWorkView {
  * Повертає всі активні (не видалені) роботи учня, найновіші зверху.
  * Використовує крос-джойн з course-таблицею — нам дозволено SELECT (title, id).
  */
-export async function listStudentWorks(studentId: number): Promise<StudentWorkView[]> {
+export async function listStudentWorks(
+  studentId: number,
+  opts: { lessonId?: number } = {},
+): Promise<StudentWorkView[]> {
+  const filters: string[] = [`w.student_id = $1`, `w.deleted_at IS NULL`];
+  const params: unknown[] = [studentId];
+
+  if (opts.lessonId && Number.isInteger(opts.lessonId) && opts.lessonId > 0) {
+    params.push(opts.lessonId);
+    filters.push(`w.lesson_id = $${params.length}`);
+  }
+
   const rows = await studentAll<any>(
     `SELECT
        w.id,
@@ -63,31 +81,48 @@ export async function listStudentWorks(studentId: number): Promise<StudentWorkVi
        c.title AS course_title,
        w.lesson_id,
        l.lesson_date,
+       l.start_datetime AS lesson_start,
+       l.end_datetime   AS lesson_end,
+       l.topic          AS lesson_topic,
        w.created_at,
        w.updated_at
      FROM student_works w
      LEFT JOIN courses c ON c.id = w.course_id
      LEFT JOIN lessons l ON l.id = w.lesson_id
-     WHERE w.student_id = $1
-       AND w.deleted_at IS NULL
+     WHERE ${filters.join(' AND ')}
      ORDER BY w.created_at DESC, w.id DESC
      LIMIT 500`,
-    [studentId]
+    params,
   );
 
-  return rows.map((r: any) => ({
-    id: Number(r.id),
-    title: String(r.title),
-    description: r.description ?? null,
-    mimeType: r.mime_type ?? null,
-    sizeBytes: r.size_bytes !== null && r.size_bytes !== undefined ? Number(r.size_bytes) : null,
-    courseId: r.course_id ?? null,
-    courseTitle: r.course_title ?? null,
-    lessonId: r.lesson_id ?? null,
-    lessonDate: r.lesson_date ?? null,
-    createdAt: String(r.created_at),
-    updatedAt: String(r.updated_at),
-  }));
+  return rows.map((r: any) => {
+    const lessonStart = r.lesson_start ? String(r.lesson_start) : null;
+    const lessonEnd = r.lesson_end ? String(r.lesson_end) : null;
+    const window =
+      lessonStart && lessonEnd
+        ? getUploadWindow({ start_datetime: lessonStart, end_datetime: lessonEnd })
+        : null;
+
+    return {
+      id: Number(r.id),
+      title: String(r.title),
+      description: r.description ?? null,
+      mimeType: r.mime_type ?? null,
+      sizeBytes:
+        r.size_bytes !== null && r.size_bytes !== undefined ? Number(r.size_bytes) : null,
+      courseId: r.course_id ?? null,
+      courseTitle: r.course_title ?? null,
+      lessonId: r.lesson_id ?? null,
+      lessonDate: r.lesson_date ?? null,
+      lessonStartAt: lessonStart,
+      lessonEndAt: lessonEnd,
+      lessonTopic: r.lesson_topic ?? null,
+      uploadWindowOpen: window?.isOpen ?? false,
+      uploadWindowClosesAt: window?.closesAt ?? null,
+      createdAt: String(r.created_at),
+      updatedAt: String(r.updated_at),
+    };
+  });
 }
 
 /**
@@ -139,6 +174,122 @@ export async function softDeleteStudentWork(
  *
  * Повертає нормалізовані значення (null якщо учень не має доступу — тихо, без throw).
  */
+/**
+ * Повертає lesson з перевіркою, що учень до нього прив'язаний
+ * (груповий — через student_groups, індивідуальний — через attendance).
+ * Разом з часом початку/кінця для подальшої перевірки upload-вікна.
+ *
+ * Повертає null, якщо учень не має доступу до цього lesson.
+ */
+export async function getLessonForStudent(
+  studentId: number,
+  lessonId: number,
+): Promise<{
+  id: number;
+  group_id: number | null;
+  course_id: number | null;
+  start_datetime: string;
+  end_datetime: string;
+  topic: string | null;
+  status: string | null;
+} | null> {
+  if (!Number.isInteger(lessonId) || lessonId <= 0) return null;
+
+  // Груповий доступ
+  const groupAccess = await studentGet<{
+    id: number;
+    group_id: number | null;
+    course_id: number | null;
+    start_datetime: string;
+    end_datetime: string;
+    topic: string | null;
+    status: string | null;
+  }>(
+    `SELECT l.id, l.group_id, l.course_id,
+            l.start_datetime, l.end_datetime, l.topic, l.status
+     FROM lessons l
+     JOIN student_groups sg ON sg.group_id = l.group_id
+     WHERE l.id = $1 AND sg.student_id = $2 AND sg.is_active = TRUE
+     LIMIT 1`,
+    [lessonId, studentId],
+  );
+  if (groupAccess) return groupAccess;
+
+  // Індивідуальний (через attendance)
+  const individualAccess = await studentGet<{
+    id: number;
+    group_id: number | null;
+    course_id: number | null;
+    start_datetime: string;
+    end_datetime: string;
+    topic: string | null;
+    status: string | null;
+  }>(
+    `SELECT l.id, l.group_id, l.course_id,
+            l.start_datetime, l.end_datetime, l.topic, l.status
+     FROM lessons l
+     JOIN attendance a ON a.lesson_id = l.id
+     WHERE l.id = $1 AND a.student_id = $2
+     LIMIT 1`,
+    [lessonId, studentId],
+  );
+  return individualAccess ?? null;
+}
+
+/**
+ * Результат валідації контексту upload-а з урахуванням вікна часу.
+ */
+export interface UploadContextResolution {
+  ok: boolean;
+  /** Нормалізовані значення — тільки якщо ok=true */
+  courseId: number | null;
+  lessonId: number | null;
+  /** Інформація про upload window — коли ok=false через час */
+  uploadWindow?: UploadWindow;
+  /** Код причини відмови для UI/API */
+  reason?: 'lesson-required' | 'no-access' | 'window-closed' | 'window-not-open';
+}
+
+/**
+ * Єдина точка валідації запиту на створення роботи.
+ * Vимагає lessonId (ТЗ: роботи прив'язані до заняття), перевіряє доступ
+ * учня до заняття та чи відкрите upload-вікно.
+ */
+export async function resolveUploadContext(
+  studentId: number,
+  lessonIdRaw: unknown,
+): Promise<UploadContextResolution> {
+  const lessonId =
+    Number.isInteger(lessonIdRaw) && (lessonIdRaw as number) > 0 ? (lessonIdRaw as number) : null;
+
+  if (!lessonId) {
+    return { ok: false, courseId: null, lessonId: null, reason: 'lesson-required' };
+  }
+
+  const lesson = await getLessonForStudent(studentId, lessonId);
+  if (!lesson) {
+    return { ok: false, courseId: null, lessonId: null, reason: 'no-access' };
+  }
+
+  const window = getUploadWindow(lesson);
+  if (!window.isOpen) {
+    return {
+      ok: false,
+      courseId: lesson.course_id ?? null,
+      lessonId: lesson.id,
+      uploadWindow: window,
+      reason: window.isAfterClose ? 'window-closed' : 'window-not-open',
+    };
+  }
+
+  return {
+    ok: true,
+    courseId: lesson.course_id ?? null,
+    lessonId: lesson.id,
+    uploadWindow: window,
+  };
+}
+
 export async function resolveWorkContext(
   studentId: number,
   courseIdRaw: unknown,

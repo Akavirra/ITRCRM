@@ -55,6 +55,8 @@ const STUDENT_ALLOWED_PATHS = [
   '/attendance',
   '/profile',
   '/works',
+  // Phase C.2: QR-Upload — мобільна сторінка без cookie, аутент через JWT в URL.
+  '/m/',
   '/api/student/',
   // Next.js internals + static
   '/_next/',
@@ -117,7 +119,13 @@ function handleStudentHost(request: NextRequest): NextResponse | null {
   }
 
   // Auth check для НЕ-публічних шляхів
-  const isPublic = STUDENT_PUBLIC_PATHS.has(pathname) || pathname.startsWith('/api/student/auth/');
+  const isPublic =
+    STUDENT_PUBLIC_PATHS.has(pathname) ||
+    pathname.startsWith('/api/student/auth/') ||
+    // Phase C.2: мобільна QR-сторінка та її API (auth через JWT в URL/header,
+    // НЕ student_session cookie — телефон ніколи не логіниться).
+    pathname.startsWith('/m/') ||
+    pathname === '/api/student/works/direct-mobile';
   const studentCookie = request.cookies.get('student_session')?.value;
 
   if (!isPublic && !studentCookie) {
