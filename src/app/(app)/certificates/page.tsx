@@ -12,7 +12,7 @@ import CertificateEditorModalShell from '@/components/certificates/CertificateEd
 import GiftCertificateCanvas from '@/components/certificates/GiftCertificateCanvas';
 import GiftCertificateEditorSidebar from '@/components/certificates/GiftCertificateEditorSidebar';
 import GiftCertificatesTable, { type GiftCertificateListItem } from '@/components/certificates/GiftCertificatesTable';
-import CertificatesPagination from '@/components/certificates/CertificatesPagination';
+
 import CertificatesPageShell from '@/components/certificates/CertificatesPageShell';
 import CertificatesSectionHeader from '@/components/certificates/CertificatesSectionHeader';
 import { useUser } from '@/components/UserContext';
@@ -158,6 +158,7 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<EditorSnapshot[]>([]);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const presetAmounts = [500, 1000, 2000];
   const isCustomAmount = !presetAmounts.includes(formData.amount);
@@ -195,7 +196,8 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
       const response = await fetch(`/api/admin-app/certificates?${params.toString()}`);
       const data = await response.json() as CertificateListResponse;
 
-      setCertificates(Array.isArray(data.items) ? data.items : []);
+      const items = Array.isArray(data.items) ? data.items : [];
+      setCertificates((prev) => (targetPage === 1 ? items : [...prev, ...items]));
       setPagination({
         page: typeof data.page === 'number' ? data.page : targetPage,
         limit: typeof data.limit === 'number' ? data.limit : 20,
@@ -204,7 +206,7 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
       });
     } catch (error) {
       console.error('Failed to fetch certificates:', error);
-      setCertificates([]);
+      if (targetPage === 1) setCertificates([]);
       setPagination((prev) => ({ ...prev, page: targetPage, total: 0, totalPages: 1 }));
     } finally {
       setListLoading(false);
@@ -280,8 +282,32 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
 
   useEffect(() => {
     if (!user || user.role !== 'admin') return;
+    setCertificates([]);
+    setPage(1);
+    fetchCertificates(1);
+  }, [searchQuery, showArchived, statusFilter, user]);
+
+  useEffect(() => {
+    if (!user || user.role !== 'admin') return;
+    if (page === 1) return;
     fetchCertificates(page);
-  }, [page, searchQuery, showArchived, statusFilter, user]);
+  }, [page, user]);
+
+  useEffect(() => {
+    if (!sentinelRef.current || listLoading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && page < pagination.totalPages) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [listLoading, page, pagination.totalPages]);
 
   useEffect(() => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -800,15 +826,12 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
             emptyDescription={showArchived ? 'Надруковані сертифікати з’являться тут.' : t('emptyStates.noCertificatesHint')}
           />
         </div>
-        <CertificatesPagination
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          totalItems={pagination.total}
-          visibleItems={certificates.length}
-          loading={listLoading}
-          onPrev={() => setPage((prev) => Math.max(1, prev - 1))}
-          onNext={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
-        />
+        {listLoading && certificates.length > 0 && (
+          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--gray-500)', fontSize: '13px' }}>
+            Завантажуємо ще…
+          </div>
+        )}
+        <div ref={sentinelRef} style={{ height: '1px' }} />
 
       {deleteConfirmId !== null && (
         <div className="modal-overlay" onClick={() => setDeleteConfirmId(null)}>

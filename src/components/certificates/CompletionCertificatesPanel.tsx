@@ -10,7 +10,7 @@ import CertificateEditorLoadingNotice from '@/components/certificates/Certificat
 import CertificateEditorModalShell from '@/components/certificates/CertificateEditorModalShell';
 import CompletionCertificateEditorSidebar from '@/components/certificates/CompletionCertificateEditorSidebar';
 import CompletionCertificatesList from '@/components/certificates/CompletionCertificatesList';
-import CertificatesPagination from '@/components/certificates/CertificatesPagination';
+
 import CertificatesSectionHeader from '@/components/certificates/CertificatesSectionHeader';
 import { useUser } from '@/components/UserContext';
 import { t } from '@/i18n/t';
@@ -210,6 +210,7 @@ export default function CompletionCertificatesPanel({
   const viewportRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<EditorSnapshot[]>([]);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const renderedBlocks = blocks.map((block) => {
     if (block.key !== 'course_name' || !formData.course_id) return block;
@@ -274,7 +275,8 @@ export default function CompletionCertificatesPanel({
       const response = await fetch(`/api/completion-certificates?${params.toString()}`);
       const data = await response.json() as CompletionCertificateListResponse;
 
-      setCertificates(Array.isArray(data.items) ? data.items : []);
+      const items = Array.isArray(data.items) ? data.items : [];
+      setCertificates((prev) => (targetPage === 1 ? items : [...prev, ...items]));
       setPagination({
         page: typeof data.page === 'number' ? data.page : targetPage,
         limit: typeof data.limit === 'number' ? data.limit : 20,
@@ -283,7 +285,7 @@ export default function CompletionCertificatesPanel({
       });
     } catch (error) {
       console.error('Failed to fetch completion certificates:', error);
-      setCertificates([]);
+      if (targetPage === 1) setCertificates([]);
       setPagination((prev) => ({ ...prev, page: targetPage, total: 0, totalPages: 1 }));
     } finally {
       setListLoading(false);
@@ -409,8 +411,32 @@ export default function CompletionCertificatesPanel({
 
   useEffect(() => {
     if (!user || user.role !== 'admin') return;
+    setCertificates([]);
+    setPage(1);
+    fetchCertificates(1);
+  }, [courseFilter, groupFilter, searchQuery, user]);
+
+  useEffect(() => {
+    if (!user || user.role !== 'admin') return;
+    if (page === 1) return;
     fetchCertificates(page);
-  }, [courseFilter, groupFilter, page, searchQuery, user]);
+  }, [page, user]);
+
+  useEffect(() => {
+    if (!sentinelRef.current || listLoading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && page < pagination.totalPages) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [listLoading, page, pagination.totalPages]);
 
   useEffect(() => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -1197,15 +1223,12 @@ export default function CompletionCertificatesPanel({
             onCreate={handleCreate}
           />
         </div>
-        <CertificatesPagination
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          totalItems={pagination.total}
-          visibleItems={certificates.length}
-          loading={listLoading}
-          onPrev={() => setPage((prev) => Math.max(1, prev - 1))}
-          onNext={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
-        />
+        {listLoading && certificates.length > 0 && (
+          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--gray-500)', fontSize: '13px' }}>
+            Завантажуємо ще…
+          </div>
+        )}
+        <div ref={sentinelRef} style={{ height: '1px' }} />
 
       <CertificateEditorModalShell
         isOpen={showModal}
