@@ -296,6 +296,7 @@
 
 .inputWithIcon {
   position: relative;
+  width: 100%;
 }
 
 .inputWithIcon svg {
@@ -308,7 +309,32 @@
 }
 
 .inputWithIcon input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  outline: none;
+  padding: 9px 12px;
   padding-left: 38px;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.inputWithIcon input::placeholder {
+  color: var(--text-muted);
+}
+
+.inputWithIcon input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-primary-soft);
+}
+
+.inputWithIcon:focus-within svg {
+  color: var(--accent-primary);
 }
 
 .toggle {
@@ -529,8 +555,8 @@
 }
 
 .audienceSearch {
-  flex: 1 1 320px;
-  min-width: 220px;
+  flex: 1 1 360px;
+  min-width: 280px;
 }
 
 .audienceSearch input {
@@ -1298,6 +1324,10 @@
 
   .stageFooter button {
     flex: 1 1 auto;
+  }
+
+  .audienceSearch {
+    min-width: 0;
   }
 }
 
