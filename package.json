@@ -52,6 +52,7 @@
     "db:add-enrollment": "node scripts/add-enrollment.js",
     "db:add-enrollment-email": "node scripts/add-enrollment-email.js",
     "db:add-enrollment-manual-close": "node scripts/add-enrollment-manual-close.js",
+    "db:add-teacher-invites": "node scripts/add-teacher-invites.js",
     "db:add-messaging": "node scripts/add-messaging.js",
     "db:add-parent2-phone": "node scripts/add-parent2-phone.js",
     "db:remove-student-phone": "node scripts/remove-student-phone.js",

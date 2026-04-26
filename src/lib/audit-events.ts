@@ -10,6 +10,7 @@ export type AuditEntityType =
   | 'teacher'
   | 'user'
   | 'enrollment'
+  | 'teacher_invite'
   | 'media'
   | 'system';
 

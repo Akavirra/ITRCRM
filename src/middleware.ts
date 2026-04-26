@@ -21,6 +21,8 @@ const PUBLIC_ROUTES = [
   '/api/internal',
   '/enroll',
   '/api/enroll',
+  '/register-teacher',
+  '/api/teacher-invites',
 ]
 
 // Check if pathname starts with any of the public routes
