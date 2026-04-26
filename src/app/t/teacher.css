@@ -354,3 +354,245 @@
     font-size: 22px;
   }
 }
+
+/* === Lesson cards (E.1.2) === */
+
+.teacher-section-counter {
+  background: #e2e8f0;
+  color: #475569;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.teacher-lesson-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 720px) {
+  .teacher-lesson-stack {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* — велика картка "сьогодні" — */
+.teacher-lesson-card {
+  display: block;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.teacher-lesson-card:hover,
+.teacher-lesson-card:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  border-color: #c7d2fe;
+  outline: none;
+}
+
+.teacher-lesson-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.teacher-lesson-card__time {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4338ca;
+  letter-spacing: 0.02em;
+}
+
+.teacher-lesson-card__badges {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.teacher-lesson-card__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.teacher-lesson-card__subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+.teacher-lesson-card__topic {
+  font-size: 13px;
+  color: #334155;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.teacher-lesson-card__topic strong {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.teacher-lesson-card__topic--empty {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* — компактний рядок (тиждень) — */
+.teacher-lesson-row {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.teacher-lesson-row + .teacher-lesson-row {
+  margin-top: 6px;
+}
+
+.teacher-lesson-row:hover,
+.teacher-lesson-row:focus-visible {
+  background: #f5f7ff;
+  border-color: #c7d2fe;
+  outline: none;
+}
+
+.teacher-lesson-row__time {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4338ca;
+}
+
+.teacher-lesson-row__title {
+  font-size: 14px;
+  color: #0f172a;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teacher-lesson-row__subtitle {
+  color: #64748b;
+  font-weight: 400;
+}
+
+.teacher-lesson-row__badges {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 540px) {
+  .teacher-lesson-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .teacher-lesson-row__time {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .teacher-lesson-row__title {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    white-space: normal;
+  }
+
+  .teacher-lesson-row__badges {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+/* — бейджі — */
+.teacher-lesson-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.teacher-lesson-badge--replacement {
+  background: #fef3c7;
+  color: #854d0e;
+}
+
+.teacher-lesson-badge--makeup {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.teacher-lesson-badge--trial {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+/* — групи днів тижня — */
+.teacher-day-group {
+  margin-bottom: 16px;
+}
+
+.teacher-day-group__header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.teacher-day-group__day {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.teacher-day-group__date {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.teacher-day-group__count {
+  margin-left: auto;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.teacher-day-group__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
