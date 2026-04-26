@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   XCircle,
@@ -834,7 +835,7 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
         )}
         <div ref={sentinelRef} style={{ height: '1px' }} />
 
-      {deleteConfirmId !== null && (
+      {deleteConfirmId !== null && createPortal(
         <div className="modal-overlay" onClick={() => setDeleteConfirmId(null)}>
           <div className="modal" onClick={(event) => event.stopPropagation()} style={{ maxWidth: '400px', width: '100%' }}>
             <div className="modal-header">
@@ -857,7 +858,8 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <CertificateEditorModalShell

@@ -1,6 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowLeft, X } from 'lucide-react';
 
 interface CertificateEditorModalShellProps {
@@ -38,11 +39,23 @@ export default function CertificateEditorModalShell({
   children,
   footer,
 }: CertificateEditorModalShellProps) {
-  if (!isOpen) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !mounted) {
     return null;
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className={shellClassName} onClick={(event) => event.stopPropagation()}>
         <div className={headerClassName}>
@@ -67,6 +80,7 @@ export default function CertificateEditorModalShell({
 
         <div className={footerClassName}>{footer}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

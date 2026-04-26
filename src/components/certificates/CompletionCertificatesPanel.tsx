@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
 } from 'lucide-react';
@@ -1349,7 +1350,7 @@ export default function CompletionCertificatesPanel({
               />
       </CertificateEditorModalShell>
 
-      {deleteConfirmId !== null && (
+      {deleteConfirmId !== null && createPortal(
         <div className="modal-overlay" onClick={() => setDeleteConfirmId(null)}>
           <div className="modal" onClick={(event) => event.stopPropagation()} style={{ maxWidth: '400px' }}>
             <div className="modal-header">
@@ -1368,7 +1369,8 @@ export default function CompletionCertificatesPanel({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
