@@ -19,6 +19,7 @@ const PUBLIC_ROUTES = [
   '/api/tg-app',
   '/api/lesson-media',
   '/api/internal',
+  '/api/public/courses',
   '/enroll',
   '/api/enroll',
   '/register-teacher',
