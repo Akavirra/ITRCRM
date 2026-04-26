@@ -11,13 +11,13 @@ import {
   Pencil,
   Eye,
   XCircle,
-  Loader2,
   QrCode,
   Download,
   Copy,
 } from 'lucide-react';
 import { t } from '@/i18n/t';
 import QRCode from 'qrcode';
+import CertificatesTableSkeleton from '@/components/certificates/CertificatesTableSkeleton';
 
 interface EnrollmentToken {
   id: number;
@@ -569,10 +569,7 @@ export default function EnrollmentPage() {
           {/* Table */}
           <div className="table-container">
             {loading && filteredSubmissions.length === 0 ? (
-              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--gray-500)' }}>
-                <Loader2 size={24} strokeWidth={1.5} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 8px' }} />
-                {t('common.loading')}
-              </div>
+              <CertificatesTableSkeleton columns={6} rows={5} />
             ) : filteredSubmissions.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">
@@ -708,10 +705,7 @@ export default function EnrollmentPage() {
 
           <div className="table-container">
             {loading && tokens.length === 0 ? (
-              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--gray-500)' }}>
-                <Loader2 size={24} strokeWidth={1.5} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 8px' }} />
-                {t('common.loading')}
-              </div>
+              <CertificatesTableSkeleton columns={5} rows={5} />
             ) : tokens.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">
