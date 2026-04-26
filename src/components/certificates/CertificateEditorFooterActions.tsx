@@ -27,12 +27,12 @@ export default function CertificateEditorFooterActions({
 }: CertificateEditorFooterActionsProps) {
   return (
     <div className={className}>
-      <div className="footer-left">
+      <div style={{ display: 'flex', alignItems: 'center' }}>
         <button className="btn btn-secondary btn-close" onClick={onClose}>
           Закрити
         </button>
       </div>
-      <div className="footer-right">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button className="btn btn-secondary" onClick={onSaveSettings} disabled={settingsDisabled}>
           {savingSettings ? 'Зберігаємо…' : 'Зберегти вигляд'}
         </button>
