@@ -203,7 +203,8 @@ export async function POST(request: NextRequest) {
       interested_courses,
       source,
       photo,
-      gender
+      gender,
+      parent_telegram_chat_id
     } = body;
     
     if (!full_name || full_name.trim().length === 0) {
@@ -242,7 +243,8 @@ export async function POST(request: NextRequest) {
       parent2_relation?.trim(),
       interestedCoursesValue,
       source?.trim(),
-      gender || undefined
+      gender || undefined,
+      parent_telegram_chat_id || undefined
     );
     
     await safeAddStudentHistoryEntry(

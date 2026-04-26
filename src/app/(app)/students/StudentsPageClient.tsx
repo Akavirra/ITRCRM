@@ -66,6 +66,7 @@ interface Student {
   parent2_relation?: string | null;
   interested_courses?: string | null;
   source?: string | null;
+  parent_telegram_chat_id?: string | null;
   groups_count?: number;
   is_active?: boolean;
   created_at?: string;
@@ -1488,7 +1489,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                         </a>
                         
                         {/* Contact Info */}
-                        {(getPrimaryContactPhone(student) || student.email) && (
+                        {(getPrimaryContactPhone(student) || student.email || student.parent_telegram_chat_id) && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                             {getPrimaryContactPhone(student) && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
@@ -1564,6 +1565,42 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
                                   </svg>
                                 )}
                                 {student.email}
+                              </span>
+                            )}
+                            {student.parent_telegram_chat_id && (
+                              <span
+                                onClick={() => {
+                                  navigator.clipboard.writeText(student.parent_telegram_chat_id || '');
+                                  setCopiedField(`tg-${student.parent_telegram_chat_id}`);
+                                  setTimeout(() => setCopiedField(null), 2000);
+                                }}
+                                style={{
+                                  fontSize: '0.8125rem',
+                                  color: copiedField === `tg-${student.parent_telegram_chat_id}` ? '#0284c7' : '#475569',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.3125rem',
+                                  transition: 'color 0.15s',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                onMouseEnter={(e) => { if (copiedField !== `tg-${student.parent_telegram_chat_id}`) e.currentTarget.style.color = '#0284c7'; }}
+                                onMouseLeave={(e) => { if (copiedField !== `tg-${student.parent_telegram_chat_id}`) e.currentTarget.style.color = '#475569'; }}
+                                title={`${student.parent_telegram_chat_id} (клікніть щоб скопіювати)`}
+                              >
+                                {copiedField === `tg-${student.parent_telegram_chat_id}` ? (
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                ) : (
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="22" y1="2" x2="11" y2="13" />
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                  </svg>
+                                )}
+                                {student.parent_telegram_chat_id}
                               </span>
                             )}
                             {/* Show parent info on separate line only if no phone */}

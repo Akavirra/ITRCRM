@@ -22,6 +22,7 @@ export type StudentRecord = {
   interested_courses?: string | null;
   source?: string | null;
   gender?: 'male' | 'female' | null;
+  parent_telegram_chat_id?: string | null;
 };
 
 type FormState = {
@@ -45,6 +46,7 @@ type FormState = {
   source: string;
   source_other: string;
   photo: string | null;
+  parent_telegram_chat_id: string;
 };
 
 type AutocompleteStudent = {
@@ -81,6 +83,7 @@ const EMPTY_FORM: FormState = {
   source: '',
   source_other: '',
   photo: null,
+  parent_telegram_chat_id: '',
 };
 
 const RELATION_OPTIONS = [
@@ -173,6 +176,7 @@ function mapStudentToForm(student: StudentRecord): FormState {
     parent2_phone: extractPhoneDigits(student.parent2_phone),
     parent2_relation: secondaryRelation.value,
     parent2_relation_other: secondaryRelation.other,
+    parent_telegram_chat_id: student.parent_telegram_chat_id || '',
     notes: student.notes || '',
     interested_courses: student.interested_courses
       ? student.interested_courses
@@ -205,6 +209,7 @@ export type CreateStudentPrefill = Partial<
     | 'photo'
     | 'interested_courses'
     | 'source'
+    | 'parent_telegram_chat_id'
   >
 >;
 
@@ -233,6 +238,7 @@ function mapPrefillToForm(prefill: CreateStudentPrefill): FormState {
     parent2_phone: extractPhoneDigits(prefill.parent2_phone),
     parent2_relation: secondaryRelation.value,
     parent2_relation_other: secondaryRelation.other,
+    parent_telegram_chat_id: prefill.parent_telegram_chat_id || '',
     notes: prefill.notes || '',
     interested_courses: prefill.interested_courses
       ? String(prefill.interested_courses)
@@ -597,6 +603,7 @@ export default function CreateStudentModal({
           interested_courses: form.interested_courses.join(', '),
           source: form.source === 'other' ? form.source_other.trim() : (form.source || ''),
           photo: photoUrl,
+          parent_telegram_chat_id: form.parent_telegram_chat_id || null,
         }),
       });
 
@@ -923,6 +930,15 @@ export default function CreateStudentModal({
                     {errors.parent_relation_other && <span className="form-error">{errors.parent_relation_other}</span>}
                   </div>
                 )}
+                <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                  <label className="form-label">Telegram ID</label>
+                  <input
+                    className="form-input"
+                    value={form.parent_telegram_chat_id}
+                    onChange={(e) => setForm((prev) => ({ ...prev, parent_telegram_chat_id: e.target.value.replace(/\D/g, '') }))}
+                    placeholder="Наприклад: 123456789"
+                  />
+                </div>
               </div>
 
               <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '18px', padding: '1.25rem 1.5rem' }}>

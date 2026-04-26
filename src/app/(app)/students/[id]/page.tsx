@@ -34,6 +34,7 @@ interface Student {
   parent2_relation: string | null;
   interested_courses: string | null;
   source: string | null;
+  parent_telegram_chat_id: string | null;
   is_active: boolean;
   study_status: 'studying' | 'not_studying';
   created_at: string;
@@ -2208,6 +2209,70 @@ export default function StudentProfilePage() {
                           title="Клікніть щоб скопіювати"
                         >
                           {student.email}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Telegram */}
+                  {student.parent_telegram_chat_id && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.75rem 1rem',
+                        backgroundColor: '#f0f9ff',
+                        borderRadius: '0.625rem',
+                        border: '1px solid #bae6fd',
+                        transition: 'background-color 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0f2fe'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0f9ff'}
+                    >
+                      <div style={{
+                        padding: '0.375rem',
+                        backgroundColor: copiedField === 'telegram' ? '#bae6fd' : '#dbeafe',
+                        borderRadius: '0.375rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        transition: 'background-color 0.15s',
+                      }}>
+                        {copiedField === 'telegram' ? (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13" />
+                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                          </svg>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.6875rem', color: '#0284c7', fontWeight: '600', marginBottom: '0.125rem' }}>Telegram</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                        <a
+                          href={`https://t.me/user?id=${student.parent_telegram_chat_id}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigator.clipboard.writeText(student.parent_telegram_chat_id || '');
+                            setCopiedField('telegram');
+                            setTimeout(() => setCopiedField(null), 2000);
+                          }}
+                          style={{
+                            color: copiedField === 'telegram' ? '#0284c7' : 'var(--gray-900)',
+                            textDecoration: 'none',
+                            fontSize: '0.9375rem',
+                            fontWeight: '600',
+                            transition: 'color 0.15s',
+                          }}
+                          title="Клікніть щоб скопіювати"
+                        >
+                          {student.parent_telegram_chat_id}
                         </a>
                       </div>
                     </div>
