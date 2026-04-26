@@ -502,7 +502,8 @@ export default function EnrollmentPage() {
   const filteredSubmissions = submissions;
 
   return (
-    <div className="card">
+    <>
+      <div className="card">
       {/* Tabs */}
       <div className="tabs" style={{ padding: '0 1.5rem' }}>
         <button
@@ -842,6 +843,7 @@ export default function EnrollmentPage() {
           </div>
         </>
       )}
+    </div>
 
       {/* QR Modal */}
       {qrDataUrl && (
@@ -1123,7 +1125,7 @@ export default function EnrollmentPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
