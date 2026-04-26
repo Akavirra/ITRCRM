@@ -87,6 +87,8 @@ const MIXED_ACCESS = {
   // Групи: SELECT повний (для відображення розкладу), UPDATE заборонено
   // (адмін керує). Викладач може лише оновити topic/status у lessons.
   groups: {
+    // Свідомо НЕ включаємо monthly_price — це конфіденційно (бухгалтерія).
+    // Якщо викладачу треба знати ціну — окремий процес через адміна.
     select: [
       'id',
       'public_id',
@@ -99,33 +101,43 @@ const MIXED_ACCESS = {
       'timezone',
       'start_date',
       'end_date',
+      'capacity',
       'status',
-      'price',
+      'note',
+      'photos_folder_url',
       'is_active',
-      'weather_city',
+      'created_at',
+      'updated_at',
     ],
   },
-  // Учні: SELECT повний (з PII батьків — викладачу треба для зв'язку).
-  // INSERT/DELETE заборонено.
+  // Учні: SELECT з PII батьків (викладачу треба для звʼязку).
+  // INSERT/DELETE заборонено. discount свідомо приховано (бухгалтерія).
   students: {
     select: [
       'id',
       'public_id',
       'full_name',
+      'email',
       'photo',
       'birth_date',
-      'parent_name',
-      'parent_phone',
-      'parent2_phone',
-      'parent_email',
+      'school',
       'gender',
+      'parent_name',
+      'parent_relation',
+      'parent_phone',
+      'parent2_name',
+      'parent2_relation',
+      'parent2_phone',
+      'interested_courses',
+      'source',
       'notes',
       'is_active',
       'created_at',
+      'updated_at',
     ],
   },
-  // Заняття: SELECT повний + UPDATE на тему/статус/нотатки/фактичні дати
-  // (викладач веде урок). Створення/видалення лишається адміну.
+  // Заняття: SELECT повний + UPDATE на тему/статус/нотатки + audit-метадані
+  // (хто і коли поставив тему/нотатки). Створення/видалення лишається адміну.
   lessons: {
     select: [
       'id',
@@ -141,25 +153,48 @@ const MIXED_ACCESS = {
       'is_trial',
       'teacher_id',
       'original_date',
-      'cancellation_reason',
-      'actual_start_at',
-      'actual_end_at',
       'notes',
+      'topic_set_by',
+      'topic_set_at',
+      'notes_set_by',
+      'notes_set_at',
+      'reported_by',
+      'reported_at',
+      'reported_via',
+      'created_at',
+      'updated_at',
     ],
     update: [
       'topic',
       'status',
-      'actual_start_at',
-      'actual_end_at',
       'notes',
+      'topic_set_by',
+      'topic_set_at',
+      'notes_set_by',
+      'notes_set_at',
+      'reported_by',
+      'reported_at',
+      'reported_via',
+      'updated_at',
     ],
   },
   // Присутність: викладач відмічає (INSERT/UPDATE/DELETE — є випадки коли треба
   // видалити помилкову позначку). DELETE даємо обмежено через код.
   attendance: {
-    select: ['id', 'lesson_id', 'student_id', 'status', 'comment', 'is_trial', 'created_at'],
-    insert: ['lesson_id', 'student_id', 'status', 'comment', 'is_trial'],
-    update: ['status', 'comment'],
+    select: [
+      'id',
+      'lesson_id',
+      'student_id',
+      'status',
+      'comment',
+      'is_trial',
+      'makeup_lesson_id',
+      'updated_by',
+      'updated_at',
+      'added_by',
+    ],
+    insert: ['lesson_id', 'student_id', 'status', 'comment', 'is_trial', 'makeup_lesson_id', 'added_by'],
+    update: ['status', 'comment', 'makeup_lesson_id', 'updated_by', 'updated_at'],
     delete: true,
   },
   // Ярлики (Phase D.1): викладач керує своїми
@@ -247,16 +282,26 @@ const MIXED_ACCESS = {
     update: ['value', 'comment'],
     delete: true,
   },
-  // Аудит занять — read-only (викладач бачить історію змін)
+  // Аудит — read-only (викладач бачить історію змін свого заняття/групи).
+  // Поля payment_id навмисно не приховуємо: воно лише nullable-FK; самих payments
+  // викладач не читає (немає GRANT-у на таблицю payments).
   audit_events: {
     select: [
       'id',
       'entity_type',
       'entity_id',
-      'action',
-      'actor_user_id',
-      'actor_name',
-      'meta',
+      'entity_public_id',
+      'entity_title',
+      'event_type',
+      'event_badge',
+      'description',
+      'user_id',
+      'user_name',
+      'student_id',
+      'group_id',
+      'lesson_id',
+      'course_id',
+      'metadata',
       'created_at',
     ],
   },
