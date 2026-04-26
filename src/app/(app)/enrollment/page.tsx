@@ -847,7 +847,15 @@ export default function EnrollmentPage() {
 
       {/* QR Modal */}
       {qrDataUrl && (
-        <div className="modal-overlay" onClick={() => { setQrDataUrl(null); setQrToken(null); }}>
+        <div
+          className="modal-overlay"
+          onClick={() => { setQrDataUrl(null); setQrToken(null); }}
+          style={{
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            WebkitBackdropFilter: 'blur(16px)',
+            backdropFilter: 'blur(16px)',
+          }}
+        >
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
             <div className="modal-header" style={{ position: 'relative', justifyContent: 'center' }}>
               <h3 className="modal-title">QR-код для анкети</h3>
