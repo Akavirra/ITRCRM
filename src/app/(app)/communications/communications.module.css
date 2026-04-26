@@ -1173,7 +1173,7 @@
 
 .historyModal {
   width: min(100%, 1140px);
-  max-height: calc(100vh - 48px);
+  max-height: calc(100vh - 108px);
   overflow: auto;
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
