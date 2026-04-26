@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { run, get, all } from '@/db';
-import { answerCallbackQuery, editMessageText } from '@/lib/telegram';
+import { sendMessage, answerCallbackQuery, editMessageText } from '@/lib/telegram';
 import { checkAndAutoCancelLesson } from '@/lib/lessons';
 import crypto from 'crypto';
 
@@ -184,9 +184,62 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Handle regular updates from Telegram (like messages)
-    if (body.message) {
-      // Additional message handling can be added here
+    // Handle /start with enrollment token
+    if (body.message && body.message.text && typeof body.message.text === 'string') {
+      const text = body.message.text;
+      const chatId = body.message.chat?.id;
+      const fromId = body.message.from?.id;
+
+      if (text.startsWith('/start enroll_')) {
+        const enrollToken = text.replace('/start enroll_', '').trim();
+
+        if (enrollToken && chatId) {
+          try {
+            // Find the token
+            const tokenRow = await get<{ id: number; expires_at: string; used_at: string | null }>(
+              `SELECT id, expires_at, used_at FROM enrollment_tokens WHERE token = $1`,
+              [enrollToken]
+            );
+
+            if (!tokenRow) {
+              await sendMessage(chatId.toString(), '❌ Посилання не знайдено. Зверніться до адміністратора школи.');
+              return NextResponse.json({ ok: true });
+            }
+
+            if (new Date(tokenRow.expires_at) < new Date()) {
+              await sendMessage(chatId.toString(), '⏰ Термін дії посилання вичерпано. Зверніться до адміністратора школи.');
+              return NextResponse.json({ ok: true });
+            }
+
+            const chatIdStr = chatId.toString();
+
+            // Save to token (always, so it's available at submission time)
+            await run(
+              `UPDATE enrollment_tokens SET parent_telegram_chat_id = $1 WHERE id = $2`,
+              [chatIdStr, tokenRow.id]
+            );
+
+            // If submission already exists, update it too
+            await run(
+              `UPDATE enrollment_submissions SET parent_telegram_chat_id = $1 WHERE token_id = $2`,
+              [chatIdStr, tokenRow.id]
+            );
+
+            await sendMessage(
+              chatIdStr,
+              '✅ Telegram підключено для сповіщень!\n\nВи отримуватимете нагадування та важливі повідомлення від школи тут.'
+            );
+
+            return NextResponse.json({ ok: true });
+          } catch (err) {
+            console.error('[Telegram Callback] Enrollment start error:', err);
+            if (chatId) {
+              await sendMessage(chatId.toString(), '❌ Помилка при підключенні. Спробуйте ще раз або зверніться до адміністратора.');
+            }
+            return NextResponse.json({ ok: false, error: 'Internal error' }, { status: 500 });
+          }
+        }
+      }
     }
     
     return NextResponse.json({ ok: true });

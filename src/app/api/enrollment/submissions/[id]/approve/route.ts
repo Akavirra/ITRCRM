@@ -46,7 +46,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     parent2Phone,
     submission.parent2_relation || undefined,
     submission.interested_courses || undefined,
-    submission.source || undefined
+    submission.source || undefined,
+    undefined,
+    submission.parent_telegram_chat_id || undefined
   );
 
   await approveSubmission(submission.id, user.id, student.id);

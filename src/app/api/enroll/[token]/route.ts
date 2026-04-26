@@ -24,13 +24,14 @@ function normalizeInterestedCourses(value: unknown): string | undefined {
 }
 
 export async function GET(request: NextRequest, { params }: { params: { token: string } }) {
-  const { valid, reason } = await validateToken(params.token);
+  const { valid, reason, tokenData } = await validateToken(params.token);
 
-  if (!valid) {
+  if (!valid || !tokenData) {
     return NextResponse.json({ valid: false, reason }, { status: 400 });
   }
 
-  return NextResponse.json({ valid: true });
+  const telegramConnected = !!tokenData.parent_telegram_chat_id;
+  return NextResponse.json({ valid: true, telegramConnected });
 }
 
 export async function POST(request: NextRequest, { params }: { params: { token: string } }) {
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     notes: body.notes?.trim() || undefined,
     interested_courses: normalizeInterestedCourses(body.interested_courses),
     source: body.source?.trim() || undefined,
+    parent_telegram_chat_id: tokenData.parent_telegram_chat_id || undefined,
   });
 
   await markTokenUsed(tokenData.id);
@@ -104,5 +106,5 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     },
   });
 
-  return NextResponse.json({ success: true, id: submission.id }, { status: 201 });
+  return NextResponse.json({ success: true, id: submission.id, telegramConnected: !!submission.parent_telegram_chat_id }, { status: 201 });
 }

@@ -51,6 +51,7 @@ interface Submission {
   reviewed_by: number | null;
   reviewed_at: string | null;
   student_id: number | null;
+  parent_telegram_chat_id: string | null;
   created_at: string;
 }
 
@@ -923,6 +924,9 @@ export default function EnrollmentPage() {
                   <DetailRow label="Уточнення">
                     <input className="form-input" value={editData.parent_relation_other} onChange={(e) => setEditData({ ...editData, parent_relation_other: e.target.value })} />
                   </DetailRow>
+                )}
+                {!editing && (
+                  <DetailRow label="Telegram" value={selectedSubmission.parent_telegram_chat_id ? '✅ Підключено' : '—'} />
                 )}
 
                 {(selectedSubmission.parent2_name || selectedSubmission.parent2_phone || selectedSubmission.parent2_relation || editing) && (

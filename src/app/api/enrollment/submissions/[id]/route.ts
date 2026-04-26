@@ -66,6 +66,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     'notes',
     'interested_courses',
     'source',
+    'parent_telegram_chat_id',
   ];
 
   const updates: Record<string, unknown> = {};

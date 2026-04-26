@@ -9,6 +9,7 @@ export interface EnrollmentToken {
   used_at: string | null;
   manually_closed_at?: string | null;
   has_submission?: boolean;
+  parent_telegram_chat_id: string | null;
   created_by: number;
   created_at: string;
 }
@@ -34,6 +35,7 @@ export interface EnrollmentSubmission {
   reviewed_by: number | null;
   reviewed_at: string | null;
   student_id: number | null;
+  parent_telegram_chat_id: string | null;
   created_at: string;
 }
 
@@ -148,14 +150,16 @@ export async function createSubmission(
     notes?: string;
     interested_courses?: string;
     source?: string;
+    parent_telegram_chat_id?: string | null;
   }
 ): Promise<EnrollmentSubmission> {
   const result = await run(
     `INSERT INTO enrollment_submissions
      (token_id, child_first_name, child_last_name, birth_date, school, email,
       parent_name, parent_phone, parent_relation,
-      parent2_name, parent2_phone, parent2_relation, notes, interested_courses, source)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      parent2_name, parent2_phone, parent2_relation, notes, interested_courses, source,
+      parent_telegram_chat_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
      RETURNING *`,
     [
       tokenId,
@@ -173,6 +177,7 @@ export async function createSubmission(
       data.notes || null,
       data.interested_courses || null,
       data.source || null,
+      data.parent_telegram_chat_id || null,
     ]
   );
 
@@ -215,6 +220,7 @@ export async function updateSubmission(
     notes: string | null;
     interested_courses: string | null;
     source: string | null;
+    parent_telegram_chat_id: string | null;
   }>
 ): Promise<void> {
   const fields: string[] = [];

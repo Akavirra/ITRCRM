@@ -132,6 +132,7 @@ export default function EnrollPage() {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [coursesOpen, setCoursesOpen] = useState(false);
+  const [telegramConnected, setTelegramConnected] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -141,6 +142,7 @@ export default function EnrollPage() {
       .then((data) => {
         if (data.valid) {
           setState('form');
+          setTelegramConnected(!!data.telegramConnected);
         } else {
           setState('error');
           setErrorReason(data.reason || 'unknown');
@@ -158,6 +160,25 @@ export default function EnrollPage() {
       .then((data) => setCourses(Array.isArray(data.courses) ? data.courses : []))
       .catch(() => setCourses([]));
   }, []);
+
+  // Poll Telegram connection status while form is open
+  useEffect(() => {
+    if (state !== 'form' || telegramConnected || !token) return;
+
+    const interval = setInterval(() => {
+      fetch(`/api/enroll/${token}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.telegramConnected) {
+            setTelegramConnected(true);
+            clearInterval(interval);
+          }
+        })
+        .catch(() => {});
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [state, telegramConnected, token]);
 
   useEffect(() => {
     const handleDocumentClick = (event: MouseEvent) => {
@@ -275,6 +296,7 @@ export default function EnrollPage() {
       const data = await res.json();
 
       if (res.ok) {
+        setTelegramConnected(!!data.telegramConnected);
         setState('success');
       } else {
         setState('form');
@@ -390,6 +412,7 @@ export default function EnrollPage() {
   }
 
   if (state === 'success') {
+    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || '';
     return (
       <div style={styles.container}>
         <div style={styles.card}>
@@ -398,6 +421,26 @@ export default function EnrollPage() {
           <p style={styles.successDesc}>
             Анкету успішно надіслано. Адміністратор школи зв&apos;яжеться з вами найближчим часом.
           </p>
+          {!telegramConnected && botUsername && (
+            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+              <p style={{ ...styles.sectionHint, marginBottom: '0.75rem' } as React.CSSProperties}>
+                Підключіть Telegram, щоб отримувати сповіщення від школи
+              </p>
+              <a
+                href={`https://t.me/${botUsername}?start=enroll_${token}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={styles.telegramBtn}
+              >
+                📲 Підключити Telegram
+              </a>
+            </div>
+          )}
+          {telegramConnected && (
+            <p style={{ marginTop: '1rem', color: '#16a34a', fontWeight: 600, textAlign: 'center' }}>
+              ✅ Telegram підключено для сповіщень
+            </p>
+          )}
         </div>
       </div>
     );
@@ -487,6 +530,29 @@ export default function EnrollPage() {
           </fieldset>
 
           {renderContactSection('parent', 'Основний контакт', true)}
+
+          <fieldset style={styles.fieldset}>
+            <legend style={styles.legend}>Telegram для сповіщень</legend>
+            <p style={styles.sectionHint}>Отримуйте нагадування та важливі повідомлення від школи в Telegram (необов&apos;язково).</p>
+            {telegramConnected ? (
+              <div style={styles.telegramConnectedRow}>
+                <span style={styles.telegramConnectedIcon}>✓</span>
+                <span style={styles.telegramConnectedText}>Telegram підключено</span>
+              </div>
+            ) : (
+              <>
+                <a
+                  href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || ''}?start=enroll_${token}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.telegramBtn}
+                >
+                  📲 Підключити Telegram
+                </a>
+                <p style={styles.telegramHint}>Натисніть кнопку, відкрийте бота і натисніть «Почати».</p>
+              </>
+            )}
+          </fieldset>
 
           {renderContactSection('parent2', 'Додатковий контакт')}
 
@@ -854,5 +920,40 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#64748b',
     fontSize: '0.95rem',
     lineHeight: 1.6,
+  },
+  telegramBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    background: '#229ed9',
+    color: '#fff',
+    padding: '0.75rem 1rem',
+    borderRadius: '12px',
+    textDecoration: 'none',
+    fontWeight: 600,
+    fontSize: '0.95rem',
+    transition: 'transform 140ms ease-out, box-shadow 160ms ease-out',
+    boxShadow: '0 8px 20px rgba(34, 158, 217, 0.22)',
+    cursor: 'pointer',
+  },
+  telegramConnectedRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    color: '#16a34a',
+    fontWeight: 600,
+    fontSize: '0.95rem',
+  },
+  telegramConnectedIcon: {
+    color: '#16a34a',
+    fontWeight: 700,
+  },
+  telegramConnectedText: {
+    color: '#16a34a',
+  },
+  telegramHint: {
+    color: '#64748b',
+    fontSize: '0.85rem',
+    marginTop: '0.5rem',
   },
 };
