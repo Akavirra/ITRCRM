@@ -5,7 +5,6 @@ import {
   Plus,
   FileText,
   KeyRound,
-  Search,
   Check,
   X,
   Trash2,
@@ -552,39 +551,12 @@ export default function EnrollmentPage() {
 
             {/* Controls row */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-              <div style={{ position: 'relative', maxWidth: '220px', width: '100%' }}>
-                <Search size={16} strokeWidth={1.75} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-400)', pointerEvents: 'none' }} />
-                <input
-                  type="search"
-                  className="form-input"
-                  value={searchInput}
-                  onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="Пошук..."
-                  style={{ paddingLeft: '36px', maxWidth: '220px' }}
-                />
-              </div>
-              <select
-                className="form-select"
-                value={statusFilter}
-                onChange={(event) => {
-                  setPage(1);
-                  setStatusFilter(event.target.value);
-                }}
-                style={{ maxWidth: '200px' }}
-              >
-                <option value="">Усі статуси</option>
-                <option value="pending">Очікує</option>
-                <option value="approved">Затверджені</option>
-                <option value="rejected">Відхилені</option>
-              </select>
-
               <div
                 style={{
                   display: 'inline-flex',
                   borderRadius: '8px',
                   border: '1px solid var(--gray-200)',
                   overflow: 'hidden',
-                  marginLeft: 'auto',
                 }}
               >
                 {statusFilterOptions.map((f) => {
