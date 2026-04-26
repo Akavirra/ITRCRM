@@ -143,6 +143,16 @@ export default function EnrollPage() {
         if (data.valid) {
           setState('form');
           setTelegramConnected(!!data.telegramConnected);
+          // Restore saved form data if user returned from Telegram
+          try {
+            const saved = localStorage.getItem(`enroll_form_${token}`);
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              setFormData((prev) => ({ ...prev, ...parsed }));
+            }
+          } catch {
+            // ignore parse errors
+          }
         } else {
           setState('error');
           setErrorReason(data.reason || 'unknown');
@@ -179,6 +189,33 @@ export default function EnrollPage() {
 
     return () => clearInterval(interval);
   }, [state, telegramConnected, token]);
+
+  // Save form data to localStorage so it's preserved if user leaves to Telegram
+  useEffect(() => {
+    if (state !== 'form' || !token) return;
+    localStorage.setItem(`enroll_form_${token}`, JSON.stringify(formData));
+  }, [formData, state, token]);
+
+  // Refresh Telegram status when user returns to the tab
+  useEffect(() => {
+    if (state !== 'form' || !token) return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetch(`/api/enroll/${token}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.telegramConnected) {
+              setTelegramConnected(true);
+            }
+          })
+          .catch(() => {});
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [state, token]);
 
   useEffect(() => {
     const handleDocumentClick = (event: MouseEvent) => {
@@ -298,6 +335,12 @@ export default function EnrollPage() {
       if (res.ok) {
         setTelegramConnected(!!data.telegramConnected);
         setState('success');
+        // Clear saved form data after successful submission
+        try {
+          localStorage.removeItem(`enroll_form_${token}`);
+        } catch {
+          // ignore
+        }
       } else {
         setState('form');
         setValidationErrors(data.errors || [data.error || 'Помилка при відправці анкети']);
