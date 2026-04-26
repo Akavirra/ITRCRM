@@ -846,14 +846,19 @@ export default function EnrollmentPage() {
       {/* QR Modal */}
       {qrDataUrl && (
         <div className="modal-overlay" onClick={() => { setQrDataUrl(null); setQrToken(null); }}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px', textAlign: 'center' }}>
-            <div className="modal-header" style={{ justifyContent: 'center' }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+            <div className="modal-header" style={{ position: 'relative', justifyContent: 'center' }}>
               <h3 className="modal-title">QR-код для анкети</h3>
-              <button className="modal-close" onClick={() => { setQrDataUrl(null); setQrToken(null); }} aria-label="Закрити">
+              <button
+                className="modal-close"
+                onClick={() => { setQrDataUrl(null); setQrToken(null); }}
+                aria-label="Закрити"
+                style={{ position: 'absolute', right: '1.5rem', top: '50%', transform: 'translateY(-50%)' }}
+              >
                 <XCircle size={20} />
               </button>
             </div>
-            <div className="modal-body">
+            <div className="modal-body" style={{ textAlign: 'center' }}>
               <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)', marginBottom: '1rem' }}>
                 Дійсний 60 хвилин. Одноразовий.
               </p>
