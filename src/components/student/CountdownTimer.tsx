@@ -5,6 +5,9 @@
  *
  * Показує Xд Xг Xхв Xс до цільового часу.
  * Коли час настав — викликає onReached (якщо передано) і показує прапорець "почалось".
+ *
+ * ВАЖЛИВО: використовує useMounted, щоб уникнути hydration mismatch
+ * (сервер і клієнт мають різний Date.now() при рендері).
  */
 
 import { useEffect, useState } from 'react';
@@ -48,6 +51,11 @@ export default function CountdownTimer({
 }: CountdownTimerProps) {
   const targetMs = new Date(targetIso).getTime();
   const [remaining, setRemaining] = useState(() => calcRemaining(targetMs));
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (remaining.total <= 0) {
@@ -70,6 +78,16 @@ export default function CountdownTimer({
     : compact
       ? 'student-countdown student-countdown--compact'
       : 'student-countdown';
+
+  // Avoid hydration mismatch: render placeholder until mounted
+  if (!mounted) {
+    return (
+      <div className={wrapperClass} style={{ visibility: 'hidden' }} aria-hidden="true">
+        <div className="student-countdown__label">{label}</div>
+        <div className="student-countdown__time">00г 00хв 00с</div>
+      </div>
+    );
+  }
 
   if (remaining.total <= 0) {
     return (

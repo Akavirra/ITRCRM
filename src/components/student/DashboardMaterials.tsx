@@ -28,24 +28,29 @@ interface GalleryItem {
 
 interface DashboardMaterialsProps {
   lessonId: number | null;
+  groupId: number | string | null;
 }
 
-export default function DashboardMaterials({ lessonId }: DashboardMaterialsProps) {
+export default function DashboardMaterials({ lessonId, groupId }: DashboardMaterialsProps) {
   const [shortcuts, setShortcuts] = useState<Shortcut[] | null>(null);
   const [gallery, setGallery] = useState<GalleryItem[] | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!lessonId) return;
+    if (!lessonId) {
+      setShortcuts([]);
+      setGallery([]);
+      return;
+    }
     setLoading(true);
 
     Promise.all([
-      fetch(`/api/student/lessons/${lessonId}/shortcuts`).then((r) =>
-        r.ok ? (r.json() as Promise<Shortcut[]>) : []
-      ),
-      fetch(`/api/student/lessons/${lessonId}/gallery`).then((r) =>
-        r.ok ? (r.json() as Promise<GalleryItem[]>) : []
-      ),
+      fetch(`/api/student/lessons/${lessonId}/shortcuts`)
+        .then((r) => (r.ok ? r.json() : { items: [] }))
+        .then((d) => (Array.isArray(d.items) ? d.items : [])),
+      fetch(`/api/student/lessons/${lessonId}/gallery`)
+        .then((r) => (r.ok ? r.json() : { items: [] }))
+        .then((d) => (Array.isArray(d.items) ? d.items : [])),
     ])
       .then(([s, g]) => {
         setShortcuts(s ?? []);
@@ -67,7 +72,7 @@ export default function DashboardMaterials({ lessonId }: DashboardMaterialsProps
             Матеріали до заняття
           </div>
         </div>
-        <p className="student-dashboard-materials__empty">Матеріали з'являться перед заняттям</p>
+        <p className="student-dashboard-materials__empty">Матеріали з&apos;являться перед заняттям</p>
       </div>
     );
   }
@@ -82,7 +87,7 @@ export default function DashboardMaterials({ lessonId }: DashboardMaterialsProps
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0', color: '#9CA3AF', fontSize: 13 }}>
-          <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+          <Loader2 size={16} className="student-spin" />
           Завантаження…
         </div>
       </div>
@@ -105,7 +110,7 @@ export default function DashboardMaterials({ lessonId }: DashboardMaterialsProps
             Матеріали до заняття
           </div>
         </div>
-        <p className="student-dashboard-materials__empty">Матеріали з'являться перед заняттям</p>
+        <p className="student-dashboard-materials__empty">Матеріали з&apos;являться перед заняттям</p>
       </div>
     );
   }
@@ -117,9 +122,9 @@ export default function DashboardMaterials({ lessonId }: DashboardMaterialsProps
           <BookOpen />
           Матеріали до заняття
         </div>
-        {totalCount > allItems.length && (
+        {totalCount > allItems.length && groupId && (
           <Link
-            href={`/groups/${lessonId}`}
+            href={groupId === 'individual' ? '/groups/individual' : `/groups/${groupId}`}
             className="student-dashboard-card__link"
           >
             Переглянути всі
@@ -168,7 +173,7 @@ function GalleryItemRow({ item }: { item: GalleryItem }) {
   return (
     <a href={item.url} target="_blank" rel="noopener noreferrer" className="student-dashboard-material">
       <span className="student-dashboard-material__icon">
-        {item.isVideo ? <Image size={16} /> : <Image size={16} />}
+        <Image size={16} />
       </span>
       <span className="student-dashboard-material__label">{item.filename}</span>
       <span className="student-dashboard-material__arrow">

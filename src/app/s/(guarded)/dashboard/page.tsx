@@ -158,7 +158,7 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
 
         <div className="student-dashboard-side">
           {/* Materials for next lesson */}
-          <DashboardMaterials lessonId={overallNext?.id ?? null} />
+          <DashboardMaterials lessonId={overallNext?.id ?? null} groupId={nextGroup?.id ?? null} />
         </div>
       </div>
 

@@ -27,8 +27,8 @@ export default function DashboardRecentWorks() {
   useEffect(() => {
     setLoading(true);
     fetch('/api/student/works')
-      .then((r) => (r.ok ? (r.json() as Promise<StudentWorkView[]>) : []))
-      .then((data) => setWorks((data ?? []).slice(0, 3)))
+      .then((r) => (r.ok ? r.json() : { works: [] }))
+      .then((data) => setWorks((Array.isArray(data.works) ? data.works : []).slice(0, 3)))
       .catch(() => setWorks([]))
       .finally(() => setLoading(false));
   }, []);
@@ -43,7 +43,7 @@ export default function DashboardRecentWorks() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0', color: '#9CA3AF', fontSize: 13 }}>
-          <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+          <Loader2 size={16} className="student-spin" />
           Завантаження…
         </div>
       </div>
