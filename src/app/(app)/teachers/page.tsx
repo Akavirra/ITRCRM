@@ -350,6 +350,19 @@ export default function TeachersPage() {
     }
   };
 
+  const handleCreate = () => {
+    setEditingTeacher(null);
+    setFormData({
+      first_name: '',
+      last_name: '',
+      patronymic: '',
+      email: '',
+      phone: '',
+      telegram_id: '',
+      notes: '',
+      photo: null,
+      photoFile: null,
+    });
     setModalMode('invite');
     setShowModal(true);
     // Auto-generate QR if in invite mode
