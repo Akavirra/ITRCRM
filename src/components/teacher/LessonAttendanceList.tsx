@@ -31,15 +31,13 @@ interface Props {
 }
 
 const STATUSES: Array<{
-  value: 'present' | 'late' | 'excused' | 'absent';
+  value: 'present' | 'absent';
   label: string;
   color: string;
   bg: string;
 }> = [
-  { value: 'present', label: 'Був', color: '#047857', bg: '#ecfdf5' },
-  { value: 'late', label: 'Запіз.', color: '#b45309', bg: '#fef3c7' },
-  { value: 'excused', label: 'Поваж.', color: '#1d4ed8', bg: '#dbeafe' },
-  { value: 'absent', label: 'Пропуск', color: '#b91c1c', bg: '#fef2f2' },
+  { value: 'present', label: 'Присутній', color: '#047857', bg: '#ecfdf5' },
+  { value: 'absent', label: 'Відсутній', color: '#b91c1c', bg: '#fef2f2' },
 ];
 
 export default function LessonAttendanceList({
@@ -57,7 +55,7 @@ export default function LessonAttendanceList({
     return map;
   }, [attendance]);
 
-  async function setStatus(studentId: number, status: 'present' | 'late' | 'excused' | 'absent') {
+  async function setStatus(studentId: number, status: 'present' | 'absent') {
     if (savingStudentId) return;
     setSavingStudentId(studentId);
     setError(null);
@@ -96,13 +94,14 @@ export default function LessonAttendanceList({
     }
   }
 
-  // Підрахунок
+  // Підрахунок (тільки present/absent — інші БД-статуси типу makeup_*
+  // у teacher-портaлі не вживаються, але якщо випадково прилетить — підемо в "absent")
   const counts = useMemo(() => {
-    const c = { present: 0, late: 0, excused: 0, absent: 0, none: 0 };
+    const c = { present: 0, absent: 0, none: 0 };
     for (const s of students) {
       const a = attendanceByStudent.get(s.id);
-      const st = a?.status as keyof typeof c | undefined;
-      if (st && st in c) c[st]++;
+      if (a?.status === 'present') c.present++;
+      else if (a?.status) c.absent++;
       else c.none++;
     }
     return c;
@@ -117,10 +116,8 @@ export default function LessonAttendanceList({
       )}
 
       <div className="teacher-attendance-summary">
-        <span><strong>{counts.present}</strong> були</span>
-        <span><strong>{counts.late}</strong> запіз.</span>
-        <span><strong>{counts.excused}</strong> поваж.</span>
-        <span><strong>{counts.absent}</strong> пропустили</span>
+        <span><strong>{counts.present}</strong> присутні</span>
+        <span><strong>{counts.absent}</strong> відсутні</span>
         {counts.none > 0 && (
           <span className="teacher-attendance-summary__pending">
             <strong>{counts.none}</strong> ще не позначено

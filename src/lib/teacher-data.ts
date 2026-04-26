@@ -677,12 +677,15 @@ export async function listAttendanceForMyLesson(
  * Upsert (insert or update) присутності. Перевіряє:
  *   1) урок належить викладачу
  *   2) учень — у моїй групі (інакше викладач не може його позначати)
+ *
+ * Статуси збігаються з БД-CHECK constraint і Telegram-додатком: `present` / `absent`.
+ * makeup_planned / makeup_done — окремий flow (планування відпрацювання) — не тут.
  */
 export async function upsertAttendanceForMyLesson(
   teacherId: number,
   lessonId: number,
   studentId: number,
-  status: 'present' | 'absent' | 'late' | 'excused',
+  status: 'present' | 'absent',
   comment: string | null,
 ): Promise<void> {
   await assertOwnsLesson(teacherId, lessonId);

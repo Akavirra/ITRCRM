@@ -101,6 +101,10 @@ const TEACHER_ALLOWED_PATHS = [
   '/favicon',
   '/robots.txt',
   '/sitemap.xml',
+  // PWA / metadata (auto-generated Next.js): manifest.webmanifest, icon, apple-icon
+  '/manifest.webmanifest',
+  '/icon.svg',
+  '/apple-icon',
 ];
 
 function isTeacherHost(host: string | null): boolean {

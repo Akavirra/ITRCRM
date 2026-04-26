@@ -25,7 +25,10 @@ import {
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const VALID_STATUSES = new Set(['present', 'absent', 'late', 'excused']);
+// БД дозволяє: 'present', 'absent', 'makeup_planned', 'makeup_done'.
+// makeup-статуси — окремий flow (планування відпрацювання), не звичайна позначка.
+// Якщо UI шле 'sick' (для сумісності з teacher-app) — мапимо на 'absent'.
+const VALID_STATUSES = new Set(['present', 'absent']);
 const MAX_COMMENT = 500;
 
 export async function POST(
@@ -42,7 +45,9 @@ export async function POST(
 
   const body = await request.json().catch(() => ({}));
   const studentId = parsePositiveInt(String(body?.studentId ?? ''));
-  const status = typeof body?.status === 'string' ? body.status : '';
+  const rawStatus = typeof body?.status === 'string' ? body.status : '';
+  // Сумісність з teacher-app, який шле 'sick' як еквівалент 'absent'
+  const status = rawStatus === 'sick' ? 'absent' : rawStatus;
   const commentRaw = typeof body?.comment === 'string' ? body.comment.trim() : '';
 
   if (!studentId) {
@@ -50,7 +55,7 @@ export async function POST(
   }
   if (!VALID_STATUSES.has(status)) {
     return NextResponse.json(
-      { error: 'status має бути одним з: present, absent, late, excused' },
+      { error: 'status має бути "present" або "absent"' },
       { status: 400 },
     );
   }
@@ -66,7 +71,7 @@ export async function POST(
       teacher.id,
       lessonId,
       studentId,
-      status as 'present' | 'absent' | 'late' | 'excused',
+      status as 'present' | 'absent',
       commentRaw || null,
     );
     const attendance = await listAttendanceForMyLesson(teacher.id, lessonId);
