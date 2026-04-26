@@ -19,6 +19,8 @@ interface CountdownTimerProps {
   onReached?: () => void;
   /** Компактний режим — один рядок */
   compact?: boolean;
+  /** Великий режим — для hero card */
+  large?: boolean;
 }
 
 function calcRemaining(targetMs: number): {
@@ -42,6 +44,7 @@ export default function CountdownTimer({
   reachedLabel = 'Почалось',
   onReached,
   compact,
+  large,
 }: CountdownTimerProps) {
   const targetMs = new Date(targetIso).getTime();
   const [remaining, setRemaining] = useState(() => calcRemaining(targetMs));
@@ -62,9 +65,15 @@ export default function CountdownTimer({
     return () => window.clearInterval(id);
   }, [targetMs, onReached, remaining.total]);
 
+  const wrapperClass = large
+    ? 'student-countdown student-countdown--large'
+    : compact
+      ? 'student-countdown student-countdown--compact'
+      : 'student-countdown';
+
   if (remaining.total <= 0) {
     return (
-      <div className={compact ? 'student-countdown student-countdown--compact' : 'student-countdown'}>
+      <div className={wrapperClass}>
         <div className="student-countdown__label">{reachedLabel}</div>
       </div>
     );
@@ -73,8 +82,8 @@ export default function CountdownTimer({
   const pad = (n: number) => String(n).padStart(2, '0');
 
   return (
-    <div className={compact ? 'student-countdown student-countdown--compact' : 'student-countdown'}>
-      <div className="student-countdown__label">{label}</div>
+    <div className={wrapperClass}>
+      {!large && <div className="student-countdown__label">{label}</div>}
       <div className="student-countdown__time">
         {remaining.days > 0 && (
           <span className="student-countdown__unit">

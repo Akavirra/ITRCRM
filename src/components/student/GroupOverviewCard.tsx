@@ -5,6 +5,7 @@
  */
 
 import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 import type { StudentGroupSummary } from '@/lib/student-lesson-context';
 
 interface GroupOverviewCardProps {
@@ -65,7 +66,9 @@ export default function GroupOverviewCard({ group }: GroupOverviewCardProps) {
         )}
       </div>
 
-      <div className="student-group-card__chev">→</div>
+      <div className="student-group-card__chev">
+        <ChevronRight />
+      </div>
     </Link>
   );
 }

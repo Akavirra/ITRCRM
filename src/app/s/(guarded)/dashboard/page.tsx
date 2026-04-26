@@ -18,8 +18,11 @@ import {
   getStudentSession,
 } from '@/lib/student-auth';
 import { getStudentLessonContext } from '@/lib/student-lesson-context';
-import GroupOverviewCard from '@/components/student/GroupOverviewCard';
+import { studentGet } from '@/db/neon-student';
 import CountdownTimer from '@/components/student/CountdownTimer';
+import DashboardMaterials from '@/components/student/DashboardMaterials';
+import DashboardRecentWorks from '@/components/student/DashboardRecentWorks';
+import { Calendar, ChevronRight, Users } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +37,12 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
     return <div className="student-empty">Сесія закінчилась</div>;
   }
 
+  const student = await studentGet<{ full_name: string }>(
+    `SELECT full_name FROM students WHERE id = $1`,
+    [session.student_id]
+  );
+  const studentFirstName = student?.full_name?.split(' ')[0] || '';
+
   const ctx = await getStudentLessonContext(session.student_id);
 
   // Context-Aware redirect: якщо є активне заняття — переходимо на сторінку групи.
@@ -44,20 +53,32 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
 
   const { groups, overallNext, activeLesson, activeGroupKey } = ctx;
 
+  // Find the group that has the overallNext lesson for linking
+  const nextGroup = overallNext
+    ? groups.find((g) => String(g.id) === String(overallNext.group_id)) ?? null
+    : null;
+
+  const heroHref = overallNext && nextGroup
+    ? (nextGroup.isIndividual ? '/groups/individual' : `/groups/${nextGroup.id}`)
+    : undefined;
+
   return (
-    <>
-      <h1 className="student-page-title">Привіт! 👋</h1>
-      <p className="student-page-subtitle">
-        {groups.length > 1
-          ? `У тебе ${groups.length} ${pluralGroup(groups.length)} — обери, куди зайти`
-          : 'Ось твоє навчальне середовище'}
-      </p>
+    <div className="student-dashboard-layout">
+      {/* Привітання */}
+      <div>
+        <h1 className="student-page-title">Привіт{studentFirstName ? `, ${studentFirstName}` : ''}! 👋</h1>
+        <p className="student-page-subtitle">
+          {groups.length > 1
+            ? `У тебе ${groups.length} ${pluralGroup(groups.length)} — ось швидкий огляд`
+            : 'Ось твоє навчальне середовище'}
+        </p>
+      </div>
 
       {/* Якщо ми тут попри active — показуємо прозорий банер з поверненням */}
       {activeLesson && activeGroupKey && (
         <Link
           href={`/groups/${activeGroupKey}?active=${activeLesson.id}`}
-          className="student-card student-active-banner"
+          className="student-active-banner"
         >
           <div>
             <div className="student-active-banner__kicker">Зараз триває заняття</div>
@@ -72,39 +93,38 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
         </Link>
       )}
 
-      {/* Наступне заняття (оглядова картка; деталі й таймер — на сторінці групи) */}
+      {/* Hero Next Lesson */}
       {overallNext ? (
-        <div
-          className="student-card"
-          style={{
-            background: 'linear-gradient(135deg, #2160d0 0%, #3b82f6 100%)',
-            color: '#fff',
-            border: 'none',
-          }}
-        >
-          <div
-            style={{
-              fontSize: 11,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              opacity: 0.85,
-              marginBottom: 6,
-            }}
-          >
+        <div className="student-dashboard-hero">
+          <div className="student-dashboard-hero__badge">
+            <Calendar size={14} />
             Наступне заняття
           </div>
-          <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
+
+          <div className="student-dashboard-hero__title">
             {overallNext.course_title || overallNext.group_title || 'Заняття'}
           </div>
-          <div style={{ fontSize: 14, opacity: 0.95, marginBottom: 10 }}>
+
+          <div className="student-dashboard-hero__datetime">
             {formatWhen(overallNext.start_datetime, overallNext.end_datetime)}
           </div>
-          <div style={{ marginTop: 6 }}>
+
+          {overallNext.topic && (
+            <div className="student-dashboard-hero__topic">
+              Тема: <strong>{overallNext.topic}</strong>
+            </div>
+          )}
+
+          <div className="student-dashboard-hero__timer">
             <CountdownTimer targetIso={overallNext.start_datetime} compact />
           </div>
-          {overallNext.topic && (
-            <div style={{ fontSize: 13, opacity: 0.9, marginTop: 10 }}>
-              Тема: <strong>{overallNext.topic}</strong>
+
+          {heroHref && (
+            <div className="student-dashboard-hero__actions">
+              <Link href={heroHref} className="student-primary-btn">
+                Перейти до заняття
+                <ChevronRight size={16} />
+              </Link>
             </div>
           )}
         </div>
@@ -115,24 +135,77 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
         </div>
       )}
 
-      <div className="student-section-header">Мої групи</div>
+      {/* Grid: Main + Side */}
+      <div className="student-dashboard-grid">
+        <div className="student-dashboard-main">
+          {/* My Groups */}
+          <section>
+            <div className="student-section-header">Мої групи</div>
+            {groups.length === 0 ? (
+              <div className="student-empty">Ти ще не доданий(а) до жодної групи.</div>
+            ) : (
+              <div className="student-dashboard-groups">
+                {groups.map((g) => (
+                  <CompactGroupItem key={String(g.id)} group={g} highlightNextId={overallNext?.group_id ?? null} />
+                ))}
+              </div>
+            )}
+          </section>
 
-      {groups.length === 0 ? (
-        <div className="student-empty">Ти ще не доданий(а) до жодної групи.</div>
-      ) : (
-        <div className="student-groups-grid">
-          {groups.map((g) => (
-            <GroupOverviewCard key={String(g.id)} group={g} />
-          ))}
+          {/* Recent Works */}
+          <DashboardRecentWorks />
         </div>
-      )}
 
-      <div style={{ marginTop: 20, textAlign: 'center' }}>
+        <div className="student-dashboard-side">
+          {/* Materials for next lesson */}
+          <DashboardMaterials lessonId={overallNext?.id ?? null} />
+        </div>
+      </div>
+
+      {/* Footer link */}
+      <div style={{ textAlign: 'center', marginTop: 8 }}>
         <Link href="/schedule" className="student-secondary-btn">
-          Повний розклад →
+          <Calendar size={16} />
+          Повний розклад
         </Link>
       </div>
-    </>
+    </div>
+  );
+}
+
+/* Compact group item for dashboard list */
+function CompactGroupItem({
+  group,
+  highlightNextId,
+}: {
+  group: { id: number | string; course_title: string | null; title: string; next_lesson: { start_datetime: string; end_datetime: string } | null };
+  highlightNextId: number | null;
+}) {
+  const href = group.id === 'individual' ? '/groups/individual' : `/groups/${group.id}`;
+  const title = group.course_title || group.title;
+  const isNext = String(highlightNextId) === String(group.id);
+
+  return (
+    <Link href={href} className="student-dashboard-group-item">
+      <div className="student-dashboard-group-item__icon">
+        <Users size={20} />
+      </div>
+      <div className="student-dashboard-group-item__body">
+        <div className="student-dashboard-group-item__title">{title}</div>
+        <div className="student-dashboard-group-item__meta">
+          {isNext ? (
+            <span style={{ color: '#2563EB', fontWeight: 500 }}>Наступне заняття тут</span>
+          ) : group.next_lesson ? (
+            formatNextLessonShort(group.next_lesson.start_datetime, group.next_lesson.end_datetime)
+          ) : (
+            'Найближчих занять немає'
+          )}
+        </div>
+      </div>
+      <div className="student-dashboard-group-item__arrow">
+        <ChevronRight />
+      </div>
+    </Link>
   );
 }
 
@@ -157,4 +230,13 @@ function formatWhen(startIso: string, endIso: string): string {
     timeZone: 'Europe/Kyiv',
   });
   return `${dateFmt.format(start)}, ${timeFmt.format(start)} – ${timeFmt.format(end)}`;
+}
+
+function formatNextLessonShort(startIso: string, endIso: string): string {
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  const weekdayFmt = new Intl.DateTimeFormat('uk-UA', { weekday: 'short', timeZone: 'Europe/Kyiv' });
+  const dateFmt = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', timeZone: 'Europe/Kyiv' });
+  const timeFmt = new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' });
+  return `${weekdayFmt.format(start)}, ${dateFmt.format(start)} · ${timeFmt.format(start)}–${timeFmt.format(end)}`;
 }
