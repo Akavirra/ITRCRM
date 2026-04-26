@@ -551,6 +551,66 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     ORDER BY TO_CHAR(l.lesson_date, 'YYYY-MM') ASC
   `);
 
+  const revenueTrendAllTimePromise = all<{ date: string; value: number }>(`
+    SELECT 
+      TO_CHAR(paid_at AT TIME ZONE 'Europe/Kyiv', 'YYYY-MM') as date,
+      SUM(amount) as value 
+    FROM payments 
+    GROUP BY TO_CHAR(paid_at AT TIME ZONE 'Europe/Kyiv', 'YYYY-MM') 
+    ORDER BY date ASC
+  `);
+
+  const attendanceTrendAllTimePromise = all<{ date: string; value: number }>(`
+    SELECT 
+      TO_CHAR(l.lesson_date, 'YYYY-MM') as date,
+      ROUND((COUNT(*) FILTER (WHERE a.status = 'present' OR a.status = 'makeup_done')::numeric / NULLIF(COUNT(*), 0)) * 100) as value
+    FROM attendance a
+    JOIN lessons l ON a.lesson_id = l.id
+    WHERE l.status = 'done'
+    GROUP BY TO_CHAR(l.lesson_date, 'YYYY-MM')
+    ORDER BY TO_CHAR(l.lesson_date, 'YYYY-MM') ASC
+  `);
+
+  const studentsTrendAllTimePromise = all<{ date: string; value: number }>(`
+    SELECT 
+      TO_CHAR(l.lesson_date, 'YYYY-MM') as date,
+      COUNT(DISTINCT a.student_id) as value
+    FROM attendance a
+    JOIN lessons l ON a.lesson_id = l.id
+    WHERE l.status != 'canceled'
+      AND a.status IN ('present', 'makeup_done')
+    GROUP BY TO_CHAR(l.lesson_date, 'YYYY-MM')
+    ORDER BY TO_CHAR(l.lesson_date, 'YYYY-MM') ASC
+  `);
+
+  const debtTrendAllTimePromise = all<{ date: string; value: number }>(`
+    WITH months AS (
+      SELECT TO_CHAR(generate_series(
+        COALESCE(DATE_TRUNC('month', (SELECT MIN(month) FROM payments)), DATE_TRUNC('month', CURRENT_DATE)),
+        DATE_TRUNC('month', CURRENT_DATE),
+        '1 month'::interval
+      ), 'YYYY-MM') as month
+    )
+    SELECT 
+      m.month as date,
+      COUNT(DISTINCT sg.student_id) as value
+    FROM months m
+    JOIN student_groups sg ON 
+      sg.join_date <= (m.month || '-01')::date + interval '1 month' - interval '1 day'
+      AND (sg.leave_date IS NULL OR sg.leave_date >= (m.month || '-01')::date)
+    JOIN students s ON sg.student_id = s.id AND s.is_active = TRUE
+    JOIN groups g ON sg.group_id = g.id AND g.status = 'active' AND g.is_active = TRUE
+    WHERE NOT EXISTS (
+      SELECT 1 FROM payments p
+      WHERE p.student_id = sg.student_id 
+        AND p.group_id = sg.group_id 
+        AND p.month >= (m.month || '-01')::date
+        AND p.month < (m.month || '-01')::date + interval '1 month'
+    )
+    GROUP BY m.month
+    ORDER BY m.month ASC
+  `);
+
   const [
     [studentCount, groupCount, lessonCount, revenue, prevRevenue, unpaidCount, attendanceData,
      courseCount, allTimeRevenue, allTimeAttendanceData, allTimeUnpaidCount,
@@ -570,6 +630,10 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     studentsTrendRaw,
     studentsTrendMonthRaw,
     studentsTrendYearRaw,
+    revenueTrendAllTimeRaw,
+    attendanceTrendAllTimeRaw,
+    studentsTrendAllTimeRaw,
+    debtTrendAllTimeRaw,
   ] = await Promise.all([
     statsPromise,
     schedulePromise,
@@ -587,6 +651,10 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     studentsTrendPromise,
     studentsTrendMonthPromise,
     studentsTrendYearPromise,
+    revenueTrendAllTimePromise,
+    attendanceTrendAllTimePromise,
+    studentsTrendAllTimePromise,
+    debtTrendAllTimePromise,
   ]);
 
   const monthlyRevenue = revenue?.total || 0;
@@ -644,6 +712,50 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     return record ? Number(record.value) : 0;
   });
 
+  const allTimeMonthsSet = new Set<string>();
+  [
+    ...revenueTrendAllTimeRaw,
+    ...attendanceTrendAllTimeRaw,
+    ...studentsTrendAllTimeRaw,
+    ...debtTrendAllTimeRaw,
+  ].forEach((r) => {
+    if (r.date) allTimeMonthsSet.add(r.date);
+  });
+  const sortedAllTimeMonths = Array.from(allTimeMonthsSet).sort();
+  const firstAllTimeMonth = sortedAllTimeMonths[0] || format(now, 'yyyy-MM');
+  const lastAllTimeMonth = format(now, 'yyyy-MM');
+
+  const [firstAllYear, firstAllMon] = firstAllTimeMonth.split('-').map(Number);
+  const [lastAllYear, lastAllMon] = lastAllTimeMonth.split('-').map(Number);
+  const allTimeMonthRange: string[] = [];
+  for (let y = firstAllYear; y <= lastAllYear; y++) {
+    const startM = y === firstAllYear ? firstAllMon : 1;
+    const endM = y === lastAllYear ? lastAllMon : 12;
+    for (let m = startM; m <= endM; m++) {
+      allTimeMonthRange.push(`${y}-${String(m).padStart(2, '0')}`);
+    }
+  }
+
+  const revenueTrendAllTime = allTimeMonthRange.map((month) => {
+    const record = revenueTrendAllTimeRaw.find((r) => r.date === month);
+    return record ? Number(record.value) : 0;
+  });
+
+  const attendanceTrendAllTime = allTimeMonthRange.map((month) => {
+    const record = attendanceTrendAllTimeRaw.find((r) => r.date === month);
+    return record ? Number(record.value) : 0;
+  });
+
+  const studentsTrendAllTime = allTimeMonthRange.map((month) => {
+    const record = studentsTrendAllTimeRaw.find((r) => r.date === month);
+    return record ? Number(record.value) : 0;
+  });
+
+  const debtTrendAllTime = allTimeMonthRange.map((month) => {
+    const record = debtTrendAllTimeRaw.find((r) => r.date === month);
+    return record ? Number(record.value) : 0;
+  });
+
   return {
     generatedAtLabel: formatFullDateLabel(now),
     todayDate: todayStr,
@@ -673,6 +785,10 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
       studentsTrend,
       studentsTrendMonth,
       studentsTrendYear,
+      revenueTrendAllTime,
+      attendanceTrendAllTime,
+      debtTrendAllTime,
+      studentsTrendAllTime,
     },
     nextLesson: nextLesson ? {
       ...nextLesson,

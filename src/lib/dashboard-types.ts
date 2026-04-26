@@ -56,6 +56,10 @@ export interface DashboardStatsPayload {
     studentsTrend: number[];
     studentsTrendMonth: number[];
     studentsTrendYear: number[];
+    revenueTrendAllTime: number[];
+    attendanceTrendAllTime: number[];
+    debtTrendAllTime: number[];
+    studentsTrendAllTime: number[];
   };
   nextLesson: {
     id: number;

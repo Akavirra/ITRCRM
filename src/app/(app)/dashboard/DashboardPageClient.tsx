@@ -703,11 +703,14 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               <div 
                 className={styles.sparklineContainer}
                 style={{ 
-                  opacity: statsPeriod === 'month' ? 0.8 : 0,
+                  opacity: statsPeriod === 'month' || statsPeriod === 'allTime' ? 0.8 : 0,
                   transition: 'opacity 0.2s ease'
                 }}
               >
-                {initialData.stats.revenueTrend && <Sparkline data={initialData.stats.revenueTrend} color="#10b981" />}
+                {(() => {
+                  const data = statsPeriod === 'month' ? initialData.stats.revenueTrend : initialData.stats.revenueTrendAllTime;
+                  return data && data.length >= 2 ? <Sparkline data={data} color="#10b981" /> : null;
+                })()}
               </div>
             </div>
 
@@ -737,11 +740,14 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   <div 
                     className={styles.sparklineContainer}
                     style={{ 
-                      opacity: statsPeriod === 'month' ? 0.8 : 0,
+                      opacity: statsPeriod === 'month' || statsPeriod === 'allTime' ? 0.8 : 0,
                       transition: 'opacity 0.2s ease'
                     }}
                   >
-                    {initialData.stats.debtTrend && <Sparkline data={initialData.stats.debtTrend} color="#dc2626" />}
+                    {(() => {
+                      const data = statsPeriod === 'month' ? initialData.stats.debtTrend : initialData.stats.debtTrendAllTime;
+                      return data && data.length >= 2 ? <Sparkline data={data} color="#dc2626" /> : null;
+                    })()}
                   </div>
                 </div>
               );
@@ -774,11 +780,14 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   <div 
                     className={styles.sparklineContainer}
                     style={{ 
-                      opacity: statsPeriod === 'month' ? 0.8 : 0,
+                      opacity: statsPeriod === 'month' || statsPeriod === 'allTime' ? 0.8 : 0,
                       transition: 'opacity 0.2s ease'
                     }}
                   >
-                    {initialData.stats.attendanceTrend && <Sparkline data={initialData.stats.attendanceTrend} color="#3b82f6" />}
+                    {(() => {
+                      const data = statsPeriod === 'month' ? initialData.stats.attendanceTrend : initialData.stats.attendanceTrendAllTime;
+                      return data && data.length >= 2 ? <Sparkline data={data} color="#3b82f6" /> : null;
+                    })()}
                   </div>
                 </div>
               );
@@ -805,20 +814,22 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   width: '100%',
                   height: '2.25rem',
                   marginTop: '0.2rem',
-                  opacity: statsPeriod === 'month' ? 0.8 : 0,
+                  opacity: statsPeriod === 'month' || statsPeriod === 'allTime' ? 0.8 : 0,
                   transition: 'opacity 0.2s ease'
                 }}
               >
                 <AnimatePresence mode="wait">
-                  {statsPeriod === 'month' && (() => {
-                    const data = studentsPeriod === 'today'
+                  {(statsPeriod === 'month' || statsPeriod === 'allTime') && (() => {
+                    const data = statsPeriod === 'allTime'
+                      ? initialData.stats.studentsTrendAllTime
+                      : studentsPeriod === 'today'
                       ? initialData.stats.studentsTrend
                       : studentsPeriod === 'month'
                       ? initialData.stats.studentsTrendMonth
                       : initialData.stats.studentsTrendYear;
                     return data && data.length >= 2 ? (
                       <motion.div
-                        key={studentsPeriod}
+                        key={statsPeriod === 'allTime' ? 'allTime' : studentsPeriod}
                         initial={{ opacity: 0, scale: 0.96 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.96 }}
