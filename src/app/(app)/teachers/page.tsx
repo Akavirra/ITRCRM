@@ -142,6 +142,7 @@ export default function TeachersPage() {
     photo: null as string | null,
     photoFile: null as File | null,
   });
+  const [modalMode, setModalMode] = useState<'invite' | 'manual'>('invite');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -349,20 +350,10 @@ export default function TeachersPage() {
     }
   };
 
-  const handleCreate = () => {
-    setEditingTeacher(null);
-    setFormData({
-      first_name: '',
-      last_name: '',
-      patronymic: '',
-      email: '',
-      phone: '',
-      telegram_id: '',
-      notes: '',
-      photo: null,
-      photoFile: null,
-    });
+    setModalMode('invite');
     setShowModal(true);
+    // Auto-generate QR if in invite mode
+    generateInviteToken();
   };
 
   const handleEdit = (teacher: Teacher) => {
@@ -383,6 +374,7 @@ export default function TeachersPage() {
       photo: teacher.photo_url || null,
       photoFile: null,
     });
+    setModalMode('manual');
     setShowModal(true);
   };
 
@@ -562,6 +554,8 @@ export default function TeachersPage() {
           photo: null,
           photoFile: null,
         });
+        setQrDataUrl(null);
+        setQrToken(null);
         loadTeachers();
       } else {
         const error = await response.json();
@@ -804,15 +798,6 @@ export default function TeachersPage() {
               </button>
               <button className="btn btn-primary" onClick={handleCreate}>
                 + {t('modals.newTeacher') || 'Новий викладач'}
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={generateInviteToken}
-                disabled={generatingQr}
-                title="Згенерувати QR для самореєстрації через Telegram"
-              >
-                <QrCode size={16} strokeWidth={1.75} style={{ marginRight: '0.375rem' }} />
-                {generatingQr ? 'Генерація...' : 'Запросити'}
               </button>
             </div>
           )}
@@ -1311,183 +1296,9 @@ export default function TeachersPage() {
         </div>
       </div>
 
-      {/* Teacher Invites Section */}
-      {user?.role === 'admin' && (
-        <div className="card" style={{ marginTop: '1.5rem' }}>
-          <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 className="card-title" style={{ margin: 0 }}>Запрошення викладачів</h3>
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={generateInviteToken}
-              disabled={generatingQr}
-            >
-              <QrCode size={16} strokeWidth={1.75} style={{ marginRight: '0.375rem' }} />
-              {generatingQr ? 'Генерація...' : 'Нове QR-запрошення'}
-            </button>
-          </div>
-          <div className="table-container">
-            {loadingInvites && inviteTokens.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>Завантаження...</div>
-            ) : inviteTokens.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                <p style={{ margin: '0 0 0.5rem' }}>Немає активних запрошень</p>
-                <p style={{ margin: 0, fontSize: '0.8125rem' }}>Натисніть кнопку вище, щоб створити QR-код для самореєстрації викладача</p>
-              </div>
-            ) : (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Статус</th>
-                    <th>Ім'я</th>
-                    <th>Email</th>
-                    <th>Telegram</th>
-                    <th>Створено</th>
-                    <th>Дійсний до</th>
-                    <th style={{ textAlign: 'right' }}>Дії</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {inviteTokens.map((invite) => (
-                    <tr key={invite.id}>
-                      <td>{getInviteStatusBadge(invite.status)}</td>
-                      <td style={{ fontWeight: 500 }}>{invite.teacher_name || '—'}</td>
-                      <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>{invite.teacher_email || '—'}</td>
-                      <td style={{ color: '#6b7280', fontSize: '0.875rem', fontFamily: 'monospace' }}>
-                        {invite.telegram_id ? `@${invite.telegram_id}` : '—'}
-                      </td>
-                      <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                        {new Date(invite.created_at).toLocaleDateString('uk-UA')}
-                      </td>
-                      <td style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                        {new Date(invite.expires_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
-                          {invite.status === 'pending' && (
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => openQrModal(invite.token)}
-                              title="Показати QR-код"
-                            >
-                              <QrCode size={14} strokeWidth={1.75} />
-                            </button>
-                          )}
-                          {invite.status === 'submitted' && (
-                            <>
-                              <button
-                                className="btn btn-success btn-sm"
-                                onClick={() => handleApproveInvite(invite.id)}
-                                title="Затвердити"
-                              >
-                                Затвердити
-                              </button>
-                              <button
-                                className="btn btn-danger btn-sm"
-                                onClick={() => handleRejectInvite(invite.id)}
-                                title="Відхилити"
-                              >
-                                Відхилити
-                              </button>
-                            </>
-                          )}
-                          <button
-                            className="btn btn-outline btn-sm"
-                            onClick={() => handleDeleteInvite(invite.id)}
-                            title="Видалити"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* QR Invite Modal */}
-      {qrModalOpen && qrDataUrl && (
-        <div
-          className="modal-overlay"
-          onClick={() => { setQrModalOpen(false); setQrDataUrl(null); setQrToken(null); }}
-          style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            WebkitBackdropFilter: 'blur(16px)',
-            backdropFilter: 'blur(16px)',
-          }}
-        >
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
-            <div className="modal-header" style={{ position: 'relative', justifyContent: 'center' }}>
-              <h3 className="modal-title">QR-запрошення викладача</h3>
-              <button
-                className="modal-close"
-                onClick={() => { setQrModalOpen(false); setQrDataUrl(null); setQrToken(null); }}
-                aria-label="Закрити"
-                style={{ position: 'absolute', right: '1.5rem', top: '50%', transform: 'translateY(-50%)' }}
-              >
-                <XCircle size={20} />
-              </button>
-            </div>
-            <div className="modal-body" style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)', marginBottom: '1rem' }}>
-                Дійсний 15 хвилин. Викладач має відсканувати і відкрити в Telegram.
-              </p>
-              <a
-                href={qrToken ? `${typeof window !== 'undefined' ? window.location.origin : ''}/register-teacher/${qrToken}` : ''}
-                target="_blank"
-                rel="noreferrer"
-                title="Відкрити реєстрацію в новій вкладці"
-                style={{ display: 'inline-block', borderRadius: '12px' }}
-              >
-                <img
-                  src={qrDataUrl}
-                  alt="QR Code"
-                  style={{ width: '280px', height: '280px', margin: '0 auto', cursor: 'pointer' }}
-                />
-              </a>
-              <a
-                href={qrToken ? `${typeof window !== 'undefined' ? window.location.origin : ''}/register-teacher/${qrToken}` : ''}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  display: 'block',
-                  fontSize: '0.75rem',
-                  color: 'var(--gray-400)',
-                  marginTop: '0.75rem',
-                  wordBreak: 'break-all',
-                  textDecoration: 'none',
-                }}
-              >
-                {qrToken ? `${typeof window !== 'undefined' ? window.location.origin : ''}/register-teacher/${qrToken}` : ''}
-              </a>
-            </div>
-            <div className="modal-footer" style={{ justifyContent: 'center' }}>
-              <button className="btn btn-secondary" onClick={() => {
-                const link = document.createElement('a');
-                link.download = `teacher-invite-qr-${qrToken?.slice(0, 8)}.png`;
-                link.href = qrDataUrl;
-                link.click();
-              }}>
-                <Download size={16} strokeWidth={1.75} />
-                Завантажити
-              </button>
-              <button className="btn btn-secondary" onClick={() => {
-                const url = `${window.location.origin}/register-teacher/${qrToken}`;
-                navigator.clipboard.writeText(url);
-              }}>
-                <Copy size={16} strokeWidth={1.75} />
-                Копіювати посилання
-              </button>
-              <button className="btn btn-outline" onClick={() => { setQrModalOpen(false); setQrDataUrl(null); setQrToken(null); }}>
-                Закрити
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
+
 
       {/* Create/Edit Modal */}
       {showModal && (
@@ -1517,11 +1328,149 @@ export default function TeachersPage() {
                 to { transform: rotate(360deg); }
               }
             `}</style>
-            <h2 style={{ marginTop: 0, marginBottom: '1.75rem', fontSize: '1.375rem', fontWeight: 600, color: '#111827', letterSpacing: '-0.01em' }}>
-              {editingTeacher ? 'Редагувати викладача' : 'Новий викладач'}
-            </h2>
-            
-            <form onSubmit={handleSubmit}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.375rem', fontWeight: 600, color: '#111827', letterSpacing: '-0.01em' }}>
+                {editingTeacher ? 'Редагувати викладача' : 'Новий викладач'}
+              </h2>
+              <button
+                className="modal-close"
+                onClick={() => { setShowModal(false); setQrDataUrl(null); setQrToken(null); }}
+                aria-label="Закрити"
+                style={{ padding: '0.25rem' }}
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            {!editingTeacher && (
+              <div style={{
+                display: 'flex',
+                gap: '4px',
+                padding: '4px',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '12px',
+                marginBottom: '1.75rem'
+              }}>
+                <button
+                  className={`btn ${modalMode === 'invite' ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ flex: 1, borderRadius: '8px', padding: '0.625rem' }}
+                  onClick={() => { setModalMode('invite'); if (!qrToken) generateInviteToken(); }}
+                >
+                  QR-код
+                </button>
+                <button
+                  className={`btn ${modalMode === 'manual' ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ flex: 1, borderRadius: '8px', padding: '0.625rem' }}
+                  onClick={() => setModalMode('manual')}
+                >
+                  Вручну
+                </button>
+              </div>
+            )}
+
+            {modalMode === 'invite' && !editingTeacher ? (
+              <div style={{ animation: 'modalSlideIn 0.2s ease-out' }}>
+                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                  {generatingQr ? (
+                    <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div className="spinner" style={{ width: '40px', height: '40px', border: '3px solid #f3f4f6', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                    </div>
+                  ) : qrDataUrl ? (
+                    <>
+                      <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+                        Дійсний 15 хвилин. Викладач має відсканувати і відкрити в Telegram.
+                      </p>
+                      <a
+                        href={`${window.location.origin}/register-teacher/${qrToken}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ display: 'inline-block', padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '1.25rem', border: '1px solid #e2e8f0' }}
+                      >
+                        <img
+                          src={qrDataUrl}
+                          alt="QR Code"
+                          style={{ width: '220px', height: '220px' }}
+                        />
+                      </a>
+                      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginTop: '1.25rem' }}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => {
+                          const link = document.createElement('a');
+                          link.download = `teacher-invite-qr-${qrToken?.slice(0, 8)}.png`;
+                          link.href = qrDataUrl!;
+                          link.click();
+                        }}>
+                          <Download size={14} style={{ marginRight: '0.375rem' }} />
+                          QR
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => {
+                          const url = `${window.location.origin}/register-teacher/${qrToken}`;
+                          navigator.clipboard.writeText(url);
+                          showToast('Посилання скопійовано', 'success');
+                        }}>
+                          <Copy size={14} style={{ marginRight: '0.375rem' }} />
+                          Копіювати
+                        </button>
+                        <button className="btn btn-outline btn-sm" onClick={generateInviteToken}>
+                          Оновити
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <button className="btn btn-primary" onClick={generateInviteToken}>
+                      Згенерувати QR
+                    </button>
+                  )}
+                </div>
+
+                {/* Integrated Invitations Table */}
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem' }}>
+                  <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#374151', marginBottom: '1rem' }}>Активні запити</h4>
+                  <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
+                    {loadingInvites && inviteTokens.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8', fontSize: '0.875rem' }}>Завантаження...</div>
+                    ) : inviteTokens.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8', fontSize: '0.875rem' }}>Немає активних запитів</div>
+                    ) : (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                        <thead style={{ backgroundColor: '#f9fafb', position: 'sticky', top: 0 }}>
+                          <tr style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
+                            <th style={{ padding: '0.75rem' }}>Статус</th>
+                            <th style={{ padding: '0.75rem' }}>Ім'я</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'right' }}>Дії</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {inviteTokens.map((invite) => (
+                            <tr key={invite.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              <td style={{ padding: '0.75rem' }}>{getInviteStatusBadge(invite.status)}</td>
+                              <td style={{ padding: '0.75rem', fontWeight: 500 }}>{invite.teacher_name || '—'}</td>
+                              <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                                <div style={{ display: 'inline-flex', gap: '4px' }}>
+                                  {invite.status === 'pending' && (
+                                    <button className="btn btn-ghost btn-sm" onClick={() => openQrModal(invite.token)} style={{ padding: '4px' }}>
+                                      <QrCode size={14} />
+                                    </button>
+                                  )}
+                                  {invite.status === 'submitted' && (
+                                    <button className="btn btn-success btn-sm" onClick={() => handleApproveInvite(invite.id)} style={{ padding: '2px 6px', fontSize: '0.75rem' }}>
+                                      ОК
+                                    </button>
+                                  )}
+                                  <button className="btn btn-ghost btn-sm" onClick={() => handleDeleteInvite(invite.id)} style={{ padding: '4px', color: '#dc2626' }}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} style={{ animation: 'modalSlideIn 0.2s ease-out' }}>
               {/* Photo Upload */}
               <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 {formData.photo ? (
