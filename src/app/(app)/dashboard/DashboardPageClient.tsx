@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
@@ -808,14 +809,27 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   transition: 'opacity 0.2s ease'
                 }}
               >
-                {(() => {
-                  const data = studentsPeriod === 'today'
-                    ? initialData.stats.studentsTrend
-                    : studentsPeriod === 'month'
-                    ? initialData.stats.studentsTrendMonth
-                    : initialData.stats.studentsTrendYear;
-                  return data && data.length >= 2 ? <Sparkline data={data} color="#8b5cf6" /> : null;
-                })()}
+                <AnimatePresence mode="wait">
+                  {statsPeriod === 'month' && (() => {
+                    const data = studentsPeriod === 'today'
+                      ? initialData.stats.studentsTrend
+                      : studentsPeriod === 'month'
+                      ? initialData.stats.studentsTrendMonth
+                      : initialData.stats.studentsTrendYear;
+                    return data && data.length >= 2 ? (
+                      <motion.div
+                        key={studentsPeriod}
+                        initial={{ opacity: 0, scale: 0.96 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.96 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                        style={{ width: '100%', height: '100%' }}
+                      >
+                        <Sparkline data={data} color="#8b5cf6" />
+                      </motion.div>
+                    ) : null;
+                  })()}
+                </AnimatePresence>
               </div>
               <div 
                 style={{ 
