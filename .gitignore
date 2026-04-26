@@ -21,3 +21,7 @@ __pycache__/
 *.pyc
 .claude/settings.local.json
 .claude/worktrees/
+
+# Codex-генеровані скріншоти/артефакти у root
+.codex-*
+
