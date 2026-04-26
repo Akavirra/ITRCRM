@@ -204,12 +204,9 @@
   min-height: 0;
   overflow: hidden;
   padding: 24px;
-  background-color: #0f172a;
-  background-image: 
-    radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.8) 0%, #0f172a 100%),
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 100% 100%, 20px 20px, 20px 20px;
+  background-color: #f1f5f9;
+  background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 .canvasTopbar {
