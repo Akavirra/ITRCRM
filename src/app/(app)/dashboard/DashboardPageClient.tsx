@@ -808,7 +808,14 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   transition: 'opacity 0.2s ease'
                 }}
               >
-                {initialData.stats.studentsTrend && <Sparkline data={initialData.stats.studentsTrend} color="#8b5cf6" />}
+                {(() => {
+                  const data = studentsPeriod === 'today'
+                    ? initialData.stats.studentsTrend
+                    : studentsPeriod === 'month'
+                    ? initialData.stats.studentsTrendMonth
+                    : initialData.stats.studentsTrendYear;
+                  return data && data.length >= 2 ? <Sparkline data={data} color="#8b5cf6" /> : null;
+                })()}
               </div>
               <div 
                 style={{ 

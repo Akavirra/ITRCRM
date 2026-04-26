@@ -512,15 +512,43 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
 
   const studentsTrendPromise = all<{ date: string; value: number }>(`
     SELECT 
+      TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24') as date,
+      COUNT(DISTINCT a.student_id) as value
+    FROM attendance a
+    JOIN lessons l ON a.lesson_id = l.id
+    WHERE l.lesson_date = CURRENT_DATE
+      AND l.status != 'canceled'
+      AND a.status IN ('present', 'makeup_done')
+    GROUP BY TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24')
+    ORDER BY TO_CHAR(l.start_datetime AT TIME ZONE 'Europe/Kyiv', 'HH24') ASC
+  `);
+
+  const studentsTrendMonthPromise = all<{ date: string; value: number }>(`
+    SELECT 
       l.lesson_date::text as date,
       COUNT(DISTINCT a.student_id) as value
     FROM attendance a
     JOIN lessons l ON a.lesson_id = l.id
-    WHERE l.lesson_date >= CURRENT_DATE - 30 
+    WHERE l.lesson_date >= DATE_TRUNC('month', CURRENT_DATE)
+      AND l.lesson_date <= CURRENT_DATE
       AND l.status != 'canceled'
       AND a.status IN ('present', 'makeup_done')
     GROUP BY l.lesson_date
     ORDER BY l.lesson_date ASC
+  `);
+
+  const studentsTrendYearPromise = all<{ date: string; value: number }>(`
+    SELECT 
+      TO_CHAR(l.lesson_date, 'YYYY-MM') as date,
+      COUNT(DISTINCT a.student_id) as value
+    FROM attendance a
+    JOIN lessons l ON a.lesson_id = l.id
+    WHERE l.lesson_date >= DATE_TRUNC('year', CURRENT_DATE)
+      AND l.lesson_date <= CURRENT_DATE
+      AND l.status != 'canceled'
+      AND a.status IN ('present', 'makeup_done')
+    GROUP BY TO_CHAR(l.lesson_date, 'YYYY-MM')
+    ORDER BY TO_CHAR(l.lesson_date, 'YYYY-MM') ASC
   `);
 
   const [
@@ -540,6 +568,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     attendanceTrendRaw,
     debtTrendRaw,
     studentsTrendRaw,
+    studentsTrendMonthRaw,
+    studentsTrendYearRaw,
   ] = await Promise.all([
     statsPromise,
     schedulePromise,
@@ -555,6 +585,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     attendanceTrendPromise,
     debtTrendPromise,
     studentsTrendPromise,
+    studentsTrendMonthPromise,
+    studentsTrendYearPromise,
   ]);
 
   const monthlyRevenue = revenue?.total || 0;
@@ -587,8 +619,28 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     return record ? Number(record.value) : 0;
   });
 
-  const studentsTrend = last30Days.map(date => {
-    const record = studentsTrendRaw.find(r => r.date === date);
+  const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+  const studentsTrend = hours.map(hour => {
+    const record = studentsTrendRaw.find(r => r.date === hour);
+    return record ? Number(record.value) : 0;
+  });
+
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentDate = now.getDate();
+  const daysInMonth = Array.from({ length: currentDate }, (_, i) => {
+    return format(new Date(currentYear, currentMonth, i + 1), 'yyyy-MM-dd');
+  });
+  const studentsTrendMonth = daysInMonth.map(date => {
+    const record = studentsTrendMonthRaw.find(r => r.date === date);
+    return record ? Number(record.value) : 0;
+  });
+
+  const monthsInYear = Array.from({ length: currentMonth + 1 }, (_, i) => {
+    return format(new Date(currentYear, i, 1), 'yyyy-MM');
+  });
+  const studentsTrendYear = monthsInYear.map(month => {
+    const record = studentsTrendYearRaw.find(r => r.date === month);
     return record ? Number(record.value) : 0;
   });
 
@@ -619,6 +671,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
       attendanceTrend,
       debtTrend,
       studentsTrend,
+      studentsTrendMonth,
+      studentsTrendYear,
     },
     nextLesson: nextLesson ? {
       ...nextLesson,
