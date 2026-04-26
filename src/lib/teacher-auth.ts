@@ -72,7 +72,6 @@ export interface TeacherSessionRow {
 export interface CurrentTeacher {
   id: number;
   full_name: string;
-  email: string;
   photoUrl: string | null;
   sessionId: string;
   sessionExpiresAt: string;
@@ -312,15 +311,16 @@ export async function getTeacherFromRequest(
   const session = await getTeacherSession(sessionId);
   if (!session) return null;
 
-  // Тягнемо профіль через teacher-роль (без password_hash)
+  // Тягнемо профіль через teacher-роль. БЕЗ email — він не в GRANT
+  // (щоб не міг читати чужі email-и). Свій email викладач знає сам;
+  // якщо треба показати десь у UI — додамо cross-role lookup.
   const user = await teacherGet<{
     id: number;
     name: string;
-    email: string;
     role: string;
     photo_url: string | null;
     is_active: boolean;
-  }>(`SELECT id, name, email, role, photo_url, is_active FROM users WHERE id = $1`, [
+  }>(`SELECT id, name, role, photo_url, is_active FROM users WHERE id = $1`, [
     session.user_id,
   ]);
 
@@ -329,7 +329,6 @@ export async function getTeacherFromRequest(
   return {
     id: user.id,
     full_name: user.name,
-    email: user.email,
     photoUrl: user.photo_url,
     sessionId,
     sessionExpiresAt: session.expires_at,

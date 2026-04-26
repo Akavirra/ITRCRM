@@ -14,7 +14,6 @@ import { usePathname } from 'next/navigation';
 interface TeacherInfo {
   id: number;
   full_name: string;
-  email: string;
   photoUrl: string | null;
 }
 

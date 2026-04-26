@@ -94,18 +94,18 @@ async function run() {
   );
   await expectAllowed(sql, 'SELECT teacher_audit_log', `SELECT id FROM teacher_audit_log LIMIT 1`);
 
-  // users — обмежені колонки
+  // users — тільки публічна частина (id, name, role, photo_url)
   await expectAllowed(
     sql,
-    'SELECT users.id, name, email',
-    `SELECT id, name, email FROM users LIMIT 1`,
+    'SELECT users.id, name, role, photo_url',
+    `SELECT id, name, role, photo_url FROM users LIMIT 1`,
   );
 
-  // students з PII батьків (потрібно викладачу)
+  // students — мінімальний набір
   await expectAllowed(
     sql,
-    'SELECT students.full_name, parent_name, parent_phone',
-    `SELECT id, full_name, parent_name, parent_phone FROM students LIMIT 1`,
+    'SELECT students.id, full_name, photo, parent_name, parent_phone',
+    `SELECT id, full_name, photo, parent_name, parent_phone FROM students LIMIT 1`,
   );
 
   // lessons + UPDATE topic
@@ -150,6 +150,82 @@ async function run() {
     sql,
     'SELECT student_sessions',
     `SELECT id FROM student_sessions LIMIT 1`,
+  );
+
+  // Чужі контакти юзерів — викладач не має знати email/phone інших викладачів
+  await expectDenied(
+    sql,
+    'SELECT users.email (інших юзерів)',
+    `SELECT email FROM users LIMIT 1`,
+  );
+  await expectDenied(
+    sql,
+    'SELECT users.phone',
+    `SELECT phone FROM users LIMIT 1`,
+  );
+  await expectDenied(
+    sql,
+    'SELECT users.telegram_id',
+    `SELECT telegram_id FROM users LIMIT 1`,
+  );
+  await expectDenied(
+    sql,
+    'SELECT users.is_owner (escalation hint)',
+    `SELECT is_owner FROM users LIMIT 1`,
+  );
+  await expectDenied(
+    sql,
+    'UPDATE users.password_hash (зміна чужого пароля)',
+    `UPDATE users SET password_hash = 'x' WHERE id = -1`,
+  );
+
+  // Зайва PII учнів (мають читатися тільки basic-поля)
+  await expectDenied(
+    sql,
+    'SELECT students.notes (приватні нотатки адміна)',
+    `SELECT notes FROM students LIMIT 1`,
+  );
+  await expectDenied(
+    sql,
+    'SELECT students.email',
+    `SELECT email FROM students LIMIT 1`,
+  );
+  await expectDenied(
+    sql,
+    'SELECT students.school',
+    `SELECT school FROM students LIMIT 1`,
+  );
+  await expectDenied(
+    sql,
+    'SELECT students.gender',
+    `SELECT gender FROM students LIMIT 1`,
+  );
+  await expectDenied(
+    sql,
+    'SELECT students.parent2_phone',
+    `SELECT parent2_phone FROM students LIMIT 1`,
+  );
+  await expectDenied(
+    sql,
+    'SELECT students.discount (бухгалтерія)',
+    `SELECT discount FROM students LIMIT 1`,
+  );
+  await expectDenied(
+    sql,
+    'SELECT students.source (маркетинг)',
+    `SELECT source FROM students LIMIT 1`,
+  );
+
+  // Адмінські поля груп
+  await expectDenied(
+    sql,
+    'SELECT groups.monthly_price',
+    `SELECT monthly_price FROM groups LIMIT 1`,
+  );
+  await expectDenied(
+    sql,
+    'SELECT groups.note (приватні адмінські нотатки)',
+    `SELECT note FROM groups LIMIT 1`,
   );
 
   // Гроші / платежі / зарплати

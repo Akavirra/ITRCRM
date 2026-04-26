@@ -40,7 +40,6 @@ export async function GET(request: NextRequest) {
       teacher: {
         id: teacher.id,
         full_name: teacher.full_name,
-        email: teacher.email,
         photoUrl: teacher.photoUrl,
       },
       session_expires_at: sessionExpiresAt,

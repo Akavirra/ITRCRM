@@ -66,29 +66,31 @@ const READ_ONLY_TABLES = [
 // Tables with mixed access — кожен указує свої колонки + дії
 // Формат: { table: { select?, insert?, update?, delete? } }
 const MIXED_ACCESS = {
-  // Власний профіль викладача (фільтр id=current у коді).
-  // INSERT не даємо (нових користувачів створює адмін).
-  // DELETE не даємо.
+  // Профіль викладача (свій + публічна частина чужих, для UI типу "Замінник: X").
+  //
+  // Чутливі поля (email, phone, telegram_id, notes) НЕ в GRANT — інакше викладач
+  // міг би прочитати email/phone усіх колег. Свій email викладач і так знає
+  // (ним логіниться); якщо колись треба — додаємо через cross-role pattern.
+  //
+  // password_hash в UPDATE НЕ даємо — щоб не було ризику "змінити пароль чужому".
+  // Зміна пароля викладача йде через адмінський /api/users/[id]/reset-password.
   users: {
     select: [
       'id',
       'public_id',
       'name',
-      'email',
       'role',
-      'phone',
-      'telegram_id',
       'photo_url',
       'is_active',
-      'created_at',
     ],
-    update: ['name', 'phone', 'photo_url', 'password_hash'],
+    update: ['name', 'photo_url'],
   },
   // Групи: SELECT повний (для відображення розкладу), UPDATE заборонено
   // (адмін керує). Викладач може лише оновити topic/status у lessons.
   groups: {
-    // Свідомо НЕ включаємо monthly_price — це конфіденційно (бухгалтерія).
-    // Якщо викладачу треба знати ціну — окремий процес через адміна.
+    // Свідомо НЕ включаємо:
+    //   - monthly_price — конфіденційно (бухгалтерія)
+    //   - note — там адмін може писати приватне про групу/батьків
     select: [
       'id',
       'public_id',
@@ -103,37 +105,29 @@ const MIXED_ACCESS = {
       'end_date',
       'capacity',
       'status',
-      'note',
       'photos_folder_url',
       'is_active',
       'created_at',
       'updated_at',
     ],
   },
-  // Учні: SELECT з PII батьків (викладачу треба для звʼязку).
-  // INSERT/DELETE заборонено. discount свідомо приховано (бухгалтерія).
+  // Учні: МІНІМАЛЬНИЙ набір даних. Викладач — не власник дитячого профілю,
+  // йому достатньо впізнати дитину (фото, ім'я), позначити присутність та
+  // у разі НП зателефонувати ОДНОМУ батьківському контакту.
+  //
+  // Свідомо прибрано: email учня, school, gender, parent2_*, parent_relation,
+  // interested_courses, source, notes, created_at/updated_at, discount.
+  // Якщо у викладача виникне потреба — він питає адміна, не сам ритися в БД.
   students: {
     select: [
       'id',
       'public_id',
       'full_name',
-      'email',
       'photo',
       'birth_date',
-      'school',
-      'gender',
       'parent_name',
-      'parent_relation',
       'parent_phone',
-      'parent2_name',
-      'parent2_relation',
-      'parent2_phone',
-      'interested_courses',
-      'source',
-      'notes',
       'is_active',
-      'created_at',
-      'updated_at',
     ],
   },
   // Заняття: SELECT повний + UPDATE на тему/статус/нотатки + audit-метадані

@@ -30,11 +30,10 @@ export default async function TeacherGuardedLayout({
   const user = await teacherGet<{
     id: number;
     name: string;
-    email: string;
     role: string;
     photo_url: string | null;
     is_active: boolean;
-  }>(`SELECT id, name, email, role, photo_url, is_active FROM users WHERE id = $1`, [
+  }>(`SELECT id, name, role, photo_url, is_active FROM users WHERE id = $1`, [
     session.user_id,
   ]);
 
@@ -45,7 +44,6 @@ export default async function TeacherGuardedLayout({
   const teacherData = {
     id: user.id,
     full_name: user.name,
-    email: user.email,
     photoUrl: user.photo_url,
   };
 
