@@ -848,6 +848,7 @@
   position: absolute;
   bottom: calc(100% + 8px);
   left: 50%;
+  transform: translateX(-50%);
   transform-origin: bottom center;
   display: inline-flex;
   align-items: center;
@@ -862,6 +863,10 @@
   color: #334155;
   z-index: 30;
   isolation: isolate;
+  font-family: var(--font-inter, system-ui, sans-serif);
+  font-size: 14px;
+  font-weight: 500;
+  font-style: normal;
 }
 
 .blockToolbar button,

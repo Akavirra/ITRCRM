@@ -746,7 +746,7 @@ export default function CompletionCertificatesPanel({
 
     element.addEventListener('wheel', handleWheel, { passive: false });
     return () => element.removeEventListener('wheel', handleWheel);
-  }, [showModal]);
+  }, [showModal, templateUrl]);
 
   useEffect(() => {
     if (!showModal) return;
