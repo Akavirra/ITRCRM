@@ -45,18 +45,35 @@ export default function CertificateCanvasToolbar({
       </div>
 
       <div className={toolbarClassName}>
-        <button type="button" className={toolbarButtonClassName} onClick={onUndo} title="Крок назад (Ctrl+Z)" disabled={!canUndo}>
-          <Undo2 size={15} />
+        <button 
+          type="button" 
+          className={toolbarButtonClassName} 
+          onClick={onUndo} 
+          title="Крок назад (Ctrl+Z)" 
+          disabled={!canUndo}
+          style={{ marginRight: '4px' }}
+        >
+          <Undo2 size={14} />
         </button>
-        <button type="button" className={toolbarButtonClassName} onClick={onZoomOut} title="Зменшити">
-          <ZoomOut size={15} />
-        </button>
-        <span className={toolbarScaleClassName}>{Math.round(scale * 100)}%</span>
-        <button type="button" className={toolbarButtonClassName} onClick={onReset} title="Скинути вигляд">
-          <RotateCcw size={15} />
-        </button>
-        <button type="button" className={toolbarButtonClassName} onClick={onZoomIn} title="Збільшити">
-          <ZoomIn size={15} />
+        
+        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(148, 163, 184, 0.1)', borderRadius: '6px', padding: '2px' }}>
+          <button type="button" className={toolbarButtonClassName} onClick={onZoomOut} title="Зменшити">
+            <ZoomOut size={14} />
+          </button>
+          <span className={toolbarScaleClassName}>{Math.round(scale * 100)}%</span>
+          <button type="button" className={toolbarButtonClassName} onClick={onZoomIn} title="Збільшити">
+            <ZoomIn size={14} />
+          </button>
+        </div>
+
+        <button 
+          type="button" 
+          className={toolbarButtonClassName} 
+          onClick={onReset} 
+          title="Скинути вигляд"
+          style={{ marginLeft: '4px' }}
+        >
+          <RotateCcw size={14} />
         </button>
       </div>
     </div>

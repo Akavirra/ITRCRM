@@ -27,15 +27,19 @@ export default function CertificateEditorFooterActions({
 }: CertificateEditorFooterActionsProps) {
   return (
     <div className={className}>
-      <button className="btn btn-secondary" onClick={onClose}>
-        Закрити
-      </button>
-      <button className="btn btn-primary" onClick={onSaveSettings} disabled={settingsDisabled}>
-        {savingSettings ? 'Зберігаємо…' : 'Зберегти вигляд'}
-      </button>
-      <button className="btn btn-primary" onClick={onPrimaryAction} disabled={primaryDisabled}>
-        {primaryLoading ? primaryLoadingLabel : primaryLabel}
-      </button>
+      <div className="footer-left">
+        <button className="btn btn-secondary btn-close" onClick={onClose}>
+          Закрити
+        </button>
+      </div>
+      <div className="footer-right">
+        <button className="btn btn-secondary" onClick={onSaveSettings} disabled={settingsDisabled}>
+          {savingSettings ? 'Зберігаємо…' : 'Зберегти вигляд'}
+        </button>
+        <button className="btn btn-primary btn-generate" onClick={onPrimaryAction} disabled={primaryDisabled}>
+          {primaryLoading ? primaryLoadingLabel : primaryLabel}
+        </button>
+      </div>
     </div>
   );
 }

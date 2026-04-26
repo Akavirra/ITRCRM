@@ -1246,9 +1246,10 @@ export default function CompletionCertificatesPanel({
         footerClassName={s.modalFooter}
         headerContent={(
           <div className={s.headerTitleRow}>
-            <h3 className={s.modalTitle}>Сертифікат</h3>
-            <span className={s.headerDivider}>•</span>
-            <span className={s.headerStudent}>{selectedStudent?.full_name || 'Оберіть учня'}</span>
+            <h3 className={s.modalTitle}>Редактор сертифіката</h3>
+            <span className={s.headerStudentBadge}>
+              {selectedStudent?.full_name || 'Оберіть учня'}
+            </span>
           </div>
         )}
         bodyNotice={editorBootstrapLoading ? (

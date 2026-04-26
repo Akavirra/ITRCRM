@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Upload } from 'lucide-react';
+import { ChevronDown, Upload, User, Type, Image } from 'lucide-react';
 import s from '@/components/certificates/certificates-editor.module.css';
 
 type AccordionKey = 'data' | 'blocks' | 'template';
@@ -160,7 +160,7 @@ export default function CompletionCertificateEditorSidebar({
         <section className={s.accordionSection}>
           <button type="button" className={s.accordionHeader} onClick={() => toggleAccordion('data')}>
             <div>
-              <div className={s.accordionTitle}>Дані</div>
+              <div className={s.accordionTitle}><User size={16} /> Дані</div>
               <div className={s.accordionMeta}>Учень, курс, дата і стать</div>
             </div>
             <ChevronDown className={`${s.accordionChevron} ${openAccordion === 'data' ? s.accordionChevronOpen : ''}`} />
@@ -365,7 +365,7 @@ export default function CompletionCertificateEditorSidebar({
         <section className={s.accordionSection}>
           <button type="button" className={s.accordionHeader} onClick={() => toggleAccordion('blocks')}>
             <div>
-              <div className={s.accordionTitle}>Текстові блоки</div>
+              <div className={s.accordionTitle}><Type size={16} /> Текстові блоки</div>
               <div className={s.accordionMeta}>Позиція, стиль і текст активного елемента</div>
             </div>
             <ChevronDown className={`${s.accordionChevron} ${openAccordion === 'blocks' ? s.accordionChevronOpen : ''}`} />
@@ -513,7 +513,7 @@ export default function CompletionCertificateEditorSidebar({
         <section className={s.accordionSection}>
           <button type="button" className={s.accordionHeader} onClick={() => toggleAccordion('template')}>
             <div>
-              <div className={s.accordionTitle}>Шаблон</div>
+              <div className={s.accordionTitle}><Image size={16} /> Шаблон</div>
               <div className={s.accordionMeta}>PNG або JPG до 10 МБ</div>
             </div>
             <ChevronDown className={`${s.accordionChevron} ${openAccordion === 'template' ? s.accordionChevronOpen : ''}`} />
