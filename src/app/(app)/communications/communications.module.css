@@ -1217,6 +1217,167 @@
   font-size: 14px;
 }
 
+/* ── Skeleton Loader ── */
+@keyframes skeletonShimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeletonBase {
+  background: linear-gradient(90deg, #f0f2f5 25%, #e4e8ed 50%, #f0f2f5 75%);
+  background-size: 800px 100%;
+  animation: skeletonShimmer 1.6s infinite linear;
+}
+
+.skeletonPage {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.skeletonHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.skeletonHeaderLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.skeletonHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.skeletonTitle {
+  width: 180px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.skeletonSubtitle {
+  width: 340px;
+  height: 16px;
+  border-radius: 6px;
+}
+
+.skeletonButton {
+  width: 160px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.skeletonCounter {
+  width: 120px;
+  height: 44px;
+  border-radius: 8px;
+}
+
+.skeletonStepper {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+}
+
+.skeletonStepCircle {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.skeletonStepLine {
+  flex: 1;
+  min-width: 48px;
+  height: 2px;
+  margin: 0 12px;
+  border-radius: 1px;
+}
+
+.skeletonStage {
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 24px;
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.skeletonStageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.skeletonStageHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.skeletonStageIcon {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.skeletonBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.skeletonLine {
+  height: 14px;
+  border-radius: 6px;
+}
+
+.skeletonPills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.skeletonPill {
+  width: 120px;
+  height: 36px;
+  border-radius: 9999px;
+}
+
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.48fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.skeletonPreviewBox {
+  height: 260px;
+  border-radius: 12px;
+}
+
+.skeletonRecipients {
+  height: 220px;
+  border-radius: 12px;
+}
+
 .spin,
 .loadingState svg {
   animation: spin 900ms linear infinite;

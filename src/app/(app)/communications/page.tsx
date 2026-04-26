@@ -684,9 +684,54 @@ export default function CommunicationsPage() {
 
   if (loading) {
     return (
-      <div className={styles.loadingState}>
-        <RefreshCw size={20} />
-        Завантаження системи розсилок...
+      <div className={styles.skeletonPage}>
+        <div className={styles.skeletonHeader}>
+          <div className={styles.skeletonHeaderLeft}>
+            <div className={`${styles.skeletonBase} ${styles.skeletonTitle}`} />
+            <div className={`${styles.skeletonBase} ${styles.skeletonSubtitle}`} />
+          </div>
+          <div className={styles.skeletonHeaderRight}>
+            <div className={`${styles.skeletonBase} ${styles.skeletonButton}`} />
+            <div className={`${styles.skeletonBase} ${styles.skeletonCounter}`} />
+          </div>
+        </div>
+
+        <div className={styles.skeletonStepper}>
+          <div className={`${styles.skeletonBase} ${styles.skeletonStepCircle}`} />
+          <div className={`${styles.skeletonBase} ${styles.skeletonStepLine}`} />
+          <div className={`${styles.skeletonBase} ${styles.skeletonStepCircle}`} />
+          <div className={`${styles.skeletonBase} ${styles.skeletonStepLine}`} />
+          <div className={`${styles.skeletonBase} ${styles.skeletonStepCircle}`} />
+        </div>
+
+        <div className={styles.skeletonStage}>
+          <div className={styles.skeletonStageHeader}>
+            <div className={styles.skeletonStageHeaderText}>
+              <div className={`${styles.skeletonBase} ${styles.skeletonLine}`} style={{ width: '40%' }} />
+              <div className={`${styles.skeletonBase} ${styles.skeletonLine}`} style={{ width: '65%' }} />
+            </div>
+            <div className={`${styles.skeletonBase} ${styles.skeletonStageIcon}`} />
+          </div>
+
+          <div className={styles.skeletonPills}>
+            <div className={`${styles.skeletonBase} ${styles.skeletonPill}`} />
+            <div className={`${styles.skeletonBase} ${styles.skeletonPill}`} />
+            <div className={`${styles.skeletonBase} ${styles.skeletonPill}`} />
+            <div className={`${styles.skeletonBase} ${styles.skeletonPill}`} />
+          </div>
+
+          <div className={styles.skeletonBody}>
+            <div className={`${styles.skeletonBase} ${styles.skeletonLine}`} style={{ width: '30%' }} />
+            <div className={`${styles.skeletonBase} ${styles.skeletonLine}`} style={{ width: '55%' }} />
+            <div className={`${styles.skeletonBase} ${styles.skeletonLine}`} style={{ width: '80%' }} />
+            <div className={`${styles.skeletonBase} ${styles.skeletonLine}`} style={{ width: '45%' }} />
+          </div>
+
+          <div className={styles.skeletonGrid}>
+            <div className={`${styles.skeletonBase} ${styles.skeletonPreviewBox}`} />
+            <div className={`${styles.skeletonBase} ${styles.skeletonRecipients}`} />
+          </div>
+        </div>
       </div>
     );
   }
