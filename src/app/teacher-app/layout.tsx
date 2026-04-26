@@ -10,8 +10,9 @@ import { ensureTeacherAppVersion } from '@/lib/teacher-app-version';
 // Inner component that uses the context
 function TeacherAppContent({ children }: { children: ReactNode }) {
   const { isLoading, isReady, error, colorScheme } = useTelegramWebApp();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '/teacher-app';
   const searchParams = useSearchParams();
+  const safeSearchParams = searchParams ?? new URLSearchParams();
 
   useEffect(() => {
     // Apply Telegram theme colors to CSS variables
@@ -57,7 +58,7 @@ function TeacherAppContent({ children }: { children: ReactNode }) {
       return;
     }
 
-    const currentVersion = searchParams.get('v');
+    const currentVersion = safeSearchParams.get('v');
     if (currentVersion) {
       return;
     }

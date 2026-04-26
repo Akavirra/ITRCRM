@@ -651,7 +651,7 @@ export default function TeachersPage() {
   const handleApproveInvite = async (tokenId: number) => {
     if (!confirm('Затвердити реєстрацію викладача?')) return;
     try {
-      const res = await fetch(`/api/teacher-invites/${tokenId}/approve`, { method: 'POST' });
+      const res = await fetch(`/api/teacher-invites/by-id/${tokenId}/approve`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         showToast(`Викладача створено. Пароль: ${data.auto_password}`, 'success');
@@ -669,7 +669,7 @@ export default function TeachersPage() {
   const handleRejectInvite = async (tokenId: number) => {
     if (!confirm('Відхилити заявку?')) return;
     try {
-      const res = await fetch(`/api/teacher-invites/${tokenId}`, {
+      const res = await fetch(`/api/teacher-invites/by-id/${tokenId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reject: true }),
@@ -688,7 +688,7 @@ export default function TeachersPage() {
   const handleDeleteInvite = async (tokenId: number) => {
     if (!confirm('Видалити запрошення?')) return;
     try {
-      const res = await fetch(`/api/teacher-invites/${tokenId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/teacher-invites/by-id/${tokenId}`, { method: 'DELETE' });
       if (res.ok) {
         fetchInviteTokens();
       }

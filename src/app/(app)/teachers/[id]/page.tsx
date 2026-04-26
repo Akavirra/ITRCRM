@@ -93,10 +93,11 @@ function formatTime(time: string): string {
 }
 
 export default function TeacherProfilePage() {
-  const params = useParams();
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const teacherId = params?.id ?? '';
   const { user } = useUser();
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [loading, setLoading] = useState(true);
@@ -175,7 +176,7 @@ export default function TeacherProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`/api/teachers/${params.id}`);
+        const response = await fetch(`/api/teachers/${teacherId}`);
         if (response.status === 404) {
           setNotFound(true);
           return;
@@ -204,7 +205,7 @@ export default function TeacherProfilePage() {
     };
 
     fetchData();
-  }, [params.id, router]);
+  }, [teacherId, router]);
 
   // Auto-hide toast after 2 seconds
   useEffect(() => {
@@ -253,7 +254,7 @@ export default function TeacherProfilePage() {
         setEditing(false);
         
         // Refresh teacher data
-        const res = await fetch(`/api/teachers/${params.id}`);
+      const res = await fetch(`/api/teachers/${teacherId}`);
         const data = await res.json();
         setTeacher(data);
       }
@@ -377,7 +378,7 @@ export default function TeacherProfilePage() {
         setToast({ message: 'Групу створено', type: 'success' });
         
         // Refresh teacher data to show new group
-        const res = await fetch(`/api/teachers/${params.id}`);
+      const res = await fetch(`/api/teachers/${teacherId}`);
         const data = await res.json();
         setTeacher(data);
       } else {

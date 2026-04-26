@@ -61,8 +61,8 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function CourseDetailsPage() {
   const router = useRouter();
-  const params = useParams();
-  const courseId = params.id as string;
+  const params = useParams<{ id: string }>();
+  const courseId = params?.id ?? '';
   
   const { user } = useUser();
   const [course, setCourse] = useState<Course | null>(null);

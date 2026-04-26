@@ -43,7 +43,7 @@ const SESSION_REFRESH_THROTTLE_MS = 5 * 60 * 1000;
 
 export default function Layout({ children, user, headerActions, hideNavbar }: LayoutProps) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const [isDesktop, setIsDesktop] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
   const [isMobile, setIsMobile] = useState(false);

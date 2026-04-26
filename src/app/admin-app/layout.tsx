@@ -10,8 +10,9 @@ import { ensureTeacherAppVersion } from '@/lib/teacher-app-version';
 function AdminAppContent({ children }: { children: ReactNode }) {
   const { isLoading, colorScheme } = useTelegramWebApp();
   const { initData, isLoading: initLoading } = useTelegramInitData();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '/admin-app';
   const searchParams = useSearchParams();
+  const safeSearchParams = searchParams ?? new URLSearchParams();
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchUnreadCount = useCallback(async () => {
@@ -40,7 +41,7 @@ function AdminAppContent({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (searchParams.get('v')) {
+    if (safeSearchParams.get('v')) {
       return;
     }
 

@@ -127,6 +127,7 @@ function getMonthOptions(): { value: string; label: string }[] {
 
 export default function PaymentsPage() {
   const searchParams = useSearchParams();
+  const safeSearchParams = searchParams ?? new URLSearchParams();
   const { openGroupModal } = useGroupModals();
   const { openStudentModal } = useStudentModals();
 
@@ -512,7 +513,7 @@ export default function PaymentsPage() {
   }, [month]);
 
   useEffect(() => {
-    if (searchParams.get('newPayment') === '1' && !showPaymentConsole) {
+    if (safeSearchParams.get('newPayment') === '1' && !showPaymentConsole) {
       openPaymentConsole();
     }
   }, [openPaymentConsole, searchParams, showPaymentConsole]);

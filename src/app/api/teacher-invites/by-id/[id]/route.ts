@@ -29,7 +29,6 @@ export async function DELETE(
     const { reject } = body;
 
     if (token.status === 'submitted' && reject) {
-      // Reject (keep record)
       await rejectTeacherInvite(tokenId, user.id);
 
       await safeAddAuditEvent({
@@ -50,7 +49,6 @@ export async function DELETE(
       return NextResponse.json({ rejected: true });
     }
 
-    // Hard delete for pending/expired/rejected tokens
     await deleteTeacherInviteToken(tokenId);
 
     await safeAddAuditEvent({

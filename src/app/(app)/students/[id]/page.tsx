@@ -519,8 +519,8 @@ function formatTime(time: string): string {
 
 export default function StudentProfilePage() {
   const router = useRouter();
-  const params = useParams();
-  const studentId = params.id as string;
+  const params = useParams<{ id: string }>();
+  const studentId = params?.id ?? '';
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { user } = useUser();

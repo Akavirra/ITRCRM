@@ -42,9 +42,12 @@ interface ScheduleData {
 export default function TeacherAppPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const safeSearchParams = searchParams ?? new URLSearchParams();
   const { initData, isLoading: initLoading, error: initError, refresh } = useTelegramInitData();
   const { isInWebView, retryCount } = useTelegramWebApp();
-  
+  const versionParam = safeSearchParams.get('v');
+  const versionSuffix = versionParam ? `?v=${encodeURIComponent(versionParam)}` : '';
+
   const [authChecked, setAuthChecked] = useState(false);
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -208,8 +211,6 @@ export default function TeacherAppPage() {
         return 'Заплановано';
     }
   };
-
-  const versionSuffix = searchParams.get('v') ? `?v=${encodeURIComponent(searchParams.get('v')!)}` : '';
 
   if (loading) {
     return (

@@ -34,8 +34,8 @@ interface Group {
 
 export default function EditGroupPage() {
   const router = useRouter();
-  const params = useParams();
-  const groupId = params.id as string;
+  const params = useParams<{ id: string }>();
+  const groupId = params?.id ?? '';
   
   const { user } = useUser();
   const [group, setGroup] = useState<Group | null>(null);

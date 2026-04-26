@@ -101,8 +101,8 @@ function getPrimaryContactPhone(student: { parent_phone?: string | null }): stri
 
 export default function GroupDetailsPage() {
   const router = useRouter();
-  const params = useParams();
-  const groupId = params.id as string;
+  const params = useParams<{ id: string }>();
+  const groupId = params?.id ?? '';
   
   // Student modals
   const { openStudentModal } = useStudentModals();

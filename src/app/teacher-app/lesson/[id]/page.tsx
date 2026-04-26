@@ -109,11 +109,13 @@ function getLessonMediaStreamUrl(fileId: string): string {
 }
 
 export default function LessonDetailPage() {
-  const params = useParams();
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const lessonId = params.id as string;
-  const versionSuffix = searchParams.get('v') ? `?v=${encodeURIComponent(searchParams.get('v')!)}` : '';
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+  const lessonId = params?.id ?? '';
+  const versionParam = safeSearchParams.get('v');
+  const versionSuffix = versionParam ? `?v=${encodeURIComponent(versionParam)}` : '';
   
   const { initData, isLoading: initLoading, error: initError } = useTelegramInitData();
   const { webApp, isInWebView } = useTelegramWebApp();

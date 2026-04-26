@@ -31,7 +31,6 @@ export async function POST(
       );
     }
 
-    // Check email conflict
     const emailConflict = await get<{ role: string }>(
       'SELECT role FROM users WHERE email = $1',
       [token.teacher_email]
@@ -44,7 +43,6 @@ export async function POST(
       );
     }
 
-    // Generate password and public id
     const password = Math.random().toString(36).slice(-8);
     const hashedPassword = await hashPassword(password);
 
@@ -59,7 +57,6 @@ export async function POST(
       retries++;
     }
 
-    // Insert teacher
     const result = await run(
       `INSERT INTO users (public_id, name, email, password_hash, role, phone, telegram_id, notes, is_active)
        VALUES ($1, $2, $3, $4, 'teacher', $5, $6, $7, TRUE)
@@ -77,7 +74,6 @@ export async function POST(
 
     const teacherId = result[0]?.id;
 
-    // Approve token
     await approveTeacherInvite(tokenId, user.id);
 
     clearServerCache('teachers:');

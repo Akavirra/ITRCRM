@@ -199,6 +199,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
   const STUDENTS_PAGE_SIZE = 24;
   const router = useRouter();
   const searchParams = useSearchParams();
+  const safeSearchParams = searchParams ?? new URLSearchParams();
   const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
   const [showSurnameFirst, setShowSurnameFirst] = useState(true);
   const { user } = useUser();
@@ -398,7 +399,7 @@ export default function StudentsPageClient({ initialFilters }: { initialFilters:
   }, [loadStudents]);
 
   useEffect(() => {
-    if (searchParams.get('create') === '1') {
+    if (safeSearchParams.get('create') === '1') {
       setShowSharedCreateModal(true);
     }
   }, [searchParams]);

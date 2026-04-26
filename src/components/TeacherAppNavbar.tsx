@@ -9,9 +9,11 @@ interface NavbarProps {
 }
 
 export default function TeacherAppNavbar({ teacherName }: NavbarProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const searchParams = useSearchParams();
-  const versionSuffix = searchParams.get('v') ? `?v=${encodeURIComponent(searchParams.get('v')!)}` : '';
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+  const versionParam = safeSearchParams.get('v');
+  const versionSuffix = versionParam ? `?v=${encodeURIComponent(versionParam)}` : '';
 
   const navItems = [
     {

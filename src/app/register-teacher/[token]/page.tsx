@@ -46,8 +46,8 @@ function isValidEmail(email: string): boolean {
 }
 
 function RegisterForm() {
-  const params = useParams();
-  const token = params.token as string;
+  const params = useParams<{ token: string }>();
+  const token = params?.token ?? '';
   const { initData, isLoading: tgLoading, isInWebView, user } = useTelegramWebApp();
 
   const [state, setState] = useState<FormState>('loading');

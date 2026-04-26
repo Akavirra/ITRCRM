@@ -20,6 +20,7 @@ interface Teacher {
 export default function NewGroupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const safeSearchParams = searchParams ?? new URLSearchParams();
   const { user } = useUser();
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -58,7 +59,7 @@ export default function NewGroupPage() {
         setCourses(coursesList);
 
         // Pre-select course from query param if provided
-        const courseIdParam = searchParams.get('course_id');
+        const courseIdParam = safeSearchParams.get('course_id');
         if (courseIdParam) {
           const courseExists = coursesList.some((c: Course) => c.id === parseInt(courseIdParam));
           if (courseExists) {

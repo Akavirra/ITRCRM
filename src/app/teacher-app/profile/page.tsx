@@ -87,7 +87,9 @@ function getRoleDisplay(role: string): string {
 export default function TeacherProfilePage() {
   const { initData, isLoading: initLoading } = useTelegramInitData();
   const searchParams = useSearchParams();
-  const versionSuffix = searchParams.get('v') ? `?v=${encodeURIComponent(searchParams.get('v')!)}` : '';
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+  const versionParam = safeSearchParams.get('v');
+  const versionSuffix = versionParam ? `?v=${encodeURIComponent(versionParam)}` : '';
 
   // Profile state
   const [data, setData] = useState<ProfileData | null>(null);

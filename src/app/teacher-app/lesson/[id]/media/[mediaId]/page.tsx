@@ -29,13 +29,15 @@ function buildDriveImageUrl(fileId: string): string {
 }
 
 export default function TeacherLessonMediaPage() {
-  const params = useParams();
+  const params = useParams<{ id: string; mediaId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const safeSearchParams = searchParams ?? new URLSearchParams();
   const { initData, isLoading: initLoading } = useTelegramInitData();
-  const lessonId = params.id as string;
-  const mediaId = Number(params.mediaId);
-  const versionSuffix = searchParams.get('v') ? `?v=${encodeURIComponent(searchParams.get('v')!)}` : '';
+  const lessonId = params?.id ?? '';
+  const mediaId = Number(params?.mediaId ?? 0);
+  const versionParam = safeSearchParams.get('v');
+  const versionSuffix = versionParam ? `?v=${encodeURIComponent(versionParam)}` : '';
 
   const [photos, setPhotos] = useState<LessonPhoto[]>([]);
   const [loading, setLoading] = useState(true);

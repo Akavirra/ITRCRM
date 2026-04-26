@@ -9,7 +9,7 @@ interface AdminAppNavbarProps {
 }
 
 export default function AdminAppNavbar({ unreadCount = 0 }: AdminAppNavbarProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
 
   const navItems = [
     {

@@ -1152,7 +1152,7 @@ const eventMetaStyle: React.CSSProperties = {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function Sidebar({ user, isOpen, onClose, isMobile = false, isTablet = false }: SidebarProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
 
   const isSmallScreen = isMobile || isTablet;
   const mobileNavbarHeight = isMobile ? 56 : 64;

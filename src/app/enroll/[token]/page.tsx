@@ -123,8 +123,8 @@ function getContactPhoneValue(formData: FormData, key: ContactKey) {
 }
 
 export default function EnrollPage() {
-  const params = useParams();
-  const token = params.token as string;
+  const params = useParams<{ token: string }>();
+  const token = params?.token ?? '';
 
   const [state, setState] = useState<FormState>('loading');
   const [errorReason, setErrorReason] = useState('');

@@ -149,13 +149,14 @@ const inferGenderFromName = (fullName?: string | null): 'male' | 'female' | '' =
 export default function CompletionCertificatesPanel({
 }: {} = {}) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '/certificates';
   const searchParams = useSearchParams();
+  const safeSearchParams = searchParams ?? new URLSearchParams();
   const { user } = useUser();
-  const initialCompletionSearch = searchParams.get('completion_search') || '';
-  const initialCompletionCourse = searchParams.get('completion_course') || '';
-  const initialCompletionGroup = searchParams.get('completion_group') || '';
-  const initialCompletionPage = Number.parseInt(searchParams.get('completion_page') || '1', 10);
+  const initialCompletionSearch = safeSearchParams.get('completion_search') || '';
+  const initialCompletionCourse = safeSearchParams.get('completion_course') || '';
+  const initialCompletionGroup = safeSearchParams.get('completion_group') || '';
+  const initialCompletionPage = Number.parseInt(safeSearchParams.get('completion_page') || '1', 10);
 
   const [certificates, setCertificates] = useState<CompletionCertificateData[]>([]);
   const [students, setStudents] = useState<StudentOption[]>([]);
@@ -439,7 +440,8 @@ export default function CompletionCertificatesPanel({
   }, [listLoading, page, pagination.totalPages]);
 
   useEffect(() => {
-    const nextParams = new URLSearchParams(searchParams.toString());
+    const currentQuery = safeSearchParams.toString();
+    const nextParams = new URLSearchParams(currentQuery);
 
     if (searchQuery) {
       nextParams.set('completion_search', searchQuery);
@@ -465,13 +467,12 @@ export default function CompletionCertificatesPanel({
       nextParams.delete('completion_page');
     }
 
-    const currentQuery = searchParams.toString();
     const nextQuery = nextParams.toString();
 
     if (nextQuery !== currentQuery) {
       router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
     }
-  }, [courseFilter, groupFilter, page, pathname, router, searchParams, searchQuery]);
+  }, [courseFilter, groupFilter, page, pathname, router, safeSearchParams, searchQuery]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {

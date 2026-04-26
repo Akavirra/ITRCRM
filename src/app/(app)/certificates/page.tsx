@@ -107,13 +107,14 @@ interface GiftCertificatesPanelProps {
 
 function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '/certificates';
   const searchParams = useSearchParams();
+  const safeSearchParams = searchParams ?? new URLSearchParams();
   const { user } = useUser();
-  const initialGiftSearch = searchParams.get('gift_search') || '';
-  const initialGiftStatus = searchParams.get('gift_status');
-  const initialGiftPage = Number.parseInt(searchParams.get('gift_page') || '1', 10);
-  const initialGiftArchived = searchParams.get('gift_archived') === '1';
+  const initialGiftSearch = safeSearchParams.get('gift_search') || '';
+  const initialGiftStatus = safeSearchParams.get('gift_status');
+  const initialGiftPage = Number.parseInt(safeSearchParams.get('gift_page') || '1', 10);
+  const initialGiftArchived = safeSearchParams.get('gift_archived') === '1';
   const normalizedGiftStatus: 'all' | 'unprinted' | 'printed' | CertificateData['status'] =
     initialGiftStatus === 'active'
     || initialGiftStatus === 'used'
@@ -310,7 +311,8 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
   }, [listLoading, page, pagination.totalPages]);
 
   useEffect(() => {
-    const nextParams = new URLSearchParams(searchParams.toString());
+    const currentQuery = safeSearchParams.toString();
+    const nextParams = new URLSearchParams(currentQuery);
 
     if (searchQuery) {
       nextParams.set('gift_search', searchQuery);
@@ -336,13 +338,12 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
       nextParams.delete('gift_page');
     }
 
-    const currentQuery = searchParams.toString();
     const nextQuery = nextParams.toString();
 
     if (nextQuery !== currentQuery) {
       router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
     }
-  }, [page, pathname, router, searchParams, searchQuery, showArchived, statusFilter]);
+  }, [page, pathname, router, safeSearchParams, searchQuery, showArchived, statusFilter]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -958,7 +959,8 @@ function GiftCertificatesPanel({}: GiftCertificatesPanelProps = {}) {
 export default function CertificatesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeTab: CertificatesTab = searchParams.get('tab') === 'completion' ? 'completion' : 'gift';
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+  const activeTab: CertificatesTab = safeSearchParams.get('tab') === 'completion' ? 'completion' : 'gift';
 
   const handleTabChange = (tab: CertificatesTab) => {
     router.push(tab === 'gift' ? '/certificates' : '/certificates?tab=completion');
