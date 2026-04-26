@@ -31,7 +31,8 @@ export async function POST(request: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url: webhookUrl,
-          allowed_updates: ['callback_query', 'message']
+          allowed_updates: ['callback_query', 'message'],
+          secret_token: TELEGRAM_WEBHOOK_SECRET
         })
       }
     );
