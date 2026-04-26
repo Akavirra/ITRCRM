@@ -1151,9 +1151,9 @@
   position: fixed;
   inset: 0;
   z-index: 80;
-  padding: 24px;
+  padding: 80px 24px 24px;
   display: grid;
-  place-items: center;
+  place-items: start center;
   background: rgba(15, 23, 42, 0.36);
 }
 
