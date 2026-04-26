@@ -22,11 +22,13 @@ import {
   getMyLesson,
   listAttendanceForMyLesson,
   listMyLessonShortcuts,
+  listMyLessonPhotos,
   listStudentsInMyGroup,
 } from '@/lib/teacher-data';
 import LessonTopicEditor from '@/components/teacher/LessonTopicEditor';
 import LessonAttendanceList from '@/components/teacher/LessonAttendanceList';
 import LessonShortcutsEditor from '@/components/teacher/LessonShortcutsEditor';
+import TeacherLessonGallery from '@/components/teacher/TeacherLessonGallery';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,7 +95,10 @@ export default async function TeacherLessonPage({ params }: PageProps) {
   }
   students.sort((a, b) => a.full_name.localeCompare(b.full_name, 'uk'));
 
-  const shortcuts = await listMyLessonShortcuts(teacher.id, lessonId);
+  const [shortcuts, photos] = await Promise.all([
+    listMyLessonShortcuts(teacher.id, lessonId),
+    listMyLessonPhotos(teacher.id, lessonId),
+  ]);
 
   const title = lesson.course_title || lesson.group_title || 'Заняття';
   const subtitle =
@@ -194,6 +199,35 @@ export default async function TeacherLessonPage({ params }: PageProps) {
           target: s.target,
           icon: s.icon,
           sort_order: s.sort_order,
+        }))}
+      />
+
+      <div
+        className="teacher-section-header"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+      >
+        <span>Галерея заняття</span>
+        <span className="teacher-section-counter">{photos.length}</span>
+      </div>
+      <p
+        style={{
+          fontSize: 13,
+          color: '#64748b',
+          margin: '-6px 0 12px',
+        }}
+      >
+        Фото та відео заняття. Додавати поки можна через Telegram-бот або CRM.
+      </p>
+      <TeacherLessonGallery
+        photos={photos.map((p) => ({
+          id: p.id,
+          drive_file_id: p.drive_file_id,
+          file_name: p.file_name,
+          mime_type: p.mime_type,
+          file_size: p.file_size,
+          uploaded_by_name: p.uploaded_by_name,
+          uploaded_via: p.uploaded_via,
+          created_at: p.created_at,
         }))}
       />
     </>
