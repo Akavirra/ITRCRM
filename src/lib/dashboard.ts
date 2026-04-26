@@ -486,6 +486,30 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     ORDER BY l.lesson_date ASC
   `);
 
+  const debtTrendPromise = all<{ date: string; value: number }>(`
+    WITH dates AS (
+      SELECT generate_series(CURRENT_DATE - 30, CURRENT_DATE, '1 day'::interval)::date as day
+    )
+    SELECT 
+      TO_CHAR(d.day, 'YYYY-MM-DD') as date,
+      COUNT(DISTINCT sg.student_id) as value
+    FROM dates d
+    JOIN student_groups sg ON 
+      sg.status = 'active' 
+      AND sg.join_date <= d.day 
+      AND (sg.leave_date IS NULL OR sg.leave_date >= d.day)
+    JOIN students s ON sg.student_id = s.id AND s.is_active = TRUE
+    JOIN groups g ON sg.group_id = g.id AND g.status = 'active' AND g.is_active = TRUE
+    WHERE NOT EXISTS (
+      SELECT 1 FROM payments p
+      WHERE p.student_id = sg.student_id 
+        AND p.group_id = sg.group_id 
+        AND p.month >= DATE_TRUNC('month', d.day)::date
+    )
+    GROUP BY d.day
+    ORDER BY d.day ASC
+  `);
+
   const [
     [studentCount, groupCount, lessonCount, revenue, prevRevenue, unpaidCount, attendanceData,
      courseCount, allTimeRevenue, allTimeAttendanceData, allTimeUnpaidCount,
@@ -501,6 +525,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     absencesRaw,
     revenueTrendRaw,
     attendanceTrendRaw,
+    debtTrendRaw,
   ] = await Promise.all([
     statsPromise,
     schedulePromise,
@@ -514,6 +539,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     absencesPromise,
     revenueTrendPromise,
     attendanceTrendPromise,
+    debtTrendPromise,
   ]);
 
   const monthlyRevenue = revenue?.total || 0;
@@ -538,6 +564,11 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
 
   const attendanceTrend = last30Days.map(date => {
     const record = attendanceTrendRaw.find(r => r.date === date);
+    return record ? Number(record.value) : 0;
+  });
+
+  const debtTrend = last30Days.map(date => {
+    const record = debtTrendRaw.find(r => r.date === date);
     return record ? Number(record.value) : 0;
   });
 
@@ -566,6 +597,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
       allTimeStudents: allTimeStudentsCount?.count || 0,
       revenueTrend,
       attendanceTrend,
+      debtTrend,
     },
     nextLesson: nextLesson ? {
       ...nextLesson,

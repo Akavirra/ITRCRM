@@ -733,6 +733,15 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   <div className={valueClass}>
                     <AnimatedNumber value={debtsValue} />
                   </div>
+                  <div 
+                    className={styles.sparklineContainer}
+                    style={{ 
+                      opacity: statsPeriod === 'month' ? 0.8 : 0,
+                      transition: 'opacity 0.2s ease'
+                    }}
+                  >
+                    {initialData.stats.debtTrend && <Sparkline data={initialData.stats.debtTrend} color="#dc2626" />}
+                  </div>
                 </div>
               );
             })()}
