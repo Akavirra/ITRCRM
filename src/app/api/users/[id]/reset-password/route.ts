@@ -75,6 +75,19 @@ export async function POST(
     );
 
     await run(`DELETE FROM sessions WHERE user_id = $1`, [targetId]);
+
+    // Phase E.1.1: інвалідуємо також teacher-портал-сесії, щоб після reset
+    // викладача автоматично "вибило" з teacher.itrobotics.com.ua. Таблиця
+    // могла ще не існувати на старих БД — toleruємо це.
+    try {
+      await run(`DELETE FROM teacher_sessions WHERE user_id = $1`, [targetId]);
+    } catch (e) {
+      // Якщо таблиці немає (стара міграція) — тихо ігноруємо
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes('does not exist')) {
+        console.error('[reset-password] teacher_sessions cleanup failed:', msg);
+      }
+    }
     await safeAddAuditEvent({
       entityType: 'user',
       entityId: targetUser.id,

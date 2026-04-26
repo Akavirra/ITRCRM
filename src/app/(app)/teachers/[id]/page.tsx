@@ -10,6 +10,7 @@ import { formatDateKyiv } from '@/lib/date-utils';
 import { t } from '@/i18n/t';
 import PageLoading from '@/components/PageLoading';
 import { uk } from '@/i18n/uk';
+import TeacherWebPortalAccess from '@/components/TeacherWebPortalAccess';
 
 interface Teacher {
   id: number;
@@ -1210,6 +1211,16 @@ export default function TeacherProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Phase E.1.1: керування доступом до teacher-портала. Тільки для admin
+          (API додатково перевіряє is_owner — звичайні адміни побачать 403 при reset). */}
+      {isAdmin && teacher && (
+        <TeacherWebPortalAccess
+          teacherId={teacher.id}
+          teacherName={teacher.name}
+          teacherEmail={teacher.email}
+        />
+      )}
 
       {/* Statistics & Salary Card */}
       <div className="card" style={{ marginTop: '1.5rem' }}>
