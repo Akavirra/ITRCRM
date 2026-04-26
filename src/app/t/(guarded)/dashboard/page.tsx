@@ -18,7 +18,6 @@ import { TEACHER_COOKIE_NAME, getTeacherSession } from '@/lib/teacher-auth';
 import { teacherGet } from '@/db/neon-teacher';
 import { listMyLessons } from '@/lib/teacher-data';
 import TeacherLessonCard from '@/components/teacher/TeacherLessonCard';
-import TeacherLogoutButton from '@/components/teacher/TeacherLogoutButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -158,9 +157,6 @@ export default async function TeacherDashboardPage() {
         })
       )}
 
-      <div style={{ marginTop: 40, display: 'flex', justifyContent: 'flex-end' }}>
-        <TeacherLogoutButton />
-      </div>
     </>
   );
 }
