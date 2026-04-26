@@ -15,7 +15,6 @@ import {
   QrCode,
   Download,
   Copy,
-  Award,
 } from 'lucide-react';
 import { t } from '@/i18n/t';
 import QRCode from 'qrcode';
@@ -596,7 +595,7 @@ export default function EnrollmentPage() {
             ) : filteredSubmissions.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">
-                  <Award size={48} strokeWidth={1.5} />
+                  <QrCode size={48} strokeWidth={1.5} />
                 </div>
                 <h3 className="empty-state-title">Анкет ще немає</h3>
                 <p className="empty-state-text" style={{ maxWidth: '360px', margin: '0 auto 16px' }}>
