@@ -37,6 +37,13 @@
   gap: 24px;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .pageHeader h1 {
   margin: 0;
   font-size: 24px;
@@ -1164,11 +1171,31 @@
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
 }
 
+.historyModal {
+  width: min(100%, 1140px);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+}
+
 .modalHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+.modalHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .panelKicker {

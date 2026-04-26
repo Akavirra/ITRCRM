@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Edit3,
+  History,
   Mail,
   Plus,
   RefreshCw,
@@ -223,6 +224,7 @@ export default function CommunicationsPage() {
   const [groupSearch, setGroupSearch] = useState('');
   const [audienceListOpen, setAudienceListOpen] = useState(true);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [lastSendResult, setLastSendResult] = useState<CampaignSummary | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   const [campaignDetails, setCampaignDetails] = useState<CampaignDetails | null>(null);
@@ -696,9 +698,19 @@ export default function CommunicationsPage() {
           <h1>Розсилки</h1>
           <p>Аудиторія, текст і фінальна перевірка перед відправкою.</p>
         </div>
-        <div className={styles.stepCounter}>
-          <span>Крок {currentStepIndex + 1} з {STEPS.length}</span>
-          <strong>{audienceLabel}</strong>
+        <div className={styles.headerActions}>
+          <button
+            className={styles.iconTextButton}
+            type="button"
+            onClick={() => setHistoryModalOpen(true)}
+          >
+            <History size={16} />
+            Історія розсилок
+          </button>
+          <div className={styles.stepCounter}>
+            <span>Крок {currentStepIndex + 1} з {STEPS.length}</span>
+            <strong>{audienceLabel}</strong>
+          </div>
         </div>
       </header>
 
@@ -1341,23 +1353,49 @@ export default function CommunicationsPage() {
             </aside>
           </div>
 
-          <div className={styles.history}>
-            <div className={styles.historyHeader}>
+          <div className={styles.stageFooter}>
+            <button className={styles.secondaryButton} type="button" onClick={goBack}>
+              <ChevronLeft size={16} />
+              Назад
+            </button>
+            <button className={styles.primaryButton} type="button" onClick={sendCampaign} disabled={sending || !visibleCounts.deliverable}>
+              <Send size={16} />
+              {sending ? 'Надсилаємо...' : `Надіслати ${visibleCounts.deliverable} листів`}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {historyModalOpen && (
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="history-modal-title"
+          onClick={(event) => { if (event.target === event.currentTarget) setHistoryModalOpen(false); }}
+        >
+          <div className={styles.historyModal}>
+            <div className={styles.modalHeader}>
               <div>
-                <h3>Історія розсилок</h3>
-                <p className={styles.supportText}>Повна інформація по кампаніях, автору, тексту та статусах отримувачів.</p>
+                <p className={styles.panelKicker}>Архів</p>
+                <h2 id="history-modal-title">Історія розсилок</h2>
               </div>
-              {selectedCampaignSummary && (
-                <button
-                  className={styles.ghostButton}
-                  type="button"
-                  onClick={() => void loadCampaignDetails(selectedCampaignSummary.id)}
-                  disabled={campaignDetailsLoading}
-                >
-                  <RefreshCw size={16} className={campaignDetailsLoading ? styles.spin : ''} />
-                  Оновити деталі
+              <div className={styles.modalHeaderActions}>
+                {selectedCampaignSummary && (
+                  <button
+                    className={styles.ghostButton}
+                    type="button"
+                    onClick={() => void loadCampaignDetails(selectedCampaignSummary.id)}
+                    disabled={campaignDetailsLoading}
+                  >
+                    <RefreshCw size={16} className={campaignDetailsLoading ? styles.spin : ''} />
+                    Оновити
+                  </button>
+                )}
+                <button type="button" className={styles.modalClose} onClick={() => setHistoryModalOpen(false)} aria-label="Закрити">
+                  <X size={18} />
                 </button>
-              )}
+              </div>
             </div>
             {campaigns.length === 0 ? (
               <p className={styles.emptyText}>Історії ще немає</p>
@@ -1479,18 +1517,7 @@ export default function CommunicationsPage() {
               </div>
             )}
           </div>
-
-          <div className={styles.stageFooter}>
-            <button className={styles.secondaryButton} type="button" onClick={goBack}>
-              <ChevronLeft size={16} />
-              Назад
-            </button>
-            <button className={styles.primaryButton} type="button" onClick={sendCampaign} disabled={sending || !visibleCounts.deliverable}>
-              <Send size={16} />
-              {sending ? 'Надсилаємо...' : `Надіслати ${visibleCounts.deliverable} листів`}
-            </button>
-          </div>
-        </section>
+        </div>
       )}
     </div>
   );
