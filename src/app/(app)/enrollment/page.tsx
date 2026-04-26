@@ -549,39 +549,20 @@ export default function EnrollmentPage() {
             </div>
 
             {/* Controls row */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  borderRadius: '8px',
-                  border: '1px solid var(--gray-200)',
-                  overflow: 'hidden',
-                }}
-              >
-                {statusFilterOptions.map((f) => {
-                  const isActive = statusFilter === f.value;
-                  return (
-                    <button
-                      key={f.value}
-                      type="button"
-                      onClick={() => setStatusFilter(f.value)}
-                      style={{
-                        padding: '6px 16px',
-                        fontSize: '13px',
-                        fontWeight: isActive ? 600 : 400,
-                        color: isActive ? 'var(--primary)' : 'var(--gray-500)',
-                        background: isActive ? 'var(--primary-light)' : 'white',
-                        border: 'none',
-                        borderLeft: statusFilterOptions.indexOf(f) > 0 ? '1px solid var(--gray-200)' : 'none',
-                        cursor: 'pointer',
-                        transition: 'background-color 150ms ease-out, color 150ms ease-out',
-                      }}
-                    >
-                      {f.label}
-                    </button>
-                  );
-                })}
-              </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+              {statusFilterOptions.map((f) => {
+                const isActive = statusFilter === f.value;
+                return (
+                  <button
+                    key={f.value}
+                    type="button"
+                    className={`btn btn-sm ${isActive ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => setStatusFilter(f.value)}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
