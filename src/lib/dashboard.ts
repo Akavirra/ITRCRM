@@ -510,6 +510,19 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     ORDER BY d.day ASC
   `);
 
+  const studentsTrendPromise = all<{ date: string; value: number }>(`
+    SELECT 
+      l.lesson_date::text as date,
+      COUNT(DISTINCT a.student_id) as value
+    FROM attendance a
+    JOIN lessons l ON a.lesson_id = l.id
+    WHERE l.lesson_date >= CURRENT_DATE - 30 
+      AND l.status != 'canceled'
+      AND a.status IN ('present', 'makeup_done')
+    GROUP BY l.lesson_date
+    ORDER BY l.lesson_date ASC
+  `);
+
   const [
     [studentCount, groupCount, lessonCount, revenue, prevRevenue, unpaidCount, attendanceData,
      courseCount, allTimeRevenue, allTimeAttendanceData, allTimeUnpaidCount,
@@ -526,6 +539,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     revenueTrendRaw,
     attendanceTrendRaw,
     debtTrendRaw,
+    studentsTrendRaw,
   ] = await Promise.all([
     statsPromise,
     schedulePromise,
@@ -540,6 +554,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     revenueTrendPromise,
     attendanceTrendPromise,
     debtTrendPromise,
+    studentsTrendPromise,
   ]);
 
   const monthlyRevenue = revenue?.total || 0;
@@ -572,6 +587,11 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     return record ? Number(record.value) : 0;
   });
 
+  const studentsTrend = last30Days.map(date => {
+    const record = studentsTrendRaw.find(r => r.date === date);
+    return record ? Number(record.value) : 0;
+  });
+
   return {
     generatedAtLabel: formatFullDateLabel(now),
     todayDate: todayStr,
@@ -598,6 +618,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
       revenueTrend,
       attendanceTrend,
       debtTrend,
+      studentsTrend,
     },
     nextLesson: nextLesson ? {
       ...nextLesson,

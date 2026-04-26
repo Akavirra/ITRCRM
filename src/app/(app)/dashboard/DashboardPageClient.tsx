@@ -800,6 +800,18 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               </div>
               <div 
                 style={{ 
+                  position: 'relative',
+                  width: '100%',
+                  height: '2.25rem',
+                  marginTop: '0.2rem',
+                  opacity: statsPeriod === 'month' ? 0.8 : 0,
+                  transition: 'opacity 0.2s ease'
+                }}
+              >
+                {initialData.stats.studentsTrend && <Sparkline data={initialData.stats.studentsTrend} color="#8b5cf6" />}
+              </div>
+              <div 
+                style={{ 
                   opacity: statsPeriod === 'month' ? 1 : 0, 
                   visibility: statsPeriod === 'month' ? 'visible' : 'hidden',
                   pointerEvents: statsPeriod === 'month' ? 'auto' : 'none',
