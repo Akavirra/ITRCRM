@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
     // Find teacher by telegram_id
     const teacher = await queryOne(
       `SELECT id, name, telegram_id, role, phone, email, photo_url, created_at
-       FROM users WHERE telegram_id = $1 AND is_active = TRUE LIMIT 1`,
+       FROM users WHERE telegram_id = $1 AND role = 'teacher' AND is_active = TRUE LIMIT 1`,
       [telegramId]
     );
 

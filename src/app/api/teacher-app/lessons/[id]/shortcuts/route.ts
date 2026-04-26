@@ -82,7 +82,7 @@ async function authorize(
   }
 
   const teacher = (await queryOne(
-    `SELECT id, name FROM users WHERE telegram_id = $1 AND is_active = TRUE LIMIT 1`,
+    `SELECT id, name FROM users WHERE telegram_id = $1 AND role = 'teacher' AND is_active = TRUE LIMIT 1`,
     [v.telegramId],
   )) as { id: number; name: string } | null;
   if (!teacher) {

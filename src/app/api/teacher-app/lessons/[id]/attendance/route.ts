@@ -107,7 +107,7 @@ export async function POST(
 
     // Find teacher
     const teacher = await queryOne(
-      `SELECT id, name FROM users WHERE telegram_id = $1 AND is_active = TRUE LIMIT 1`,
+      `SELECT id, name FROM users WHERE telegram_id = $1 AND role = 'teacher' AND is_active = TRUE LIMIT 1`,
       [telegramId]
     );
 

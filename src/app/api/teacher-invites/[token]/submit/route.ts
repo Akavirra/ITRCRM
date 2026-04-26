@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateTeacherInviteToken, submitTeacherInvite } from '@/lib/teacher-invites';
 import crypto from 'crypto';
+import { queryOne } from '@/db/neon';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,6 +113,18 @@ export async function POST(
 
     const telegramId = verification.user.id.toString();
     const telegramUsername = verification.user.username || null;
+
+    // Prevent redundant registration
+    const existingTeacher = await queryOne(
+      `SELECT id FROM users WHERE telegram_id = $1 AND role = 'teacher' AND is_active = TRUE LIMIT 1`,
+      [telegramId]
+    );
+    if (existingTeacher) {
+      return NextResponse.json(
+        { error: 'Ви вже зареєстровані як викладач' },
+        { status: 400 }
+      );
+    }
 
     await submitTeacherInvite(validation.tokenData.id, {
       teacher_name: teacher_name.trim(),

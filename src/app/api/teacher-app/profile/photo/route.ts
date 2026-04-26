@@ -33,7 +33,7 @@ function verifyInitData(initData: string): { valid: boolean; telegramId?: string
 
 async function getTeacher(telegramId: string) {
   return queryOne(
-    `SELECT id, photo_url FROM users WHERE telegram_id = $1 AND is_active = TRUE LIMIT 1`,
+    `SELECT id, photo_url FROM users WHERE telegram_id = $1 AND role = 'teacher' AND is_active = TRUE LIMIT 1`,
     [telegramId]
   ) as Promise<{ id: number; photo_url: string | null } | null>;
 }

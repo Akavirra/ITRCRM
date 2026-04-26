@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
       `SELECT id, name, telegram_id, role
        FROM users
        WHERE telegram_id = $1
+       AND role = 'teacher'
        AND is_active = TRUE
        LIMIT 1`,
       [telegramId]

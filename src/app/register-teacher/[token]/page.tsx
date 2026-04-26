@@ -69,11 +69,19 @@ function RegisterForm() {
       return;
     }
 
-    // Validate token
-    fetch(`/api/teacher-invites/${token}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.valid) {
+    // Validate token and check registration
+    Promise.all([
+      fetch(`/api/teacher-invites/${token}`).then((res) => res.json()),
+      fetch('/api/tg-app/auth', { headers: { 'X-Telegram-Init-Data': initData } }).then((res) => res.ok ? res.json() : null)
+    ])
+      .then(([tokenData, authData]) => {
+        // If user is already a teacher, redirect
+        if (authData?.roles?.includes('teacher')) {
+          window.location.href = '/teacher-app';
+          return;
+        }
+
+        if (tokenData.valid) {
           setState('form');
           if (user) {
             setTelegramInfo({
@@ -91,7 +99,7 @@ function RegisterForm() {
           }
         } else {
           setState('error');
-          setErrorReason(data.reason || 'unknown');
+          setErrorReason(tokenData.reason || 'unknown');
         }
       })
       .catch(() => {
