@@ -1,0 +1,356 @@
+/**
+ * Стилі teacher-портала. Свідомо окремі від student.css і admin CRM —
+ * у викладача своя цільова аудиторія (дорослий, десктоп-first, працює
+ * довгими сесіями) і відповідний дизайн.
+ *
+ * Ключові акценти:
+ *   - десктоп-first з адаптацією на мобільний
+ *   - щільніша інформаційна щільність ніж в учнів
+ *   - спокійніша палітра (slate/indigo замість яскраво-синього)
+ */
+
+.teacher-root {
+  min-height: 100vh;
+  background: #f8fafc;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  color: #0f172a;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.teacher-root * {
+  box-sizing: border-box;
+}
+
+.teacher-app-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.teacher-container {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+.teacher-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.teacher-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.teacher-header__logo {
+  width: 32px;
+  height: 32px;
+  background: #4f46e5;
+  color: #ffffff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.teacher-header__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.teacher-header__subtitle {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+}
+
+.teacher-nav {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.teacher-nav a {
+  padding: 8px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+
+.teacher-nav a:hover {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.teacher-nav a.active {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.teacher-header__user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.teacher-header__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  object-fit: cover;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #475569;
+  overflow: hidden;
+}
+
+.teacher-page-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+
+.teacher-page-subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0 0 24px;
+}
+
+.teacher-section-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 24px 0 10px;
+}
+
+.teacher-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.teacher-empty {
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* === Кнопки === */
+
+.teacher-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  background: #4f46e5;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.teacher-primary-btn:hover {
+  background: #4338ca;
+}
+
+.teacher-primary-btn:active {
+  transform: translateY(1px);
+}
+
+.teacher-primary-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.teacher-primary-btn--full {
+  width: 100%;
+}
+
+.teacher-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 16px;
+  background: #ffffff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.teacher-secondary-btn:hover {
+  background: #f5f7ff;
+  border-color: #818cf8;
+}
+
+.teacher-ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  color: #475569;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.teacher-ghost-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* === Форми === */
+
+.teacher-input {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.teacher-input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.teacher-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.teacher-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.teacher-info {
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+/* === Login сторінка === */
+
+.teacher-login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.teacher-login-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 32px 28px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.teacher-login-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.teacher-login-logo {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 12px;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: #ffffff;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* === Адаптив === */
+
+@media (max-width: 768px) {
+  .teacher-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .teacher-nav {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .teacher-nav a {
+    padding: 8px 12px;
+    flex-shrink: 0;
+  }
+
+  .teacher-page-title {
+    font-size: 22px;
+  }
+}

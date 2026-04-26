@@ -78,6 +78,45 @@ function isStudentHost(host: string | null): boolean {
   return /^students\./i.test(host);
 }
 
+// ----- Teacher portal hostname routing --------------------------------------
+const TEACHER_PUBLIC_PATHS = new Set<string>([
+  '/login',
+  '/api/teacher/auth/login',
+  '/api/teacher/auth/logout',
+]);
+
+const TEACHER_ALLOWED_PATHS = [
+  '/',
+  '/login',
+  '/dashboard',
+  '/lessons',
+  '/groups',
+  '/students',
+  '/profile',
+  '/api/teacher/',
+  // Next.js internals + static
+  '/_next/',
+  '/favicon',
+  '/robots.txt',
+  '/sitemap.xml',
+];
+
+function isTeacherHost(host: string | null): boolean {
+  if (!host) return false;
+  const override = process.env.TEACHER_HOST_OVERRIDE;
+  if (override && host === override) return true;
+  return /^teacher\./i.test(host);
+}
+
+function isTeacherAllowedPath(pathname: string): boolean {
+  if (pathname === '/') return true;
+  return TEACHER_ALLOWED_PATHS.some((p) => {
+    if (p === '/') return false;
+    if (p.endsWith('/')) return pathname.startsWith(p);
+    return pathname === p || pathname.startsWith(p + '/');
+  });
+}
+
 function isStudentAllowedPath(pathname: string): boolean {
   if (pathname === '/') return true; // root — далі middleware сам редіректить
   return STUDENT_ALLOWED_PATHS.some(p => {
@@ -163,6 +202,93 @@ function handleStudentHost(request: NextRequest): NextResponse | null {
   return response;
 }
 
+function handleTeacherHost(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl;
+
+  // Блокуємо прямий доступ до /t/* префіксу — внутрішній, тільки через rewrite
+  if (pathname.startsWith('/t/') || pathname === '/t') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  if (!isTeacherAllowedPath(pathname)) {
+    return new NextResponse(null, { status: 404 });
+  }
+
+  // CSRF для мутаційного API
+  if (MUTATION_METHODS.has(request.method) && pathname.startsWith('/api/')) {
+    const origin = request.headers.get('origin');
+    if (origin) {
+      const host = request.headers.get('host');
+      try {
+        const originHost = new URL(origin).host;
+        if (originHost !== host) {
+          return NextResponse.json({ error: 'CSRF перевірка не пройшла' }, { status: 403 });
+        }
+      } catch {
+        return NextResponse.json({ error: 'CSRF перевірка не пройшла' }, { status: 403 });
+      }
+    }
+  }
+
+  const isPublic =
+    TEACHER_PUBLIC_PATHS.has(pathname) || pathname.startsWith('/api/teacher/auth/');
+  const teacherCookie = request.cookies.get('teacher_session')?.value;
+
+  if (!isPublic && !teacherCookie) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Не авторизовано' }, { status: 401 });
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    if (pathname !== '/') url.searchParams.set('from', pathname);
+    return NextResponse.redirect(url);
+  }
+
+  if (pathname === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = teacherCookie ? '/dashboard' : '/login';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
+  // REWRITE: /<path> → /t/<path>
+  let response: NextResponse;
+  if (!pathname.startsWith('/api/') && !pathname.startsWith('/_next/') && !pathname.includes('.')) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/t${pathname}`;
+    response = NextResponse.rewrite(url);
+  } else {
+    response = NextResponse.next();
+  }
+
+  applyTeacherSecurityHeaders(response);
+  return response;
+}
+
+function applyTeacherSecurityHeaders(response: NextResponse): void {
+  const isDev = process.env.NODE_ENV === 'development';
+
+  // Викладачу можна img-src з Cloudinary (фото профілю), Drive thumbnails (галерея заняття)
+  // та blob:/data: для локального превʼю.
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'" + (isDev ? " 'unsafe-eval'" : ''),
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://res.cloudinary.com https://drive.google.com https://*.googleusercontent.com",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "base-uri 'self'",
+  ].join('; ');
+
+  response.headers.set('Content-Security-Policy', csp);
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'same-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+}
+
 /**
  * Жорсткіші security-заголовки для students.* піддомену.
  * Наш портал учня — один маленький React-app, який НЕ використовує сторонні скрипти,
@@ -215,15 +341,26 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // ----- Teacher portal (teacher.itrobotics.com.ua) -----
+  if (isTeacherHost(host)) {
+    const teacherResponse = handleTeacherHost(request);
+    if (teacherResponse) return teacherResponse;
+    return NextResponse.next();
+  }
+
   // ----- Admin-side (все як було) ------------------------
-  // Блокуємо прямий доступ до /s/* з admin-хоста — це внутрішній префікс
-  // (production only; у dev пускаємо, щоб зручно відкривати localhost:3000/s/login
-  // без необхідності налаштовувати окремий піддомен)
+  // Блокуємо прямий доступ до /s/* і /t/* з admin-хоста — це внутрішні префікси
+  // (production only; у dev пускаємо для тестування)
   if ((pathname.startsWith('/s/') || pathname === '/s') && process.env.NODE_ENV === 'production') {
     return new NextResponse(null, { status: 404 });
   }
-  // У dev: пускаємо /s/* — layout (guarded) сам перевірить student_session cookie
   if (pathname.startsWith('/s/') || pathname === '/s') {
+    return NextResponse.next();
+  }
+  if ((pathname.startsWith('/t/') || pathname === '/t') && process.env.NODE_ENV === 'production') {
+    return new NextResponse(null, { status: 404 });
+  }
+  if (pathname.startsWith('/t/') || pathname === '/t') {
     return NextResponse.next();
   }
 
