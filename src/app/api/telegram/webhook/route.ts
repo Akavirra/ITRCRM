@@ -4,6 +4,7 @@ import { getAuthUser, unauthorized } from '@/lib/api-utils';
 export const dynamic = 'force-dynamic';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 
 // POST /api/telegram/webhook - Set up Telegram webhook
 export async function POST(request: NextRequest) {
