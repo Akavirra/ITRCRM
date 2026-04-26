@@ -1661,9 +1661,10 @@ export default function TeachersPage() {
                 </button>
               </div>
             </form>
-          </div>
+          )}
         </div>
-      )}
+      </div>
+    )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
