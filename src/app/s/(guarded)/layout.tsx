@@ -33,8 +33,8 @@ export default async function StudentGuardedLayout({ children }: { children: Rea
     redirect('/login');
   }
 
-  const student = await studentGet<{ id: number; full_name: string; is_active: boolean }>(
-    `SELECT id, full_name, is_active FROM students WHERE id = $1`,
+  const student = await studentGet<{ id: number; full_name: string; is_active: boolean; photo: string | null }>(
+    `SELECT id, full_name, is_active, photo FROM students WHERE id = $1`,
     [session.student_id]
   );
   if (!student || !student.is_active) {
@@ -50,6 +50,7 @@ export default async function StudentGuardedLayout({ children }: { children: Rea
     id: student.id,
     full_name: student.full_name,
     code: codeRow?.code ?? studentIdToCode(student.id),
+    photo: student.photo,
   };
 
   return <StudentShell student={studentData}>{children}</StudentShell>;

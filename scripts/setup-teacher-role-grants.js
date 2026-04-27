@@ -187,7 +187,7 @@ const MIXED_ACCESS = {
       'updated_at',
       'added_by',
     ],
-    insert: ['lesson_id', 'student_id', 'status', 'comment', 'is_trial', 'makeup_lesson_id', 'added_by'],
+    insert: ['lesson_id', 'student_id', 'status', 'comment', 'is_trial', 'makeup_lesson_id', 'added_by', 'updated_by', 'updated_at'],
     update: ['status', 'comment', 'makeup_lesson_id', 'updated_by', 'updated_at'],
     delete: true,
   },

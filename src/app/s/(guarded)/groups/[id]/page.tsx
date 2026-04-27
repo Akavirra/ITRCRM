@@ -28,6 +28,7 @@ export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: { id: string };
+  searchParams?: { active?: string };
 }
 
 interface GroupMeta {
@@ -58,7 +59,7 @@ interface LessonDTO {
   attendance_status: string | null;
 }
 
-export default async function StudentGroupDetailsPage({ params }: PageProps) {
+export default async function StudentGroupDetailsPage({ params, searchParams }: PageProps) {
   const sessionId = cookies().get(STUDENT_COOKIE_NAME)?.value;
   const session = sessionId ? await getStudentSession(sessionId) : null;
   if (!session) return <div className="student-empty">Сесія закінчилась</div>;
@@ -162,16 +163,28 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
 
   const now = Date.now();
 
-  // Активне заняття (у вікні [-15хв; +1год])
-  const activeLesson = lessons.find((l) => isLessonActive(l, now)) ?? null;
+  // Явно запитане заняття через ?active=<id> — фокусуємо його, навіть якщо до старту ще довго.
+  const requestedActiveId = searchParams?.active ? Number(searchParams.active) : null;
+  const requestedActive =
+    requestedActiveId && Number.isInteger(requestedActiveId)
+      ? lessons.find((l) => l.id === requestedActiveId) ?? null
+      : null;
 
-  // Найближче майбутнє (тільки одне — решту ховаємо згідно ТЗ)
+  // Автоматичне визначення активного (у вікні [-15хв; +1год])
+  const autoActive = lessons.find((l) => isLessonActive(l, now)) ?? null;
+
+  // Пріоритет: явний ?active= → автоматичне вікно
+  const activeLesson = requestedActive ?? autoActive;
+
+  // Найближче майбутнє (тільки одне — решту ховаємо згідно ТЗ).
+  // Якщо це саме сфокусоване заняття — не дублюємо у секцію "Наступне".
   const upcomingAll = lessons
     .filter((l) => new Date(l.start_datetime).getTime() >= now)
     .sort(
       (a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime(),
     );
-  const nextLesson = upcomingAll[0] ?? null;
+  const nextLesson =
+    upcomingAll.find((l) => !activeLesson || l.id !== activeLesson.id) ?? null;
 
   const history = lessons
     .filter((l) => new Date(l.start_datetime).getTime() < now)
@@ -203,6 +216,10 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
 
   // Чи заняття зараз реально триває (для pulse-бейджа та особливого оформлення)
   const lessonLiveNow = activeLesson ? isLessonLive(activeLesson, now) : false;
+  // Чи це заняття реально у активному вікні (а не "preview" майбутнього через ?active=).
+  // Панель робіт показуємо тільки коли дійсно у вікні — інакше учні бачили б
+  // "Вікно закрито" для занять, які ще не починалися.
+  const isInActiveWindow = activeLesson ? isLessonActive(activeLesson, now) : false;
 
   return (
     <>
@@ -223,7 +240,7 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
         >
           <div className="student-active-lesson__header">
             <div className="student-active-lesson__kicker">
-              {lessonLiveNow ? 'Зараз' : 'Ось-ось почнеться'}
+              {lessonLiveNow ? 'Зараз' : isInActiveWindow ? 'Ось-ось почнеться' : 'Заняття'}
             </div>
             <LiveLessonBadge
               startIso={activeLesson.start_datetime}
@@ -262,8 +279,10 @@ export default async function StudentGroupDetailsPage({ params }: PageProps) {
 
       {/* Панель робіт прив'язана до активного заняття.
           Upload-вікно = [start; end + 1год] — див. getUploadWindow.
-          Коли вікно відкрите — можна додавати/видаляти; інакше read-only. */}
-      {activeLesson &&
+          Коли вікно відкрите — можна додавати/видаляти; інакше read-only.
+          Не рендеримо коли заняття ще не у активному вікні (?active= preview майбутнього),
+          бо інакше панель показала б "Вікно закрито" задовго до старту. */}
+      {activeLesson && isInActiveWindow &&
         (() => {
           const uploadWindow = getUploadWindow(activeLesson, now);
           return (

@@ -20,7 +20,6 @@ import {
 import { getStudentLessonContext } from '@/lib/student-lesson-context';
 import { studentGet } from '@/db/neon-student';
 import CountdownTimer from '@/components/student/CountdownTimer';
-import DashboardMaterials from '@/components/student/DashboardMaterials';
 import DashboardRecentWorks from '@/components/student/DashboardRecentWorks';
 import { Calendar, ChevronRight, Users } from 'lucide-react';
 
@@ -53,14 +52,18 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
 
   const { groups, overallNext, activeLesson, activeGroupKey } = ctx;
 
-  // Find the group that has the overallNext lesson for linking
-  const nextGroup = overallNext
-    ? groups.find((g) => String(g.id) === String(overallNext.group_id)) ?? null
+  // Куди веде "Перейти до заняття" для overallNext.
+  // Користувач може зайти на сторінку заняття до його початку — group page
+  // приймає ?active=<id> і фокусує саме це заняття.
+  const nextGroupKey = overallNext
+    ? overallNext.group_id
+      ? String(overallNext.group_id)
+      : 'individual'
     : null;
-
-  const heroHref = overallNext && nextGroup
-    ? (nextGroup.isIndividual ? '/groups/individual' : `/groups/${nextGroup.id}`)
-    : undefined;
+  const nextLessonHref =
+    overallNext && nextGroupKey
+      ? `/groups/${nextGroupKey}?active=${overallNext.id}`
+      : null;
 
   return (
     <div className="student-dashboard-layout">
@@ -119,9 +122,9 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
             <CountdownTimer targetIso={overallNext.start_datetime} compact />
           </div>
 
-          {heroHref && (
+          {nextLessonHref && (
             <div className="student-dashboard-hero__actions">
-              <Link href={heroHref} className="student-primary-btn">
+              <Link href={nextLessonHref} className="student-primary-btn">
                 Перейти до заняття
                 <ChevronRight size={16} />
               </Link>
@@ -135,32 +138,22 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
         </div>
       )}
 
-      {/* Grid: Main + Side */}
-      <div className="student-dashboard-grid">
-        <div className="student-dashboard-main">
-          {/* My Groups */}
-          <section>
-            <div className="student-section-header">Мої групи</div>
-            {groups.length === 0 ? (
-              <div className="student-empty">Ти ще не доданий(а) до жодної групи.</div>
-            ) : (
-              <div className="student-dashboard-groups">
-                {groups.map((g) => (
-                  <CompactGroupItem key={String(g.id)} group={g} highlightNextId={overallNext?.group_id ?? null} />
-                ))}
-              </div>
-            )}
-          </section>
+      {/* My Groups */}
+      <section>
+        <div className="student-section-header">Мої групи</div>
+        {groups.length === 0 ? (
+          <div className="student-empty">Ти ще не доданий(а) до жодної групи.</div>
+        ) : (
+          <div className="student-dashboard-groups">
+            {groups.map((g) => (
+              <CompactGroupItem key={String(g.id)} group={g} highlightNextId={overallNext?.group_id ?? null} />
+            ))}
+          </div>
+        )}
+      </section>
 
-          {/* Recent Works */}
-          <DashboardRecentWorks />
-        </div>
-
-        <div className="student-dashboard-side">
-          {/* Materials for next lesson */}
-          <DashboardMaterials lessonId={overallNext?.id ?? null} groupId={nextGroup?.id ?? null} />
-        </div>
-      </div>
+      {/* Recent Works */}
+      <DashboardRecentWorks />
 
       {/* Footer link */}
       <div style={{ textAlign: 'center', marginTop: 8 }}>

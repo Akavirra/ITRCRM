@@ -86,6 +86,10 @@ const TEACHER_PUBLIC_PATHS = new Set<string>([
   '/login',
   '/api/teacher/auth/login',
   '/api/teacher/auth/logout',
+  '/manifest.webmanifest',
+  '/icon.svg',
+  '/apple-icon',
+  '/favicon.ico',
 ]);
 
 const TEACHER_ALLOWED_PATHS = [
