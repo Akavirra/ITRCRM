@@ -382,21 +382,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Пропускаємо публічні маршрути
-  if (isPublicRoute(pathname)) {
-    return NextResponse.next()
-  }
-
-  // Пропускаємо статику
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon') ||
-    pathname.includes('.')
-  ) {
-    return NextResponse.next()
-  }
-
-  // CSRF: перевіряємо Origin для мутаційних запитів до API
+  // CSRF: перевіряємо Origin для мутаційних запитів до API (до isPublicRoute,
+  // бо у списку є префікси типу /api/teacher-invites — інакше approve/reject
+  // потрапляли б під public і пропускали CSRF check).
   if (MUTATION_METHODS.has(request.method) && pathname.startsWith('/api/')) {
     const origin = request.headers.get('origin');
     if (origin) {
@@ -410,6 +398,20 @@ export function middleware(request: NextRequest) {
         return NextResponse.json({ error: 'CSRF перевірка не пройшла' }, { status: 403 });
       }
     }
+  }
+
+  // Пропускаємо публічні маршрути
+  if (isPublicRoute(pathname)) {
+    return NextResponse.next()
+  }
+
+  // Пропускаємо статику
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next()
   }
 
   // Перевіряємо наявність сесійного cookie (адмінського)

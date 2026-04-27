@@ -6,6 +6,7 @@ import { hashPassword } from '@/lib/auth';
 import { generatePublicId } from '@/lib/public-id';
 import { clearServerCache } from '@/lib/server-cache';
 import { safeAddAuditEvent, toAuditBadge } from '@/lib/audit-events';
+import { sendMessage } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,16 @@ export async function POST(
           ? 'Цей email вже використовується адміністратором'
           : 'Викладач з таким email вже існує'
       );
+    }
+
+    if (token.telegram_id) {
+      const telegramConflict = await get<{ id: number; name: string }>(
+        `SELECT id, name FROM users WHERE telegram_id = $1 AND role = 'teacher' AND is_active = TRUE LIMIT 1`,
+        [token.telegram_id]
+      );
+      if (telegramConflict) {
+        return badRequest(`Викладач з цим Telegram акаунтом вже існує: ${telegramConflict.name}`);
+      }
     }
 
     const password = Math.random().toString(36).slice(-8);
@@ -94,6 +105,17 @@ export async function POST(
         inviteTokenId: tokenId,
       },
     });
+
+    if (token.telegram_id) {
+      try {
+        await sendMessage(
+          token.telegram_id,
+          `✅ Вашу реєстрацію в IT Robotics CRM затверджено!\n\nВи можете увійти у застосунок викладача через бота. У головному меню з'явиться кнопка для запуску.`
+        );
+      } catch (notifyErr) {
+        console.error('Failed to notify teacher in Telegram:', notifyErr);
+      }
+    }
 
     return NextResponse.json({
       id: teacherId,

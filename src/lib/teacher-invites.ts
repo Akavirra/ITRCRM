@@ -28,7 +28,8 @@ export interface TeacherInviteSubmission {
   notes?: string;
 }
 
-const DEFAULT_EXPIRES_MINUTES = 15;
+const DEFAULT_EXPIRES_MINUTES = 60;
+const STALE_TOKEN_CLEANUP_DAYS = 30;
 
 export async function createTeacherInviteToken(
   createdBy: number,
@@ -145,6 +146,14 @@ export async function rejectTeacherInvite(
 }
 
 export async function getAllTeacherInviteTokens(limit: number = 50): Promise<TeacherInviteToken[]> {
+  // Auto-cleanup: remove tokens that are expired/rejected/approved older than STALE_TOKEN_CLEANUP_DAYS
+  // (pending tokens that already passed expires_at also get marked, then deleted by this same query).
+  await run(
+    `DELETE FROM teacher_invite_tokens
+     WHERE (status IN ('expired', 'rejected', 'approved') AND created_at < NOW() - INTERVAL '${STALE_TOKEN_CLEANUP_DAYS} days')
+        OR (status = 'pending' AND expires_at < NOW() - INTERVAL '${STALE_TOKEN_CLEANUP_DAYS} days')`
+  );
+
   return all<TeacherInviteToken>(
     `SELECT * FROM teacher_invite_tokens
      ORDER BY created_at DESC

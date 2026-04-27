@@ -27,6 +27,26 @@ function RoleSwitcher() {
   useEffect(() => {
     if (isLoading || !initData) return;
 
+    // Handle deep-link start params (e.g. ?startapp=register_<token> from QR code).
+    // Telegram delivers these as tgWebAppStartParam URL param or via WebApp.initDataUnsafe.start_param.
+    let startParam: string | null = null;
+    try {
+      startParam = new URLSearchParams(window.location.search).get('tgWebAppStartParam');
+      if (!startParam) {
+        const tg = (window as unknown as { Telegram?: { WebApp?: { initDataUnsafe?: { start_param?: string } } } }).Telegram?.WebApp;
+        startParam = tg?.initDataUnsafe?.start_param ?? null;
+      }
+    } catch {}
+
+    if (startParam && startParam.startsWith('register_')) {
+      const token = startParam.slice('register_'.length);
+      if (token) {
+        if (initData) saveInitData(initData);
+        router.replace(`/register-teacher/${token}`);
+        return;
+      }
+    }
+
     const detect = async () => {
       try {
         const res = await fetch('/api/tg-app/auth', {

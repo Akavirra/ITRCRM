@@ -220,6 +220,8 @@ export default function TeachersPage() {
   const [generatingQr, setGeneratingQr] = useState(false);
   const [inviteTokens, setInviteTokens] = useState<Array<{ id: number; token: string; status: string; expires_at: string; created_at: string; teacher_name: string | null; teacher_email: string | null; telegram_id: string | null }>>([]);
   const [loadingInvites, setLoadingInvites] = useState(false);
+  const [approvedTeacher, setApprovedTeacher] = useState<{ name: string; email: string; password: string } | null>(null);
+  const [passwordCopied, setPasswordCopied] = useState(false);
 
 
   useEffect(() => {
@@ -661,7 +663,12 @@ export default function TeachersPage() {
       const res = await fetch(`/api/teacher-invites/by-id/${tokenId}/approve`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
-        showToast(`Викладача створено. Пароль: ${data.auto_password}`, 'success');
+        setApprovedTeacher({
+          name: data.name || '',
+          email: data.email || '',
+          password: data.auto_password || '',
+        });
+        setPasswordCopied(false);
         fetchInviteTokens();
         loadTeachers();
       } else {
@@ -670,6 +677,17 @@ export default function TeachersPage() {
       }
     } catch {
       showToast('Помилка мережі', 'error');
+    }
+  };
+
+  const copyPassword = async () => {
+    if (!approvedTeacher) return;
+    try {
+      await navigator.clipboard.writeText(approvedTeacher.password);
+      setPasswordCopied(true);
+      setTimeout(() => setPasswordCopied(false), 2000);
+    } catch {
+      showToast('Не вдалося скопіювати', 'error');
     }
   };
 
@@ -2544,6 +2562,87 @@ export default function TeachersPage() {
               </div>
             </div>
           </div>
+      )}
+
+      {/* Approved teacher password modal */}
+      {approvedTeacher && (
+        <Portal>
+          <div
+            onClick={() => setApprovedTeacher(null)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 9999, padding: '1rem',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#fff', borderRadius: '16px', padding: '1.75rem',
+                maxWidth: '440px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              }}
+            >
+              <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+                <div style={{
+                  width: '56px', height: '56px', background: '#dcfce7', color: '#16a34a',
+                  borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 0.875rem', fontSize: '1.75rem', fontWeight: 700,
+                }}>✓</div>
+                <h3 style={{ margin: '0 0 0.375rem', fontSize: '1.125rem', fontWeight: 700, color: '#0f172a' }}>
+                  Викладача створено
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+                  {approvedTeacher.name} · {approvedTeacher.email}
+                </p>
+              </div>
+
+              <div style={{
+                background: '#fef9c3', border: '1px solid #fde68a', borderRadius: '10px',
+                padding: '0.75rem 0.875rem', marginBottom: '1rem',
+                fontSize: '0.8125rem', color: '#854d0e', lineHeight: 1.5,
+              }}>
+                <strong>Зберіть цей пароль зараз.</strong> Він більше не з'явиться. Викладач уже отримав сповіщення в Telegram про затвердження.
+              </div>
+
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+                  Пароль для входу через /login
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    readOnly
+                    value={approvedTeacher.password}
+                    style={{
+                      flex: 1, padding: '0.625rem 0.75rem', border: '1px solid #cbd5e1',
+                      borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.95rem',
+                      background: '#f8fafc', color: '#0f172a',
+                    }}
+                    onFocus={(e) => e.currentTarget.select()}
+                  />
+                  <button
+                    type="button"
+                    className={passwordCopied ? 'btn btn-success' : 'btn btn-primary'}
+                    onClick={copyPassword}
+                    style={{ minWidth: '110px' }}
+                  >
+                    {passwordCopied ? 'Скопійовано' : 'Копіювати'}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setApprovedTeacher(null)}
+                >
+                  Закрити
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
       )}
     </>
   );
