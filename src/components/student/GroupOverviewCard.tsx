@@ -7,6 +7,7 @@
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import type { StudentGroupSummary } from '@/lib/student-lesson-context';
+import { stripTimePrefix } from './utils';
 
 interface GroupOverviewCardProps {
   group: StudentGroupSummary;
@@ -25,9 +26,10 @@ const WEEKDAYS: Record<number, string> = {
 export default function GroupOverviewCard({ group }: GroupOverviewCardProps) {
   const href = group.isIndividual ? '/groups/individual' : `/groups/${group.id}`;
 
-  const primaryTitle = group.course_title || group.title;
+  const strippedGroupTitle = stripTimePrefix(group.title);
+  const primaryTitle = group.course_title || strippedGroupTitle || 'Група';
   const secondaryTitle =
-    group.course_title && group.title && group.course_title !== group.title ? group.title : null;
+    group.course_title && strippedGroupTitle && group.course_title !== strippedGroupTitle ? strippedGroupTitle : null;
 
   const schedulePieces: string[] = [];
   if (group.weekly_day && WEEKDAYS[group.weekly_day]) {

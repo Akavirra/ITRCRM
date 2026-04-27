@@ -23,6 +23,7 @@ import LessonGallery from '@/components/student/LessonGallery';
 import LessonShortcuts from '@/components/student/LessonShortcuts';
 import { getStudentGalleryCounts } from '@/lib/student-gallery';
 import { getStudentShortcutsCounts } from '@/lib/student-shortcuts';
+import { stripTimePrefix } from '@/components/student/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -128,19 +129,14 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
       notFound();
     }
 
-    pageTitle = group.course_title || group.title || 'Група';
+    const strippedGroupTitle = stripTimePrefix(group.title);
+    pageTitle = group.course_title || strippedGroupTitle || 'Група';
     pageSubtitle =
-      group.title && group.course_title !== group.title ? group.title : 'Твоє навчальне середовище';
+      group.title && group.course_title !== group.title ? strippedGroupTitle || 'Твоє навчальне середовище' : 'Твоє навчальне середовище';
 
     if (group.weekly_day) summaryMeta.push(`День: ${weeklyDayToLabel(group.weekly_day)}`);
     if (group.start_time) summaryMeta.push(`Час: ${group.start_time.slice(0, 5)}`);
     if (group.duration_minutes) summaryMeta.push(`Тривалість: ${group.duration_minutes} хв`);
-    if (group.start_date || group.end_date) {
-      summaryMeta.push(
-        `Період: ${group.start_date ? formatDate(group.start_date) : '...'} - ${group.end_date ? formatDate(group.end_date) : '...'}`,
-      );
-    }
-    if (group.status) summaryMeta.push(`Статус: ${normalizeStatus(group.status)}`);
 
     lessons = await studentAll<LessonDTO>(
       `SELECT

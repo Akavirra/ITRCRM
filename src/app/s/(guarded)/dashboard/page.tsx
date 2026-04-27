@@ -22,6 +22,7 @@ import { studentGet } from '@/db/neon-student';
 import CountdownTimer from '@/components/student/CountdownTimer';
 import DashboardRecentWorks from '@/components/student/DashboardRecentWorks';
 import { Calendar, ChevronRight, Users } from 'lucide-react';
+import { stripTimePrefix } from '@/components/student/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,7 +87,7 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
           <div>
             <div className="student-active-banner__kicker">Зараз триває заняття</div>
             <div className="student-active-banner__title">
-              {activeLesson.course_title || activeLesson.group_title || 'Заняття'}
+              {activeLesson.course_title || stripTimePrefix(activeLesson.group_title) || 'Заняття'}
             </div>
             {activeLesson.topic && (
               <div className="student-active-banner__topic">Тема: {activeLesson.topic}</div>
@@ -105,7 +106,7 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
           </div>
 
           <div className="student-dashboard-hero__title">
-            {overallNext.course_title || overallNext.group_title || 'Заняття'}
+            {overallNext.course_title || stripTimePrefix(overallNext.group_title) || 'Заняття'}
           </div>
 
           <div className="student-dashboard-hero__datetime">
@@ -175,7 +176,7 @@ function CompactGroupItem({
   highlightNextId: number | null;
 }) {
   const href = group.id === 'individual' ? '/groups/individual' : `/groups/${group.id}`;
-  const title = group.course_title || group.title;
+  const title = group.course_title || stripTimePrefix(group.title) || 'Група';
   const isNext = String(highlightNextId) === String(group.id);
 
   return (

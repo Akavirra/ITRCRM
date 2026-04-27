@@ -26,14 +26,14 @@
   --st-info: #0EA5E9;
   --st-info-soft: #F0F9FF;
 
-  --st-radius-xl: 20px;
-  --st-radius-lg: 16px;
-  --st-radius-md: 12px;
-  --st-radius-sm: 8px;
+  --st-radius-xl: 24px;
+  --st-radius-lg: 18px;
+  --st-radius-md: 14px;
+  --st-radius-sm: 10px;
 
-  --st-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --st-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
-  --st-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08);
+  --st-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.03);
+  --st-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.05);
+  --st-shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.07);
 
   --st-container-max: 1200px;
   --st-header-height: 64px;
@@ -244,10 +244,10 @@
 /* === Cards === */
 .student-card {
   background: var(--st-bg-card);
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-border-light);
   border-radius: var(--st-radius-xl);
-  padding: 20px;
-  margin-bottom: 12px;
+  padding: 24px;
+  margin-bottom: 16px;
   box-shadow: var(--st-shadow-sm);
   transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
 }
@@ -402,6 +402,19 @@
 }
 
 /* === Group Cards === */
+.student-dashboard-groups {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .student-dashboard-groups {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+  }
+}
+
 .student-groups-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -411,9 +424,9 @@
 .student-group-card {
   position: relative;
   display: block;
-  padding: 16px 40px 16px 16px;
+  padding: 20px 48px 20px 20px;
   background: var(--st-bg-card);
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-border-light);
   border-radius: var(--st-radius-lg);
   box-shadow: var(--st-shadow-sm);
   color: inherit;
