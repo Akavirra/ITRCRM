@@ -1247,3 +1247,87 @@
     align-items: center;
   }
 }
+
+/* === Student detail: attendance history === */
+
+.teacher-attendance-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.teacher-attendance-history__row {
+  margin: 0;
+}
+
+.teacher-attendance-history__link {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.teacher-attendance-history__link:hover,
+.teacher-attendance-history__link:focus-visible {
+  background: #f5f7ff;
+  border-color: #c7d2fe;
+  outline: none;
+}
+
+.teacher-attendance-history__date {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4338ca;
+}
+
+.teacher-attendance-history__title {
+  font-size: 14px;
+  color: #0f172a;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teacher-attendance-history__topic {
+  color: #64748b;
+  font-weight: 400;
+}
+
+.teacher-attendance-history__status {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 600px) {
+  .teacher-attendance-history__link {
+    grid-template-columns: 1fr auto;
+  }
+
+  .teacher-attendance-history__date {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .teacher-attendance-history__title {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    white-space: normal;
+  }
+
+  .teacher-attendance-history__status {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}

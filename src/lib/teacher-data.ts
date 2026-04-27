@@ -608,6 +608,109 @@ export async function listStudentsInMyGroup(
   }));
 }
 
+/**
+ * Групи цього учня, де ВИКЛАДАЧ — поточний (інших груп учня викладач не бачить).
+ * Якщо учень не у жодній моїй групі — assert кине TeacherAccessError.
+ */
+export async function listGroupsOfMyStudent(
+  teacherId: number,
+  studentId: number,
+): Promise<TeacherGroupRow[]> {
+  await assertOwnsStudent(teacherId, studentId);
+  const rows = await teacherAll<any>(
+    `SELECT
+       g.id, g.public_id, g.course_id,
+       c.title AS course_title,
+       g.title, g.weekly_day, g.start_time, g.duration_minutes,
+       g.timezone, g.start_date, g.end_date, g.capacity,
+       g.status, g.is_active,
+       (SELECT COUNT(*)::int
+          FROM student_groups sg2
+          WHERE sg2.group_id = g.id AND sg2.is_active = TRUE) AS active_student_count
+     FROM groups g
+     JOIN student_groups sg ON sg.group_id = g.id AND sg.student_id = $1 AND sg.is_active = TRUE
+     LEFT JOIN courses c ON c.id = g.course_id
+     WHERE g.teacher_id = $2
+     ORDER BY g.is_active DESC, g.weekly_day, g.start_time`,
+    [studentId, teacherId],
+  );
+  return rows.map((r: any) => ({
+    id: Number(r.id),
+    public_id: r.public_id ?? null,
+    course_id: Number(r.course_id),
+    course_title: r.course_title ?? null,
+    title: String(r.title),
+    weekly_day: Number(r.weekly_day),
+    start_time: String(r.start_time),
+    duration_minutes: Number(r.duration_minutes),
+    timezone: r.timezone ?? null,
+    start_date: r.start_date ?? null,
+    end_date: r.end_date ?? null,
+    capacity: r.capacity ?? null,
+    status: String(r.status),
+    is_active: Boolean(r.is_active),
+    active_student_count: Number(r.active_student_count ?? 0),
+  }));
+}
+
+export interface TeacherStudentAttendanceRow {
+  attendance_id: number;
+  lesson_id: number;
+  lesson_date: string;
+  start_datetime: string;
+  end_datetime: string;
+  topic: string | null;
+  status: string | null;
+  is_trial: boolean;
+  group_title: string | null;
+  course_title: string | null;
+}
+
+/**
+ * Присутність учня ТІЛЬКИ на заняттях цього викладача (свої групи + заміни +
+ * індивідуальні). Сортування — найновіші зверху.
+ */
+export async function listMyAttendanceOfStudent(
+  teacherId: number,
+  studentId: number,
+  limit = 200,
+): Promise<TeacherStudentAttendanceRow[]> {
+  await assertOwnsStudent(teacherId, studentId);
+  const rows = await teacherAll<any>(
+    `SELECT
+       a.id AS attendance_id,
+       a.lesson_id,
+       TO_CHAR(l.lesson_date, 'YYYY-MM-DD') AS lesson_date,
+       l.start_datetime, l.end_datetime,
+       l.topic, a.status,
+       COALESCE(a.is_trial, FALSE) AS is_trial,
+       g.title AS group_title,
+       c.title AS course_title
+     FROM attendance a
+     JOIN lessons l ON l.id = a.lesson_id
+     LEFT JOIN groups g ON g.id = l.group_id
+     LEFT JOIN courses c ON c.id = COALESCE(l.course_id, g.course_id)
+     LEFT JOIN lesson_teacher_replacements ltr ON l.id = ltr.lesson_id
+     WHERE a.student_id = $1
+       AND ${MY_LESSON_WHERE.replace(/\$1/g, '$2')}
+     ORDER BY l.start_datetime DESC, l.id DESC
+     LIMIT ${Math.min(Math.max(1, limit), 500)}`,
+    [studentId, teacherId],
+  );
+  return rows.map((r: any) => ({
+    attendance_id: Number(r.attendance_id),
+    lesson_id: Number(r.lesson_id),
+    lesson_date: String(r.lesson_date),
+    start_datetime: String(r.start_datetime),
+    end_datetime: String(r.end_datetime),
+    topic: r.topic ?? null,
+    status: r.status ?? null,
+    is_trial: Boolean(r.is_trial),
+    group_title: r.group_title ?? null,
+    course_title: r.course_title ?? null,
+  }));
+}
+
 /** Повертає null, якщо учень не у жодній з груп викладача. */
 export async function getMyStudent(
   teacherId: number,
