@@ -72,102 +72,108 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
       : null;
 
   return (
-    <div className="student-dashboard-layout">
-      {/* Привітання */}
-      <div>
-        <h1 className="student-page-title">Привіт{studentFirstName ? `, ${studentFirstName}` : ''}! 👋</h1>
-        <p className="student-page-subtitle">
-          {groups.length > 1
-            ? `У тебе ${groups.length} ${pluralGroup(groups.length)} — ось швидкий огляд`
-            : 'Ось твоє навчальне середовище'}
-        </p>
-      </div>
+    <div className="student-dashboard-grid-layout">
+      {/* Left Column: Main Context & Hero */}
+      <div className="student-dashboard-main">
+        <header className="student-dashboard-header">
+          <h1 className="student-page-title">Привіт{studentFirstName ? `, ${studentFirstName}` : ''}! 👋</h1>
+          <p className="student-page-subtitle">
+            {groups.length > 1
+              ? `У тебе ${groups.length} ${pluralGroup(groups.length)} — ось швидкий огляд`
+              : 'Ось твоє навчальне середовище'}
+          </p>
+        </header>
 
-      {/* Якщо ми тут попри active — показуємо прозорий банер з поверненням */}
-      {activeLesson && activeGroupKey && (
-        <Link
-          href={`/groups/${activeGroupKey}?active=${activeLesson.id}`}
-          className="student-active-banner"
-        >
-          <div>
-            <div className="student-active-banner__kicker">Зараз триває заняття</div>
-            <div className="student-active-banner__title">
-              {activeLesson.course_title || stripTimePrefix(activeLesson.group_title) || 'Заняття'}
+        {/* Якщо ми тут попри active — показуємо прозорий банер з поверненням */}
+        {activeLesson && activeGroupKey && (
+          <Link
+            href={`/groups/${activeGroupKey}?active=${activeLesson.id}`}
+            className="student-active-banner"
+          >
+            <div>
+              <div className="student-active-banner__kicker">Зараз триває заняття</div>
+              <div className="student-active-banner__title">
+                {activeLesson.course_title || stripTimePrefix(activeLesson.group_title) || 'Заняття'}
+              </div>
+              {activeLesson.topic && (
+                <div className="student-active-banner__topic">Тема: {activeLesson.topic}</div>
+              )}
             </div>
-            {activeLesson.topic && (
-              <div className="student-active-banner__topic">Тема: {activeLesson.topic}</div>
-            )}
-          </div>
-          <div className="student-active-banner__cta">Увійти →</div>
-        </Link>
-      )}
+            <div className="student-active-banner__cta">Увійти →</div>
+          </Link>
+        )}
 
-      {/* Hero Next Lesson */}
-      {overallNext ? (
-        <div className="student-dashboard-hero">
-          <div className="student-dashboard-hero__badge">
-            <Calendar size={14} />
-            Наступне заняття
-          </div>
+        {/* Hero Next Lesson */}
+        {overallNext ? (
+          <div className="student-dashboard-hero-widget">
+            <div className="student-dashboard-hero-widget__content">
+              <div className="student-dashboard-hero-widget__badge">
+                <Calendar size={14} />
+                Наступне заняття
+              </div>
 
-          <div className="student-dashboard-hero__title">
-            {overallNext.course_title || stripTimePrefix(overallNext.group_title) || 'Заняття'}
-          </div>
+              <div className="student-dashboard-hero-widget__title">
+                {overallNext.course_title || stripTimePrefix(overallNext.group_title) || 'Заняття'}
+              </div>
 
-          <div className="student-dashboard-hero__datetime">
-            {formatWhen(overallNext.start_datetime, overallNext.end_datetime)}
-          </div>
+              <div className="student-dashboard-hero-widget__datetime">
+                {formatWhen(overallNext.start_datetime, overallNext.end_datetime)}
+              </div>
 
-          {overallNext.topic && (
-            <div className="student-dashboard-hero__topic">
-              Тема: <strong>{overallNext.topic}</strong>
+              {overallNext.topic && (
+                <div className="student-dashboard-hero-widget__topic">
+                  Тема: <strong>{overallNext.topic}</strong>
+                </div>
+              )}
+
+              {nextLessonHref && (
+                <div className="student-dashboard-hero-widget__actions">
+                  <Link href={nextLessonHref} className="student-primary-btn">
+                    Перейти до заняття
+                    <ChevronRight size={16} />
+                  </Link>
+                </div>
+              )}
             </div>
-          )}
 
-          <div className="student-dashboard-hero__timer">
-            <CountdownTimer targetIso={overallNext.start_datetime} compact />
-          </div>
-
-          {nextLessonHref && (
-            <div className="student-dashboard-hero__actions">
-              <Link href={nextLessonHref} className="student-primary-btn">
-                Перейти до заняття
-                <ChevronRight size={16} />
-              </Link>
+            <div className="student-dashboard-hero-widget__timer">
+              <div className="timer-label">Почнеться через</div>
+              <CountdownTimer targetIso={overallNext.start_datetime} />
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="student-card">
-          <h3>Найближчим часом занять немає</h3>
-          <p>Коли з&apos;явиться нове заняття — ми покажемо його тут.</p>
-        </div>
-      )}
-
-      {/* My Groups */}
-      <section>
-        <div className="student-section-header">Мої групи</div>
-        {groups.length === 0 ? (
-          <div className="student-empty">Ти ще не доданий(а) до жодної групи.</div>
+          </div>
         ) : (
-          <div className="student-dashboard-groups">
-            {groups.map((g) => (
-              <CompactGroupItem key={String(g.id)} group={g} highlightNextId={overallNext?.group_id ?? null} />
-            ))}
+          <div className="student-card student-empty-hero">
+            <h3>Найближчим часом занять немає</h3>
+            <p>Коли з&apos;явиться нове заняття — ми покажемо його тут.</p>
           </div>
         )}
-      </section>
-
-      {/* Recent Works */}
-      <DashboardRecentWorks />
-
-      {/* Footer link */}
-      <div style={{ textAlign: 'center', marginTop: 8 }}>
-        <Link href="/schedule" className="student-secondary-btn">
-          <Calendar size={16} />
-          Повний розклад
-        </Link>
       </div>
+
+      {/* Right Column: Groups & Recent */}
+      <aside className="student-dashboard-sidebar">
+        <section className="student-dashboard-section">
+          <div className="student-section-header">Мої групи</div>
+          {groups.length === 0 ? (
+            <div className="student-empty">Ти ще не доданий(а) до жодної групи.</div>
+          ) : (
+            <div className="student-compact-groups-list">
+              {groups.map((g) => (
+                <CompactGroupItem key={String(g.id)} group={g} highlightNextId={overallNext?.group_id ?? null} />
+              ))}
+            </div>
+          )}
+          <div style={{ marginTop: 12 }}>
+            <Link href="/schedule" className="student-secondary-btn" style={{ width: '100%' }}>
+              <Calendar size={16} />
+              Повний розклад
+            </Link>
+          </div>
+        </section>
+
+        <section className="student-dashboard-section">
+          <DashboardRecentWorks />
+        </section>
+      </aside>
     </div>
   );
 }

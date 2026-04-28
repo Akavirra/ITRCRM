@@ -20,10 +20,11 @@ import CountdownTimer from '@/components/student/CountdownTimer';
 import LiveLessonBadge from '@/components/student/LiveLessonBadge';
 import LessonWorksPanel from '@/components/student/LessonWorksPanel';
 import LessonGallery from '@/components/student/LessonGallery';
-import LessonShortcuts from '@/components/student/LessonShortcuts';
 import { getStudentGalleryCounts } from '@/lib/student-gallery';
 import { getStudentShortcutsCounts } from '@/lib/student-shortcuts';
+import LessonShortcuts from '@/components/student/LessonShortcuts';
 import { stripTimePrefix } from '@/components/student/utils';
+import { Calendar } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -159,21 +160,15 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
 
   const now = Date.now();
 
-  // Явно запитане заняття через ?active=<id> — фокусуємо його, навіть якщо до старту ще довго.
   const requestedActiveId = searchParams?.active ? Number(searchParams.active) : null;
   const requestedActive =
     requestedActiveId && Number.isInteger(requestedActiveId)
       ? lessons.find((l) => l.id === requestedActiveId) ?? null
       : null;
 
-  // Автоматичне визначення активного (у вікні [-15хв; +1год])
   const autoActive = lessons.find((l) => isLessonActive(l, now)) ?? null;
-
-  // Пріоритет: явний ?active= → автоматичне вікно
   const activeLesson = requestedActive ?? autoActive;
 
-  // Найближче майбутнє (тільки одне — решту ховаємо згідно ТЗ).
-  // Якщо це саме сфокусоване заняття — не дублюємо у секцію "Наступне".
   const upcomingAll = lessons
     .filter((l) => new Date(l.start_datetime).getTime() >= now)
     .sort(
@@ -188,17 +183,11 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
       (a, b) => new Date(b.start_datetime).getTime() - new Date(a.start_datetime).getTime(),
     );
 
-  // Phase C.1: галерея заняття (read-only для учня).
-  // Тягнемо counts ОДНИМ запитом по всіх занять (active + next + history),
-  // щоб під рядком уроку показати "📷 Галерея (N)" тільки де реально є файли.
   const galleryCounts = await getStudentGalleryCounts(
     session.student_id,
     lessons.map((l) => l.id),
   );
 
-  // Phase D.1: counts ярликів — щоб знати, чи рендерити панель "Швидкий доступ"
-  // на активному занятті взагалі. Не показуємо список тут — це робить
-  // <LessonShortcuts> у клієнті (lazy fetch).
   const shortcutsCounts = await getStudentShortcutsCounts(
     session.student_id,
     lessons.map((l) => l.id),
@@ -210,189 +199,192 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
       ? Math.round(((stats.present + stats.late) / stats.knownAttendance) * 100)
       : 0;
 
-  // Чи заняття зараз реально триває (для pulse-бейджа та особливого оформлення)
   const lessonLiveNow = activeLesson ? isLessonLive(activeLesson, now) : false;
-  // Чи це заняття реально у активному вікні (а не "preview" майбутнього через ?active=).
   const isInActiveWindow = activeLesson ? isLessonActive(activeLesson, now) : false;
-  // Чи заняття вже завершилось (поза активним вікном і час старту вже у минулому).
-  // Для минулих занять показуємо панель робіт у read-only — щоб учень бачив свої роботи.
   const isPastLesson =
     !!activeLesson &&
     !isInActiveWindow &&
     new Date(activeLesson.start_datetime).getTime() < now;
-  // Зведений прапорець: чи показувати панель робіт.
   const showWorksPanel = !!activeLesson && (isInActiveWindow || isPastLesson);
 
-  // Префікс для href історії: для звичайної групи — її id, для індивідуальних — 'individual'.
   const groupHrefKey = isIndividual ? 'individual' : params.id;
   const lessonHref = (lessonId: number) => `/groups/${groupHrefKey}?active=${lessonId}`;
 
   return (
     <>
-      <Link href="/dashboard?stay=1" className="student-secondary-btn" style={{ marginBottom: 12 }}>
-        ← До моїх груп
-      </Link>
-
-      <h1 className="student-page-title">{pageTitle}</h1>
-      <p className="student-page-subtitle">{pageSubtitle}</p>
-
-      {/* Active lesson: великий банер з таймером або live-бейджем */}
-      {activeLesson && (
-        <div
-          className={
-            'student-card student-active-lesson' +
-            (lessonLiveNow ? ' student-active-lesson--live' : '')
-          }
-        >
-          <div className="student-active-lesson__header">
-            <div className="student-active-lesson__kicker">
-              {lessonLiveNow
-                ? 'Зараз'
-                : isPastLesson
-                  ? 'Проведене заняття'
-                  : isInActiveWindow
-                    ? 'Ось-ось почнеться'
-                    : 'Заняття'}
-            </div>
-            <LiveLessonBadge
-              startIso={activeLesson.start_datetime}
-              endIso={activeLesson.end_datetime}
-            />
+      <div className="student-page-header">
+        <Link href="/dashboard?stay=1" className="student-back-link">
+          ← До моїх груп
+        </Link>
+        <div className="student-page-header__content">
+          <div>
+            <h1 className="student-page-title">{pageTitle}</h1>
+            <p className="student-page-subtitle">{pageSubtitle}</p>
           </div>
-          <div className="student-active-lesson__topic">
-            {activeLesson.topic || (isPastLesson ? 'Тему не вказано' : 'Тему буде оновлено викладачем')}
-          </div>
-          <div className="student-active-lesson__meta">
-            {formatTimeRange(activeLesson.start_datetime, activeLesson.end_datetime)}
-          </div>
-          {!lessonLiveNow && !isPastLesson && (
-            <div style={{ marginTop: 12 }}>
-              <CountdownTimer
-                targetIso={activeLesson.start_datetime}
-                label="До початку"
-                reachedLabel="Заняття почалось"
-              />
+          {summaryMeta.length > 0 && (
+            <div className="student-group-quick-meta">
+              {summaryMeta.map((item) => (
+                <span key={item} className="student-meta-badge">
+                  {item}
+                </span>
+              ))}
             </div>
           )}
-          {galleryCounts[activeLesson.id] > 0 && (
-            <LessonGallery
-              lessonId={activeLesson.id}
-              count={galleryCounts[activeLesson.id]}
-            />
-          )}
-        </div>
-      )}
-
-      {/* Phase D.1: ярлики "Швидкий доступ" від викладача — рендеримо тільки
-          для активного заняття. Якщо ярликів нема — компонент сам поверне null. */}
-      {activeLesson && shortcutsCounts[activeLesson.id] > 0 && (
-        <LessonShortcuts lessonId={activeLesson.id} />
-      )}
-
-      {/* Панель робіт прив'язана до активного заняття.
-          Upload-вікно = [start; end + 1год] — див. getUploadWindow.
-          Коли вікно відкрите — можна додавати/видаляти; інакше read-only.
-          - Майбутнє ("preview" через ?active=): не рендеримо, бо нема що показувати.
-          - У вікні: повна функціональність (upload + delete).
-          - Минуле: read-only — учень переглядає свої завантажені роботи. */}
-      {activeLesson && showWorksPanel &&
-        (() => {
-          const uploadWindow = getUploadWindow(activeLesson, now);
-          return (
-            <LessonWorksPanel
-              lessonId={activeLesson.id}
-              uploadWindowOpen={uploadWindow.isOpen}
-              uploadWindowClosesAt={uploadWindow.closesAt}
-              lessonTitle={activeLesson.topic || 'Заняття'}
-            />
-          );
-        })()}
-
-      {summaryMeta.length > 0 && (
-        <div className="student-card">
-          <div className="student-group-meta-list">
-            {summaryMeta.map((item) => (
-              <span key={item} className="student-group-meta-chip">
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="student-card student-stats-card">
-        <div>
-          <div className="student-stats-card__label">Загальна присутність</div>
-          <div
-            className="student-stats-card__value"
-            style={{
-              color:
-                attendanceRate >= 80 ? '#16a34a' : attendanceRate >= 50 ? '#ca8a04' : '#dc2626',
-            }}
-          >
-            {stats.knownAttendance > 0 ? `${attendanceRate}%` : 'Немає даних'}
-          </div>
-        </div>
-        <div className="student-stats-card__grid">
-          <div>
-            <div className="student-stats-card__small-label">Був(ла)</div>
-            <div className="student-stats-card__small-value" style={{ color: '#16a34a' }}>
-              {stats.present + stats.late}
-            </div>
-          </div>
-          <div>
-            <div className="student-stats-card__small-label">Пропуски</div>
-            <div className="student-stats-card__small-value" style={{ color: '#dc2626' }}>
-              {stats.absent}
-            </div>
-          </div>
-          <div>
-            <div className="student-stats-card__small-label">Поважна</div>
-            <div className="student-stats-card__small-value" style={{ color: '#2563eb' }}>
-              {stats.excused}
-            </div>
-          </div>
-          <div>
-            <div className="student-stats-card__small-label">Відпрацьовано</div>
-            <div className="student-stats-card__small-value" style={{ color: '#7c3aed' }}>
-              {stats.makeup}
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Наступне заняття — тільки ОДНЕ. Решта прихована згідно ТЗ. */}
-      <div className="student-section-header">Наступне заняття</div>
-      {nextLesson ? (
-        <div className="student-dashboard-grid">
-          <div className="student-next-lesson-wrap">
-            <LessonRow lesson={nextLesson} galleryCount={galleryCounts[nextLesson.id] ?? 0} />
-            {!activeLesson && (
-              <div className="student-next-lesson-timer">
-                <CountdownTimer targetIso={nextLesson.start_datetime} />
+      <div className="student-group-grid-layout">
+        <div className="student-group-main-content">
+          {activeLesson && (
+            <div
+              className={
+                'student-card student-active-lesson-widget' +
+                (lessonLiveNow ? ' student-active-lesson-widget--live' : '')
+              }
+            >
+              <div className="student-active-lesson-widget__header">
+                <div className="student-active-lesson-widget__kicker">
+                  {lessonLiveNow
+                    ? 'Зараз триває заняття'
+                    : isPastLesson
+                      ? 'Проведене заняття'
+                      : isInActiveWindow
+                        ? 'Ось-ось почнеться'
+                        : 'Заняття'}
+                </div>
+                <LiveLessonBadge
+                  startIso={activeLesson.start_datetime}
+                  endIso={activeLesson.end_datetime}
+                />
               </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="student-empty">Найближчих занять немає.</div>
-      )}
 
-      <div className="student-section-header">Історія занять ({history.length})</div>
-      {history.length === 0 ? (
-        <div className="student-empty">Проведених занять ще немає.</div>
-      ) : (
-        <div className="student-dashboard-grid">
-          {history.map((lesson) => (
-            <LessonRow
-              key={lesson.id}
-              lesson={lesson}
-              galleryCount={galleryCounts[lesson.id] ?? 0}
-              href={lessonHref(lesson.id)}
-            />
-          ))}
+              <h2 className="student-active-lesson-widget__topic">
+                {activeLesson.topic || (isPastLesson ? 'Тему не вказано' : 'Тему буде оновлено викладачем')}
+              </h2>
+
+              <div className="student-active-lesson-widget__meta">
+                <Calendar size={16} />
+                {formatTimeRange(activeLesson.start_datetime, activeLesson.end_datetime)}
+              </div>
+
+              {!lessonLiveNow && !isPastLesson && (
+                <div className="student-active-lesson-widget__timer">
+                  <div className="timer-label">Почнеться через</div>
+                  <CountdownTimer
+                    targetIso={activeLesson.start_datetime}
+                    reachedLabel="Заняття почалось"
+                  />
+                </div>
+              )}
+
+              {galleryCounts[activeLesson.id] > 0 && (
+                <div className="student-active-lesson-widget__gallery">
+                  <LessonGallery
+                    lessonId={activeLesson.id}
+                    count={galleryCounts[activeLesson.id]}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeLesson && shortcutsCounts[activeLesson.id] > 0 && (
+            <section className="student-group-section">
+              <div className="student-section-header">Швидкий доступ</div>
+              <LessonShortcuts lessonId={activeLesson.id} />
+            </section>
+          )}
+
+          {activeLesson && showWorksPanel &&
+            (() => {
+              const uploadWindow = getUploadWindow(activeLesson, now);
+              return (
+                <section className="student-group-section">
+                  <LessonWorksPanel
+                    lessonId={activeLesson.id}
+                    uploadWindowOpen={uploadWindow.isOpen}
+                    uploadWindowClosesAt={uploadWindow.closesAt}
+                    lessonTitle={activeLesson.topic || 'Заняття'}
+                  />
+                </section>
+              );
+            })()}
         </div>
-      )}
+
+        <aside className="student-group-sidebar">
+          <div className="student-card student-attendance-widget">
+            <div className="student-attendance-widget__header">
+              <div className="student-attendance-widget__label">Твоя присутність</div>
+              <div
+                className="student-attendance-widget__rate"
+                style={{
+                  color:
+                    attendanceRate >= 80 ? 'var(--st-success)' : attendanceRate >= 50 ? 'var(--st-warning)' : 'var(--st-danger)',
+                }}
+              >
+                {stats.knownAttendance > 0 ? `${attendanceRate}%` : '—'}
+              </div>
+            </div>
+
+            <div className="student-attendance-widget__progress">
+              <div
+                className="progress-bar"
+                style={{
+                  width: `${attendanceRate}%`,
+                  background: attendanceRate >= 80 ? 'var(--st-success)' : attendanceRate >= 50 ? 'var(--st-warning)' : 'var(--st-danger)',
+                }}
+              />
+            </div>
+
+            <div className="student-attendance-widget__stats">
+              <div className="stat-item">
+                <div className="stat-value" style={{ color: 'var(--st-success)' }}>{stats.present + stats.late}</div>
+                <div className="stat-label">Відвідано</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-value" style={{ color: 'var(--st-danger)' }}>{stats.absent}</div>
+                <div className="stat-label">Пропущено</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-value" style={{ color: 'var(--st-accent)' }}>{stats.excused}</div>
+                <div className="stat-label">Поважна</div>
+              </div>
+            </div>
+          </div>
+
+          {nextLesson && (
+            <section className="student-group-section">
+              <div className="student-section-header">Наступне заняття</div>
+              <div className="student-next-lesson-compact">
+                <LessonRow lesson={nextLesson} galleryCount={galleryCounts[nextLesson.id] ?? 0} />
+                {!activeLesson && (
+                  <div className="next-timer">
+                    <CountdownTimer targetIso={nextLesson.start_datetime} compact />
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+        </aside>
+      </div>
+
+      <section className="student-group-section">
+        <div className="student-section-header">Історія занять ({history.length})</div>
+        {history.length === 0 ? (
+          <div className="student-empty">Проведених занять ще немає.</div>
+        ) : (
+          <div className="student-dashboard-grid">
+            {history.map((lesson) => (
+              <LessonRow
+                key={lesson.id}
+                lesson={lesson}
+                galleryCount={galleryCounts[lesson.id] ?? 0}
+                href={lessonHref(lesson.id)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </>
   );
 }
@@ -435,17 +427,6 @@ function weeklyDayToLabel(day: number): string {
   return map[day] || String(day);
 }
 
-function formatDate(ymd: string): string {
-  const d = new Date(ymd);
-  if (Number.isNaN(d.getTime())) return ymd;
-  return new Intl.DateTimeFormat('uk-UA', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'Europe/Kyiv',
-  }).format(d);
-}
-
 function formatTimeRange(startIso: string, endIso: string): string {
   const start = new Date(startIso);
   const end = new Date(endIso);
@@ -461,14 +442,4 @@ function formatTimeRange(startIso: string, endIso: string): string {
     timeZone: 'Europe/Kyiv',
   });
   return `${dateFmt.format(start)} · ${timeFmt.format(start)}–${timeFmt.format(end)}`;
-}
-
-function normalizeStatus(status: string): string {
-  const map: Record<string, string> = {
-    active: 'Активна',
-    paused: 'Пауза',
-    completed: 'Завершена',
-    archived: 'Архів',
-  };
-  return map[status] || status;
 }
