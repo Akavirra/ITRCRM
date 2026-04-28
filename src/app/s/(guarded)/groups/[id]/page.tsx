@@ -213,9 +213,19 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
   // Чи заняття зараз реально триває (для pulse-бейджа та особливого оформлення)
   const lessonLiveNow = activeLesson ? isLessonLive(activeLesson, now) : false;
   // Чи це заняття реально у активному вікні (а не "preview" майбутнього через ?active=).
-  // Панель робіт показуємо тільки коли дійсно у вікні — інакше учні бачили б
-  // "Вікно закрито" для занять, які ще не починалися.
   const isInActiveWindow = activeLesson ? isLessonActive(activeLesson, now) : false;
+  // Чи заняття вже завершилось (поза активним вікном і час старту вже у минулому).
+  // Для минулих занять показуємо панель робіт у read-only — щоб учень бачив свої роботи.
+  const isPastLesson =
+    !!activeLesson &&
+    !isInActiveWindow &&
+    new Date(activeLesson.start_datetime).getTime() < now;
+  // Зведений прапорець: чи показувати панель робіт.
+  const showWorksPanel = !!activeLesson && (isInActiveWindow || isPastLesson);
+
+  // Префікс для href історії: для звичайної групи — її id, для індивідуальних — 'individual'.
+  const groupHrefKey = isIndividual ? 'individual' : params.id;
+  const lessonHref = (lessonId: number) => `/groups/${groupHrefKey}?active=${lessonId}`;
 
   return (
     <>
@@ -236,7 +246,13 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
         >
           <div className="student-active-lesson__header">
             <div className="student-active-lesson__kicker">
-              {lessonLiveNow ? 'Зараз' : isInActiveWindow ? 'Ось-ось почнеться' : 'Заняття'}
+              {lessonLiveNow
+                ? 'Зараз'
+                : isPastLesson
+                  ? 'Проведене заняття'
+                  : isInActiveWindow
+                    ? 'Ось-ось почнеться'
+                    : 'Заняття'}
             </div>
             <LiveLessonBadge
               startIso={activeLesson.start_datetime}
@@ -244,12 +260,12 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
             />
           </div>
           <div className="student-active-lesson__topic">
-            {activeLesson.topic || 'Тему буде оновлено викладачем'}
+            {activeLesson.topic || (isPastLesson ? 'Тему не вказано' : 'Тему буде оновлено викладачем')}
           </div>
           <div className="student-active-lesson__meta">
             {formatTimeRange(activeLesson.start_datetime, activeLesson.end_datetime)}
           </div>
-          {!lessonLiveNow && (
+          {!lessonLiveNow && !isPastLesson && (
             <div style={{ marginTop: 12 }}>
               <CountdownTimer
                 targetIso={activeLesson.start_datetime}
@@ -276,9 +292,10 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
       {/* Панель робіт прив'язана до активного заняття.
           Upload-вікно = [start; end + 1год] — див. getUploadWindow.
           Коли вікно відкрите — можна додавати/видаляти; інакше read-only.
-          Не рендеримо коли заняття ще не у активному вікні (?active= preview майбутнього),
-          бо інакше панель показала б "Вікно закрито" задовго до старту. */}
-      {activeLesson && isInActiveWindow &&
+          - Майбутнє ("preview" через ?active=): не рендеримо, бо нема що показувати.
+          - У вікні: повна функціональність (upload + delete).
+          - Минуле: read-only — учень переглядає свої завантажені роботи. */}
+      {activeLesson && showWorksPanel &&
         (() => {
           const uploadWindow = getUploadWindow(activeLesson, now);
           return (
@@ -286,7 +303,7 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
               lessonId={activeLesson.id}
               uploadWindowOpen={uploadWindow.isOpen}
               uploadWindowClosesAt={uploadWindow.closesAt}
-              lessonTitle={activeLesson.topic || 'Активне заняття'}
+              lessonTitle={activeLesson.topic || 'Заняття'}
             />
           );
         })()}
@@ -371,6 +388,7 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
               key={lesson.id}
               lesson={lesson}
               galleryCount={galleryCounts[lesson.id] ?? 0}
+              href={lessonHref(lesson.id)}
             />
           ))}
         </div>

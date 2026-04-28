@@ -588,6 +588,32 @@
   align-items: flex-start;
 }
 
+.student-lesson-row__link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  margin: -24px;
+  padding: 24px;
+  border-radius: var(--st-radius-xl);
+  transition: background 150ms ease-out;
+}
+
+.student-lesson-row__link:hover {
+  background: var(--st-bg-hover);
+}
+
+.student-lesson-row__chevron {
+  flex: 0 0 auto;
+  align-self: center;
+  color: var(--st-text-muted);
+  display: inline-flex;
+}
+
+.student-lesson-row__chevron svg {
+  width: 18px;
+  height: 18px;
+}
+
 .student-lesson-date {
   flex: 0 0 64px;
   text-align: center;

@@ -45,14 +45,14 @@ export default function StudentShell({ student, children }: StudentHeaderProps) 
 
   return (
     <div className="student-app-wrapper">
-      <header className="student-header">
-        <div className="student-header-logo">
+      {/* Desktop Sidebar */}
+      <aside className="student-sidebar" aria-label="Бічна панель">
+        <div className="student-sidebar__logo">
           <h1>ITRobotics</h1>
           <div className="student-code">{student.code}</div>
         </div>
 
-        {/* Desktop Navigation */}
-        <nav className="student-desktop-nav" aria-label="Навігація для комп'ютера">
+        <nav className="student-sidebar__nav">
           {NAV.map((item) => {
             const active = currentPath === item.href || currentPath.startsWith(item.href + '/');
             const Icon = item.icon;
@@ -67,20 +67,41 @@ export default function StudentShell({ student, children }: StudentHeaderProps) 
           })}
         </nav>
 
+        <div className="student-sidebar__footer">
+          <Link
+            href="/profile"
+            className={'student-sidebar__profile' + (profileActive ? ' active' : '')}
+          >
+            <div className="student-sidebar__avatar">
+              {student.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={student.photo} alt="" />
+              ) : (
+                <span>{getInitials(student.full_name)}</span>
+              )}
+            </div>
+            <span className="student-sidebar__name">{student.full_name}</span>
+          </Link>
+        </div>
+      </aside>
+
+      {/* Mobile Header */}
+      <header className="student-header-mobile">
+        <div className="student-header-logo">
+          <h1>ITRobotics</h1>
+          <div className="student-code">{student.code}</div>
+        </div>
         <Link
           href="/profile"
-          className={'student-header-profile' + (profileActive ? ' active' : '')}
+          className="student-header-avatar"
           aria-label="Відкрити профіль"
         >
-          <div className="student-header-avatar" aria-hidden="true">
-            {student.photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={student.photo} alt="" />
-            ) : (
-              <span>{getInitials(student.full_name)}</span>
-            )}
-          </div>
-          <span className="student-header-name">{student.full_name}</span>
+          {student.photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={student.photo} alt="" />
+          ) : (
+            <span>{getInitials(student.full_name)}</span>
+          )}
         </Link>
       </header>
 

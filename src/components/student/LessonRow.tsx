@@ -7,6 +7,8 @@
  * lazy при розгортанні (LessonGallery — клієнтський).
  */
 
+import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 import LessonGallery from './LessonGallery';
 
 interface LessonRowProps {
@@ -24,11 +26,14 @@ interface LessonRowProps {
   };
   /** Кількість файлів у галереї заняття (з getStudentGalleryCounts). 0 / undefined → нічого не рендеримо. */
   galleryCount?: number;
+  /** Якщо передано — рядок стає клікабельним (відкриває сторінку заняття).
+      Галерея лишається окремо, бо має власні interactive-елементи. */
+  href?: string;
 }
 
 const MONTHS_SHORT = ['січ', 'лют', 'бер', 'кві', 'тра', 'чер', 'лип', 'сер', 'вер', 'жов', 'лис', 'гру'];
 
-export default function LessonRow({ lesson, galleryCount }: LessonRowProps) {
+export default function LessonRow({ lesson, galleryCount, href }: LessonRowProps) {
   const start = new Date(lesson.start_datetime);
   const end = new Date(lesson.end_datetime);
 
@@ -42,39 +47,54 @@ export default function LessonRow({ lesson, galleryCount }: LessonRowProps) {
 
   const attBadge = attendanceBadge(lesson.attendance_status);
 
-  return (
-    <div className="student-card">
-      <div className="student-lesson-row">
-        <div className="student-lesson-date">
-          <span className="day">{day}</span>
-          {month}
-          <div style={{ fontSize: 10, marginTop: 2, opacity: 0.75 }}>{weekdayFmt.format(start)}</div>
+  const inner = (
+    <div className="student-lesson-row">
+      <div className="student-lesson-date">
+        <span className="day">{day}</span>
+        {month}
+        <div style={{ fontSize: 10, marginTop: 2, opacity: 0.75 }}>{weekdayFmt.format(start)}</div>
+      </div>
+      <div className="student-lesson-main">
+        <div className="title">{lesson.course_title || lesson.group_title || 'Заняття'}</div>
+        <div className="meta">
+          {timeFmt.format(start)} – {timeFmt.format(end)}
+          {lesson.group_title && lesson.course_title ? ` • ${lesson.group_title}` : ''}
         </div>
-        <div className="student-lesson-main">
-          <div className="title">{lesson.course_title || lesson.group_title || 'Заняття'}</div>
-          <div className="meta">
-            {timeFmt.format(start)} – {timeFmt.format(end)}
-            {lesson.group_title && lesson.course_title ? ` • ${lesson.group_title}` : ''}
+        {lesson.topic && (
+          <div style={{ fontSize: 13, color: '#374151', marginTop: 4 }}>
+            {lesson.topic}
           </div>
-          {lesson.topic && (
-            <div style={{ fontSize: 13, color: '#374151', marginTop: 4 }}>
-              {lesson.topic}
-            </div>
+        )}
+        <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+          {lesson.is_makeup && lesson.attendance_status === 'present' ? (
+            <span className="student-badge student-badge--makeup-done">Відпрацьовано</span>
+          ) : lesson.is_makeup ? (
+            <span className="student-badge student-badge--makeup">Перенесення</span>
+          ) : null}
+          {lesson.is_trial && <span className="student-badge student-badge--trial">Пробне</span>}
+          {lesson.status === 'done' && !lesson.is_makeup && (
+            <span className="student-badge student-badge--done">Проведено</span>
           )}
-          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-            {lesson.is_makeup && lesson.attendance_status === 'present' ? (
-              <span className="student-badge student-badge--makeup-done">Відпрацьовано</span>
-            ) : lesson.is_makeup ? (
-              <span className="student-badge student-badge--makeup">Перенесення</span>
-            ) : null}
-            {lesson.is_trial && <span className="student-badge student-badge--trial">Пробне</span>}
-            {lesson.status === 'done' && !lesson.is_makeup && (
-              <span className="student-badge student-badge--done">Проведено</span>
-            )}
-            {!(lesson.is_makeup && lesson.attendance_status === 'present') && attBadge}
-          </div>
+          {!(lesson.is_makeup && lesson.attendance_status === 'present') && attBadge}
         </div>
       </div>
+      {href && (
+        <div className="student-lesson-row__chevron" aria-hidden="true">
+          <ChevronRight />
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="student-card">
+      {href ? (
+        <Link href={href} className="student-lesson-row__link">
+          {inner}
+        </Link>
+      ) : (
+        inner
+      )}
       {typeof galleryCount === 'number' && galleryCount > 0 && (
         <LessonGallery lessonId={lesson.id} count={galleryCount} />
       )}

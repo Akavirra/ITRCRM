@@ -53,16 +53,21 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
 
   const { groups, overallNext, activeLesson, activeGroupKey } = ctx;
 
-  // Куди веде "Перейти до заняття" для overallNext.
-  // Користувач може зайти на сторінку заняття до його початку — group page
-  // приймає ?active=<id> і фокусує саме це заняття.
+  // "Раннє вікно входу": дозволяємо учневі відкрити сторінку заняття за 30 хв
+  // до старту. Поза цим вікном тільки таймер на дашборді — без кнопки, бо
+  // сторінка заняття у нас "context-aware" і без активних матеріалів виглядає
+  // порожньою.
+  const EARLY_ENTRY_MS = 30 * 60 * 1000;
+  const nextStartMs = overallNext ? new Date(overallNext.start_datetime).getTime() : 0;
+  const inEarlyEntryWindow = !!overallNext && nextStartMs - Date.now() <= EARLY_ENTRY_MS;
+
   const nextGroupKey = overallNext
     ? overallNext.group_id
       ? String(overallNext.group_id)
       : 'individual'
     : null;
   const nextLessonHref =
-    overallNext && nextGroupKey
+    overallNext && nextGroupKey && inEarlyEntryWindow
       ? `/groups/${nextGroupKey}?active=${overallNext.id}`
       : null;
 
