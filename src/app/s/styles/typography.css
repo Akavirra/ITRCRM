@@ -1,0 +1,82 @@
+/**
+ * Typography: page titles, section headers, breadcrumbs/back-link, page header layout.
+ */
+
+.student-page-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.student-page-subtitle {
+  font-size: 15px;
+  color: var(--st-text-secondary);
+  margin: 0 0 28px;
+  line-height: 1.4;
+}
+
+.student-section-header {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--st-text-muted);
+  margin: 32px 0 12px;
+}
+
+/* Page header (with back-link + meta) */
+.student-page-header {
+  margin-bottom: 32px;
+}
+
+.student-back-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--st-text-secondary);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  transition: color 200ms ease;
+}
+
+.student-back-link:hover {
+  color: var(--st-accent);
+}
+
+.student-page-header__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.student-group-quick-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (min-width: 768px) {
+  .student-page-header__content {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .student-page-title {
+    font-size: 24px;
+  }
+
+  .student-page-subtitle {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  .student-section-header {
+    margin: 24px 0 10px;
+  }
+}

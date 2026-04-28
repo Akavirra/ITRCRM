@@ -1,0 +1,348 @@
+/**
+ * Reusable primitives: card, buttons, inputs, badges, empty state, live badge,
+ * meta badge, skeleton loader, animation keyframes.
+ */
+
+/* === Card === */
+.student-card {
+  background: var(--st-bg-card);
+  border: 1px solid var(--st-border-light);
+  border-radius: var(--st-radius-xl);
+  padding: 24px;
+  margin-bottom: 16px;
+  box-shadow: var(--st-shadow-sm);
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .student-card:hover {
+    box-shadow: var(--st-shadow-md);
+  }
+}
+
+.student-card:active {
+  transform: scale(0.995);
+}
+
+.student-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: var(--st-text-primary);
+}
+
+.student-card p {
+  margin: 0;
+  color: var(--st-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* === Buttons === */
+.student-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 28px;
+  background: linear-gradient(135deg, var(--st-accent) 0%, #3b82f6 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.student-primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+}
+
+.student-primary-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.student-primary-btn:disabled {
+  background: var(--st-text-muted);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.student-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--st-accent);
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 150ms ease-out, border-color 150ms ease-out, transform 100ms ease-out;
+}
+
+.student-secondary-btn:hover {
+  background: var(--st-accent-soft);
+  border-color: var(--st-accent);
+}
+
+.student-secondary-btn:active {
+  transform: scale(0.97);
+}
+
+/* === Forms === */
+.student-input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 15px;
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius-sm);
+  background: var(--st-bg-card);
+  color: var(--st-text-primary);
+  outline: none;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.student-input:focus {
+  border-color: var(--st-accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.student-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--st-text-secondary);
+  margin-bottom: 6px;
+}
+
+.student-error {
+  background: var(--st-danger-soft);
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: var(--st-radius-sm);
+  padding: 10px 14px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+/* === Badges === */
+.student-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.student-badge--present  { background: var(--st-success-soft); color: #047857; }
+.student-badge--absent   { background: var(--st-danger-soft);  color: #991b1b; }
+.student-badge--late     { background: var(--st-warning-soft); color: #92400e; }
+.student-badge--excused  { background: var(--st-info-soft);    color: #0369a1; }
+.student-badge--makeup       { background: #ede9fe; color: #5b21b6; }
+.student-badge--makeup-done  { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+.student-badge--trial        { background: #e0f2fe; color: #075985; }
+.student-badge--done         { background: #f1f5f9; color: #475569; }
+
+.student-meta-badge {
+  background: #ffffff;
+  border: 1px solid var(--st-border-light);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--st-text-secondary);
+}
+
+/* === Live Badge === */
+.student-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.student-live-badge--live {
+  background: var(--st-danger-soft);
+  color: #991b1b;
+}
+
+.student-live-badge--after {
+  background: var(--st-bg-muted);
+  color: var(--st-text-secondary);
+}
+
+.student-live-badge__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.student-live-badge__dot--pulse {
+  background: #dc2626;
+  animation: student-pulse 1.4s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6);
+}
+
+@keyframes student-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(220, 38, 38, 0);
+  }
+}
+
+/* === Empty State (legacy, simple text) === */
+.student-empty {
+  text-align: center;
+  color: var(--st-text-muted);
+  padding: 48px 16px;
+  font-size: 14px;
+  background: var(--st-bg-muted);
+  border-radius: var(--st-radius-lg);
+  border: 1px dashed var(--st-border);
+}
+
+/* === Empty State (нова версія з іконкою) === */
+.student-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.student-empty-state--card {
+  background: var(--st-bg-muted);
+  border-radius: var(--st-radius-lg);
+  padding: 40px 24px;
+  border: 1px solid var(--st-border-light);
+}
+
+.student-empty-state--inline {
+  padding: 16px 0;
+}
+
+.student-empty-state__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--st-bg-card);
+  color: var(--st-text-muted);
+  margin-bottom: 4px;
+}
+
+.student-empty-state--inline .student-empty-state__icon {
+  width: 40px;
+  height: 40px;
+  background: var(--st-bg-muted);
+}
+
+.student-empty-state__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--st-text-primary);
+}
+
+.student-empty-state__hint {
+  font-size: 13px;
+  color: var(--st-text-secondary);
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+.student-empty-state__action {
+  margin-top: 12px;
+}
+
+/* === Stat === */
+.student-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.student-stat--center {
+  align-items: center;
+  text-align: center;
+}
+
+.student-stat__label {
+  font-size: 12px;
+  color: var(--st-text-muted);
+  font-weight: 500;
+}
+
+.student-stat__value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--st-text-primary);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.student-stat__hint {
+  font-size: 12px;
+  color: var(--st-text-secondary);
+}
+
+/* === Skeleton === */
+.student-skeleton {
+  background: linear-gradient(90deg, var(--st-bg-muted) 25%, var(--st-border-light) 50%, var(--st-bg-muted) 75%);
+  background-size: 200% 100%;
+  animation: student-skeleton 1.2s ease-in-out infinite;
+  border-radius: var(--st-radius-sm);
+}
+
+@keyframes student-skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* === Spin (loaders) === */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.student-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* === Reduced Motion === */
+@media (prefers-reduced-motion: reduce) {
+  .student-card,
+  .student-primary-btn,
+  .student-secondary-btn,
+  .student-mobile-nav a {
+    transition: none;
+  }
+
+  .student-skeleton {
+    animation: none;
+    background: var(--st-bg-muted);
+  }
+
+  .student-live-badge__dot--pulse {
+    animation: none;
+  }
+}

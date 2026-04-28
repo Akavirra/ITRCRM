@@ -1,0 +1,245 @@
+/**
+ * Layout: shell, sidebar, mobile header, mobile bottom nav.
+ */
+
+.student-app-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.student-container {
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 24px 16px 100px;
+}
+
+/* === Sidebar (Desktop, ≥1024) === */
+.student-sidebar {
+  display: none;
+}
+
+.student-sidebar__logo {
+  margin-bottom: 40px;
+}
+
+.student-sidebar__logo h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--st-text-primary);
+  letter-spacing: -0.03em;
+}
+
+.student-sidebar__logo .student-code {
+  font-size: 12px;
+  color: var(--st-text-muted);
+  font-weight: 600;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.student-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.student-sidebar__nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: var(--st-text-secondary);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: var(--st-radius-md);
+  transition: background 200ms ease-out, color 200ms ease-out;
+}
+
+.student-sidebar__nav a:hover {
+  background: var(--st-bg-hover);
+  color: var(--st-text-primary);
+}
+
+.student-sidebar__nav a.active {
+  background: var(--st-accent-soft);
+  color: var(--st-accent);
+}
+
+.student-sidebar__footer {
+  margin-top: auto;
+  padding-top: 24px;
+  border-top: 1px solid var(--st-border-light);
+}
+
+.student-sidebar__profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--st-text-primary);
+  padding: 8px;
+  border-radius: var(--st-radius-md);
+  transition: background 200ms ease;
+}
+
+.student-sidebar__profile:hover {
+  background: var(--st-bg-hover);
+}
+
+.student-sidebar__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--st-accent-soft);
+  color: var(--st-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.student-sidebar__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.student-sidebar__name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* === Mobile header (<1024) === */
+.student-header-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--st-border-light);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.student-header-mobile h1 {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+}
+
+/* === Mobile bottom nav (<768) === */
+.student-mobile-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid var(--st-border);
+  display: flex;
+  justify-content: space-around;
+  padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+  z-index: 50;
+}
+
+.student-mobile-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  color: var(--st-text-muted);
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 8px;
+  min-width: 52px;
+  transition: color 150ms ease-out, background 150ms ease-out;
+}
+
+.student-mobile-nav a:active {
+  transform: scale(0.95);
+}
+
+.student-mobile-nav a.active {
+  color: var(--st-accent);
+  background: var(--st-accent-soft);
+}
+
+.student-nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-nav-icon svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+/* === Responsive === */
+@media (min-width: 768px) {
+  .student-container {
+    padding: 40px 32px 60px;
+  }
+
+  .student-mobile-nav {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .student-app-wrapper {
+    flex-direction: row;
+  }
+
+  .student-container {
+    padding: 40px 48px;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .student-sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 280px;
+    height: 100vh;
+    background: #ffffff;
+    border-right: 1px solid var(--st-border-light);
+    padding: 32px 24px;
+    position: sticky;
+    top: 0;
+    flex-shrink: 0;
+  }
+
+  .student-header-mobile {
+    display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  .student-container {
+    padding: 48px 40px 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .student-container {
+    padding: 20px 16px 80px;
+  }
+}

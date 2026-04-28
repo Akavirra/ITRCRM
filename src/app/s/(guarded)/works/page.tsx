@@ -1,13 +1,21 @@
 /**
  * /works — сторінка робіт учня.
- * Серверний компонент-обгортка. Увесь інтерактивний список + upload —
- * у клієнтському WorksView (він сам підтягує дані через /api/student/works).
+ * Серверний header, клієнтський інтерактивний список.
  */
 
 import WorksView from '@/components/student/WorksView';
+import { PageHeader } from '@/components/student/ui/PageHeader';
 
 export const dynamic = 'force-dynamic';
 
 export default function StudentWorksPage() {
-  return <WorksView />;
+  return (
+    <>
+      <PageHeader
+        title="Мої роботи"
+        subtitle="Усі файли, які ти завантажив(ла) — згруповані по заняттях."
+      />
+      <WorksView />
+    </>
+  );
 }

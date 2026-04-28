@@ -1,0 +1,61 @@
+/**
+ * Design tokens студентського порталу.
+ * Усі значення доступні через CSS-vars під .student-root.
+ */
+
+.student-root {
+  /* Backgrounds */
+  --st-bg-page: #F8FAFC;
+  --st-bg-card: #FFFFFF;
+  --st-bg-hover: #F4F5F7;
+  --st-bg-muted: #F1F3F6;
+
+  /* Text */
+  --st-text-primary: #111827;
+  --st-text-secondary: #6B7280;
+  --st-text-muted: #9CA3AF;
+
+  /* Borders */
+  --st-border: #E5E7EB;
+  --st-border-light: #F3F4F6;
+
+  /* Accent */
+  --st-accent: #2563EB;
+  --st-accent-hover: #1D4ED8;
+  --st-accent-soft: #EFF6FF;
+
+  /* Status */
+  --st-success: #10B981;
+  --st-success-soft: #ECFDF5;
+  --st-warning: #F59E0B;
+  --st-warning-soft: #FFFBEB;
+  --st-danger: #EF4444;
+  --st-danger-soft: #FEF2F2;
+  --st-info: #0EA5E9;
+  --st-info-soft: #F0F9FF;
+
+  /* Radius */
+  --st-radius-xl: 24px;
+  --st-radius-lg: 18px;
+  --st-radius-md: 14px;
+  --st-radius-sm: 10px;
+
+  /* Shadows */
+  --st-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.03);
+  --st-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.05);
+  --st-shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.07);
+
+  /* Layout */
+  --st-container-max: 1200px;
+  --st-header-height: 64px;
+
+  min-height: 100vh;
+  background: var(--st-bg-page);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  color: var(--st-text-primary);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.student-root * {
+  box-sizing: border-box;
+}

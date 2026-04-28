@@ -362,10 +362,25 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     [todayStr]
   );
 
-  // Next upcoming lesson (not done/canceled, today or future)
-  const nextLessonPromise = get<DashboardStatsPayload['nextLesson']>(
+  // Current live lesson, otherwise the nearest upcoming lesson.
+  const currentLessonPromise = get<DashboardStatsPayload['nextLesson']>(
     `SELECT
-      l.id, l.start_datetime, l.group_id,
+      l.id, l.start_datetime, l.end_datetime, l.group_id,
+      g.title as group_title, c.title as course_title, u.name as teacher_name
+     FROM lessons l
+     LEFT JOIN groups g ON l.group_id = g.id
+     LEFT JOIN courses c ON COALESCE(l.course_id, g.course_id) = c.id
+     LEFT JOIN users u ON COALESCE(l.teacher_id, g.teacher_id) = u.id
+     WHERE l.start_datetime <= NOW()
+       AND l.end_datetime > NOW()
+       AND l.status = 'scheduled'
+     ORDER BY l.start_datetime DESC
+     LIMIT 1`
+  );
+
+  const nextUpcomingLessonPromise = get<DashboardStatsPayload['nextLesson']>(
+    `SELECT
+      l.id, l.start_datetime, l.end_datetime, l.group_id,
       g.title as group_title, c.title as course_title, u.name as teacher_name
      FROM lessons l
      LEFT JOIN groups g ON l.group_id = g.id
@@ -616,7 +631,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
      courseCount, allTimeRevenue, allTimeAttendanceData, allTimeUnpaidCount,
      todayStudentsCount, monthStudentsCount, yearStudentsCount, allTimeStudentsCount],
     todaySchedule,
-    nextLesson,
+    currentLesson,
+    nextUpcomingLesson,
     upcomingBirthdays,
     groupCapacity,
     problemStudents,
@@ -637,7 +653,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   ] = await Promise.all([
     statsPromise,
     schedulePromise,
-    nextLessonPromise,
+    currentLessonPromise,
+    nextUpcomingLessonPromise,
     birthdaysPromise,
     groupCapacityPromise,
     problemStudentsPromise,
@@ -667,6 +684,7 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   const allTimeAttTotal = allTimeAttendanceData?.total || 0;
   const allTimeAttPresent = allTimeAttendanceData?.present || 0;
   const allTimeAttendancePercent = allTimeAttTotal > 0 ? Math.round((allTimeAttPresent / allTimeAttTotal) * 100) : null;
+  const nextLesson = currentLesson ?? nextUpcomingLesson;
 
   const last30Days = Array.from({ length: 30 }, (_, i) => {
     return format(subDays(now, 29 - i), 'yyyy-MM-dd');
@@ -792,7 +810,9 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
     },
     nextLesson: nextLesson ? {
       ...nextLesson,
+      state: currentLesson && currentLesson.id === nextLesson.id ? 'live' : 'upcoming',
       startTimeLabel: formatTimeLabel(nextLesson.start_datetime),
+      endTimeLabel: formatTimeLabel(nextLesson.end_datetime),
     } : null,
     todaySchedule: todaySchedule.map((lesson) => ({
       ...lesson,

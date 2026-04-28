@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { LogOut } from 'lucide-react';
 
 export default function StudentLogoutButton() {
   const [loading, setLoading] = useState(false);
@@ -21,12 +22,12 @@ export default function StudentLogoutButton() {
   return (
     <button
       type="button"
-      className="student-primary-btn"
-      style={{ background: '#dc2626' }}
+      className="student-secondary-btn"
       onClick={handleLogout}
       disabled={loading}
     >
-      {loading ? 'Вихід…' : 'Вийти з акаунту'}
+      <LogOut size={16} strokeWidth={1.75} />
+      {loading ? 'Вихід…' : 'Вийти'}
     </button>
   );
 }

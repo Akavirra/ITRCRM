@@ -64,11 +64,14 @@ export interface DashboardStatsPayload {
   nextLesson: {
     id: number;
     start_datetime: string;
+    end_datetime: string;
     startTimeLabel: string;
+    endTimeLabel: string;
     group_title: string;
     course_title: string;
     teacher_name: string;
     group_id: number | null;
+    state: 'live' | 'upcoming';
   } | null;
   todaySchedule: Array<{
     id: number;

@@ -1,12 +1,15 @@
 /**
  * /schedule — повний розклад учня (30 днів вперед + 7 назад за замовчуванням).
- * Групує уроки по днях.
+ * Групує уроки по днях. Сьогоднішній день виділяється sticky-заголовком.
  */
 
 import { cookies } from 'next/headers';
+import { CalendarOff } from 'lucide-react';
 import { STUDENT_COOKIE_NAME, getStudentSession } from '@/lib/student-auth';
 import { studentAll } from '@/db/neon-student';
 import LessonRow from '@/components/student/LessonRow';
+import { PageHeader } from '@/components/student/ui/PageHeader';
+import { EmptyState } from '@/components/student/ui/EmptyState';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +33,7 @@ export default async function StudentSchedulePage() {
   const sessionId = cookies().get(STUDENT_COOKIE_NAME)?.value;
   const session = sessionId ? await getStudentSession(sessionId) : null;
   if (!session) {
-    return <div className="student-empty">Сесія закінчилась</div>;
+    return <EmptyState title="Сесія закінчилась" hint="Увійдіть знову." />;
   }
 
   const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -55,7 +58,6 @@ export default async function StudentSchedulePage() {
     [session.student_id, from, to]
   );
 
-  // Групуємо по Kyiv-дню
   const groupFmt = new Intl.DateTimeFormat('uk-UA', {
     day: 'numeric',
     month: 'long',
@@ -63,43 +65,64 @@ export default async function StudentSchedulePage() {
     timeZone: 'Europe/Kyiv',
   });
 
+  const dayKeyFmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Kyiv',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
   const groups = new Map<string, { label: string; items: LessonDTO[] }>();
   for (const lesson of lessons) {
     const d = new Date(lesson.start_datetime);
-    const key = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    const key = dayKeyFmt.format(d);
     if (!groups.has(key)) {
-      groups.set(key, { label: groupFmt.format(d), items: [] });
+      const label = groupFmt.format(d);
+      groups.set(key, {
+        label: label.charAt(0).toUpperCase() + label.slice(1),
+        items: [],
+      });
     }
     groups.get(key)!.items.push(lesson);
   }
 
-  const now = Date.now();
-  const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const todayKey = dayKeyFmt.format(new Date());
 
   return (
     <>
-      <h1 className="student-page-title">Розклад</h1>
-      <p className="student-page-subtitle">
-        Найближчі 30 днів + тиждень назад
-      </p>
+      <PageHeader title="Розклад" subtitle="Найближчі 30 днів + тиждень назад" />
 
       {lessons.length === 0 ? (
-        <div className="student-empty">
-          Немає занять у цьому періоді.
-        </div>
+        <EmptyState
+          icon={<CalendarOff size={28} strokeWidth={1.75} />}
+          title="Немає занять у цьому періоді"
+          hint="Зміни у розкладі з'являться тут автоматично."
+        />
       ) : (
-        Array.from(groups.entries()).map(([key, group]) => (
-          <section key={key} style={{ marginBottom: 16 }}>
-            <div className="student-section-header" style={{
-              color: key === todayKey ? '#2160d0' : '#6b7280',
-            }}>
-              {key === todayKey ? 'Сьогодні — ' : ''}{group.label}
-            </div>
-            <div className="student-dashboard-grid">
-              {group.items.map((l) => <LessonRow key={l.id} lesson={l} />)}
-            </div>
-          </section>
-        ))
+        <div className="student-schedule">
+          {Array.from(groups.entries()).map(([key, group]) => {
+            const isToday = key === todayKey;
+            const isPast = key < todayKey;
+            const sectionClass =
+              'student-schedule-day' +
+              (isToday ? ' student-schedule-day--today' : '') +
+              (isPast && !isToday ? ' student-schedule-day--past' : '');
+
+            return (
+              <section key={key} className={sectionClass}>
+                <div className="student-schedule-day__heading">
+                  {isToday && <span className="student-schedule-day__heading-pin">Сьогодні</span>}
+                  <span>{group.label}</span>
+                </div>
+                <div className="student-schedule-day__list">
+                  {group.items.map((l) => (
+                    <LessonRow key={l.id} lesson={l} />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       )}
     </>
   );

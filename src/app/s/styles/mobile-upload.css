@@ -1,0 +1,234 @@
+/**
+ * Сторінка /m/[token] — учень з телефону завантажує файли через QR-токен.
+ * Mobile-first без сайдбару/шапки.
+ */
+
+.student-mobile-page {
+  padding-top: 24px;
+}
+
+.student-mobile-lesson-info__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--st-text-primary);
+}
+
+.student-mobile-lesson-info__meta {
+  font-size: 13px;
+  color: var(--st-text-secondary);
+  margin-top: 2px;
+}
+
+.student-mobile-lesson-info__topic {
+  font-size: 13px;
+  color: var(--st-text-secondary);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--st-border);
+}
+
+.student-mobile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.student-mobile-pick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 36px 20px;
+  background: linear-gradient(135deg, #2563EB 0%, #4f46e5 100%);
+  border: none;
+  border-radius: var(--st-radius-lg);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.2);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.student-mobile-pick-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+}
+
+.student-mobile-pick-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.student-mobile-pick-btn__icon {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.student-mobile-pick-btn__label {
+  font-size: 15px;
+}
+
+.student-mobile-pending {
+  border: 2px solid var(--st-accent);
+}
+
+.student-mobile-pending__filename {
+  font-weight: 600;
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
+.student-mobile-pending__meta {
+  font-size: 12px;
+  color: var(--st-text-secondary);
+  margin-bottom: 12px;
+}
+
+.student-mobile-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 12px 0 4px;
+  color: var(--st-text-secondary);
+}
+
+.student-mobile-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius-sm);
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--st-bg-card);
+  color: var(--st-text-primary);
+  outline: none;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.student-mobile-input:focus {
+  border-color: var(--st-accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.student-mobile-input--textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.student-mobile-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--st-danger-soft);
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: var(--st-radius-sm);
+  font-size: 13px;
+}
+
+.student-mobile-progress {
+  margin-top: 12px;
+}
+
+.student-mobile-progress__label {
+  font-size: 12px;
+  color: var(--st-text-secondary);
+  margin-bottom: 4px;
+}
+
+.student-mobile-progress__bar {
+  height: 8px;
+  background: var(--st-bg-muted);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.student-mobile-progress__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2563EB 0%, #4f46e5 100%);
+  transition: width 0.2s ease;
+}
+
+.student-mobile-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.student-mobile-btn-primary {
+  flex: 1;
+  min-width: 140px;
+  padding: 12px 16px;
+  font-size: 15px;
+}
+
+.student-mobile-done__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #047857;
+  margin-bottom: 8px;
+}
+
+.student-mobile-done__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.student-mobile-done__list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--st-text-secondary);
+  word-break: break-all;
+}
+
+.student-mobile-done__check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--st-success-soft);
+  color: #047857;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.student-mobile-expired {
+  text-align: center;
+  padding: 32px 20px;
+}
+
+.student-mobile-expired__icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.student-mobile-expired__title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--st-text-primary);
+}
+
+.student-mobile-expired__text {
+  font-size: 14px;
+  color: var(--st-text-secondary);
+  margin: 0 0 12px;
+}
+
+.student-mobile-expired__done {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--st-success-soft);
+  border-radius: var(--st-radius-sm);
+  font-size: 13px;
+  color: #047857;
+}

@@ -13,15 +13,18 @@
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { Calendar, ChevronRight, Users, CalendarOff } from 'lucide-react';
 import {
   STUDENT_COOKIE_NAME,
   getStudentSession,
 } from '@/lib/student-auth';
 import { getStudentLessonContext } from '@/lib/student-lesson-context';
 import { studentGet } from '@/db/neon-student';
-import CountdownTimer from '@/components/student/CountdownTimer';
+import DashboardHero from '@/components/student/DashboardHero';
 import DashboardRecentWorks from '@/components/student/DashboardRecentWorks';
-import { Calendar, ChevronRight, Users } from 'lucide-react';
+import { PageHeader } from '@/components/student/ui/PageHeader';
+import { SectionHeader } from '@/components/student/ui/SectionHeader';
+import { EmptyState } from '@/components/student/ui/EmptyState';
 import { stripTimePrefix } from '@/components/student/utils';
 
 export const dynamic = 'force-dynamic';
@@ -34,7 +37,7 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
   const sessionId = cookies().get(STUDENT_COOKIE_NAME)?.value;
   const session = sessionId ? await getStudentSession(sessionId) : null;
   if (!session) {
-    return <div className="student-empty">Сесія закінчилась</div>;
+    return <EmptyState title="Сесія закінчилась" hint="Увійдіть знову." />;
   }
 
   const student = await studentGet<{ full_name: string }>(
@@ -45,18 +48,13 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
 
   const ctx = await getStudentLessonContext(session.student_id);
 
-  // Context-Aware redirect: якщо є активне заняття — переходимо на сторінку групи.
-  // Учень може обійти через ?stay=1 (напр. для перегляду інших груп).
   if (ctx.activeLesson && ctx.activeGroupKey && searchParams?.stay !== '1') {
     redirect(`/groups/${ctx.activeGroupKey}?active=${ctx.activeLesson.id}`);
   }
 
   const { groups, overallNext, activeLesson, activeGroupKey } = ctx;
 
-  // "Раннє вікно входу": дозволяємо учневі відкрити сторінку заняття за 30 хв
-  // до старту. Поза цим вікном тільки таймер на дашборді — без кнопки, бо
-  // сторінка заняття у нас "context-aware" і без активних матеріалів виглядає
-  // порожньою.
+  // "Раннє вікно входу": дозволяємо учневі відкрити сторінку заняття за 30 хв до старту.
   const EARLY_ENTRY_MS = 30 * 60 * 1000;
   const nextStartMs = overallNext ? new Date(overallNext.start_datetime).getTime() : 0;
   const inEarlyEntryWindow = !!overallNext && nextStartMs - Date.now() <= EARLY_ENTRY_MS;
@@ -72,113 +70,88 @@ export default async function StudentDashboardPage({ searchParams }: PageProps) 
       : null;
 
   return (
-    <div className="student-dashboard-grid-layout">
-      {/* Left Column: Main Context & Hero */}
-      <div className="student-dashboard-main">
-        <header className="student-dashboard-header">
-          <h1 className="student-page-title">Привіт{studentFirstName ? `, ${studentFirstName}` : ''}! 👋</h1>
-          <p className="student-page-subtitle">
-            {groups.length > 1
-              ? `У тебе ${groups.length} ${pluralGroup(groups.length)} — ось швидкий огляд`
-              : 'Ось твоє навчальне середовище'}
-          </p>
-        </header>
+    <div className="student-dashboard-layout">
+      <PageHeader
+        title={`Привіт${studentFirstName ? `, ${studentFirstName}` : ''}!`}
+        subtitle={
+          groups.length > 1
+            ? `У тебе ${groups.length} ${pluralGroup(groups.length)} — ось швидкий огляд`
+            : 'Ось твоє навчальне середовище'
+        }
+      />
 
-        {/* Якщо ми тут попри active — показуємо прозорий банер з поверненням */}
-        {activeLesson && activeGroupKey && (
-          <Link
-            href={`/groups/${activeGroupKey}?active=${activeLesson.id}`}
-            className="student-active-banner"
-          >
-            <div>
-              <div className="student-active-banner__kicker">Зараз триває заняття</div>
-              <div className="student-active-banner__title">
-                {activeLesson.course_title || stripTimePrefix(activeLesson.group_title) || 'Заняття'}
-              </div>
-              {activeLesson.topic && (
-                <div className="student-active-banner__topic">Тема: {activeLesson.topic}</div>
-              )}
+      {activeLesson && activeGroupKey && (
+        <Link
+          href={`/groups/${activeGroupKey}?active=${activeLesson.id}`}
+          className="student-active-banner"
+        >
+          <div>
+            <div className="student-active-banner__kicker">Зараз триває заняття</div>
+            <div className="student-active-banner__title">
+              {activeLesson.course_title || stripTimePrefix(activeLesson.group_title) || 'Заняття'}
             </div>
-            <div className="student-active-banner__cta">Увійти →</div>
-          </Link>
-        )}
-
-        {/* Hero Next Lesson */}
-        {overallNext ? (
-          <div className="student-dashboard-hero-widget">
-            <div className="student-dashboard-hero-widget__content">
-              <div className="student-dashboard-hero-widget__badge">
-                <Calendar size={14} />
-                Наступне заняття
-              </div>
-
-              <div className="student-dashboard-hero-widget__title">
-                {overallNext.course_title || stripTimePrefix(overallNext.group_title) || 'Заняття'}
-              </div>
-
-              <div className="student-dashboard-hero-widget__datetime">
-                {formatWhen(overallNext.start_datetime, overallNext.end_datetime)}
-              </div>
-
-              {overallNext.topic && (
-                <div className="student-dashboard-hero-widget__topic">
-                  Тема: <strong>{overallNext.topic}</strong>
-                </div>
-              )}
-
-              {nextLessonHref && (
-                <div className="student-dashboard-hero-widget__actions">
-                  <Link href={nextLessonHref} className="student-primary-btn">
-                    Перейти до заняття
-                    <ChevronRight size={16} />
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            <div className="student-dashboard-hero-widget__timer">
-              <div className="timer-label">Почнеться через</div>
-              <CountdownTimer targetIso={overallNext.start_datetime} />
-            </div>
+            {activeLesson.topic && (
+              <div className="student-active-banner__topic">Тема: {activeLesson.topic}</div>
+            )}
           </div>
-        ) : (
-          <div className="student-card student-empty-hero">
-            <h3>Найближчим часом занять немає</h3>
-            <p>Коли з&apos;явиться нове заняття — ми покажемо його тут.</p>
-          </div>
-        )}
-      </div>
+          <div className="student-active-banner__cta">Увійти →</div>
+        </Link>
+      )}
 
-      {/* Right Column: Groups & Recent */}
-      <aside className="student-dashboard-sidebar">
-        <section className="student-dashboard-section">
-          <div className="student-section-header">Мої групи</div>
-          {groups.length === 0 ? (
-            <div className="student-empty">Ти ще не доданий(а) до жодної групи.</div>
+      <div className="student-dashboard-grid">
+        <div className="student-dashboard-main">
+          {overallNext ? (
+            <DashboardHero
+              title={overallNext.course_title || stripTimePrefix(overallNext.group_title) || 'Заняття'}
+              datetime={formatWhen(overallNext.start_datetime, overallNext.end_datetime)}
+              topic={overallNext.topic}
+              startIso={overallNext.start_datetime}
+              href={nextLessonHref}
+            />
           ) : (
-            <div className="student-compact-groups-list">
-              {groups.map((g) => (
-                <CompactGroupItem key={String(g.id)} group={g} highlightNextId={overallNext?.group_id ?? null} />
-              ))}
-            </div>
+            <EmptyState
+              icon={<CalendarOff size={28} strokeWidth={1.75} />}
+              title="Найближчим часом занять немає"
+              hint="Коли з'явиться нове заняття — ми покажемо його тут."
+            />
           )}
-          <div style={{ marginTop: 12 }}>
-            <Link href="/schedule" className="student-secondary-btn" style={{ width: '100%' }}>
-              <Calendar size={16} />
-              Повний розклад
-            </Link>
-          </div>
-        </section>
+        </div>
 
-        <section className="student-dashboard-section">
+        <aside className="student-dashboard-side">
+          <section>
+            <SectionHeader title="Мої групи" />
+            {groups.length === 0 ? (
+              <EmptyState
+                icon={<Users size={28} strokeWidth={1.75} />}
+                title="Ти ще не доданий(а) до жодної групи"
+                variant="inline"
+              />
+            ) : (
+              <div className="student-compact-groups-list">
+                {groups.map((g) => (
+                  <CompactGroupItem
+                    key={String(g.id)}
+                    group={g}
+                    highlightNextId={overallNext?.group_id ?? null}
+                  />
+                ))}
+              </div>
+            )}
+            <div style={{ marginTop: 8 }}>
+              <Link href="/schedule" className="student-secondary-btn" style={{ width: '100%' }}>
+                <Calendar size={16} strokeWidth={1.75} />
+                Повний розклад
+              </Link>
+            </div>
+          </section>
+
           <DashboardRecentWorks />
-        </section>
-      </aside>
+        </aside>
+      </div>
     </div>
   );
 }
 
-/* Compact group item for dashboard list */
 function CompactGroupItem({
   group,
   highlightNextId,
@@ -193,13 +166,13 @@ function CompactGroupItem({
   return (
     <Link href={href} className="student-dashboard-group-item">
       <div className="student-dashboard-group-item__icon">
-        <Users size={20} />
+        <Users />
       </div>
       <div className="student-dashboard-group-item__body">
         <div className="student-dashboard-group-item__title">{title}</div>
         <div className="student-dashboard-group-item__meta">
           {isNext ? (
-            <span style={{ color: '#2563EB', fontWeight: 500 }}>Наступне заняття тут</span>
+            <span style={{ color: 'var(--st-accent)', fontWeight: 500 }}>Наступне заняття тут</span>
           ) : group.next_lesson ? (
             formatNextLessonShort(group.next_lesson.start_datetime, group.next_lesson.end_datetime)
           ) : (

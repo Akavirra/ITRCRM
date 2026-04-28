@@ -138,21 +138,68 @@ function getStatusBadgeStyle(status: string, isMakeup?: boolean, groupId?: numbe
   return { background: '#3b82f6', color: 'white' };
 }
 
-function NextLessonCountdown({ startDatetime }: { startDatetime: string }) {
+function formatLessonDayLabel(dateValue: string) {
+  const lessonDate = new Date(dateValue);
+  const now = new Date();
+
+  const lessonDay = new Date(lessonDate.getFullYear(), lessonDate.getMonth(), lessonDate.getDate()).getTime();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const dayDiff = Math.round((lessonDay - today) / 86400000);
+
+  if (dayDiff === 0) return 'Сьогодні';
+  if (dayDiff === 1) return 'Завтра';
+
+  const weekday = format(lessonDate, 'EEE', { locale: uk });
+  return weekday.charAt(0).toUpperCase() + weekday.slice(1);
+}
+
+function CurrentNextLessonCountdown({
+  startDatetime,
+  endDatetime,
+  state,
+}: {
+  startDatetime: string;
+  endDatetime: string;
+  state: 'live' | 'upcoming';
+}) {
   const [label, setLabel] = useState('');
 
   useEffect(() => {
-    function update() {
-      const diff = new Date(startDatetime).getTime() - Date.now();
-      if (diff <= 0) { setLabel('Зараз!'); return; }
-      const h = Math.floor(diff / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      setLabel(h > 0 ? `через ${h} год ${m} хв` : `через ${m} хв`);
+    function formatMinutes(totalMinutes: number) {
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      if (hours <= 0) return `${minutes} хв`;
+      return minutes > 0 ? `${hours} год ${minutes} хв` : `${hours} год`;
     }
+
+    function update() {
+      const now = Date.now();
+      if (state === 'live') {
+        const diff = new Date(endDatetime).getTime() - now;
+        if (diff <= 0) {
+          setLabel('Завершується');
+          return;
+        }
+
+        const minutes = Math.max(1, Math.ceil(diff / 60000));
+        setLabel(`Ще ${formatMinutes(minutes)}`);
+        return;
+      }
+
+      const diff = new Date(startDatetime).getTime() - now;
+      if (diff <= 0) {
+        setLabel('Починається');
+        return;
+      }
+
+      const minutes = Math.max(1, Math.ceil(diff / 60000));
+      setLabel(`Через ${formatMinutes(minutes)}`);
+    }
+
     update();
-    const id = setInterval(update, 60000);
+    const id = setInterval(update, 30000);
     return () => clearInterval(id);
-  }, [startDatetime]);
+  }, [endDatetime, startDatetime, state]);
 
   return <span className={styles.nextLessonCountdown}>{label}</span>;
 }
@@ -878,20 +925,55 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
           </div>
         </section>
 
-        {/* Next lesson countdown */}
+        {/* Current / next lesson */}
         {initialData.nextLesson && (
-          <section className={styles.nextLessonBar}>
-            <Clock size={16} />
-            <span className={styles.nextLessonText}>
-              Наступний урок: <strong>{initialData.nextLesson.startTimeLabel}</strong>
-              {initialData.nextLesson.group_id
-                ? <> — {initialData.nextLesson.group_title}</>
-                : <> — {initialData.nextLesson.course_title}</>
-              }
-              {' · '}{initialData.nextLesson.teacher_name}
+          <button
+            type="button"
+            className={`${styles.nextLessonCard} ${initialData.nextLesson.state === 'live' ? styles.nextLessonCardLive : ''}`}
+            onClick={() => openLessonModal(initialData.nextLesson!.id, `Заняття #${initialData.nextLesson!.id}`)}
+          >
+            <div className={styles.nextLessonCardAccent} />
+            <div className={styles.nextLessonCardBody}>
+              <div className={styles.nextLessonCardTopline}>
+                <span className={`${styles.nextLessonBadge} ${initialData.nextLesson.state === 'live' ? styles.nextLessonBadgeLive : styles.nextLessonBadgeUpcoming}`}>
+                  {initialData.nextLesson.state === 'live' ? (
+                    <>
+                      <span className={styles.nextLessonLiveDot} />
+                      Йде зараз
+                    </>
+                  ) : (
+                    'Найближче заняття'
+                  )}
+                </span>
+                <CurrentNextLessonCountdown
+                  startDatetime={initialData.nextLesson.start_datetime}
+                  endDatetime={initialData.nextLesson.end_datetime}
+                  state={initialData.nextLesson.state}
+                />
+              </div>
+
+              <div className={styles.nextLessonCardMain}>
+                <div className={styles.nextLessonTitle}>
+                  {initialData.nextLesson.group_id
+                    ? initialData.nextLesson.group_title
+                    : initialData.nextLesson.course_title}
+                </div>
+                <div className={styles.nextLessonMeta}>
+                  <span className={styles.nextLessonMetaItem}>
+                    <Clock size={14} />
+                    {formatLessonDayLabel(initialData.nextLesson.start_datetime)}, {initialData.nextLesson.startTimeLabel}–{initialData.nextLesson.endTimeLabel}
+                  </span>
+                  <span className={styles.nextLessonMetaDot} />
+                  <span className={styles.nextLessonMetaItem}>{initialData.nextLesson.teacher_name}</span>
+                </div>
+              </div>
+            </div>
+
+            <span className={styles.nextLessonAction}>
+              Відкрити заняття
+              <SquareArrowOutUpRight size={15} />
             </span>
-            <NextLessonCountdown startDatetime={initialData.nextLesson.start_datetime} />
-          </section>
+          </button>
         )}
 
         {/* Two-column: Schedule + Activity */}

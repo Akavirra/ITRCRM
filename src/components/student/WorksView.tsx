@@ -2,18 +2,17 @@
  * /works — глобальний огляд усіх робіт учня (read-only за замовчуванням).
  *
  * Phase B: Upload UI перенесено на сторінку конкретного заняття
- * (`/groups/[id]` → LessonWorksPanel). Тут учень може лише:
+ * (`/groups/[id]` → LessonWorksPanel). Тут учень може:
  *   - переглядати / скачувати всі свої роботи
  *   - видалити роботу, ЯКЩО вікно завантаження її заняття ще відкрите
- *
- * Цей компонент рендериться в client mode, бо має інтерактивний стан
- * (очікуємо fetch + optimistic delete).
  */
 
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { FileText, Inbox, Info, Loader2, AlertCircle } from 'lucide-react';
+import { EmptyState } from './ui/EmptyState';
 
 interface StudentWorkView {
   id: number;
@@ -49,7 +48,7 @@ export default function WorksView() {
       const data = await r.json();
       setWorks(Array.isArray(data.works) ? data.works : []);
     } catch {
-      setLoadError('Не вдалося завантажити список робіт. Перевірте зʼєднання.');
+      setLoadError("Не вдалося завантажити список робіт. Перевірте з'єднання.");
     } finally {
       setLoading(false);
     }
@@ -76,39 +75,46 @@ export default function WorksView() {
     }
   }
 
-  // Групуємо роботи за lesson_id для чистішого UX
   const grouped = groupByLesson(works);
 
   return (
     <>
-      <h1 className="student-page-title">Мої роботи</h1>
-      <p className="student-page-subtitle">
-        Усі файли, які ти завантажив(ла). Нові роботи додаються зі сторінки активного заняття.
-      </p>
-
-      <div className="student-card" style={{ background: '#f0f5ff', borderColor: '#dbeafe' }}>
-        <div style={{ fontSize: 13, color: '#1e40af' }}>
-          💡 Щоб додати нову роботу — відкрий <Link href="/dashboard" style={{ color: '#1d4ed8', fontWeight: 600 }}>сторінку активного заняття</Link>.
-          Завантажувати можна під час заняття та ще годину після.
+      <div className="student-info-band">
+        <span className="student-info-band__icon">
+          <Info size={16} strokeWidth={1.75} />
+        </span>
+        <div>
+          Щоб додати нову роботу — відкрий{' '}
+          <Link href="/dashboard">сторінку активного заняття</Link>. Завантажувати можна
+          під час заняття та ще годину після.
         </div>
       </div>
 
       {loading ? (
-        <div className="student-empty">Завантаження…</div>
+        <EmptyState
+          icon={<Loader2 size={28} strokeWidth={1.75} className="student-spin" />}
+          title="Завантаження…"
+        />
       ) : loadError ? (
-        <div className="student-empty">{loadError}</div>
+        <EmptyState
+          icon={<AlertCircle size={28} strokeWidth={1.75} />}
+          title="Не вдалося завантажити"
+          hint={loadError}
+        />
       ) : works.length === 0 ? (
-        <div className="student-empty">
-          Ти ще не завантажував(ла) жодної роботи.
-        </div>
+        <EmptyState
+          icon={<Inbox size={28} strokeWidth={1.75} />}
+          title="Поки що немає завантажених робіт"
+          hint="Файли з'являтимуться тут після того, як ти завантажиш їх на сторінці заняття."
+        />
       ) : (
         grouped.map((bucket) => (
-          <div key={bucket.key} style={{ marginBottom: 24 }}>
+          <div key={bucket.key} className="student-works-bucket">
             <div className="student-section-header student-works-bucket-header">
               <span>{bucket.label}</span>
               <WindowChip open={bucket.uploadWindowOpen} closesAt={bucket.uploadWindowClosesAt} />
             </div>
-            <div style={{ display: 'grid', gap: 10 }}>
+            <div className="student-works-bucket__list">
               {bucket.works.map((w) => (
                 <WorkRow
                   key={w.id}
@@ -153,26 +159,25 @@ function WorkRow({
   const downloadHref = `${contentHref}?download=1`;
 
   return (
-    <div className="student-card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, marginBottom: 2, overflowWrap: 'anywhere' }}>
-            {work.title}
-          </div>
-          <div style={{ fontSize: 12, color: '#64748b' }}>
+    <article className="student-work-card">
+      <div className="student-work-card__header">
+        <div className="student-work-card__icon">
+          <FileText size={18} strokeWidth={1.75} />
+        </div>
+        <div className="student-work-card__body">
+          <div className="student-work-card__title">{work.title}</div>
+          <div className="student-work-card__meta">
             {formatDate(work.createdAt)}
             {work.sizeBytes ? ` · ${formatSize(work.sizeBytes)}` : ''}
             {work.mimeType ? ` · ${work.mimeType}` : ''}
           </div>
           {work.description && (
-            <div style={{ fontSize: 13, color: '#475569', marginTop: 6, overflowWrap: 'anywhere' }}>
-              {work.description}
-            </div>
+            <div className="student-work-card__description">{work.description}</div>
           )}
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div className="student-work-card__actions">
         <a href={contentHref} target="_blank" rel="noreferrer" className="student-secondary-btn">
           Переглянути
         </a>
@@ -185,13 +190,13 @@ function WorkRow({
             onClick={onDelete}
             disabled={deleting}
             className="student-secondary-btn"
-            style={{ color: '#dc2626', borderColor: '#fecaca' }}
+            data-danger
           >
             {deleting ? 'Видалення…' : 'Видалити'}
           </button>
         )}
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -212,9 +217,7 @@ function groupByLesson(works: StudentWorkView[]): Bucket[] {
     if (!buckets.has(key)) {
       buckets.set(key, {
         key,
-        label: w.lessonId
-          ? buildLessonLabel(w)
-          : 'Без прив\'язки до заняття',
+        label: w.lessonId ? buildLessonLabel(w) : "Без прив'язки до заняття",
         uploadWindowOpen: w.uploadWindowOpen,
         uploadWindowClosesAt: w.uploadWindowClosesAt,
         works: [],
@@ -222,7 +225,6 @@ function groupByLesson(works: StudentWorkView[]): Bucket[] {
     }
     buckets.get(key)!.works.push(w);
   }
-  // Сортуємо: спочатку з відкритим вікном, потім за датою (новіші вище)
   return Array.from(buckets.values()).sort((a, b) => {
     if (a.uploadWindowOpen !== b.uploadWindowOpen) {
       return a.uploadWindowOpen ? -1 : 1;

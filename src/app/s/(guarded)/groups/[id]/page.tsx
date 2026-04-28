@@ -12,6 +12,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
+import { ArrowLeft, Calendar, CalendarOff } from 'lucide-react';
 import { STUDENT_COOKIE_NAME, getStudentSession } from '@/lib/student-auth';
 import { studentAll, studentGet } from '@/db/neon-student';
 import { isLessonActive, isLessonLive, getUploadWindow } from '@/lib/student-lesson-context';
@@ -24,7 +25,7 @@ import { getStudentGalleryCounts } from '@/lib/student-gallery';
 import { getStudentShortcutsCounts } from '@/lib/student-shortcuts';
 import LessonShortcuts from '@/components/student/LessonShortcuts';
 import { stripTimePrefix } from '@/components/student/utils';
-import { Calendar } from 'lucide-react';
+import { EmptyState } from '@/components/student/ui/EmptyState';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,7 +65,9 @@ interface LessonDTO {
 export default async function StudentGroupDetailsPage({ params, searchParams }: PageProps) {
   const sessionId = cookies().get(STUDENT_COOKIE_NAME)?.value;
   const session = sessionId ? await getStudentSession(sessionId) : null;
-  if (!session) return <div className="student-empty">Сесія закінчилась</div>;
+  if (!session) {
+    return <EmptyState title="Сесія закінчилась" hint="Увійдіть знову." />;
+  }
 
   const idParam = params.id;
   const isIndividual = idParam === 'individual';
@@ -133,7 +136,9 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
     const strippedGroupTitle = stripTimePrefix(group.title);
     pageTitle = group.course_title || strippedGroupTitle || 'Група';
     pageSubtitle =
-      group.title && group.course_title !== group.title ? strippedGroupTitle || 'Твоє навчальне середовище' : 'Твоє навчальне середовище';
+      group.title && group.course_title !== group.title
+        ? strippedGroupTitle || 'Твоє навчальне середовище'
+        : 'Твоє навчальне середовище';
 
     if (group.weekly_day) summaryMeta.push(`День: ${weeklyDayToLabel(group.weekly_day)}`);
     if (group.start_time) summaryMeta.push(`Час: ${group.start_time.slice(0, 5)}`);
@@ -171,17 +176,13 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
 
   const upcomingAll = lessons
     .filter((l) => new Date(l.start_datetime).getTime() >= now)
-    .sort(
-      (a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime(),
-    );
+    .sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime());
   const nextLesson =
     upcomingAll.find((l) => !activeLesson || l.id !== activeLesson.id) ?? null;
 
   const history = lessons
     .filter((l) => new Date(l.start_datetime).getTime() < now)
-    .sort(
-      (a, b) => new Date(b.start_datetime).getTime() - new Date(a.start_datetime).getTime(),
-    );
+    .sort((a, b) => new Date(b.start_datetime).getTime() - new Date(a.start_datetime).getTime());
 
   const galleryCounts = await getStudentGalleryCounts(
     session.student_id,
@@ -198,6 +199,8 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
     stats.knownAttendance > 0
       ? Math.round(((stats.present + stats.late) / stats.knownAttendance) * 100)
       : 0;
+  const rateLevel: 'high' | 'mid' | 'low' =
+    attendanceRate >= 80 ? 'high' : attendanceRate >= 50 ? 'mid' : 'low';
 
   const lessonLiveNow = activeLesson ? isLessonLive(activeLesson, now) : false;
   const isInActiveWindow = activeLesson ? isLessonActive(activeLesson, now) : false;
@@ -214,12 +217,13 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
     <>
       <div className="student-page-header">
         <Link href="/dashboard?stay=1" className="student-back-link">
-          ← До моїх груп
+          <ArrowLeft size={14} strokeWidth={1.75} style={{ marginRight: 6 }} />
+          До моїх груп
         </Link>
         <div className="student-page-header__content">
           <div>
             <h1 className="student-page-title">{pageTitle}</h1>
-            <p className="student-page-subtitle">{pageSubtitle}</p>
+            <p className="student-page-subtitle" style={{ marginBottom: 0 }}>{pageSubtitle}</p>
           </div>
           {summaryMeta.length > 0 && (
             <div className="student-group-quick-meta">
@@ -236,9 +240,9 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
       <div className="student-group-grid-layout">
         <div className="student-group-main-content">
           {activeLesson && (
-            <div
+            <article
               className={
-                'student-card student-active-lesson-widget' +
+                'student-active-lesson-widget' +
                 (lessonLiveNow ? ' student-active-lesson-widget--live' : '')
               }
             >
@@ -259,11 +263,12 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
               </div>
 
               <h2 className="student-active-lesson-widget__topic">
-                {activeLesson.topic || (isPastLesson ? 'Тему не вказано' : 'Тему буде оновлено викладачем')}
+                {activeLesson.topic ||
+                  (isPastLesson ? 'Тему не вказано' : 'Тему буде оновлено викладачем')}
               </h2>
 
               <div className="student-active-lesson-widget__meta">
-                <Calendar size={16} />
+                <Calendar size={16} strokeWidth={1.75} />
                 {formatTimeRange(activeLesson.start_datetime, activeLesson.end_datetime)}
               </div>
 
@@ -285,7 +290,7 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
                   />
                 </div>
               )}
-            </div>
+            </article>
           )}
 
           {activeLesson && shortcutsCounts[activeLesson.id] > 0 && (
@@ -312,45 +317,42 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
         </div>
 
         <aside className="student-group-sidebar">
-          <div className="student-card student-attendance-widget">
-            <div className="student-attendance-widget__header">
-              <div className="student-attendance-widget__label">Твоя присутність</div>
+          <section className="student-attendance-stats" style={{ marginBottom: 0 }}>
+            <div className="student-attendance-stats__main">
+              <div className="student-attendance-stats__label">Твоя присутність</div>
               <div
-                className="student-attendance-widget__rate"
-                style={{
-                  color:
-                    attendanceRate >= 80 ? 'var(--st-success)' : attendanceRate >= 50 ? 'var(--st-warning)' : 'var(--st-danger)',
-                }}
+                className={`student-attendance-stats__value student-attendance-stats__value--${rateLevel}`}
               >
                 {stats.knownAttendance > 0 ? `${attendanceRate}%` : '—'}
               </div>
-            </div>
-
-            <div className="student-attendance-widget__progress">
-              <div
-                className="progress-bar"
-                style={{
-                  width: `${attendanceRate}%`,
-                  background: attendanceRate >= 80 ? 'var(--st-success)' : attendanceRate >= 50 ? 'var(--st-warning)' : 'var(--st-danger)',
-                }}
-              />
-            </div>
-
-            <div className="student-attendance-widget__stats">
-              <div className="stat-item">
-                <div className="stat-value" style={{ color: 'var(--st-success)' }}>{stats.present + stats.late}</div>
-                <div className="stat-label">Відвідано</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-value" style={{ color: 'var(--st-danger)' }}>{stats.absent}</div>
-                <div className="stat-label">Пропущено</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-value" style={{ color: 'var(--st-accent)' }}>{stats.excused}</div>
-                <div className="stat-label">Поважна</div>
+              <div className="student-attendance-stats__progress">
+                <div
+                  className={`student-attendance-stats__progress-bar student-attendance-stats__progress-bar--${rateLevel}`}
+                  style={{ width: `${attendanceRate}%` }}
+                />
               </div>
             </div>
-          </div>
+            <div className="student-attendance-stats__details">
+              <div className="student-attendance-stats__detail">
+                <span className="student-attendance-stats__detail-label">Відвідано</span>
+                <span className="student-attendance-stats__detail-value student-attendance-stats__detail-value--success">
+                  {stats.present + stats.late}
+                </span>
+              </div>
+              <div className="student-attendance-stats__detail">
+                <span className="student-attendance-stats__detail-label">Пропуски</span>
+                <span className="student-attendance-stats__detail-value student-attendance-stats__detail-value--danger">
+                  {stats.absent}
+                </span>
+              </div>
+              <div className="student-attendance-stats__detail">
+                <span className="student-attendance-stats__detail-label">Поважна</span>
+                <span className="student-attendance-stats__detail-value student-attendance-stats__detail-value--info">
+                  {stats.excused}
+                </span>
+              </div>
+            </div>
+          </section>
 
           {nextLesson && (
             <section className="student-group-section">
@@ -371,9 +373,13 @@ export default async function StudentGroupDetailsPage({ params, searchParams }: 
       <section className="student-group-section">
         <div className="student-section-header">Історія занять ({history.length})</div>
         {history.length === 0 ? (
-          <div className="student-empty">Проведених занять ще немає.</div>
+          <EmptyState
+            icon={<CalendarOff size={28} strokeWidth={1.75} />}
+            title="Проведених занять ще немає"
+            variant="inline"
+          />
         ) : (
-          <div className="student-dashboard-grid">
+          <div className="student-attendance-list">
             {history.map((lesson) => (
               <LessonRow
                 key={lesson.id}

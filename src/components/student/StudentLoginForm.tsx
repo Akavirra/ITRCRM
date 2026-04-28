@@ -1,20 +1,17 @@
+'use client';
+
 /**
  * Клієнтська форма логіну учня.
  *
- * Логіка:
- *   1. Приймає код (R0042) + PIN (6 цифр)
+ * Потік:
+ *   1. Код учня (R0042) + PIN (6 цифр)
  *   2. POST /api/student/auth/login
  *   3. На 200 → window.location редірект на redirectTo
- *   4. На 401/429 → показує текст помилки (locked/rate_limit/invalid_credentials)
- *
- * PIN-поле: inputMode="numeric", autoComplete="off", показує бульбашки/цифри
- * (просте password-like поле — без "Show/Hide", щоб менше поверхні для leak).
+ *   4. На 401/429 → текст помилки (locked / rate_limit / invalid_credentials)
  */
 
-'use client';
-
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { LogIn } from 'lucide-react';
 
 interface Props {
   initialCode?: string;
@@ -22,7 +19,6 @@ interface Props {
 }
 
 export default function StudentLoginForm({ initialCode = '', redirectTo }: Props) {
-  const router = useRouter();
   const [code, setCode] = useState(initialCode);
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,11 +62,9 @@ export default function StudentLoginForm({ initialCode = '', redirectTo }: Props
         return;
       }
 
-      // Успіх — cookie встановлена сервером, робимо full reload, щоб
-      // серверний layout перевірив сесію і підтягнув дані.
       window.location.href = redirectTo;
-    } catch (err) {
-      setError('Помилка з\'єднання. Перевірте інтернет.');
+    } catch {
+      setError("Помилка з'єднання. Перевірте інтернет.");
       setLoading(false);
     }
   }
@@ -84,7 +78,7 @@ export default function StudentLoginForm({ initialCode = '', redirectTo }: Props
         <input
           id="student-code"
           type="text"
-          className="student-input"
+          className="student-input student-login__code-input"
           placeholder="R0042"
           value={code}
           onChange={(e) => setCode(e.target.value)}
@@ -96,7 +90,6 @@ export default function StudentLoginForm({ initialCode = '', redirectTo }: Props
           maxLength={12}
           required
           disabled={loading}
-          style={{ letterSpacing: '0.05em', fontFamily: 'ui-monospace, monospace', textTransform: 'uppercase' }}
         />
       </div>
 
@@ -105,7 +98,7 @@ export default function StudentLoginForm({ initialCode = '', redirectTo }: Props
         <input
           id="student-pin"
           type="password"
-          className="student-input"
+          className="student-input student-login__pin-input"
           placeholder="••••••"
           value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -115,11 +108,11 @@ export default function StudentLoginForm({ initialCode = '', redirectTo }: Props
           maxLength={6}
           required
           disabled={loading}
-          style={{ letterSpacing: '0.25em', fontFamily: 'ui-monospace, monospace', textAlign: 'center', fontSize: 22 }}
         />
       </div>
 
-      <button type="submit" className="student-primary-btn" disabled={loading}>
+      <button type="submit" className="student-primary-btn student-login__submit" disabled={loading}>
+        <LogIn size={16} strokeWidth={1.75} />
         {loading ? 'Вхід…' : 'Увійти'}
       </button>
     </form>

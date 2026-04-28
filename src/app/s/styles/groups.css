@@ -1,0 +1,258 @@
+/**
+ * Сторінки груп: список (group cards) + деталка (grid layout, active banner).
+ */
+
+/* === Layout: group detail === */
+.student-group-grid-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.student-group-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.student-group-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.student-group-section {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 1024px) {
+  .student-group-grid-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    align-items: flex-start;
+  }
+}
+
+/* === Groups list === */
+.student-groups-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .student-groups-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* === Group card === */
+.student-group-card {
+  position: relative;
+  display: block;
+  padding: 20px 48px 20px 20px;
+  background: var(--st-bg-card);
+  border: 1px solid var(--st-border-light);
+  border-radius: var(--st-radius-lg);
+  box-shadow: var(--st-shadow-sm);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out, border-color 150ms ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .student-group-card:hover {
+    box-shadow: var(--st-shadow-md);
+    border-color: #d1d5db;
+  }
+}
+
+.student-group-card:active {
+  transform: scale(0.985);
+}
+
+.student-group-card--individual {
+  border-color: var(--st-accent-soft);
+  border-style: dashed;
+}
+
+.student-group-card--individual .student-group-card__title {
+  color: var(--st-accent);
+}
+
+.student-group-card__title-block {
+  margin-bottom: 8px;
+}
+
+.student-group-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--st-text-primary);
+}
+
+.student-group-card__subtitle {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--st-text-secondary);
+}
+
+.student-group-card__schedule {
+  font-size: 12px;
+  color: var(--st-text-muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+.student-group-card__next {
+  font-size: 12px;
+}
+
+.student-group-card__next-label {
+  color: var(--st-text-muted);
+}
+
+.student-group-card__next-value {
+  color: var(--st-accent);
+  font-weight: 600;
+}
+
+.student-group-card__next-empty {
+  color: var(--st-text-muted);
+  font-style: italic;
+}
+
+.student-group-card__chev {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--st-text-muted);
+  font-size: 18px;
+}
+
+.student-group-card__chev svg {
+  width: 18px;
+  height: 18px;
+}
+
+.student-group-card__meta {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--st-text-secondary);
+}
+
+.student-group-card__stats {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.student-group-card__stats span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--st-bg-muted);
+  color: var(--st-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.student-group-meta-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.student-group-meta-chip {
+  font-size: 12px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--st-bg-muted);
+  color: var(--st-text-secondary);
+  font-weight: 500;
+}
+
+/* === Active Banner (live lesson CTA) === */
+.student-active-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  color: #ffffff;
+  border: none;
+  text-decoration: none;
+  border-radius: var(--st-radius-xl);
+  padding: 24px 32px;
+  margin-bottom: 8px;
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2);
+  transition: transform 250ms ease-out, box-shadow 250ms ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.student-active-banner::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -20%;
+  width: 100%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.student-active-banner:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 35px rgba(37, 99, 235, 0.3);
+}
+
+.student-active-banner:active {
+  transform: translateY(-2px) scale(0.99);
+}
+
+.student-active-banner__kicker {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.9;
+  margin-bottom: 6px;
+  font-weight: 800;
+}
+
+.student-active-banner__title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.student-active-banner__topic {
+  margin-top: 6px;
+  font-size: 14px;
+  opacity: 0.85;
+  font-weight: 500;
+}
+
+.student-active-banner__cta {
+  flex-shrink: 0;
+  padding: 12px 24px;
+  background: #ffffff;
+  color: var(--st-accent);
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: transform 200ms ease;
+}
+
+.student-active-banner:hover .student-active-banner__cta {
+  transform: scale(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-group-card,
+  .student-active-banner {
+    transition: none;
+  }
+}

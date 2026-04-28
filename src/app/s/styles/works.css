@@ -1,0 +1,121 @@
+/**
+ * Сторінка /works — список робіт учня.
+ */
+
+/* Інформативна полоса (роз'яснення / підказка) */
+.student-info-band {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--st-info-soft);
+  border: 1px solid #bae6fd;
+  border-radius: var(--st-radius-md);
+  color: #0c4a6e;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.student-info-band__icon {
+  flex-shrink: 0;
+  color: #0369a1;
+  margin-top: 2px;
+}
+
+.student-info-band a {
+  color: var(--st-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.student-info-band a:hover {
+  text-decoration: underline;
+}
+
+/* Bucket header */
+.student-works-bucket {
+  margin-bottom: 24px;
+}
+
+.student-works-bucket__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Окрема картка роботи */
+.student-work-card {
+  background: var(--st-bg-card);
+  border: 1px solid var(--st-border-light);
+  border-radius: var(--st-radius-lg);
+  padding: 16px 18px;
+  box-shadow: var(--st-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.student-work-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.student-work-card__icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--st-bg-muted);
+  color: var(--st-text-secondary);
+  border-radius: var(--st-radius-sm);
+}
+
+.student-work-card__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.student-work-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.student-work-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--st-text-primary);
+  margin-bottom: 2px;
+  overflow-wrap: anywhere;
+}
+
+.student-work-card__meta {
+  font-size: 12px;
+  color: var(--st-text-muted);
+}
+
+.student-work-card__description {
+  font-size: 13px;
+  color: var(--st-text-secondary);
+  overflow-wrap: anywhere;
+  margin-top: 2px;
+}
+
+.student-work-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.student-work-card__actions .student-secondary-btn[data-danger] {
+  color: var(--st-danger);
+  border-color: #fecaca;
+}
+
+.student-work-card__actions .student-secondary-btn[data-danger]:hover {
+  background: var(--st-danger-soft);
+  border-color: var(--st-danger);
+}

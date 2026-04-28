@@ -5,8 +5,11 @@
 
 import Link from 'next/link';
 import { cookies } from 'next/headers';
+import { Users, Inbox } from 'lucide-react';
 import { STUDENT_COOKIE_NAME, getStudentSession } from '@/lib/student-auth';
 import { studentAll } from '@/db/neon-student';
+import { PageHeader } from '@/components/student/ui/PageHeader';
+import { EmptyState } from '@/components/student/ui/EmptyState';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +41,9 @@ interface IndividualRow {
 export default async function StudentGroupsPage() {
   const sessionId = cookies().get(STUDENT_COOKIE_NAME)?.value;
   const session = sessionId ? await getStudentSession(sessionId) : null;
-  if (!session) return <div className="student-empty">Сесія закінчилась</div>;
+  if (!session) {
+    return <EmptyState title="Сесія закінчилась" hint="Увійдіть знову." />;
+  }
 
   const groups = await studentAll<GroupRow>(
     `SELECT
@@ -87,26 +92,36 @@ export default async function StudentGroupsPage() {
     [session.student_id]
   );
 
+  const isEmpty = groups.length === 0 && (individual?.total ?? 0) === 0;
+
   return (
     <>
-      <h1 className="student-page-title">Мої групи</h1>
-      <p className="student-page-subtitle">Оберіть групу, щоб подивитись повну інформацію та історію відвідуваності</p>
+      <PageHeader
+        title="Мої групи"
+        subtitle="Оберіть групу, щоб побачити повну інформацію та історію відвідуваності"
+      />
 
-      {groups.length === 0 && (individual?.total ?? 0) === 0 ? (
-        <div className="student-empty">Немає груп або індивідуальних занять.</div>
+      {isEmpty ? (
+        <EmptyState
+          icon={<Inbox size={28} strokeWidth={1.75} />}
+          title="Тут поки порожньо"
+          hint="Як тільки тебе додадуть до групи або призначать індивідуальне заняття — вони з'являться тут."
+        />
       ) : (
-        <div className="student-dashboard-grid">
+        <div className="student-groups-grid">
           {groups.map((group) => {
-            const knownAttendance = group.present_count + group.absent_count + group.excused_count + group.late_count;
-            const attendanceRate = knownAttendance > 0
-              ? Math.round(((group.present_count + group.late_count) / knownAttendance) * 100)
-              : 0;
+            const knownAttendance =
+              group.present_count + group.absent_count + group.excused_count + group.late_count;
+            const attendanceRate =
+              knownAttendance > 0
+                ? Math.round(((group.present_count + group.late_count) / knownAttendance) * 100)
+                : null;
 
             return (
               <Link
                 key={group.id}
                 href={`/groups/${group.id}`}
-                className="student-card student-group-card"
+                className="student-group-card"
               >
                 <div className="student-group-card__title">
                   {group.course_title || group.title || 'Група'}
@@ -116,17 +131,22 @@ export default async function StudentGroupsPage() {
                 )}
                 <div className="student-group-card__meta">
                   {group.start_date ? formatDate(group.start_date) : 'Без дати старту'}
-                  {group.end_date ? ` - ${formatDate(group.end_date)}` : ''}
+                  {group.end_date ? ` – ${formatDate(group.end_date)}` : ''}
                   {group.status ? ` • ${normalizeStatus(group.status)}` : ''}
                 </div>
                 <div className="student-group-card__stats">
                   <span>Уроків: {group.completed_lessons}</span>
                   <span>Попереду: {group.upcoming_lessons}</span>
-                  <span>Присутність: {knownAttendance > 0 ? `${attendanceRate}%` : 'Немає даних'}</span>
+                  <span>
+                    Присутність: {attendanceRate !== null ? `${attendanceRate}%` : '—'}
+                  </span>
                 </div>
                 {group.next_lesson_at && (
                   <div className="student-group-card__next">
-                    Найближчий урок: {formatDateTime(group.next_lesson_at)}
+                    <span className="student-group-card__next-label">Найближчий урок: </span>
+                    <span className="student-group-card__next-value">
+                      {formatDateTime(group.next_lesson_at)}
+                    </span>
                   </div>
                 )}
               </Link>
@@ -134,17 +154,25 @@ export default async function StudentGroupsPage() {
           })}
 
           {(individual?.total ?? 0) > 0 && (
-            <Link href="/groups/individual" className="student-card student-group-card student-group-card--individual">
+            <Link
+              href="/groups/individual"
+              className="student-group-card student-group-card--individual"
+            >
               <div className="student-group-card__title">Індивідуальні заняття</div>
               <div className="student-group-card__subtitle">Заняття поза груповим курсом</div>
               <div className="student-group-card__stats">
                 <span>Всього: {individual.total}</span>
-                <span>Був(ла): {(individual.present_count ?? 0) + (individual.late_count ?? 0)}</span>
+                <span>
+                  Був(ла): {(individual.present_count ?? 0) + (individual.late_count ?? 0)}
+                </span>
                 <span>Пропуски: {individual.absent_count ?? 0}</span>
               </div>
               {individual.next_lesson_at && (
                 <div className="student-group-card__next">
-                  Найближчий урок: {formatDateTime(individual.next_lesson_at)}
+                  <span className="student-group-card__next-label">Найближчий урок: </span>
+                  <span className="student-group-card__next-value">
+                    {formatDateTime(individual.next_lesson_at)}
+                  </span>
                 </div>
               )}
             </Link>

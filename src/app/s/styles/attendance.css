@@ -1,0 +1,114 @@
+/**
+ * Сторінка /attendance — історія відвідуваності.
+ */
+
+.student-attendance-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  background: var(--st-bg-card);
+  border: 1px solid var(--st-border-light);
+  border-radius: var(--st-radius-xl);
+  box-shadow: var(--st-shadow-sm);
+  margin-bottom: 24px;
+}
+
+.student-attendance-stats__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.student-attendance-stats__label {
+  font-size: 11px;
+  color: var(--st-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.student-attendance-stats__value {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--st-text-primary);
+  line-height: 1;
+}
+
+.student-attendance-stats__value--high { color: var(--st-success); }
+.student-attendance-stats__value--mid  { color: var(--st-warning); }
+.student-attendance-stats__value--low  { color: var(--st-danger); }
+
+.student-attendance-stats__progress {
+  width: 100%;
+  height: 6px;
+  background: var(--st-bg-muted);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.student-attendance-stats__progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 600ms ease-out;
+}
+
+.student-attendance-stats__progress-bar--high { background: var(--st-success); }
+.student-attendance-stats__progress-bar--mid  { background: var(--st-warning); }
+.student-attendance-stats__progress-bar--low  { background: var(--st-danger); }
+
+.student-attendance-stats__details {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.student-attendance-stats__detail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.student-attendance-stats__detail-label {
+  font-size: 11px;
+  color: var(--st-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.student-attendance-stats__detail-value {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--st-text-primary);
+}
+
+.student-attendance-stats__detail-value--success { color: var(--st-success); }
+.student-attendance-stats__detail-value--danger  { color: var(--st-danger); }
+.student-attendance-stats__detail-value--info    { color: var(--st-info); }
+
+@media (min-width: 768px) {
+  .student-attendance-stats__main {
+    flex: 1;
+    max-width: 280px;
+  }
+}
+
+/* List of past lessons */
+.student-attendance-month {
+  margin-bottom: 24px;
+}
+
+.student-attendance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

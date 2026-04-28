@@ -1,0 +1,95 @@
+/**
+ * Сторінка /login — повноекранний layout без StudentShell.
+ */
+
+.student-login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background: linear-gradient(180deg, #ffffff 0%, var(--st-accent-soft) 100%);
+}
+
+.student-login__inner {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.student-login__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--st-text-primary);
+}
+
+.student-login__brand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--st-accent);
+  color: #ffffff;
+}
+
+.student-login__title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--st-text-primary);
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+
+.student-login__subtitle {
+  font-size: 14px;
+  color: var(--st-text-secondary);
+  margin: 0 0 28px;
+}
+
+.student-login__card {
+  width: 100%;
+  background: var(--st-bg-card);
+  border: 1px solid var(--st-border-light);
+  border-radius: var(--st-radius-xl);
+  padding: 28px 24px;
+  box-shadow: var(--st-shadow-md);
+  text-align: left;
+}
+
+.student-login__hint {
+  font-size: 12px;
+  color: var(--st-text-muted);
+  margin-top: 20px;
+}
+
+/* PIN input — large, centered, tabular */
+.student-login__pin-input {
+  letter-spacing: 0.4em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  font-size: 24px;
+  padding: 14px 16px;
+}
+
+.student-login__code-input {
+  letter-spacing: 0.06em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  text-transform: uppercase;
+  font-size: 16px;
+}
+
+.student-login__submit {
+  width: 100%;
+  margin-top: 4px;
+}

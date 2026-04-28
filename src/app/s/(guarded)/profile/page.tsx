@@ -4,9 +4,13 @@
 
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import { Users } from 'lucide-react';
 import { STUDENT_COOKIE_NAME, getStudentSession, studentIdToCode } from '@/lib/student-auth';
 import { studentAll, studentGet } from '@/db/neon-student';
 import StudentLogoutButton from '@/components/student/StudentLogoutButton';
+import { PageHeader } from '@/components/student/ui/PageHeader';
+import { SectionHeader } from '@/components/student/ui/SectionHeader';
+import { EmptyState } from '@/components/student/ui/EmptyState';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,13 +26,17 @@ interface GroupDTO {
 export default async function StudentProfilePage() {
   const sessionId = cookies().get(STUDENT_COOKIE_NAME)?.value;
   const session = sessionId ? await getStudentSession(sessionId) : null;
-  if (!session) return <div className="student-empty">Сесія закінчилась</div>;
+  if (!session) {
+    return <EmptyState title="Сесія закінчилась" hint="Увійдіть знову, щоб продовжити." />;
+  }
 
   const student = await studentGet<{ id: number; full_name: string; photo: string | null }>(
     `SELECT id, full_name, photo FROM students WHERE id = $1`,
     [session.student_id]
   );
-  if (!student) return <div className="student-empty">Учня не знайдено</div>;
+  if (!student) {
+    return <EmptyState title="Учня не знайдено" />;
+  }
 
   const codeRow = await studentGet<{ code: string; created_at: string }>(
     `SELECT code, created_at FROM student_codes WHERE student_id = $1 AND is_active = TRUE`,
@@ -46,60 +54,66 @@ export default async function StudentProfilePage() {
   );
 
   const code = codeRow?.code || studentIdToCode(student.id);
-  const initials = student.full_name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+  const initials = student.full_name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('') || 'У';
   const sessionExpires = new Date(session.expires_at);
 
   return (
     <>
-      <h1 className="student-page-title">Профіль</h1>
+      <PageHeader title="Профіль" subtitle="Твої дані, групи та сесія" />
 
-      <div className="student-card" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{
-          width: 64, height: 64, borderRadius: '50%',
-          background: '#2160d0', color: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 24, fontWeight: 700, flexShrink: 0,
-        }}>{initials || 'У'}</div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 2 }}>{student.full_name}</div>
-          <div style={{ fontSize: 13, color: '#6b7280' }}>
-            Код: <strong style={{ fontFamily: 'ui-monospace, monospace' }}>{code}</strong>
+      <article className="student-profile-hero">
+        <div className="student-profile-hero__avatar">
+          {student.photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={student.photo} alt="" />
+          ) : (
+            <span>{initials}</span>
+          )}
+        </div>
+        <div className="student-profile-hero__body">
+          <div className="student-profile-hero__name">{student.full_name}</div>
+          <div className="student-profile-hero__code">
+            Код учня: <span className="student-profile-hero__code-value">{code}</span>
           </div>
         </div>
-      </div>
+      </article>
 
-      <div className="student-section-header">Групи</div>
+      <SectionHeader title="Групи" />
       {groups.length === 0 ? (
-        <div className="student-empty">Ви ще не в жодній активній групі.</div>
+        <EmptyState
+          icon={<Users size={28} strokeWidth={1.75} />}
+          title="Поки що немає активних груп"
+          hint="Як тільки тебе додадуть до групи — вона з'явиться тут."
+        />
       ) : (
-        groups.map((g) => (
-          <div key={g.id} className="student-card">
-            <h3>{g.course_title || g.title || 'Група'}</h3>
-            {g.title && g.course_title !== g.title && (
-              <p style={{ fontSize: 13, marginBottom: 4 }}>{g.title}</p>
-            )}
-            <p>
-              {g.start_date && formatYmd(g.start_date)}
-              {g.end_date && ` – ${formatYmd(g.end_date)}`}
-              {g.status && ` • ${g.status}`}
-            </p>
-            <div style={{ marginTop: 10 }}>
-              <Link href={`/groups/${g.id}`} className="student-secondary-btn">
-                Відкрити групу
-              </Link>
-            </div>
-          </div>
-        ))
+        <div className="student-profile-group-list">
+          {groups.map((g) => (
+            <Link key={g.id} href={`/groups/${g.id}`} className="student-profile-group">
+              <div className="student-profile-group__title">{g.course_title || g.title || 'Група'}</div>
+              {g.title && g.course_title !== g.title && (
+                <div className="student-profile-group__subtitle">{g.title}</div>
+              )}
+              <div className="student-profile-group__meta">
+                {g.start_date && formatYmd(g.start_date)}
+                {g.end_date && ` – ${formatYmd(g.end_date)}`}
+                {g.status && ` • ${normalizeStatus(g.status)}`}
+              </div>
+            </Link>
+          ))}
+        </div>
       )}
 
-      <div className="student-section-header">Сесія</div>
-      <div className="student-card">
-        <p style={{ fontSize: 13 }}>
-          Дійсна до: <strong>{formatDateTime(sessionExpires)}</strong>
-        </p>
+      <SectionHeader title="Сесія" />
+      <div className="student-profile-session">
+        Дійсна до: <strong>{formatDateTime(sessionExpires)}</strong>
       </div>
 
-      <div style={{ marginTop: 24 }}>
+      <div style={{ marginTop: 28 }}>
         <StudentLogoutButton />
       </div>
     </>
@@ -109,13 +123,31 @@ export default async function StudentProfilePage() {
 function formatYmd(ymd: string): string {
   const d = new Date(ymd);
   if (isNaN(d.getTime())) return ymd;
-  return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Kyiv' }).format(d);
+  return new Intl.DateTimeFormat('uk-UA', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Europe/Kyiv',
+  }).format(d);
 }
 
 function formatDateTime(d: Date): string {
   return new Intl.DateTimeFormat('uk-UA', {
-    day: 'numeric', month: 'long', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
     timeZone: 'Europe/Kyiv',
   }).format(d);
+}
+
+function normalizeStatus(status: string): string {
+  const map: Record<string, string> = {
+    active: 'Активна',
+    paused: 'Пауза',
+    completed: 'Завершена',
+    archived: 'Архів',
+  };
+  return map[status] || status;
 }
