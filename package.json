@@ -58,6 +58,7 @@
     "db:remove-student-phone": "node scripts/remove-student-phone.js",
     "db:add-camps": "node scripts/add-camps.js",
     "db:add-student-portal": "node scripts/add-student-portal-tables.js",
+    "db:add-session-trust": "node scripts/add-session-trust-level.js",
     "db:setup-student-role": "node scripts/setup-student-role-grants.js",
     "db:add-student-gallery-grant": "node scripts/add-student-gallery-grant.js",
     "db:add-lesson-shortcuts": "node scripts/add-lesson-shortcuts.js",

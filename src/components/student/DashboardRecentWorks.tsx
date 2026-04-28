@@ -7,7 +7,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FileText, Loader2 } from 'lucide-react';
+import { FileText } from 'lucide-react';
+import { Skeleton } from './ui/Skeleton';
 
 interface StudentWorkView {
   id: number;
@@ -42,9 +43,16 @@ export default function DashboardRecentWorks() {
             Останні роботи
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0', color: '#9CA3AF', fontSize: 13 }}>
-          <Loader2 size={16} className="student-spin" />
-          Завантаження…
+        <div className="student-dashboard-works">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="student-dashboard-work">
+              <Skeleton width={32} height={32} radius={10} />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <Skeleton width="70%" height={12} radius={4} />
+                <Skeleton width="40%" height={10} radius={4} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

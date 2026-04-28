@@ -11,8 +11,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FileText, Inbox, Info, Loader2, AlertCircle } from 'lucide-react';
+import { FileText, Inbox, Info, AlertCircle } from 'lucide-react';
 import { EmptyState } from './ui/EmptyState';
+import { Skeleton } from './ui/Skeleton';
 
 interface StudentWorkView {
   id: number;
@@ -91,10 +92,29 @@ export default function WorksView() {
       </div>
 
       {loading ? (
-        <EmptyState
-          icon={<Loader2 size={28} strokeWidth={1.75} className="student-spin" />}
-          title="Завантаження…"
-        />
+        <div className="student-works-bucket" aria-busy="true" aria-label="Завантаження робіт">
+          <div className="student-section-header student-works-bucket-header">
+            <Skeleton width={140} height={12} radius={4} />
+            <Skeleton width={90} height={20} radius={999} />
+          </div>
+          <div className="student-works-bucket__list">
+            {[0, 1, 2].map((i) => (
+              <article key={i} className="student-work-card">
+                <div className="student-work-card__header">
+                  <Skeleton width={40} height={40} radius={10} />
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <Skeleton width="60%" height={14} radius={4} />
+                    <Skeleton width="35%" height={11} radius={4} />
+                  </div>
+                </div>
+                <div className="student-work-card__actions">
+                  <Skeleton width={96} height={32} radius={10} />
+                  <Skeleton width={84} height={32} radius={10} />
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
       ) : loadError ? (
         <EmptyState
           icon={<AlertCircle size={28} strokeWidth={1.75} />}

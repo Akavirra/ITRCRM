@@ -72,14 +72,85 @@
   margin-top: 20px;
 }
 
-/* PIN input — large, centered, tabular */
-.student-login__pin-input {
-  letter-spacing: 0.4em;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
-  font-variant-numeric: tabular-nums;
+/* PIN input — OTP-style 6 cells */
+.student-pin-cells {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.student-pin-cell {
+  width: 100%;
+  aspect-ratio: 1 / 1.15;
+  min-height: 48px;
+  padding: 0;
   text-align: center;
   font-size: 24px;
-  padding: 14px 16px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--st-text-primary);
+  background: var(--st-bg-card);
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius-md);
+  outline: none;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out, background 150ms ease-out;
+  caret-color: var(--st-accent);
+}
+
+.student-pin-cell:hover:not(:disabled) {
+  border-color: #d1d5db;
+}
+
+.student-pin-cell:focus {
+  border-color: var(--st-accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
+.student-pin-cell--filled {
+  border-color: var(--st-accent-soft);
+  background: #fafbff;
+}
+
+/* === Error shake === */
+@keyframes student-pin-shake {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-6px); }
+  30%  { transform: translateX(5px); }
+  45%  { transform: translateX(-4px); }
+  60%  { transform: translateX(3px); }
+  75%  { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+.student-pin-cells--error {
+  animation: student-pin-shake 380ms ease-in-out;
+}
+
+.student-pin-cells--error .student-pin-cell {
+  border-color: var(--st-danger);
+  background: var(--st-danger-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-pin-cells--error {
+    animation: none;
+  }
+}
+
+.student-pin-cell:disabled {
+  background: var(--st-bg-muted);
+  color: var(--st-text-muted);
+  cursor: not-allowed;
+}
+
+@media (max-width: 380px) {
+  .student-pin-cells {
+    gap: 6px;
+  }
+  .student-pin-cell {
+    font-size: 20px;
+  }
 }
 
 .student-login__code-input {
