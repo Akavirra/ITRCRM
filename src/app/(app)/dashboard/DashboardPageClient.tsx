@@ -1188,7 +1188,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 {activeTab === 'history' && (
                   <button type="button" className={styles.textButton} onClick={handleOpenHistory}>
                     Вся історія
-                    <SquareArrowOutUpRight size={14} />
+                    <ExternalLink size={14} />
                   </button>
                 )}
                 <div className={styles.segmented} data-active={activeTab}>
@@ -1366,7 +1366,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                                 title="Відкрити картку учня"
                                 onClick={() => openStudentModal(debtor.id, debtor.full_name)}
                               >
-                                <SquareArrowOutUpRight size={13} />
+                                <ExternalLink size={13} />
                               </button>
                             </div>
                             <div className={styles.activityMeta}>
@@ -1421,7 +1421,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                               title="Відкрити картку учня"
                               onClick={() => openStudentModal(debtor.id, debtor.full_name)}
                             >
-                              <SquareArrowOutUpRight size={13} />
+                              <ExternalLink size={13} />
                             </button>
                           </div>
                           <div className={styles.activityMeta}>
@@ -1521,7 +1521,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                                 {absence.full_name}
                               </button>
                               <button type="button" className={styles.modalStudentOpenBtn} aria-label={`Відкрити картку учня ${absence.full_name}`} title="Відкрити картку учня" onClick={() => openStudentModal(absence.student_id, absence.full_name)}>
-                                <SquareArrowOutUpRight size={13} />
+                                <ExternalLink size={13} />
                               </button>
                             </div>
                             <div className={styles.activityMeta}>
@@ -1588,7 +1588,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                                 {absence.full_name}
                               </button>
                               <button type="button" className={styles.modalStudentOpenBtn} aria-label={`Відкрити картку учня ${absence.full_name}`} title="Відкрити картку учня" onClick={() => openStudentModal(absence.student_id, absence.full_name)}>
-                                <SquareArrowOutUpRight size={13} />
+                                <ExternalLink size={13} />
                               </button>
                             </div>
                             <div className={styles.activityMeta}>
@@ -1662,7 +1662,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                                       {absence.full_name}
                                     </button>
                                     <button type="button" className={styles.modalStudentOpenBtn} aria-label={`Відкрити картку учня ${absence.full_name}`} title="Відкрити картку учня" onClick={() => openStudentModal(absence.student_id, absence.full_name)}>
-                                      <SquareArrowOutUpRight size={13} />
+                                      <ExternalLink size={13} />
                                     </button>
                                   </div>
                                   <div className={styles.activityMeta}>
