@@ -1,17 +1,25 @@
 .page, .modalOverlay {
   --surface: #ffffff;
-  --surface-soft: #fcfcfc;
-  --line: #efefef;
-  --ink: #111827;
-  --muted: #6b7280;
-  --accent: #2563eb;
-  --accent-soft: #eff6ff;
-  --blue-soft: #eff6ff;
-  --money-soft: #f0fdf4;
-  --danger-soft: #fff1f2;
-  --purple-soft: #f5f3ff;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --surface-soft: var(--gray-50);
+  --line: var(--gray-200);
+  --line-strong: var(--gray-300);
+  --ink: var(--gray-900);
+  --ink-soft: var(--gray-700);
+  --muted: var(--gray-500);
+  --accent: var(--primary);
+  --accent-strong: var(--primary-dark);
+  --accent-soft: var(--primary-light);
+  --success-strong: #166534;
+  --success-soft: #dcfce7;
+  --warning-strong: #b45309;
+  --warning-soft: #fef3c7;
+  --danger-strong: #b91c1c;
+  --danger-soft: #fee2e2;
+  --violet-strong: #6d28d9;
+  --violet-soft: #f5f3ff;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  --focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.18);
   --radius: 12px;
   --radius-sm: 8px;
 
@@ -78,6 +86,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  min-height: 2.25rem;
   padding: 0.5rem 0.85rem;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -89,24 +98,45 @@
   cursor: pointer;
   transition: transform 160ms var(--ease-out), background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
   white-space: nowrap;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .actionChip:hover {
     background: var(--surface-soft);
-    border-color: #d1d5db;
-    transform: translateY(-1px);
+    border-color: var(--line-strong);
   }
 
   .mobileCreateButton:hover {
-    border-color: #93c5fd;
-    box-shadow: 0 14px 30px rgba(37, 99, 235, 0.12);
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-sm);
   }
 
   .mobileCreateItem:hover {
-    background: #f8fafc;
+    background: var(--surface-soft);
   }
+}
+
+.actionChip:focus-visible,
+.mobileCreateButton:focus-visible,
+.mobileCreateItem:focus-visible,
+.segmentButton:focus-visible,
+.miniSegmentBtn:focus-visible,
+.textButton:focus-visible,
+.textLink:focus-visible,
+.nextLessonCard:focus-visible,
+.modalClose:focus-visible,
+.monthPickerSelect:focus-visible,
+.absenceDateLink:focus-visible,
+.makeupBtn:focus-visible,
+.historyEntityButton:focus-visible,
+.historyMetaLink:focus-visible,
+.historyInlineLink:focus-visible,
+.modalStudentName:focus-visible,
+.modalStudentOpenBtn:focus-visible,
+.attChartCol:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .actionChip:active {
@@ -128,14 +158,14 @@
   width: 100%;
   min-height: 2.875rem;
   padding: 0.75rem 0.9rem;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--line);
   border-radius: 12px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  background: var(--surface);
   color: var(--ink);
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
+  box-shadow: none;
   transition: transform 160ms var(--ease-out), border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
 }
 
@@ -174,10 +204,10 @@
   display: grid;
   gap: 0.35rem;
   padding: 0.45rem;
-  border: 1px solid rgba(191, 219, 254, 0.9);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
   opacity: 0;
   visibility: hidden;
   transform: translateY(-6px) scale(0.98);
@@ -185,7 +215,6 @@
   pointer-events: none;
   transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out), visibility 180ms ease;
   z-index: 20;
-  backdrop-filter: blur(10px);
 }
 
 .mobileCreateMenuOpen {
@@ -260,7 +289,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 1.25rem 2rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .statsGrid {
@@ -355,8 +384,10 @@
   vertical-align: top;
 }
 
-.miniSegmentBtn:hover {
-  color: var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .miniSegmentBtn:hover {
+    color: var(--ink);
+  }
 }
 
 .miniSegmentBtnActive {
@@ -370,6 +401,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 1.5rem;
+  box-shadow: none;
 }
 
 .panelHeader {
@@ -437,8 +469,10 @@
   transform: scale(0.98);
 }
 
-.textLink:hover {
-  color: var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .textLink:hover {
+    color: var(--ink);
+  }
 }
 
 /* ── Two-column layout ── */
@@ -469,18 +503,21 @@
   overflow: hidden;
 }
 
-.lessonCard:hover {
-  border-color: #d1d5db;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
+@media (hover: hover) and (pointer: fine) {
+  .lessonCard:hover {
+    border-color: var(--line-strong);
+    background: var(--surface);
+  }
 }
 
 .lessonCardIndicator {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 3px;
+  top: 0.95rem;
+  right: 1rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.92);
 }
 
 .typeBadgeWrapper {
@@ -524,8 +561,8 @@
 }
 
 .replacedBadge {
-  background: #fef3c7;
-  color: #d97706;
+  background: var(--warning-soft);
+  color: var(--warning-strong);
   font-size: 0.65rem;
   padding: 0.1rem 0.3rem;
   border-radius: 4px;
@@ -537,8 +574,8 @@
   align-items: center;
   gap: 0.25rem;
   font-size: 0.75rem;
-  color: #6d28d9;
-  background: #f5f3ff;
+  color: var(--violet-strong);
+  background: var(--violet-soft);
   border-radius: 4px;
   padding: 0.15rem 0.4rem;
   margin-top: 0.2rem;
@@ -549,8 +586,8 @@
   font-size: 0.85rem;
   color: var(--muted);
   margin-top: 0.35rem;
-  padding-left: 0.6rem;
-  border-left: 2px solid var(--line);
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--line);
 }
 
 .lessonStatusBadge {
@@ -570,8 +607,8 @@
   position: relative;
   padding: 3px;
   border-radius: 20px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
   gap: 0;
 }
 
@@ -583,9 +620,9 @@
   left: 3px;
   height: calc(100% - 6px);
   width: calc(50% - 3px);
-  background: #ffffff;
+  background: var(--surface);
   border-radius: 16px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.05);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.04);
   transition: transform 200ms var(--ease-in-out);
   pointer-events: none;
   z-index: 0;
@@ -621,7 +658,7 @@
   min-height: 2rem;
   padding: 0.3rem 0.9rem;
   border-radius: 16px;
-  color: #94a3b8;
+  color: var(--muted);
   font-size: 0.78rem;
   line-height: 1;
   font-weight: 500;
@@ -633,12 +670,14 @@
   flex: 1;
 }
 
-.segmentButton:hover {
-  color: #64748b;
+@media (hover: hover) and (pointer: fine) {
+  .segmentButton:hover {
+    color: var(--ink-soft);
+  }
 }
 
 .segmentButtonActive {
-  color: #1e293b;
+  color: var(--ink-soft);
   font-weight: 600;
 }
 
@@ -690,7 +729,7 @@
 .activityAmount {
   font-weight: 600;
   font-size: 0.95rem;
-  color: #059669;
+  color: var(--success-strong);
 }
 
 /* ── Empty state ── */
@@ -703,7 +742,7 @@
   color: var(--muted);
   background: var(--surface-soft);
   border-radius: var(--radius-sm);
-  border: 1px dashed #d1d5db;
+  border: 1px dashed var(--line-strong);
 }
 
 .emptyTitle {
@@ -738,7 +777,7 @@
 
 .skeletonLine {
   height: 1rem;
-  background: #f1f5f9;
+  background: var(--surface-soft);
   border-radius: 4px;
   animation: pulse 1.5s infinite ease-in-out;
 }
@@ -802,7 +841,7 @@
   padding: 0 2rem 0 2.25rem;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   font-size: 0.875rem;
   line-height: 1.4;
@@ -834,9 +873,9 @@
   font-size: 0.8125rem;
 }
 
-.monthPickerSelect:focus {
-  border-color: #93c5fd;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+.monthPickerSelect:focus-visible {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
 }
 
 /* ── Trend badges ── */
@@ -846,8 +885,8 @@
   gap: 0.2rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #059669;
-  background: #ecfdf5;
+  color: var(--success-strong);
+  background: var(--success-soft);
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
   margin-left: 0.5rem;
@@ -859,19 +898,19 @@
   gap: 0.2rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #dc2626;
-  background: #fef2f2;
+  color: var(--danger-strong);
+  background: var(--danger-soft);
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
   margin-left: 0.5rem;
 }
 
 .statValueDanger {
-  color: #dc2626;
+  color: var(--danger-strong);
 }
 
 .statValueGood {
-  color: #059669;
+  color: var(--success-strong);
 }
 
 /* ── Current / next lesson card ── */
@@ -883,12 +922,10 @@
   gap: 1.4rem;
   width: 100%;
   padding: 1.3rem 1.4rem 1.35rem 1.5rem;
-  border: 1px solid rgba(203, 213, 225, 0.72);
+  border: 1px solid var(--line);
   border-radius: 24px;
-  background:
-    radial-gradient(circle at top left, rgba(191, 219, 254, 0.28), transparent 32%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.05);
+  background: var(--surface);
+  box-shadow: none;
   cursor: pointer;
   overflow: hidden;
   text-align: left;
@@ -897,7 +934,7 @@
 
 .nextLessonCard:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.12), 0 16px 36px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--focus-ring);
 }
 
 .nextLessonCard:active {
@@ -905,24 +942,23 @@
 }
 
 .nextLessonCardLive {
-  border-color: rgba(167, 243, 208, 0.9);
-  background:
-    radial-gradient(circle at top left, rgba(187, 247, 208, 0.36), transparent 32%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(244, 255, 247, 0.98) 100%);
-  box-shadow: 0 12px 30px rgba(22, 101, 52, 0.06);
+  border-color: rgba(34, 197, 94, 0.28);
+  background: #f8fffa;
 }
 
 .nextLessonCardAccent {
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 6px;
-  border-radius: 24px;
-  background: linear-gradient(180deg, #93c5fd 0%, #3b82f6 100%);
+  top: 0;
+  left: 1.5rem;
+  width: 3.5rem;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--accent);
   opacity: 0.82;
 }
 
 .nextLessonCardLive .nextLessonCardAccent {
-  background: linear-gradient(180deg, #86efac 0%, #22c55e 100%);
+  background: #22c55e;
 }
 
 .nextLessonCardBody {
@@ -961,11 +997,11 @@
 }
 
 .nextLessonBadgeUpcoming {
-  color: #2563eb;
+  color: var(--accent-strong);
 }
 
 .nextLessonBadgeLive {
-  color: #15803d;
+  color: var(--success-strong);
 }
 
 .nextLessonLiveDot {
@@ -988,13 +1024,13 @@
   line-height: 1.14;
   font-weight: 650;
   letter-spacing: -0.03em;
-  color: #0f172a;
+  color: var(--ink);
   max-width: 24ch;
 }
 
 .nextLessonSubtitle {
   font-size: 0.94rem;
-  color: #334155;
+  color: var(--ink-soft);
 }
 
 .nextLessonTypeBadge {
@@ -1013,7 +1049,7 @@
   align-items: center;
   gap: 0.6rem;
   min-width: 0;
-  color: #64748b;
+  color: var(--muted);
   font-size: 0.92rem;
   flex-wrap: wrap;
 }
@@ -1028,7 +1064,7 @@
   width: 0.25rem;
   height: 0.25rem;
   border-radius: 50%;
-  background: #94a3b8;
+  background: var(--line-strong);
   flex-shrink: 0;
 }
 
@@ -1041,7 +1077,7 @@
   border-radius: 14px;
   border: 1px solid rgba(226, 232, 240, 0.92);
   background: rgba(255, 255, 255, 0.9);
-  color: #0f172a;
+  color: var(--ink);
   font-size: 0.82rem;
   font-weight: 700;
   white-space: nowrap;
@@ -1059,7 +1095,7 @@
   border-radius: 999px;
   border: 1px solid rgba(203, 213, 225, 0.78);
   background: rgba(255, 255, 255, 0.72);
-  color: #1e40af;
+  color: var(--accent-strong);
   font-size: 0.85rem;
   font-weight: 600;
   transition: transform 160ms var(--ease-out), background 150ms ease, border-color 150ms ease, color 150ms ease;
@@ -1080,20 +1116,17 @@
 @media (hover: hover) and (pointer: fine) {
   .nextLessonCard:hover {
     transform: translateY(-1px);
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
-    border-color: rgba(186, 230, 253, 0.95);
+    border-color: rgba(59, 130, 246, 0.24);
   }
 
   .nextLessonCardLive:hover {
-    box-shadow: 0 18px 36px rgba(22, 101, 52, 0.08);
-    border-color: rgba(134, 239, 172, 0.95);
+    border-color: rgba(34, 197, 94, 0.38);
   }
 
   .nextLessonAction:hover {
-    background: rgba(255, 255, 255, 0.92);
+    background: var(--surface);
     border-color: rgba(147, 197, 253, 0.72);
-    color: #1d4ed8;
-    transform: translateY(-1px);
+    color: var(--accent-strong);
   }
 }
 
@@ -1156,11 +1189,11 @@
 }
 
 .capacityFull {
-  color: #059669;
+  color: var(--success-strong);
 }
 
 .capacityLow {
-  color: #f59e0b;
+  color: var(--warning-strong);
 }
 
 .capacityBarOuter {
@@ -1179,11 +1212,11 @@
 }
 
 .capacityBarFull {
-  background: #059669;
+  background: var(--success-strong);
 }
 
 .capacityBarLow {
-  background: #f59e0b;
+  background: var(--warning-strong);
 }
 
 /* ── Problem badges ── */
@@ -1198,8 +1231,8 @@
   align-items: center;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #dc2626;
-  background: #fef2f2;
+  color: var(--danger-strong);
+  background: var(--danger-soft);
   padding: 0.2rem 0.45rem;
   border-radius: 4px;
   white-space: nowrap;
@@ -1210,8 +1243,8 @@
   align-items: center;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #d97706;
-  background: #fffbeb;
+  color: var(--warning-strong);
+  background: var(--warning-soft);
   padding: 0.2rem 0.45rem;
   border-radius: 4px;
   white-space: nowrap;
@@ -1256,9 +1289,11 @@
   margin: -0.5rem -0.75rem;
 }
 
-.statItemClickable:hover {
-  background: var(--surface-soft);
-  box-shadow: var(--shadow-sm);
+@media (hover: hover) and (pointer: fine) {
+  .statItemClickable:hover {
+    background: var(--surface-soft);
+    box-shadow: var(--shadow-sm);
+  }
 }
 
 .statItemClickable:active {
@@ -1291,7 +1326,7 @@
 .modalContent {
   background: var(--surface);
   border-radius: var(--radius);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.16);
   width: 100%;
   max-width: 640px;
   max-height: 80vh;
@@ -1341,9 +1376,11 @@
   transition: background 150ms ease, color 150ms ease, transform 160ms var(--ease-out);
 }
 
-.modalClose:hover {
-  background: var(--surface-soft);
-  color: var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .modalClose:hover {
+    background: var(--surface-soft);
+    color: var(--ink);
+  }
 }
 
 .modalClose:active {
@@ -1391,7 +1428,7 @@
 .debtAmount {
   font-weight: 600;
   font-size: 0.95rem;
-  color: #dc2626;
+  color: var(--danger-strong);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -1420,8 +1457,10 @@
   transition: color 0.15s ease;
 }
 
-.absenceDateLink:hover {
-  color: var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .absenceDateLink:hover {
+    color: var(--ink);
+  }
 }
 
 .absenceActions {
@@ -1450,10 +1489,12 @@
   transform: scale(0.90);
 }
 
-.makeupBtn:hover {
-  color: #f97316;
-  border-color: #f97316;
-  background: #fff7ed;
+@media (hover: hover) and (pointer: fine) {
+  .makeupBtn:hover {
+    color: var(--warning-strong);
+    border-color: #fbbf24;
+    background: #fff7ed;
+  }
 }
 
 .modalFooter {
@@ -1540,8 +1581,8 @@
 
 @media (hover: hover) and (pointer: fine) {
   .historyInlineLink:hover {
-    color: #1d4ed8;
-    text-decoration-color: #1d4ed8;
+    color: var(--accent-strong);
+    text-decoration-color: var(--accent-strong);
   }
 }
 
@@ -1586,9 +1627,11 @@
   text-underline-offset: 2px;
 }
 
-.modalStudentName:hover {
-  color: var(--accent);
-  text-decoration-color: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+  .modalStudentName:hover {
+    color: var(--accent);
+    text-decoration-color: var(--accent);
+  }
 }
 
 .modalStudentOpenBtn {
@@ -1606,14 +1649,18 @@
   opacity: 0;
 }
 
-.modalListItem:hover .modalStudentOpenBtn {
-  opacity: 1;
+@media (hover: hover) and (pointer: fine) {
+  .modalListItem:hover .modalStudentOpenBtn {
+    opacity: 1;
+  }
 }
 
-.modalStudentOpenBtn:hover {
-  background: var(--accent-soft);
-  border-color: #bfdbfe;
-  color: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+  .modalStudentOpenBtn:hover {
+    background: var(--accent-soft);
+    border-color: #bfdbfe;
+    color: var(--accent);
+  }
 }
 
 /* ── Wide modal variant ── */
@@ -1706,11 +1753,13 @@
   background: none;
   padding: 0;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s ease;
 }
 
-.attChartCol:hover {
-  opacity: 0.8;
+@media (hover: hover) and (pointer: fine) {
+  .attChartCol:hover {
+    opacity: 0.8;
+  }
 }
 
 .attChartPercent {
@@ -1740,7 +1789,7 @@
 }
 
 .attChartBarAbsent {
-  background: #ef4444;
+  background: var(--danger);
   min-height: 0;
   transition: height 0.3s ease;
 }
@@ -2017,7 +2066,7 @@
     padding: 0.2rem 0.5rem;
     font-size: 0.68rem;
     border-radius: 999px;
-    background: #f8fafc;
+    background: var(--surface-soft);
   }
 
   .nextLessonCard {
@@ -2067,8 +2116,8 @@
     padding: 1.1rem;
     border-radius: 16px;
     min-width: 0;
-    border: 1px solid rgba(0, 0, 0, 0.03);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.035);
+    border: 1px solid var(--line);
+    box-shadow: none;
   }
 
   .panelHeader {
@@ -2176,7 +2225,7 @@
     width: 36px;
     height: 4px;
     border-radius: 2px;
-    background: #e2e8f0;
+    background: var(--line-strong);
   }
 
   .modalTabBar {
@@ -2248,17 +2297,26 @@
 @media (prefers-reduced-motion: reduce) {
   .modalOverlay { animation: fadeIn 0.1s ease; }
   .modalContent { animation: none; }
+  .nextLessonLiveDot { animation: none; }
   .actionChip,
   .lessonCard,
   .statItemClickable,
   .makeupBtn,
   .modalClose,
-  .monthPickerSelect {
+  .monthPickerSelect,
+  .nextLessonCard,
+  .mobileCreateButton,
+  .mobileCreateItem,
+  .segmentButton,
+  .textButton {
     transition: background 100ms ease, border-color 100ms ease, color 100ms ease;
   }
   .actionChip:hover { transform: none; }
   .actionChip:active,
   .statItemClickable:active,
   .makeupBtn:active,
-  .modalClose:active { transform: none; }
+  .modalClose:active,
+  .nextLessonCard:active,
+  .mobileCreateButton:active,
+  .mobileCreateItem:active { transform: none; }
 }

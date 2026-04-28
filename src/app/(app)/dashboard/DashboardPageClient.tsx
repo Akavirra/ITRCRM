@@ -662,13 +662,14 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
           </div>
 
           <div className={styles.mobileCreateWrap} ref={mobileCreateMenuRef}>
-            <button
-              type="button"
-              className={styles.mobileCreateButton}
-              aria-expanded={showMobileCreateMenu}
-              aria-controls={createMenuId}
-              onClick={() => { vibrate([10, 30, 10]); setShowMobileCreateMenu((current) => !current); }}
-            >
+              <button
+                type="button"
+                className={styles.mobileCreateButton}
+                aria-expanded={showMobileCreateMenu}
+                aria-controls={createMenuId}
+                aria-label={showMobileCreateMenu ? 'Закрити меню створення' : 'Відкрити меню створення'}
+                onClick={() => { vibrate([10, 30, 10]); setShowMobileCreateMenu((current) => !current); }}
+              >
               <span className={styles.mobileCreateButtonIcon}><Plus size={20} /></span>
               <span className={styles.mobileCreateButtonText}>Створити</span>
               <ChevronDown
@@ -1219,7 +1220,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 <AlertTriangle size={18} />
                 {debtsTab === 'month' ? 'Борги за поточний місяць' : 'Борги за увесь період'}
               </h2>
-              <button type="button" className={styles.modalClose} onClick={() => { setShowDebtsModal(false); setDebtsTab('month'); setDebtMonthFilter(''); }}>
+              <button type="button" className={styles.modalClose} aria-label="Закрити модальне вікно боргів" onClick={() => { setShowDebtsModal(false); setDebtsTab('month'); setDebtMonthFilter(''); }}>
                 <X size={18} />
               </button>
             </div>
@@ -1294,6 +1295,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                               <button
                                 type="button"
                                 className={styles.modalStudentOpenBtn}
+                                aria-label={`Відкрити картку учня ${debtor.full_name}`}
                                 title="Відкрити картку учня"
                                 onClick={() => openStudentModal(debtor.id, debtor.full_name)}
                               >
@@ -1348,6 +1350,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                             <button
                               type="button"
                               className={styles.modalStudentOpenBtn}
+                              aria-label={`Відкрити картку учня ${debtor.full_name}`}
                               title="Відкрити картку учня"
                               onClick={() => openStudentModal(debtor.id, debtor.full_name)}
                             >
@@ -1389,7 +1392,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               <h2 className={styles.modalTitle}>
                 {attendanceView === 'stats' && attMonthFilter ? (
                   <>
-                    <button type="button" className={styles.modalClose} onClick={() => setAttMonthFilter(null)} title="Назад" style={{ marginRight: '0.25rem' }}>
+                    <button type="button" className={styles.modalClose} aria-label="Назад до статистики відвідуваності" onClick={() => setAttMonthFilter(null)} title="Назад" style={{ marginRight: '0.25rem' }}>
                       <ChevronLeft size={18} />
                     </button>
                     {attendanceStats?.monthlyStats.find(m => m.month === attMonthFilter)?.monthLabel || 'Пропуски'}
@@ -1402,7 +1405,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                   <><Check size={18} /> Пропуски за місяць</>
                 )}
               </h2>
-              <button type="button" className={styles.modalClose} onClick={() => { setShowAbsencesModal(false); setAttendanceAllTimeMonthFilter(''); }}>
+              <button type="button" className={styles.modalClose} aria-label="Закрити модальне вікно пропусків" onClick={() => { setShowAbsencesModal(false); setAttendanceAllTimeMonthFilter(''); }}>
                 <X size={18} />
               </button>
             </div>
@@ -1450,7 +1453,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                               <button type="button" className={styles.modalStudentName} onClick={() => { router.push(`/students/${absence.student_id}`); setShowAbsencesModal(false); }}>
                                 {absence.full_name}
                               </button>
-                              <button type="button" className={styles.modalStudentOpenBtn} title="Відкрити картку учня" onClick={() => openStudentModal(absence.student_id, absence.full_name)}>
+                              <button type="button" className={styles.modalStudentOpenBtn} aria-label={`Відкрити картку учня ${absence.full_name}`} title="Відкрити картку учня" onClick={() => openStudentModal(absence.student_id, absence.full_name)}>
                                 <SquareArrowOutUpRight size={13} />
                               </button>
                             </div>
@@ -1460,11 +1463,11 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                             </div>
                           </div>
                           <div className={styles.absenceActions}>
-                            <button type="button" className={styles.absenceDateLink} title="Відкрити заняття" onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}>
+                            <button type="button" className={styles.absenceDateLink} aria-label={`Відкрити заняття ${absence.lessonDateLabel} ${absence.start_time}`} title="Відкрити заняття" onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}>
                               <BookOpen size={12} />
                               {absence.lessonDateLabel}, {absence.start_time}
                             </button>
-                            <button type="button" className={styles.makeupBtn} title="Призначити відпрацювання" onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}>
+                            <button type="button" className={styles.makeupBtn} aria-label={`Призначити відпрацювання для ${absence.full_name}`} title="Призначити відпрацювання" onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}>
                               <RefreshCw size={12} />
                             </button>
                           </div>
@@ -1517,7 +1520,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                               <button type="button" className={styles.modalStudentName} onClick={() => { router.push(`/students/${absence.student_id}`); setShowAbsencesModal(false); }}>
                                 {absence.full_name}
                               </button>
-                              <button type="button" className={styles.modalStudentOpenBtn} title="Відкрити картку учня" onClick={() => openStudentModal(absence.student_id, absence.full_name)}>
+                              <button type="button" className={styles.modalStudentOpenBtn} aria-label={`Відкрити картку учня ${absence.full_name}`} title="Відкрити картку учня" onClick={() => openStudentModal(absence.student_id, absence.full_name)}>
                                 <SquareArrowOutUpRight size={13} />
                               </button>
                             </div>
@@ -1527,11 +1530,11 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                             </div>
                           </div>
                           <div className={styles.absenceActions}>
-                            <button type="button" className={styles.absenceDateLink} title="Відкрити заняття" onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}>
+                            <button type="button" className={styles.absenceDateLink} aria-label={`Відкрити заняття ${absence.lessonDateLabel} ${absence.start_time}`} title="Відкрити заняття" onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}>
                               <BookOpen size={12} />
                               {absence.lessonDateLabel}, {absence.start_time}
                             </button>
-                            <button type="button" className={styles.makeupBtn} title="Призначити відпрацювання" onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}>
+                            <button type="button" className={styles.makeupBtn} aria-label={`Призначити відпрацювання для ${absence.full_name}`} title="Призначити відпрацювання" onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}>
                               <RefreshCw size={12} />
                             </button>
                           </div>
@@ -1591,7 +1594,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                                     <button type="button" className={styles.modalStudentName} onClick={() => { router.push(`/students/${absence.student_id}`); setShowAbsencesModal(false); }}>
                                       {absence.full_name}
                                     </button>
-                                    <button type="button" className={styles.modalStudentOpenBtn} title="Відкрити картку учня" onClick={() => openStudentModal(absence.student_id, absence.full_name)}>
+                                    <button type="button" className={styles.modalStudentOpenBtn} aria-label={`Відкрити картку учня ${absence.full_name}`} title="Відкрити картку учня" onClick={() => openStudentModal(absence.student_id, absence.full_name)}>
                                       <SquareArrowOutUpRight size={13} />
                                     </button>
                                   </div>
@@ -1601,11 +1604,11 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                                   </div>
                                 </div>
                                 <div className={styles.absenceActions}>
-                                  <button type="button" className={styles.absenceDateLink} title="Відкрити заняття" onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}>
+                                  <button type="button" className={styles.absenceDateLink} aria-label={`Відкрити заняття ${absence.lessonDateLabel} ${absence.start_time}`} title="Відкрити заняття" onClick={() => openLessonModal(absence.lesson_id, `Заняття #${absence.lesson_id}`)}>
                                     <BookOpen size={12} />
                                     {absence.lessonDateLabel}, {absence.start_time}
                                   </button>
-                                  <button type="button" className={styles.makeupBtn} title="Призначити відпрацювання" onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}>
+                                  <button type="button" className={styles.makeupBtn} aria-label={`Призначити відпрацювання для ${absence.full_name}`} title="Призначити відпрацювання" onClick={() => window.dispatchEvent(new CustomEvent('itrobot-open-create-lesson', { detail: { tab: 'makeup', absenceIds: [absence.id] } }))}>
                                     <RefreshCw size={12} />
                                   </button>
                                 </div>
@@ -1742,7 +1745,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                 <Clock size={18} />
                 Повна історія змін
               </h2>
-              <button type="button" className={styles.modalClose} onClick={() => setShowHistoryModal(false)}>
+              <button type="button" className={styles.modalClose} aria-label="Закрити повну історію змін" onClick={() => setShowHistoryModal(false)}>
                 <X size={18} />
               </button>
             </div>
