@@ -71,6 +71,8 @@ export interface DashboardStatsPayload {
     course_title: string;
     teacher_name: string;
     group_id: number | null;
+    is_makeup: boolean;
+    is_trial: boolean;
     state: 'live' | 'upcoming';
   } | null;
   todaySchedule: Array<{

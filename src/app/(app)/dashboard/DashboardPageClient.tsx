@@ -204,6 +204,42 @@ function CurrentNextLessonCountdown({
   return <span className={styles.nextLessonCountdown}>{label}</span>;
 }
 
+function getNextLessonTypeMeta(lesson: NonNullable<DashboardStatsPayload['nextLesson']>) {
+  if (lesson.is_makeup) {
+    return {
+      label: 'Відпрацювання',
+      style: { color: '#c2410c', background: '#fff7ed' },
+      title: lesson.group_id ? lesson.group_title : lesson.course_title,
+      subtitle: lesson.group_id ? lesson.course_title : 'Індивідуальне заняття',
+    };
+  }
+
+  if (!lesson.group_id && lesson.is_trial) {
+    return {
+      label: 'Пробне',
+      style: { color: '#15803d', background: '#f0fdf4' },
+      title: lesson.course_title,
+      subtitle: 'Індивідуальне заняття',
+    };
+  }
+
+  if (!lesson.group_id) {
+    return {
+      label: 'Індивідуальне',
+      style: { color: '#6d28d9', background: '#f5f3ff' },
+      title: lesson.course_title,
+      subtitle: 'Персональне заняття',
+    };
+  }
+
+  return {
+    label: 'Групове',
+    style: { color: '#1d4ed8', background: '#dbeafe' },
+    title: lesson.group_title,
+    subtitle: lesson.course_title,
+  };
+}
+
 function vibrate(pattern: number | number[] = 5) {
   if (typeof window !== 'undefined' && 'vibrate' in navigator) {
     try {
@@ -926,55 +962,62 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
         </section>
 
         {/* Current / next lesson */}
-        {initialData.nextLesson && (
-          <button
-            type="button"
-            className={`${styles.nextLessonCard} ${initialData.nextLesson.state === 'live' ? styles.nextLessonCardLive : ''}`}
-            onClick={() => openLessonModal(initialData.nextLesson!.id, `Заняття #${initialData.nextLesson!.id}`)}
-          >
-            <div className={styles.nextLessonCardAccent} />
-            <div className={styles.nextLessonCardBody}>
-              <div className={styles.nextLessonCardTopline}>
-                <span className={`${styles.nextLessonBadge} ${initialData.nextLesson.state === 'live' ? styles.nextLessonBadgeLive : styles.nextLessonBadgeUpcoming}`}>
-                  {initialData.nextLesson.state === 'live' ? (
-                    <>
-                      <span className={styles.nextLessonLiveDot} />
-                      Йде зараз
-                    </>
-                  ) : (
-                    'Найближче заняття'
-                  )}
-                </span>
-                <CurrentNextLessonCountdown
-                  startDatetime={initialData.nextLesson.start_datetime}
-                  endDatetime={initialData.nextLesson.end_datetime}
-                  state={initialData.nextLesson.state}
-                />
+        {initialData.nextLesson && (() => {
+          const lesson = initialData.nextLesson;
+          const lessonMeta = getNextLessonTypeMeta(lesson);
+
+          return (
+            <button
+              type="button"
+              className={`${styles.nextLessonCard} ${lesson.state === 'live' ? styles.nextLessonCardLive : ''}`}
+              onClick={() => openLessonModal(lesson.id, `Заняття #${lesson.id}`)}
+            >
+              <div className={styles.nextLessonCardAccent} />
+              <div className={styles.nextLessonCardBody}>
+                <div className={styles.nextLessonCardTopline}>
+                  <div className={styles.nextLessonBadgeRow}>
+                    <span className={`${styles.nextLessonBadge} ${lesson.state === 'live' ? styles.nextLessonBadgeLive : styles.nextLessonBadgeUpcoming}`}>
+                      {lesson.state === 'live' ? (
+                        <>
+                          <span className={styles.nextLessonLiveDot} />
+                          Йде зараз
+                        </>
+                      ) : (
+                        'Найближче заняття'
+                      )}
+                    </span>
+                    <span className={styles.nextLessonTypeBadge} style={lessonMeta.style}>
+                      {lessonMeta.label}
+                    </span>
+                  </div>
+                  <CurrentNextLessonCountdown
+                    startDatetime={lesson.start_datetime}
+                    endDatetime={lesson.end_datetime}
+                    state={lesson.state}
+                  />
+                </div>
+
+                <div className={styles.nextLessonCardMain}>
+                  <div className={styles.nextLessonTitle}>{lessonMeta.title}</div>
+                  <div className={styles.nextLessonSubtitle}>{lessonMeta.subtitle}</div>
+                  <div className={styles.nextLessonMeta}>
+                    <span className={styles.nextLessonMetaItem}>
+                      <Clock size={14} />
+                      {formatLessonDayLabel(lesson.start_datetime)}, {lesson.startTimeLabel}–{lesson.endTimeLabel}
+                    </span>
+                    <span className={styles.nextLessonMetaDot} />
+                    <span className={styles.nextLessonMetaItem}>{lesson.teacher_name}</span>
+                  </div>
+                </div>
               </div>
 
-              <div className={styles.nextLessonCardMain}>
-                <div className={styles.nextLessonTitle}>
-                  {initialData.nextLesson.group_id
-                    ? initialData.nextLesson.group_title
-                    : initialData.nextLesson.course_title}
-                </div>
-                <div className={styles.nextLessonMeta}>
-                  <span className={styles.nextLessonMetaItem}>
-                    <Clock size={14} />
-                    {formatLessonDayLabel(initialData.nextLesson.start_datetime)}, {initialData.nextLesson.startTimeLabel}–{initialData.nextLesson.endTimeLabel}
-                  </span>
-                  <span className={styles.nextLessonMetaDot} />
-                  <span className={styles.nextLessonMetaItem}>{initialData.nextLesson.teacher_name}</span>
-                </div>
-              </div>
-            </div>
-
-            <span className={styles.nextLessonAction}>
-              Відкрити заняття
-              <SquareArrowOutUpRight size={15} />
-            </span>
-          </button>
-        )}
+              <span className={styles.nextLessonAction}>
+                Відкрити заняття
+                <SquareArrowOutUpRight size={15} />
+              </span>
+            </button>
+          );
+        })()}
 
         {/* Two-column: Schedule + Activity */}
         <div className={styles.columns}>

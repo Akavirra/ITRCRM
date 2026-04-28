@@ -366,6 +366,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   const currentLessonPromise = get<DashboardStatsPayload['nextLesson']>(
     `SELECT
       l.id, l.start_datetime, l.end_datetime, l.group_id,
+      COALESCE(l.is_makeup, FALSE) as is_makeup,
+      COALESCE(l.is_trial, FALSE) as is_trial,
       g.title as group_title, c.title as course_title, u.name as teacher_name
      FROM lessons l
      LEFT JOIN groups g ON l.group_id = g.id
@@ -381,6 +383,8 @@ export async function getDashboardStatsPayload(): Promise<DashboardStatsPayload>
   const nextUpcomingLessonPromise = get<DashboardStatsPayload['nextLesson']>(
     `SELECT
       l.id, l.start_datetime, l.end_datetime, l.group_id,
+      COALESCE(l.is_makeup, FALSE) as is_makeup,
+      COALESCE(l.is_trial, FALSE) as is_trial,
       g.title as group_title, c.title as course_title, u.name as teacher_name
      FROM lessons l
      LEFT JOIN groups g ON l.group_id = g.id
