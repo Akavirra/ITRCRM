@@ -208,7 +208,7 @@ function getNextLessonTypeMeta(lesson: NonNullable<DashboardStatsPayload['nextLe
   if (lesson.is_makeup) {
     return {
       label: 'Відпрацювання',
-      style: { color: '#c2410c', background: '#fff7ed' },
+      style: { color: '#9a3412', background: 'rgba(255, 247, 237, 0.92)', border: '1px solid rgba(251, 191, 36, 0.28)' },
       title: lesson.group_id ? lesson.group_title : lesson.course_title,
       subtitle: lesson.group_id ? lesson.course_title : 'Індивідуальне заняття',
     };
@@ -217,7 +217,7 @@ function getNextLessonTypeMeta(lesson: NonNullable<DashboardStatsPayload['nextLe
   if (!lesson.group_id && lesson.is_trial) {
     return {
       label: 'Пробне',
-      style: { color: '#15803d', background: '#f0fdf4' },
+      style: { color: '#166534', background: 'rgba(240, 253, 244, 0.94)', border: '1px solid rgba(134, 239, 172, 0.34)' },
       title: lesson.course_title,
       subtitle: 'Індивідуальне заняття',
     };
@@ -226,7 +226,7 @@ function getNextLessonTypeMeta(lesson: NonNullable<DashboardStatsPayload['nextLe
   if (!lesson.group_id) {
     return {
       label: 'Індивідуальне',
-      style: { color: '#6d28d9', background: '#f5f3ff' },
+      style: { color: '#6b21a8', background: 'rgba(245, 243, 255, 0.96)', border: '1px solid rgba(196, 181, 253, 0.34)' },
       title: lesson.course_title,
       subtitle: 'Персональне заняття',
     };
@@ -234,7 +234,7 @@ function getNextLessonTypeMeta(lesson: NonNullable<DashboardStatsPayload['nextLe
 
   return {
     label: 'Групове',
-    style: { color: '#1d4ed8', background: '#dbeafe' },
+    style: { color: '#1e40af', background: 'rgba(239, 246, 255, 0.96)', border: '1px solid rgba(147, 197, 253, 0.42)' },
     title: lesson.group_title,
     subtitle: lesson.course_title,
   };
@@ -983,7 +983,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
                           Йде зараз
                         </>
                       ) : (
-                        'Найближче заняття'
+                        'Найближче'
                       )}
                     </span>
                     <span className={styles.nextLessonTypeBadge} style={lessonMeta.style}>
@@ -1012,7 +1012,7 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               </div>
 
               <span className={styles.nextLessonAction}>
-                Відкрити заняття
+                Деталі
                 <SquareArrowOutUpRight size={15} />
               </span>
             </button>
