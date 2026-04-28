@@ -308,6 +308,17 @@ font-variant-numeric: tabular-nums;
 
 ---
 
+## 13.1. Розподіл ролей між дизайн-настановами та skill-ами
+
+- **`DESIGN_SYSTEM.md`** визначає, як UI має виглядати в цьому проєкті: кольори, типографіка, spacing, радіуси, іконки, базові компоненти.
+- **`emil-design-eng`** відповідає за те, як UI має рухатись і відчуватись: motion, hover / active / focus, easing, duration, micro-feedback, perceived quality.
+- **`impeccable`** використовується для ширшого UI/UX critique та final polish: hierarchy, clarity, anti-patterns, design drift, consistency across a full route or flow.
+- **`ui-ux-pro-max`** використовується для вибору або генерації сильнішого design direction: palette families, font pairings, product-type patterns, UI styles, and system options for new surfaces.
+
+**Правило:** не змішувати ці ролі. Emil Kowalski не є джерелом повної візуальної системи, а `DESIGN_SYSTEM.md` не замінює interaction polish. Якщо завдання про look-and-feel route цілком, використовувати систему + motion philosophy + critique skill разом.
+
+---
+
 ## 14. Anti-patterns — чого НЕ робити
 
 - ❌ Градієнтні фони карток.

@@ -84,21 +84,40 @@ git diff --cached | grep -E "Р[А-Яа-я]|СЏ|С–|С‚|вЂ|рџ|В°|в�
 
 ## 🎨 Design & UI work
 
-Any time you write, edit, or review UI code (components, pages, modals, animations, CSS), you **must** apply the design-engineering philosophy of Emil Kowalski — that is the bar for UI in this project.
+Any time you write, edit, or review UI code (components, pages, modals, animations, CSS), you **must** separate three layers and apply all of them deliberately:
 
-### For Claude Code (and other Claude-based agents)
+1. **Emil Kowalski philosophy** — how the UI should move, react, and feel in use: animation, interaction feedback, motion restraint, hover/active/focus details, perceived quality.
+2. **`DESIGN_SYSTEM.md`** — what the UI should look like in this project: colors, typography, spacing, radii, icons, component conventions.
+3. **`impeccable` skill (when available)** — broader UX/UI critique and polish: hierarchy, information architecture, anti-patterns, clarity, consistency, and final fit-and-finish.
+4. **`ui-ux-pro-max` skill (when available)** — design-system ideation and style selection: visual directions, palette families, font pairings, product-type patterns, and UI/UX option generation for new surfaces.
 
-Invoke the `emil-design-eng` skill **before** producing UI code. Use it for:
+Do **not** treat Emil Kowalski as the sole source of visual or product-design direction. Emil is the bar for **motion, interaction, and component polish**. `DESIGN_SYSTEM.md` defines the project’s visual system. `impeccable` can be used for higher-level design shaping and critique.
+
+### For agents with skill access
+
+Invoke the `emil-design-eng` skill before producing UI code when you need help with:
 - Animation decisions (duration, easing, whether to animate at all)
 - Component polish (`:active` states, focus rings, hover scoping, micro-feedback)
 - Reviewing diffs on `.tsx` / `.css` files
-- Any "make this feel better" request
+- Any “make this feel better” request centered on interaction quality
 
-When reviewing, output in the required Before/After/Why markdown table format from the skill.
+Invoke the `impeccable` skill when the task is broader than motion polish, for example:
+- UX/UI critique of a page, flow, or component set
+- Hierarchy, layout rhythm, density, or clarity problems
+- Design-system drift or visual inconsistency across a surface
+- Final interface polish on a route such as `/dashboard`, `/schedule`, or `/teacher-app`
 
-### For Codex CLI, Copilot, and any agent without skill access
+Invoke the `ui-ux-pro-max` skill when the task is about choosing or exploring design directions, for example:
+- Finding a suitable style direction for a new page or feature
+- Picking color palette / typography combinations for a given product type
+- Comparing UI patterns for dashboards, landing pages, admin panels, or mobile screens
+- Generating a stronger initial design system before implementation or refactor
 
-Follow the same philosophy manually. Canonical reference: Emil Kowalski's course at [animations.dev](https://animations.dev/). Core rules you must respect:
+When using `emil-design-eng` for review, output in the required Before/After/Why markdown table format from the skill.
+
+### For agents without relevant skill access
+
+Follow the same philosophy manually. Canonical reference for motion and interaction craft: Emil Kowalski's course at [animations.dev](https://animations.dev/). Core rules you must respect:
 
 1. **Never use `transition: all`.** Specify exact properties: `transition: transform 200ms var(--ease-out), background 150ms ease`.
 2. **Favor `ease-out` over `ease-in` for entries.** `ease-in` feels sluggish; `ease-out` gives instant feedback.
@@ -116,7 +135,7 @@ Follow the same philosophy manually. Canonical reference: Emil Kowalski's course
 
 ### Project-specific design rules
 
-The visual system (colors, typography, 4px spacing grid, 8/12px radii, Lucide icons, component rules) is codified in [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md). The Emil-philosophy rules above describe **how** things should feel; DESIGN_SYSTEM.md describes **what** they should look like. Both apply, always.
+The visual system (colors, typography, 4px spacing grid, 8/12px radii, Lucide icons, component rules) is codified in [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md). Emil-philosophy rules describe **how** interactions should feel. `DESIGN_SYSTEM.md` describes **what** the UI should look like. `impeccable` helps evaluate and polish the complete experience when a task needs more than motion guidance. `ui-ux-pro-max` helps explore and choose stronger visual/system directions before or during implementation. All four layers should align.
 
 ---
 

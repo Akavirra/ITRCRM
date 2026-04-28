@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
@@ -90,6 +90,13 @@ interface AttendanceStatsData {
   monthlyStats: MonthlyAttStat[];
   topAbsentees: TopAbsentee[];
   absencesByMonth: AttAbsence[];
+}
+
+interface HeroHighlight {
+  key: string;
+  icon: ReactNode;
+  label: string;
+  tone?: 'default' | 'accent' | 'success' | 'warning';
 }
 
 function formatMonthLabel(monthValue: string) {
@@ -527,6 +534,48 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
 
   const formattedDate = format(new Date(initialData.todayDate), 'd MMMM, EEEE', { locale: uk });
   const canUsePortal = typeof window !== 'undefined';
+  const heroSummary = initialData.todaySchedule.length === 0
+    ? 'На сьогодні занять немає, тож це хороший момент перевірити оплати, підтягнути групи або спокійно допланувати тиждень.'
+    : completedLessons > 0
+      ? `У розкладі ${initialData.todaySchedule.length} занять. ${completedLessons} уже завершено, а решта ще в роботі.`
+      : `У розкладі ${initialData.todaySchedule.length} занять. Нижче можна швидко оцінити оплату, відвідуваність і найближчий робочий слот.`;
+  const heroHighlights: HeroHighlight[] = [
+    {
+      key: 'schedule',
+      icon: <Calendar size={14} />,
+      label: `${initialData.todaySchedule.length} у розкладі`,
+    },
+    {
+      key: 'next-lesson',
+      icon: <Clock size={14} />,
+      label: initialData.nextLesson
+        ? initialData.nextLesson.state === 'live'
+          ? 'Заняття триває зараз'
+          : `Наступне о ${initialData.nextLesson.startTimeLabel}`
+        : 'Наступних занять сьогодні немає',
+      tone: initialData.nextLesson?.state === 'live' ? 'success' : 'accent',
+    },
+    visiblePayments.length > 0
+      ? {
+          key: 'payments',
+          icon: <CreditCard size={14} />,
+          label: `${visiblePayments.length} останніх оплат`,
+          tone: 'accent',
+        }
+      : initialData.stats.unpaidStudents > 0
+        ? {
+            key: 'debts',
+            icon: <AlertTriangle size={14} />,
+            label: `${initialData.stats.unpaidStudents} учнів із боргом`,
+            tone: 'warning',
+          }
+        : {
+            key: 'payments',
+            icon: <Check size={14} />,
+            label: 'Оплати без прострочень',
+            tone: 'success',
+          },
+  ];
 
   const canOpenHistoryEntityModal = (history: DashboardHistoryEntry) => {
     return history.entity_id !== null
@@ -640,6 +689,23 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
           <div className={styles.heroLeft}>
             <div className={styles.heroGreeting}>{initialData.greeting}!</div>
             <h1 className={styles.heroTitle} suppressHydrationWarning>{formattedDate}</h1>
+            <p className={styles.heroSummary}>{heroSummary}</p>
+            <div className={styles.heroMetaRow}>
+              {heroHighlights.map((item) => (
+                <div
+                  key={item.key}
+                  className={[
+                    styles.heroMetaChip,
+                    item.tone === 'accent' ? styles.heroMetaChipAccent : '',
+                    item.tone === 'success' ? styles.heroMetaChipSuccess : '',
+                    item.tone === 'warning' ? styles.heroMetaChipWarning : '',
+                  ].filter(Boolean).join(' ')}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className={styles.actionsStrip}>

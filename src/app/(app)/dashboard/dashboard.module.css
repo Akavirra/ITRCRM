@@ -49,7 +49,7 @@
 .heroLeft {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.35rem;
 }
 
 .heroGreeting {
@@ -67,6 +67,70 @@
   line-height: 1.2;
   color: var(--ink);
   text-transform: capitalize;
+}
+
+.heroSummary {
+  margin: 0;
+  max-width: 54rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.heroMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+
+.heroMetaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.heroMetaChip svg {
+  color: var(--muted);
+}
+
+.heroMetaChipAccent {
+  border-color: rgba(147, 197, 253, 0.45);
+  background: rgba(239, 246, 255, 0.9);
+  color: var(--accent-strong);
+}
+
+.heroMetaChipAccent svg {
+  color: var(--accent);
+}
+
+.heroMetaChipSuccess {
+  border-color: rgba(134, 239, 172, 0.45);
+  background: rgba(240, 253, 244, 0.94);
+  color: var(--success-strong);
+}
+
+.heroMetaChipSuccess svg {
+  color: #16a34a;
+}
+
+.heroMetaChipWarning {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(255, 251, 235, 0.94);
+  color: var(--warning-strong);
+}
+
+.heroMetaChipWarning svg {
+  color: #d97706;
 }
 
 /* ── Quick actions ── */
@@ -262,20 +326,28 @@
 
 .secondaryStatsRow {
   display: flex;
-  gap: 1.5rem;
+  gap: 0.45rem;
   align-items: center;
+  flex-wrap: wrap;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-soft);
 }
 
 .secondaryStatItem {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  color: var(--muted);
+  padding: 0.3rem 0.5rem;
+  color: var(--ink-soft);
   font-size: 0.85rem;
+  border-radius: 999px;
 }
 
 .secondaryStatLabel {
-  font-weight: 400;
+  font-weight: 500;
+  color: var(--muted);
 }
 
 .secondaryStatValue {
@@ -1892,6 +1964,21 @@
     line-height: 1.1;
   }
 
+  .heroSummary {
+    font-size: 0.9rem;
+    max-width: none;
+  }
+
+  .heroMetaRow {
+    gap: 0.45rem;
+  }
+
+  .heroMetaChip {
+    min-height: 1.9rem;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.78rem;
+  }
+
   .actionsStrip {
     display: none;
     width: 100%;
@@ -1954,6 +2041,8 @@
     width: 100%;
     gap: 0.55rem 0.9rem;
     flex-wrap: wrap;
+    padding: 0.55rem 0.65rem;
+    border-radius: 16px;
   }
 
   .secondaryStatItem {
