@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle, BarChart3, BookOpen, Calendar, Check, ChevronLeft, Clock, CreditCard, DollarSign,
-  ChevronDown, ExternalLink, GraduationCap, Plus, RefreshCw, SquareArrowOutUpRight, TrendingDown, TrendingUp, User as UserIcon, Users, Users2, X,
+  ChevronDown, ExternalLink, GraduationCap, Plus, RefreshCw, TrendingDown, TrendingUp, User as UserIcon, Users, Users2, X,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { uk } from 'date-fns/locale';
@@ -1039,49 +1039,50 @@ export default function DashboardPageClient({ initialData }: { initialData: Dash
               className={`${styles.nextLessonCard} ${lesson.state === 'live' ? styles.nextLessonCardLive : ''}`}
               onClick={() => openLessonModal(lesson.id, `Заняття #${lesson.id}`)}
             >
-              <div className={styles.nextLessonCardAccent} />
-              <div className={styles.nextLessonCardBody}>
-                <div className={styles.nextLessonCardTopline}>
-                  <div className={styles.nextLessonBadgeRow}>
-                    <span className={`${styles.nextLessonBadge} ${lesson.state === 'live' ? styles.nextLessonBadgeLive : styles.nextLessonBadgeUpcoming}`}>
-                      {lesson.state === 'live' ? (
-                        <>
-                          <span className={styles.nextLessonLiveDot} />
-                          Йде зараз
-                        </>
-                      ) : (
-                        'Найближче'
-                      )}
-                    </span>
+              <div className={styles.nextLessonCardInner}>
+                <div className={styles.nextLessonCardLeft}>
+                  <div className={styles.nextLessonStatusRow}>
+                    {lesson.state === 'live' ? (
+                      <span className={styles.nextLessonStatusLive}>
+                        <span className={styles.nextLessonLiveDot} />
+                        Йде зараз
+                      </span>
+                    ) : (
+                      <span className={styles.nextLessonStatusUpcoming}>Найближче</span>
+                    )}
                     <span className={styles.nextLessonTypeBadge} style={lessonMeta.style}>
                       {lessonMeta.label}
                     </span>
                   </div>
+
+                  <div className={styles.nextLessonTitleBlock}>
+                    <div className={styles.nextLessonTimeLabel}>
+                      {formatLessonDayLabel(lesson.start_datetime)}, {lesson.startTimeLabel}–{lesson.endTimeLabel}
+                    </div>
+                    <div className={styles.nextLessonTitle}>{lessonMeta.title}</div>
+                    <div className={styles.nextLessonSubtitle}>{lessonMeta.subtitle}</div>
+                  </div>
+
+                  <div className={styles.nextLessonMeta}>
+                    <span className={styles.nextLessonMetaItem}>
+                      <Clock size={13} />
+                      {lesson.teacher_name}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={styles.nextLessonCardRight}>
                   <CurrentNextLessonCountdown
                     startDatetime={lesson.start_datetime}
                     endDatetime={lesson.end_datetime}
                     state={lesson.state}
                   />
-                </div>
-
-                <div className={styles.nextLessonCardMain}>
-                  <div className={styles.nextLessonTitle}>{lessonMeta.title}</div>
-                  <div className={styles.nextLessonSubtitle}>{lessonMeta.subtitle}</div>
-                  <div className={styles.nextLessonMeta}>
-                    <span className={styles.nextLessonMetaItem}>
-                      <Clock size={14} />
-                      {formatLessonDayLabel(lesson.start_datetime)}, {lesson.startTimeLabel}–{lesson.endTimeLabel}
-                    </span>
-                    <span className={styles.nextLessonMetaDot} />
-                    <span className={styles.nextLessonMetaItem}>{lesson.teacher_name}</span>
-                  </div>
+                  <span className={styles.nextLessonAction}>
+                    Деталі
+                    <ExternalLink size={14} />
+                  </span>
                 </div>
               </div>
-
-              <span className={styles.nextLessonAction}>
-                Деталі
-                <SquareArrowOutUpRight size={15} />
-              </span>
             </button>
           );
         })()}
