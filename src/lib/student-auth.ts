@@ -81,6 +81,7 @@ export interface CurrentStudent {
   code: string;
   sessionId: string;
   sessionExpiresAt: string;
+  isPersistent: boolean;
 }
 
 // Перетворення коду ----------------------------------------------------------
@@ -371,6 +372,7 @@ export async function getStudentFromRequest(request: NextRequest): Promise<Curre
     code: codeRow?.code ?? studentIdToCode(student.id),
     sessionId,
     sessionExpiresAt: session.expires_at,
+    isPersistent: session.is_persistent,
   };
 }
 

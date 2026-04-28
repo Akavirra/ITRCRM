@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     let sessionExpiresAt = student.sessionExpiresAt;
     if (shouldRefresh) {
       try {
-        sessionExpiresAt = await refreshStudentSession(student.sessionId);
+        sessionExpiresAt = await refreshStudentSession(student.sessionId, student.isPersistent);
       } catch (error) {
         console.error('[student-auth/me] refresh failed:', error);
       }
